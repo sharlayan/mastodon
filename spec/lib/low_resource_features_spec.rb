@@ -19,9 +19,25 @@ RSpec.describe LowResourceFeatures do
       end
     end
 
-    it 'only disables an option when it is explicitly false' do
-      ClimateControl.modify TEST_RESOURCE_OPTION: 'false' do
-        expect(described_class.send(:enabled?, 'TEST_RESOURCE_OPTION', default: true)).to be false
+    it 'uses the default when the option is empty' do
+      ClimateControl.modify TEST_RESOURCE_OPTION: '' do
+        expect(described_class.send(:enabled?, 'TEST_RESOURCE_OPTION', default: true)).to be true
+      end
+    end
+
+    it 'disables an option for any false boolean value' do
+      %w(false FALSE 0 no off f).each do |value|
+        ClimateControl.modify TEST_RESOURCE_OPTION: value do
+          expect(described_class.send(:enabled?, 'TEST_RESOURCE_OPTION', default: true)).to be(false), value
+        end
+      end
+    end
+
+    it 'enables an option for a true boolean value' do
+      %w(true TRUE 1 yes on).each do |value|
+        ClimateControl.modify TEST_RESOURCE_OPTION: value do
+          expect(described_class.send(:enabled?, 'TEST_RESOURCE_OPTION', default: false)).to be(true), value
+        end
       end
     end
   end
