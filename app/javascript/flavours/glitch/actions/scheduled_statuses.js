@@ -2,7 +2,7 @@ import { Map as ImmutableMap, List as ImmutableList, fromJS } from 'immutable';
 
 import api, { getLinks } from '../api';
 
-import { showAlert } from './alerts';
+import { showAlertForError } from './alerts';
 import { ensureComposeIsVisible } from './compose';
 
 export const SCHEDULED_STATUSES_FETCH_REQUEST = 'SCHEDULED_STATUSES_FETCH_REQUEST';
@@ -47,6 +47,7 @@ export function fetchScheduledStatuses() {
       })
       .catch((err) => {
         dispatch({ type: SCHEDULED_STATUSES_FETCH_FAIL });
+        dispatch(showAlertForError(err));
       });
   };
 }
@@ -55,12 +56,13 @@ export function deleteScheduledStatus(id) {
   return (dispatch) => {
     dispatch({ type: SCHEDULED_STATUS_DELETE_REQUEST, id });
 
-    api().delete(`/api/v1/scheduled_statuses/${id}`)
+    return api().delete(`/api/v1/scheduled_statuses/${id}`)
       .then(() => {
         dispatch({ type: SCHEDULED_STATUS_DELETE_SUCCESS, id });
       })
       .catch((err) => {
         dispatch({ type: SCHEDULED_STATUS_DELETE_FAIL, id });
+        dispatch(showAlertForError(err));
       });
   };
 }
@@ -69,7 +71,7 @@ export function updateScheduledStatus(id, scheduledAt) {
   return (dispatch) => {
     dispatch({ type: SCHEDULED_STATUS_UPDATE_REQUEST, id });
 
-    api().put(`/api/v1/scheduled_statuses/${id}`, { scheduled_at: scheduledAt })
+    return api().put(`/api/v1/scheduled_statuses/${id}`, { scheduled_at: scheduledAt })
       .then(({ data }) => {
         dispatch({
           type: SCHEDULED_STATUS_UPDATE_SUCCESS,
@@ -78,6 +80,7 @@ export function updateScheduledStatus(id, scheduledAt) {
       })
       .catch((err) => {
         dispatch({ type: SCHEDULED_STATUS_UPDATE_FAIL, id });
+        dispatch(showAlertForError(err));
       });
   };
 }
