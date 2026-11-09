@@ -987,9 +987,10 @@ const foldSearch = (value: string) =>
 const ComposerBox: React.FC<{
   text: ComposerText;
   onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onPaste: (event: ClipboardEvent<HTMLTextAreaElement>) => void;
   placeholder: string;
   disabled: boolean;
-}> = ({ text, onKeyDown, placeholder, disabled }) => {
+}> = ({ text, onKeyDown, onPaste, placeholder, disabled }) => {
   const value = useSyncExternalStore(text.subscribe, text.get);
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -1006,6 +1007,7 @@ const ComposerBox: React.FC<{
       value={value}
       onChange={handleChange}
       onKeyDown={onKeyDown}
+      onPaste={onPaste}
       placeholder={placeholder}
       disabled={disabled}
     />
@@ -2973,10 +2975,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [createGroup],
   );
 
-  const handleMediaChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(event.target.files ?? []);
-      event.target.value = '';
+  const uploadFiles = useCallback(
+    (files: File[]) => {
       if (!chatSettings || files.length === 0) return;
       if (files.length + media.length > chatSettings.max_attachments) {
         setError('too_many_attachments');
@@ -3007,6 +3007,28 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       });
     },
     [chatSettings, media.length],
+  );
+
+  const handleMediaChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(event.target.files ?? []);
+      event.target.value = '';
+      uploadFiles(files);
+    },
+    [uploadFiles],
+  );
+
+  const handleComposerPaste = useCallback(
+    (event: ClipboardEvent<HTMLTextAreaElement>) => {
+      const files = Array.from(event.clipboardData.files).filter((file) =>
+        /^(image|video|audio)\//.test(file.type),
+      );
+      if (files.length === 0) return;
+      event.preventDefault();
+      if (loading || uploading || editingId || isArchived) return;
+      uploadFiles(files);
+    },
+    [editingId, isArchived, loading, uploadFiles, uploading],
   );
 
   const handleMessageAction = useCallback(
@@ -4394,6 +4416,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   <ComposerBox
                     text={composerText}
                     onKeyDown={handleComposerKeyDown}
+                    onPaste={handleComposerPaste}
                     placeholder={intl.formatMessage(messages.placeholder)}
                     disabled={isArchived}
                   />

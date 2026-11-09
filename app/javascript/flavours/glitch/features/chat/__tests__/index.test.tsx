@@ -11,6 +11,7 @@ import { Provider } from 'react-redux';
 import {
   act,
   cleanup,
+  createEvent,
   fireEvent,
   render,
   screen,
@@ -3613,6 +3614,55 @@ describe('Chat attachments', () => {
         { text: '', reply_to_id: null, media_ids: ['media-2', 'media-3'] },
       );
     });
+  });
+
+  it('uploads an image pasted into the composer', async () => {
+    api.post.mockImplementation((url: string) =>
+      Promise.resolve({
+        data: url === '/api/v2/media' ? pictures[0] : message(),
+      }),
+    );
+    mountChat();
+    await screen.findByText('Private message A');
+    await waitFor(() => {
+      expect(
+        screen
+          .getByRole('button', { name: 'Attach media' })
+          .hasAttribute('disabled'),
+      ).toBe(false);
+    });
+
+    const pasted = new File(['private'], 'pasted.png', { type: 'image/png' });
+    const event = createEvent.paste(composer(), {
+      clipboardData: { files: [pasted], items: [], types: ['Files'] },
+    });
+    fireEvent(composer(), event);
+
+    expect(event.defaultPrevented).toBe(true);
+    await screen.findByAltText('Picture 1');
+    const body = (api.post.mock.calls as [string, FormData][]).find(
+      ([url]) => url === '/api/v2/media',
+    )?.[1];
+    expect(body?.get('file')).toBe(pasted);
+  });
+
+  it('leaves a paste without files to the composer', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    api.post.mockClear();
+
+    const event = createEvent.paste(composer(), {
+      clipboardData: {
+        files: [],
+        items: [],
+        types: ['text/plain'],
+        getData: () => 'hello',
+      },
+    });
+    fireEvent(composer(), event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(api.post).not.toHaveBeenCalled();
   });
 
   it('turns away more files than the limit with a message that says so', async () => {
