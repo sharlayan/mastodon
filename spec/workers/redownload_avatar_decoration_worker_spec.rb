@@ -43,27 +43,7 @@ RSpec.describe RedownloadAvatarDecorationWorker do
     expect(decoration.reload.image_file_name).to be_blank
   end
 
-  it 'enforces the hourly account download budget' do
-    stub_const("#{described_class}::ACCOUNT_LIMIT", 1)
-    first = remote_decoration('one')
-    second = remote_decoration('two')
-
-    worker.perform(first.id, account.id)
-    worker.perform(second.id, account.id)
-
-    expect(first.reload.image_file_name).to be_present
-    expect(second.reload.image_file_name).to be_blank
-  ensure
-    bucket = Time.now.to_i / described_class::BUDGET_PERIOD
-    RedisConnection.with do |redis|
-      redis.del(
-        "avatar_decoration_download:domain:remote.example:#{bucket}",
-        "avatar_decoration_download:account:#{account.id}:#{bucket}"
-      )
-    end
-  end
-
-  it 'retries a decoration after the download budget period when the budget is exhausted' do
+  it 'enforces the hourly account download budget and retries a decoration after the budget period' do
     stub_const("#{described_class}::ACCOUNT_LIMIT", 1)
     first = remote_decoration('one')
     second = remote_decoration('two')
@@ -74,6 +54,8 @@ RSpec.describe RedownloadAvatarDecorationWorker do
     worker.perform(first.id, account.id)
     worker.perform(second.id, account.id)
 
+    expect(first.reload.image_file_name).to be_present
+    expect(second.reload.image_file_name).to be_blank
     expect(described_class).to have_received(:perform_in).with(anything, second.id, account.id).once
     expect(delays.sole).to be_between(1, described_class::BUDGET_PERIOD + 60)
     expect(RedisConnection.with { |redis| redis.ttl(key) }).to be >= delays.sole

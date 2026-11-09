@@ -4,16 +4,9 @@ require 'rails_helper'
 
 RSpec.describe UserRole do
   describe '#rate_limit_for' do
-    it 'uses the default when the role override is blank' do
-      role = Fabricate.build(:user_role, api_rate_limit: nil)
-
-      expect(role.rate_limit_for(:api)).to eq(1_500)
-    end
-
-    it 'uses the role override when present' do
-      role = Fabricate.build(:user_role, api_rate_limit: 2_000)
-
-      expect(role.rate_limit_for(:api)).to eq(2_000)
+    it 'uses the role override when present and the default when blank' do
+      expect(Fabricate.build(:user_role, api_rate_limit: nil).rate_limit_for(:api)).to eq(1_500)
+      expect(Fabricate.build(:user_role, api_rate_limit: 2_000).rate_limit_for(:api)).to eq(2_000)
     end
   end
 
@@ -74,19 +67,12 @@ RSpec.describe UserRole do
         expect(target_role.errors.of_kind?(:api_rate_limit, :restricted)).to be true
       end
 
-      it 'rejects a bypass permission change' do
+      it 'rejects a bypass permission change with a translated explanation' do
         target_role.extra_permissions = described_class::EXTRA_FLAGS[:bypass_rate_limit]
 
         expect(target_role).to_not be_valid
         expect(target_role.errors.of_kind?(:extra_permissions_as_keys, :restricted)).to be true
         expect(target_role.errors.messages_for(:extra_permissions_as_keys)).to include(I18n.t('activerecord.errors.models.user_role.attributes.extra_permissions_as_keys.restricted'))
-      end
-
-      it 'explains why a role holding permissions beyond the current role cannot be saved' do
-        target_role.extra_permissions = described_class::EXTRA_FLAGS[:bypass_rate_limit]
-
-        target_role.valid?
-
         expect(target_role.errors.full_messages.join).to_not include('Translation missing')
       end
     end
@@ -126,16 +112,13 @@ RSpec.describe UserRole do
       expect(administrator.can_extra?(:view_admin_timeline)).to be true
     end
 
-    it 'round-trips known keys and ignores unknown keys' do
+    it 'round-trips known keys, ignores unknown keys and rejects unknown permission checks' do
       role = Fabricate.build(:user_role)
 
       role.extra_permissions_as_keys = %w(bypass_rate_limit view_admin_timeline unknown)
 
       expect(role.extra_permissions_as_keys).to contain_exactly('bypass_rate_limit', 'view_admin_timeline')
-    end
-
-    it 'rejects unknown permission checks' do
-      expect { Fabricate.build(:user_role).can_extra?(:unknown) }.to raise_error(ArgumentError)
+      expect { role.can_extra?(:unknown) }.to raise_error(ArgumentError)
     end
 
     it 'prevents non-admin users from changing their own extra permissions' do

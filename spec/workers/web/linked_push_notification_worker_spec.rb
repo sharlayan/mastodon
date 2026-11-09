@@ -81,19 +81,9 @@ RSpec.describe Web::LinkedPushNotificationWorker do
       expect(a_request(:post, endpoint)).to_not have_been_made
     end
 
-    it 'does nothing when main user is not found' do
+    it 'does nothing when the main user or notification is not found, or the notification is too old' do
       subject.perform(0, notification.id)
-
-      expect(a_request(:post, endpoint)).to_not have_been_made
-    end
-
-    it 'does nothing when notification is not found' do
       subject.perform(main_user.id, 0)
-
-      expect(a_request(:post, endpoint)).to_not have_been_made
-    end
-
-    it 'does nothing when notification is too old' do
       notification.update!(updated_at: 3.days.ago)
 
       subject.perform(main_user.id, notification.id)

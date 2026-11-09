@@ -23,13 +23,12 @@ RSpec.describe Sharlayan::PageBackupService do
     end
   end
 
-  it 'exports and restores page data without retaining source IDs' do
-    series = Fabricate(:page_series, account: account, title: 'Manuals', description: 'A series')
+  it 'exports and restores page data and Booklet display preferences without retaining source IDs' do
+    series = Fabricate(:page_series, account: account, title: 'Manuals', description: 'A series', displayed: false)
+    Fabricate(:page_series, account: account, title: 'Visible', displayed: true)
     page = Fabricate(:page, account: account, name: 'guide', title: 'Guide', content: [{ 'id' => 'text', 'type' => 'text', 'text' => 'Saved text' }])
     page.update!(category: 'notes', page_series: series, series_position: 2)
     series.update!(main_page: page)
-    original_page_id = page.id
-    original_series_id = series.id
 
     archive_upload(service.export) do |upload|
       account.pages.destroy_all
@@ -38,12 +37,14 @@ RSpec.describe Sharlayan::PageBackupService do
     end
 
     restored = account.pages.sole
-    restored_series = account.page_series.sole
-    expect(restored.id).to_not eq(original_page_id)
-    expect(restored_series.id).to_not eq(original_series_id)
+    restored_series = account.page_series.find_by!(title: 'Manuals')
+    expect(restored.id).to_not eq(page.id)
+    expect(restored_series.id).to_not eq(series.id)
     expect(restored).to have_attributes(name: 'guide', title: 'Guide', category: 'notes', page_series: restored_series, series_position: 2)
     expect(restored_series).to have_attributes(title: 'Manuals', description: 'A series', main_page: restored)
     expect(restored.content).to eq([{ 'id' => 'text', 'type' => 'text', 'text' => 'Saved text' }])
+    expect(restored_series).to_not be_displayed
+    expect(account.page_series.find_by!(title: 'Visible')).to be_displayed
   end
 
   it 'restores Booklet cover media with a remapped attachment ID' do
@@ -59,19 +60,6 @@ RSpec.describe Sharlayan::PageBackupService do
     restored_cover = account.page_series.sole.cover_media_attachment
     expect(restored_cover).to be_present
     expect(restored_cover.id).to_not eq(cover.id)
-  end
-
-  it 'preserves whether Booklets are displayed in the public bookcase' do
-    Fabricate(:page_series, account: account, title: 'Hidden', displayed: false)
-    Fabricate(:page_series, account: account, title: 'Visible', displayed: true)
-
-    archive_upload(service.export) do |upload|
-      account.page_series.destroy_all
-      service.import!(upload)
-    end
-
-    expect(account.page_series.find_by!(title: 'Hidden')).to_not be_displayed
-    expect(account.page_series.find_by!(title: 'Visible')).to be_displayed
   end
 
   it 'defaults legacy Booklets without a display preference to displayed' do

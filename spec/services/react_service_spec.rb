@@ -15,11 +15,8 @@ RSpec.describe ReactService, type: :service do
       subject.call(sender, status, '👍')
     end
 
-    it 'creates a reaction' do
+    it 'creates a reaction and sends a local notification' do
       expect(status.reactions.first).to_not be_nil
-    end
-
-    it 'sends a local notification' do
       expect(LocalNotificationWorker).to have_enqueued_sidekiq_job(bob.id, anything, 'StatusReaction', 'reaction')
     end
   end
@@ -33,11 +30,8 @@ RSpec.describe ReactService, type: :service do
       subject.call(sender, status, '👍')
     end
 
-    it 'creates a reaction' do
+    it 'creates a reaction and enqueues a ReactionsDistributionWorker' do
       expect(status.reactions.first).to_not be_nil
-    end
-
-    it 'enqueues a ReactionsDistributionWorker' do
       expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, 'http://example.com/inbox')
     end
   end
@@ -64,11 +58,8 @@ RSpec.describe ReactService, type: :service do
       subject.call(sender, status, '👍')
     end
 
-    it 'enqueues ReactionsDistributionWorker with empty target for local status' do
+    it 'enqueues ReactionsDistributionWorker with empty target for local status and BroadcastStatusUpdateWorker' do
       expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, '')
-    end
-
-    it 'enqueues BroadcastStatusUpdateWorker' do
       expect(BroadcastStatusUpdateWorker).to have_enqueued_sidekiq_job(status.id)
     end
   end

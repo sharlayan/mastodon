@@ -16,16 +16,12 @@ RSpec.describe MarkStatusesReadService do
     Fabricate(:mention, status: remote_status, account: reader)
   end
 
-  it 'records receipts only for direct messages sent by local accounts' do
-    subject.call(reader, [local_status.id, remote_status.id])
+  it 'idempotently records receipts only for direct messages from local accounts that mention the reader' do
+    unmentioned = Fabricate(:status, account: local_sender, visibility: :direct)
+
+    2.times { subject.call(reader, [local_status.id, remote_status.id, unmentioned.id]) }
 
     expect(StatusReadReceipt.pluck(:status_id, :account_id)).to contain_exactly([local_status.id, reader.id])
-  end
-
-  it 'is idempotent' do
-    2.times { subject.call(reader, [local_status.id]) }
-
-    expect(StatusReadReceipt.count).to eq 1
   end
 
   it 'publishes newly-created receipts to the local sender stream' do
@@ -34,13 +30,5 @@ RSpec.describe MarkStatusesReadService do
     described_class.new(redis: redis).call(reader, [local_status.id])
 
     expect(redis).to have_received(:publish).with("timeline:direct:#{local_sender.id}", include('conversation.read', local_status.id.to_s, reader.id.to_s))
-  end
-
-  it 'does not record a receipt without a mention of the reader' do
-    status = Fabricate(:status, account: local_sender, visibility: :direct)
-
-    subject.call(reader, [status.id])
-
-    expect(StatusReadReceipt.count).to be_zero
   end
 end

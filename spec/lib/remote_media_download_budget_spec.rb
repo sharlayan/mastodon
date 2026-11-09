@@ -8,36 +8,35 @@ RSpec.describe RemoteMediaDownloadBudget do
   let(:now) { 10.0 }
   let(:clock) { -> { now } }
 
-  it 'limits a file to the remaining byte budget' do
+  def new_budget
+    described_class.new(byte_limit: 100, time_limit: 5, clock: clock)
+  end
+
+  it 'limits a file to the remaining byte budget and becomes unavailable when it is exhausted' do
     expect(subject.size_limit(200)).to eq(100)
 
     subject.consume(60)
 
     expect(subject.size_limit(200)).to eq(40)
-  end
+    expect(subject).to be_available
 
-  it 'becomes unavailable when the byte budget is exhausted' do
-    subject.consume(100)
+    subject.consume(40)
 
     expect(subject).to_not be_available
   end
 
-  it 'charges stored bytes for a completed download' do
-    subject.charge_download(80, 'https://remote.example/file', 30)
+  it 'charges stored bytes, the allowance for a download that left no file, and nothing when no download was attempted' do
+    completed = new_budget
+    discarded = new_budget
+    skipped = new_budget
 
-    expect(subject.size_limit(200)).to eq(70)
-  end
+    completed.charge_download(80, 'https://remote.example/file', 30)
+    discarded.charge_download(80, 'https://remote.example/file', nil)
+    skipped.charge_download(80, '', nil)
 
-  it 'charges the allowance for a download that left no file' do
-    subject.charge_download(80, 'https://remote.example/file', nil)
-
-    expect(subject.size_limit(200)).to eq(20)
-  end
-
-  it 'does not charge when no download was attempted' do
-    subject.charge_download(80, '', nil)
-
-    expect(subject.size_limit(200)).to eq(100)
+    expect(completed.size_limit(200)).to eq(70)
+    expect(discarded.size_limit(200)).to eq(20)
+    expect(skipped.size_limit(200)).to eq(100)
   end
 
   it 'becomes unavailable when the time budget is exhausted' do

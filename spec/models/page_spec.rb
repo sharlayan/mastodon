@@ -14,13 +14,16 @@ RSpec.describe Page do
   end
 
   describe 'writing statistics' do
-    it 'stores the visible character count and tracks create, update, and delete deltas' do
+    it 'stores the visible character count and tracks create, writing update, and delete deltas while ignoring metadata changes' do
       page = Fabricate(:page, account: account, summary: '요 약', content: [{ type: 'text', text: '**hello**' }])
       statistic = PageDailyStatistic.find_by!(account: account, activity_date: PageDailyStatistic.current_activity_date)
 
       expect(page.text_characters_count).to eq(7)
       expect(statistic).to have_attributes(characters_delta: 7, pages_created_count: 1, pages_updated_count: 0)
       expect(statistic.activity).to eq('created')
+
+      page.update!(visibility: 'private')
+      expect(statistic.reload).to have_attributes(pages_created_count: 1, pages_updated_count: 0)
 
       page.update!(summary: '요약문')
       expect(statistic.reload).to have_attributes(characters_delta: 8, pages_created_count: 1, pages_updated_count: 1)
@@ -43,23 +46,13 @@ RSpec.describe Page do
     ensure
       ENV['TZ'] = original_tz
     end
-
-    it 'does not mark non-writing metadata changes as an update' do
-      page = Fabricate(:page, account: account, content: [{ type: 'text', text: 'hello' }])
-
-      page.update!(visibility: 'private')
-
-      expect(PageDailyStatistic.find_by!(account: account)).to have_attributes(pages_created_count: 1, pages_updated_count: 0)
-    end
   end
 
   describe 'title validation' do
-    it 'rejects a blank or whitespace-only title' do
+    it 'rejects a blank or whitespace-only title and accepts a stripped single-character title' do
       expect(Fabricate.build(:page, account: account, title: '')).to_not be_valid
       expect(Fabricate.build(:page, account: account, title: '   ')).to_not be_valid
-    end
 
-    it 'accepts a single-character title and strips surrounding whitespace' do
       page = Fabricate(:page, account: account, title: ' x ')
 
       expect(page.title).to eq('x')
@@ -67,15 +60,11 @@ RSpec.describe Page do
   end
 
   describe 'content validation' do
-    it 'accepts content at the block-count boundary' do
-      page = Fabricate.build(:page, account: account, content: Array.new(described_class::MAX_BLOCKS) { { type: 'text', text: 'x' } })
-
-      expect(page).to be_valid
-    end
-
-    it 'rejects too many blocks' do
+    it 'accepts content at the block-count boundary and rejects too many blocks' do
+      boundary_page = Fabricate.build(:page, account: account, content: Array.new(described_class::MAX_BLOCKS) { { type: 'text', text: 'x' } })
       page = Fabricate.build(:page, account: account, content: Array.new(described_class::MAX_BLOCKS + 1) { { type: 'text', text: 'x' } })
 
+      expect(boundary_page).to be_valid
       expect(page).to_not be_valid
       expect(page.errors.of_kind?(:content, :invalid)).to be true
     end
@@ -109,7 +98,7 @@ RSpec.describe Page do
       expect(page.renderable_content.size).to eq(described_class::BLOCK_TYPE_LIMITS['note'])
     end
 
-    it 'rejects content nested beyond the depth limit' do
+    it 'rejects content nested beyond the depth limit and oversized block text' do
       content = { type: 'section', title: 'x', children: [] }
       root = content
       described_class::MAX_BLOCK_DEPTH.times do
@@ -118,15 +107,11 @@ RSpec.describe Page do
         content = child
       end
 
-      page = Fabricate.build(:page, account: account, content: [root])
+      nested = Fabricate.build(:page, account: account, content: [root])
+      oversized = Fabricate.build(:page, account: account, content: [{ type: 'text', text: 'x' * (described_class::MAX_TEXT_LENGTH + 1) }])
 
-      expect(page).to_not be_valid
-    end
-
-    it 'rejects oversized block text' do
-      page = Fabricate.build(:page, account: account, content: [{ type: 'text', text: 'x' * (described_class::MAX_TEXT_LENGTH + 1) }])
-
-      expect(page).to_not be_valid
+      expect(nested).to_not be_valid
+      expect(oversized).to_not be_valid
     end
 
     it 'allows boolean spoilers on text and image blocks only', :aggregate_failures do
@@ -184,40 +169,28 @@ RSpec.describe Page do
       expect(youtube).to_not be_valid
     end
 
-    it 'rejects image blocks referencing another account media' do
-      media = Fabricate(:media_attachment)
-      page = Fabricate.build(:page, account: account, content: [{ type: 'image', fileId: media.id.to_s }])
+    it 'rejects image blocks referencing another account media or chat media, and chat media as the eye-catching image' do
+      chat_media = chat_media_attachment(account)
+      foreign_block = Fabricate.build(:page, account: account, content: [{ type: 'image', fileId: Fabricate(:media_attachment).id.to_s }])
+      chat_block = Fabricate.build(:page, account: account, content: [{ type: 'image', fileId: chat_media.id.to_s }])
+      chat_eye_catching = Fabricate.build(:page, account: account, eye_catching_media_attachment: chat_media)
 
-      expect(page).to_not be_valid
-      expect(page.errors.of_kind?(:content, :invalid)).to be true
+      expect(foreign_block).to_not be_valid
+      expect(foreign_block.errors.of_kind?(:content, :invalid)).to be true
+      expect(chat_block).to_not be_valid
+      expect(chat_block.errors.of_kind?(:content, :invalid)).to be true
+      expect(chat_eye_catching).to_not be_valid
+      expect(chat_eye_catching.errors.of_kind?(:eye_catching_media_attachment, :invalid)).to be true
     end
 
-    it 'rejects image blocks referencing media sent in a chat message' do
-      page = Fabricate.build(:page, account: account, content: [{ type: 'image', fileId: chat_media_attachment(account).id.to_s }])
+    it 'rejects eye-catching image and series ids that do not exist' do
+      missing_media = Fabricate.build(:page, account: account, eye_catching_media_attachment_id: MediaAttachment.maximum(:id).to_i + 1000)
+      missing_series = Fabricate.build(:page, account: account, page_series_id: PageSeries.maximum(:id).to_i + 1000)
 
-      expect(page).to_not be_valid
-      expect(page.errors.of_kind?(:content, :invalid)).to be true
-    end
-
-    it 'rejects an eye-catching image sent in a chat message' do
-      page = Fabricate.build(:page, account: account, eye_catching_media_attachment: chat_media_attachment(account))
-
-      expect(page).to_not be_valid
-      expect(page.errors.of_kind?(:eye_catching_media_attachment, :invalid)).to be true
-    end
-
-    it 'rejects an eye-catching image id that does not exist' do
-      page = Fabricate.build(:page, account: account, eye_catching_media_attachment_id: MediaAttachment.maximum(:id).to_i + 1000)
-
-      expect(page).to_not be_valid
-      expect(page.errors.of_kind?(:eye_catching_media_attachment, :invalid)).to be true
-    end
-
-    it 'rejects a series id that does not exist' do
-      page = Fabricate.build(:page, account: account, page_series_id: PageSeries.maximum(:id).to_i + 1000)
-
-      expect(page).to_not be_valid
-      expect(page.errors.of_kind?(:page_series, :invalid)).to be true
+      expect(missing_media).to_not be_valid
+      expect(missing_media.errors.of_kind?(:eye_catching_media_attachment, :invalid)).to be true
+      expect(missing_series).to_not be_valid
+      expect(missing_series.errors.of_kind?(:page_series, :invalid)).to be true
     end
   end
 
@@ -233,21 +206,16 @@ RSpec.describe Page do
       expect(page.errors[:base]).to include(I18n.t('pages.errors.limit', limit: 1))
     end
 
-    it 'limits the number of pages created in one day' do
+    it 'limits the number of pages created in one day without counting earlier days' do
       role = Fabricate(:user_role, daily_page_limit: 1)
       role_account = Fabricate(:user, role: role).account
-      Fabricate(:page, account: role_account)
+      old_page = Fabricate(:page, account: role_account)
 
       page = Fabricate.build(:page, account: role_account)
 
       expect(page).to_not be_valid
       expect(page.errors[:base]).to include(I18n.t('pages.errors.daily_limit', limit: 1))
-    end
 
-    it 'does not count pages created before the current day' do
-      role = Fabricate(:user_role, daily_page_limit: 1)
-      role_account = Fabricate(:user, role: role).account
-      old_page = Fabricate(:page, account: role_account)
       old_page.update_column(:created_at, 1.day.ago)
 
       expect(Fabricate.build(:page, account: role_account)).to be_valid

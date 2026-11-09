@@ -10,7 +10,14 @@ RSpec.describe CustomEmojiResponseFilter do
     ]
   end
 
-  it 'replaces muted REST emoji shortcodes and removes their metadata' do
+  it 'replaces muted REST emoji shortcodes, removes their metadata and keeps domain-specific mutes to their domain' do
+    domain_payload = {
+      content: '<p>:remote_face: :remote_other:</p>',
+      emojis: [
+        { shortcode: 'remote_face', domain: 'example.com', url: 'https://example.com/face.gif' },
+        { shortcode: 'remote_other', domain: 'elsewhere.example', url: 'https://elsewhere.example/other.gif' },
+      ],
+    }
     payload = {
       content: '<p>Hello :muted_blob: and :visible:</p>',
       emojis: [
@@ -29,24 +36,18 @@ RSpec.describe CustomEmojiResponseFilter do
     expect(result[:emojis]).to contain_exactly(hash_including(shortcode: 'visible'))
     expect(result.dig(:account, :display_name)).to eq('⬛ Person')
     expect(result.dig(:account, :fields, 0, :value)).to eq('⬛')
+
+    domain_result = described_class.filter(domain_payload, rules)
+
+    expect(domain_result[:content]).to eq('<p>⬛ :remote_other:</p>')
+    expect(domain_result[:emojis]).to contain_exactly(hash_including(shortcode: 'remote_other'))
   end
 
-  it 'keeps a domain-specific mute from matching another domain' do
-    payload = {
-      content: '<p>:remote_face: :remote_other:</p>',
-      emojis: [
-        { shortcode: 'remote_face', domain: 'example.com', url: 'https://example.com/face.gif' },
-        { shortcode: 'remote_other', domain: 'elsewhere.example', url: 'https://elsewhere.example/other.gif' },
-      ],
-    }
-
-    result = described_class.filter(payload, rules)
-
-    expect(result[:content]).to eq('<p>⬛ :remote_other:</p>')
-    expect(result[:emojis]).to contain_exactly(hash_including(shortcode: 'remote_other'))
-  end
-
-  it 'removes muted REST reactions instead of replacing them' do
+  it 'removes muted REST reactions and reaction notifications instead of replacing them' do
+    notifications = [
+      { type: 'reaction', reaction: { name: 'muted_reaction', domain: '', url: 'muted-url' } },
+      { type: 'mention', account: { display_name: 'Person' } },
+    ]
     payload = {
       reactions: [
         { name: 'muted_reaction', domain: '', url: 'https://local/muted.gif', count: 2 },
@@ -61,6 +62,7 @@ RSpec.describe CustomEmojiResponseFilter do
       hash_including(name: '👍'),
       hash_including(name: 'visible')
     )
+    expect(described_class.filter(notifications, rules)).to contain_exactly(hash_including(type: 'mention'))
   end
 
   it 'filters Misskey emoji maps and custom reaction maps' do
@@ -79,14 +81,5 @@ RSpec.describe CustomEmojiResponseFilter do
     expect(result[:reactions]).to eq(':visible@.:' => 1, '👍' => 3)
     expect(result[:reactionEmojis]).to eq('visible@.' => 'visible-url')
     expect(result[:myReaction]).to be_nil
-  end
-
-  it 'removes muted reaction notifications from response lists' do
-    payload = [
-      { type: 'reaction', reaction: { name: 'muted_reaction', domain: '', url: 'muted-url' } },
-      { type: 'mention', account: { display_name: 'Person' } },
-    ]
-
-    expect(described_class.filter(payload, rules)).to contain_exactly(hash_including(type: 'mention'))
   end
 end

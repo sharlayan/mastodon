@@ -6,8 +6,10 @@ RSpec.describe Antenna do
   describe 'Validations' do
     subject { Fabricate.build :antenna }
 
-    it { is_expected.to validate_presence_of(:title) }
-    it { is_expected.to validate_length_of(:title).is_at_most(described_class::TITLE_LENGTH_LIMIT) }
+    it 'validates title presence and length' do
+      expect(subject).to validate_presence_of(:title)
+      expect(subject).to validate_length_of(:title).is_at_most(described_class::TITLE_LENGTH_LIMIT)
+    end
 
     context 'when account has hit the antenna limit' do
       let(:account) { Fabricate :account }
@@ -23,20 +25,13 @@ RSpec.describe Antenna do
       end
     end
 
-    it 'rejects keywords shorter than the minimum length' do
-      antenna = Fabricate.build(:antenna, keywords: ['a'], any_keywords: false)
-      expect(antenna).to_not be_valid
-    end
-
-    it 'rejects oversized include and exclude keyword lists' do
+    it 'rejects too short keywords and oversized include and exclude keyword lists or keywords' do
       too_many = Array.new(described_class::KEYWORDS_PER_ANTENNA_LIMIT + 1, 'keyword')
+      too_long = 'a' * (described_class::MAX_KEYWORD_LENGTH + 1)
 
+      expect(Fabricate.build(:antenna, keywords: ['a'], any_keywords: false)).to_not be_valid
       expect(Fabricate.build(:antenna, keywords: too_many, any_keywords: false)).to_not be_valid
       expect(Fabricate.build(:antenna, exclude_keywords: too_many)).to_not be_valid
-    end
-
-    it 'rejects oversized include and exclude keywords' do
-      too_long = 'a' * (described_class::MAX_KEYWORD_LENGTH + 1)
 
       expect(Fabricate.build(:antenna, keywords: [too_long], any_keywords: false)).to_not be_valid
       expect(Fabricate.build(:antenna, exclude_keywords: [too_long])).to_not be_valid
@@ -53,10 +48,14 @@ RSpec.describe Antenna do
       status
     end
 
-    it 'matches a keyword condition with substring semantics (AND across types, OR within)' do
+    it 'matches a keyword condition with substring semantics (AND across types, OR within) and applies exclude keywords' do
       antenna = Fabricate(:antenna, account: account, any_keywords: false, keywords: %w(commission art))
+      excluding = Fabricate(:antenna, account: account, any_keywords: false, keywords: %w(art), exclude_keywords: %w(spoiler))
+
       expect(antenna.matches?(status_with(text: 'open for commission'))).to be true
       expect(antenna.matches?(status_with(text: 'nothing here'))).to be false
+      expect(excluding.matches?(status_with(text: 'my art is great'))).to be true
+      expect(excluding.matches?(status_with(text: 'art spoiler ahead'))).to be false
     end
 
     it 'filters replies only when the antenna disables them' do
@@ -82,12 +81,6 @@ RSpec.describe Antenna do
 
       expect(antenna.matches?(status)).to be false
       expect(described_class.matching(status)).to_not include(antenna)
-    end
-
-    it 'applies exclude keywords' do
-      antenna = Fabricate(:antenna, account: account, any_keywords: false, keywords: %w(art), exclude_keywords: %w(spoiler))
-      expect(antenna.matches?(status_with(text: 'my art is great'))).to be true
-      expect(antenna.matches?(status_with(text: 'art spoiler ahead'))).to be false
     end
 
     it 'applies excluded domains without recursive lookup' do

@@ -13,8 +13,11 @@ RSpec.describe Sharlayan::HomeFeedBoundary do
 
   before { account.follow!(bob) }
 
-  context 'when the status has no reblog in the feed' do
-    it { is_expected.to be_nil }
+  context 'when the status has no reblog in the feed or the status id is blank' do
+    it 'returns nil' do
+      expect(subject).to be_nil
+      expect(described_class.resolve(account, nil)).to be_nil
+    end
   end
 
   context 'when a followed account reblogged the status' do
@@ -107,11 +110,5 @@ RSpec.describe Sharlayan::HomeFeedBoundary do
     it 'returns the oldest reblog so no entry is skipped' do
       expect([first.id, second.id].min).to eq subject
     end
-  end
-
-  context 'when the status id is blank' do
-    let(:status_id) { nil }
-
-    it { is_expected.to be_nil }
   end
 end

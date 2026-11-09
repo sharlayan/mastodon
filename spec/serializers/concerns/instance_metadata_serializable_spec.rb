@@ -30,28 +30,28 @@ RSpec.describe InstanceMetadataSerializable do
     allow(InstanceMetadataUpdateWorker).to receive(:perform_async)
   end
 
-  describe '#instance_metadata' do
-    context 'when domain is blank' do
-      it 'returns nil' do
-        serializer = test_serializer_class.new(serializable_object, domain: nil)
-        expect(serializer.instance_metadata).to be_nil
-      end
-
-      it 'returns nil for empty string domain' do
-        serializer = test_serializer_class.new(serializable_object, domain: '')
-        expect(serializer.instance_metadata).to be_nil
-      end
+  describe '#instance_metadata and #include_instance_metadata?' do
+    it 'returns nil metadata and excludes it when the domain is blank' do
+      expect(test_serializer_class.new(serializable_object, domain: nil).instance_metadata).to be_nil
+      expect(test_serializer_class.new(serializable_object, domain: '').instance_metadata).to be_nil
+      expect(test_serializer_class.new(serializable_object, domain: nil).include_instance_metadata?).to be false
     end
 
     context 'when domain is present' do
       let(:domain) { 'remote.example.com' }
+      let(:other_domain) { 'other.example.com' }
 
-      it 'returns serialized metadata hash' do
+      def instance_metadata_for(target_domain)
+        test_serializer_class.new(serializable_object, domain: target_domain).instance_metadata
+      end
+
+      it 'includes the serialized metadata hash' do
         Fabricate(:instance_metadata, domain: domain, software: 'mastodon', theme_color: '#6364FF', instance_name: 'Test Instance', favicon_url: '/system/instance_favicons/test.ico')
 
         serializer = test_serializer_class.new(serializable_object, domain: domain)
         result = serializer.instance_metadata
 
+        expect(serializer.include_instance_metadata?).to be true
         expect(result).to be_a(Hash)
         expect(result[:domain]).to eq(domain)
         expect(result[:software]).to eq('mastodon')
@@ -61,44 +61,28 @@ RSpec.describe InstanceMetadataSerializable do
       end
 
       it 'creates metadata record if it does not exist' do
-        serializer = test_serializer_class.new(serializable_object, domain: domain)
-        serializer.instance_metadata
+        instance_metadata_for(domain)
 
         expect(InstanceMetadata.exists?(domain: domain)).to be true
       end
 
-      it 'schedules update when never fetched' do
+      it 'schedules an update when metadata was never fetched or is outdated' do
         Fabricate(:instance_metadata, domain: domain, software: nil, metadata_updated_at: nil)
+        Fabricate(:instance_metadata, domain: other_domain, software: 'mastodon', instance_name: 'Test', metadata_updated_at: 2.days.ago)
 
-        serializer = test_serializer_class.new(serializable_object, domain: domain)
-        serializer.instance_metadata
+        instance_metadata_for(domain)
+        instance_metadata_for(other_domain)
 
         expect(InstanceMetadataUpdateWorker).to have_received(:perform_async).with(domain)
+        expect(InstanceMetadataUpdateWorker).to have_received(:perform_async).with(other_domain)
       end
 
-      it 'does not re-schedule fresh metadata even when fields are missing' do
+      it 'does not schedule an update for fresh metadata, even when fields are missing' do
         Fabricate(:instance_metadata, domain: domain, software: nil, instance_name: nil, metadata_updated_at: 1.hour.ago)
+        Fabricate(:instance_metadata, domain: other_domain, software: 'mastodon', instance_name: 'Test', metadata_updated_at: 1.hour.ago)
 
-        serializer = test_serializer_class.new(serializable_object, domain: domain)
-        serializer.instance_metadata
-
-        expect(InstanceMetadataUpdateWorker).to_not have_received(:perform_async)
-      end
-
-      it 'schedules update when metadata is outdated' do
-        Fabricate(:instance_metadata, domain: domain, software: 'mastodon', instance_name: 'Test', metadata_updated_at: 2.days.ago)
-
-        serializer = test_serializer_class.new(serializable_object, domain: domain)
-        serializer.instance_metadata
-
-        expect(InstanceMetadataUpdateWorker).to have_received(:perform_async).with(domain)
-      end
-
-      it 'does not schedule update when metadata is fresh' do
-        Fabricate(:instance_metadata, domain: domain, software: 'mastodon', instance_name: 'Test', metadata_updated_at: 1.hour.ago)
-
-        serializer = test_serializer_class.new(serializable_object, domain: domain)
-        serializer.instance_metadata
+        instance_metadata_for(domain)
+        instance_metadata_for(other_domain)
 
         expect(InstanceMetadataUpdateWorker).to_not have_received(:perform_async)
       end
@@ -106,25 +90,12 @@ RSpec.describe InstanceMetadataSerializable do
       it 'uses fallback values in serialized output' do
         Fabricate(:instance_metadata, domain: domain, software: 'mastodon', theme_color: nil, instance_name: nil, favicon_url: nil)
 
-        serializer = test_serializer_class.new(serializable_object, domain: domain)
-        result = serializer.instance_metadata
+        result = instance_metadata_for(domain)
 
-        expect(result[:theme_color]).to eq('#6364FF') # mastodon default
+        expect(result[:theme_color]).to eq('#6364FF')
         expect(result[:instance_name]).to eq(domain)
         expect(result[:favicon_url]).to eq("https://#{domain}/favicon.ico")
       end
-    end
-  end
-
-  describe '#include_instance_metadata?' do
-    it 'returns true when domain is present' do
-      serializer = test_serializer_class.new(serializable_object, domain: 'example.com')
-      expect(serializer.include_instance_metadata?).to be true
-    end
-
-    it 'returns false when domain is blank' do
-      serializer = test_serializer_class.new(serializable_object, domain: nil)
-      expect(serializer.include_instance_metadata?).to be false
     end
   end
 end

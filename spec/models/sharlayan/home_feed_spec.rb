@@ -32,38 +32,22 @@ RSpec.describe HomeFeed do
         FeedManager.instance.populate_home(account)
       end
 
-      it 'gets statuses with ids in the range from redis with database' do
-        results = subject.get(5)
-
-        expect(results.map(&:id)).to eq [15, 14, 12, 10, 3]
+      it 'gets statuses in the range from redis with database, with and without since_id or min_id' do
+        expect(subject.get(5).map(&:id)).to eq [15, 14, 12, 10, 3]
+        expect(described_class.new(account).get(5, nil, 3, nil).map(&:id)).to eq [15, 14, 12, 10]
+        expect(described_class.new(account).get(3, nil, nil, 0).map(&:id)).to eq [3, 2, 1]
       end
 
-      it 'with since_id present' do
-        results = subject.get(5, nil, 3, nil)
-        expect(results.map(&:id)).to eq [15, 14, 12, 10]
-      end
-
-      it 'fills a partial bounded Redis page from the database' do
+      it 'fills partial bounded and forward Redis pages from the database' do
         redis.del(FeedManager.instance.key(:home, account.id))
         redis.zadd(FeedManager.instance.key(:home, account.id), [[10, 10], [15, 15]])
 
-        results = subject.get(5, 16, 2, nil)
+        expect(subject.get(5, 16, 2, nil).map(&:id)).to eq [15, 14, 12, 10, 3]
 
-        expect(results.map(&:id)).to eq [15, 14, 12, 10, 3]
-      end
-
-      it 'with min_id present' do
-        results = subject.get(3, nil, nil, 0)
-        expect(results.map(&:id)).to eq [3, 2, 1]
-      end
-
-      it 'fills a partial forward Redis page from the database' do
         redis.del(FeedManager.instance.key(:home, account.id))
         redis.zadd(FeedManager.instance.key(:home, account.id), [[1, 1], [10, 10]])
 
-        results = subject.get(3, nil, nil, 0)
-
-        expect(results.map(&:id)).to eq [3, 2, 1]
+        expect(described_class.new(account).get(3, nil, nil, 0).map(&:id)).to eq [3, 2, 1]
       end
     end
 
@@ -73,20 +57,10 @@ RSpec.describe HomeFeed do
         FeedManager.instance.populate_home(account)
       end
 
-      it 'gets statuses with ids in the range from redis with database' do
-        results = subject.get(5)
-
-        expect(results.map(&:id)).to eq [15, 14, 12, 10, 3]
-      end
-
-      it 'with since_id present' do
-        results = subject.get(5, nil, 3, nil)
-        expect(results.map(&:id)).to eq [15, 14, 12, 10]
-      end
-
-      it 'with min_id present' do
-        results = subject.get(3, nil, nil, 0)
-        expect(results.map(&:id)).to eq [3, 2, 1]
+      it 'gets statuses in the range from redis with database, with and without since_id or min_id' do
+        expect(subject.get(5).map(&:id)).to eq [15, 14, 12, 10, 3]
+        expect(described_class.new(account).get(5, nil, 3, nil).map(&:id)).to eq [15, 14, 12, 10]
+        expect(described_class.new(account).get(3, nil, nil, 0).map(&:id)).to eq [3, 2, 1]
       end
     end
 
@@ -96,10 +70,10 @@ RSpec.describe HomeFeed do
         redis.hset("account:#{account.id}:regeneration", { 'status' => 'running' })
       end
 
-      it 'returns from database' do
-        results = subject.get(5)
-
-        expect(results.map(&:id)).to eq [15, 14, 12, 10, 3]
+      it 'returns from database, with and without since_id or min_id' do
+        expect(subject.get(5).map(&:id)).to eq [15, 14, 12, 10, 3]
+        expect(described_class.new(account).get(5, nil, 3, nil).map(&:id)).to eq [15, 14, 12, 10]
+        expect(described_class.new(account).get(3, nil, nil, 0).map(&:id)).to eq [3, 2, 1]
       end
 
       it 'builds filtering relationships once for the candidate collection' do
@@ -119,17 +93,7 @@ RSpec.describe HomeFeed do
         expect(subject.pagination_max_id).to eq 14
       end
 
-      it 'with since_id present' do
-        results = subject.get(5, nil, 3, nil)
-        expect(results.map(&:id)).to eq [15, 14, 12, 10]
-      end
-
-      it 'with min_id present' do
-        results = subject.get(3, nil, nil, 0)
-        expect(results.map(&:id)).to eq [3, 2, 1]
-      end
-
-      it 'groups repeated boosts loaded from the database' do
+      it 'groups repeated boosts loaded from the database, including across pagination requests' do
         other_followed = Fabricate(:account)
         account.follow!(other_followed)
         original = Fabricate(:status, account: other, id: 20)
@@ -140,18 +104,7 @@ RSpec.describe HomeFeed do
 
         expect(results.map(&:id)).to include(22)
         expect(results.map(&:id)).to_not include(21)
-      end
-
-      it 'groups repeated boosts across database pagination requests' do
-        other_followed = Fabricate(:account)
-        account.follow!(other_followed)
-        original = Fabricate(:status, account: other, id: 20)
-        Fabricate(:status, account: followed, id: 21, reblog: original)
-        Fabricate(:status, account: other_followed, id: 22, reblog: original)
-
-        results = subject.get(10, 22)
-
-        expect(results.map(&:id)).to_not include(21)
+        expect(described_class.new(account).get(10, 22).map(&:id)).to_not include(21)
       end
 
       it 'keeps repeated boosts when boost grouping is disabled' do

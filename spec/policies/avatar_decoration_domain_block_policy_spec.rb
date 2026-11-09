@@ -9,16 +9,9 @@ RSpec.describe AvatarDecorationDomainBlockPolicy do
   let(:john)  { Fabricate(:account) }
 
   permissions :index?, :create?, :destroy? do
-    context 'when staff' do
-      it 'permits' do
-        expect(subject).to permit(admin, AvatarDecorationDomainBlock)
-      end
-    end
-
-    context 'when not staff' do
-      it 'denies' do
-        expect(subject).to_not permit(john, AvatarDecorationDomainBlock)
-      end
+    it 'permits staff and denies other accounts' do
+      expect(subject).to permit(admin, AvatarDecorationDomainBlock)
+      expect(subject).to_not permit(john, AvatarDecorationDomainBlock)
     end
   end
 end

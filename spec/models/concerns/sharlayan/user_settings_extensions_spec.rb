@@ -17,20 +17,20 @@ RSpec.describe UserSettings do
     expect(settings[:inline_compose_tabs]).to eq('[]')
   end
 
-  it 'uses the instance RSS setting until a user changes it' do
+  it 'uses the instance RSS setting until a user changes it and persists the enable_rss inverse alias as norss' do
     Setting.norss = true
 
     expect(settings[:norss]).to be true
     expect(settings[:enable_rss]).to be false
+
+    Setting.norss = false
+    changed = described_class.new({})
+    changed[:enable_rss] = false
+
+    expect(changed[:norss]).to be true
+    expect(changed.as_json).to include(norss: true)
   ensure
     Setting.norss = false
-  end
-
-  it 'persists the enable_rss inverse alias as norss' do
-    settings[:enable_rss] = false
-
-    expect(settings[:norss]).to be true
-    expect(settings.as_json).to include(norss: true)
   end
 
   it 'registers namespaced MFM, avatar decoration, and notification settings' do
@@ -45,35 +45,25 @@ RSpec.describe UserSettings do
     expect(settings[:'notification_emails.reaction']).to be false
   end
 
-  it 'disables My archive by default outside community mode' do
+  it 'defaults My archive to community mode while preserving an explicit preference' do
+    saved_settings = described_class.new('web.use_my_archive': false)
+
     ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') do
       expect(settings[:'web.use_my_archive']).to be false
     end
-  end
 
-  it 'enables My archive by default in community mode' do
     ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
       expect(settings[:'web.use_my_archive']).to be true
-    end
-  end
-
-  it 'preserves an explicit My archive preference across mode changes' do
-    saved_settings = described_class.new('web.use_my_archive': false)
-
-    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
       expect(saved_settings[:'web.use_my_archive']).to be false
     end
   end
 
-  it 'rejects values outside Sharlayan setting allowlists' do
+  it 'rejects values outside Sharlayan setting allowlists and the migrated instance badge key' do
     expect { settings[:'web.mfm_fold_mode'] = 'unknown' }.to raise_error(ArgumentError)
     expect { settings[:'web.pages_view'] = 'magazine' }.to raise_error(ArgumentError)
     expect { settings[:'web.pages_blog_list_position'] = 'top' }.to raise_error(ArgumentError)
     expect { settings[:default_reaction_acceptance] = 'customOnly' }.to raise_error(ArgumentError)
     expect { settings[:'avatar_decorations.shape'] = 'triangle' }.to raise_error(ArgumentError)
-  end
-
-  it 'does not register the migrated instance badge preference as a server setting' do
     expect { settings[:'web.show_instance_info'] }.to raise_error(UserSettings::KeyError)
   end
 end

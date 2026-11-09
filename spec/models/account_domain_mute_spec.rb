@@ -5,16 +5,14 @@ require 'rails_helper'
 RSpec.describe AccountDomainMute do
   let(:account) { Fabricate(:account) }
 
-  it 'removes muting cache after creation' do
+  it 'removes muting cache after creation and destruction' do
     Rails.cache.write("mute_domains_for:#{account.id}", 'a.domain.already.muted')
 
-    expect { mute_domain_for_account('a.domain.muted.later') }
+    mute = nil
+    expect { mute = mute_domain_for_account('a.domain.muted.later') }
       .to change { account_has_mute_domains_cache? }.to(false)
-  end
 
-  it 'removes muting cache after destruction' do
-    mute = mute_domain_for_account('domain')
-    Rails.cache.write("mute_domains_for:#{account.id}", 'domain')
+    Rails.cache.write("mute_domains_for:#{account.id}", 'a.domain.muted.later')
 
     expect { mute.destroy! }
       .to change { account_has_mute_domains_cache? }.to(false)

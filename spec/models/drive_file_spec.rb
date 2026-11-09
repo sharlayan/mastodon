@@ -7,18 +7,14 @@ RSpec.describe DriveFile, :attachment_processing do
   let(:drive_file) { described_class.create!(account: account, file: attachment_fixture('attachment.jpg')) }
 
   describe '.allowed_content_types' do
-    it 'always allows media types' do
+    it 'always allows media types, adds listed extensions and ignores script or markup extensions' do
       expect(described_class.allowed_content_types).to include('image/jpeg', 'video/mp4', 'audio/mpeg')
-    end
 
-    it 'allows the extensions the administrator listed' do
       Setting.drive_allowed_extensions = 'pdf, zip'
 
       expect(described_class.extra_extensions).to eq(%w(pdf zip))
       expect(described_class.allowed_content_types).to include('application/pdf', 'application/zip')
-    end
 
-    it 'ignores extensions whose files could be served as script or markup' do
       Setting.drive_allowed_extensions = 'html, svg, js, xml, pdf'
 
       expect(described_class.extra_extensions).to eq(%w(pdf))
@@ -90,8 +86,8 @@ RSpec.describe DriveFile, :attachment_processing do
     end
   end
 
-  describe '#attached?' do
-    it 'is true for a published status attachment' do
+  describe 'usage by statuses, scheduled statuses and pages' do
+    it 'is attached for a published status attachment' do
       pointer = drive_file.build_pointer(account)
       pointer.status = Fabricate(:status, account: account)
       pointer.save!
@@ -99,33 +95,30 @@ RSpec.describe DriveFile, :attachment_processing do
       expect(drive_file).to be_attached
     end
 
-    it 'is true for a scheduled status attachment' do
+    it 'is attached, not orphaned and not destroyable when used by a scheduled status' do
       pointer = drive_file.build_pointer(account)
       pointer.scheduled_status = Fabricate(:scheduled_status, account: account)
       pointer.save!
 
       expect(drive_file).to be_attached
+      expect(described_class.orphaned).to_not include(drive_file)
+      expect(drive_file.destroy).to be false
+      expect(described_class).to exist(drive_file.id)
+      expect(MediaAttachment).to exist(pointer.id)
     end
 
-    it 'is true for a page image' do
+    it 'is attached and not destroyable when used as a page image' do
       pointer = drive_file.build_pointer(account)
       pointer.save!
       Fabricate(:page, account: account, content: [{ id: 'image', type: 'image', fileId: pointer.id.to_s }])
 
       expect(drive_file).to be_attached
-    end
-  end
-
-  describe '.orphaned' do
-    it 'excludes files used by scheduled statuses' do
-      pointer = drive_file.build_pointer(account)
-      pointer.scheduled_status = Fabricate(:scheduled_status, account: account)
-      pointer.save!
-
-      expect(described_class.orphaned).to_not include(drive_file)
+      expect(drive_file.destroy).to be false
+      expect(described_class).to exist(drive_file.id)
+      expect(MediaAttachment).to exist(pointer.id)
     end
 
-    it 'excludes files used by pages' do
+    it 'is not orphaned when used as a page eye-catching image' do
       pointer = drive_file.build_pointer(account)
       pointer.save!
       Fabricate(:page, account: account, eye_catching_media_attachment: pointer)
@@ -135,26 +128,6 @@ RSpec.describe DriveFile, :attachment_processing do
   end
 
   describe '#destroy' do
-    it 'refuses to destroy a file used by a scheduled status' do
-      pointer = drive_file.build_pointer(account)
-      pointer.scheduled_status = Fabricate(:scheduled_status, account: account)
-      pointer.save!
-
-      expect(drive_file.destroy).to be false
-      expect(described_class).to exist(drive_file.id)
-      expect(MediaAttachment).to exist(pointer.id)
-    end
-
-    it 'refuses to destroy a file used by a page' do
-      pointer = drive_file.build_pointer(account)
-      pointer.save!
-      Fabricate(:page, account: account, content: [{ id: 'image', type: 'image', fileId: pointer.id.to_s }])
-
-      expect(drive_file.destroy).to be false
-      expect(described_class).to exist(drive_file.id)
-      expect(MediaAttachment).to exist(pointer.id)
-    end
-
     it 'destroys unattached pointers before destroying the file' do
       pointer = drive_file.build_pointer(account)
       pointer.save!

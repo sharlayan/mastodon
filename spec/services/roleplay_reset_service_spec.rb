@@ -21,13 +21,11 @@ RSpec.describe RoleplayResetService do
     everyone_role.update!(permissions: UserRole::Flags::NONE)
   end
 
-  it 'reports changes without applying them by default' do
+  it 'reports changes without applying them by default and restores general-server defaults when applied' do
     expect { service.call }.to_not(change { Setting.find_by(var: 'force_local_only')&.value })
     expect(everyone_role.reload.permissions).to eq(UserRole::Flags::NONE)
-  end
 
-  it 'restores general-server defaults' do
-    service.call(apply: true)
+    described_class.new.call(apply: true)
 
     expect(Setting.find_by(var: 'force_local_only')).to be_nil
     expect(everyone_role.reload.permissions).to eq(UserRole::Flags::DEFAULT)

@@ -6,14 +6,12 @@ RSpec.describe CustomEmoji, :attachment_processing do
   describe 'metadata validation' do
     subject(:custom_emoji) { Fabricate.build(:custom_emoji) }
 
-    it 'rejects too many aliases' do
-      custom_emoji.aliases = Array.new(CustomEmoji::ALIASES_MAX_COUNT + 1, 'alias')
+    it 'rejects too many aliases and aliases and licenses over their length limits' do
+      too_many = Fabricate.build(:custom_emoji, aliases: Array.new(CustomEmoji::ALIASES_MAX_COUNT + 1, 'alias'))
 
-      expect(custom_emoji).to_not be_valid
-      expect(custom_emoji.errors.of_kind?(:aliases, :too_many)).to be true
-    end
+      expect(too_many).to_not be_valid
+      expect(too_many.errors.of_kind?(:aliases, :too_many)).to be true
 
-    it 'rejects aliases and licenses over their length limits' do
       custom_emoji.aliases = ['a' * (CustomEmoji::ALIAS_MAX_LENGTH + 1)]
       custom_emoji.license = 'a' * (CustomEmoji::LICENSE_MAX_LENGTH + 1)
 

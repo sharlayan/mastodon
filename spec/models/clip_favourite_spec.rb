@@ -9,17 +9,15 @@ RSpec.describe ClipFavourite do
     let(:clip) { Fabricate(:clip, account: owner, public: true) }
     let!(:favourite) { described_class.create!(account: viewer, clip: clip) }
 
-    it 'includes public clips of other accounts' do
-      expect(described_class.visible_to(viewer)).to include(favourite)
-    end
-
     it 'excludes clips whose owner blocks the viewer' do
       owner.block!(viewer)
 
       expect(described_class.visible_to(viewer)).to_not include(favourite)
     end
 
-    it 'keeps clips when only the viewer blocks the owner' do
+    it 'includes public clips of other accounts, even when only the viewer blocks the owner' do
+      expect(described_class.visible_to(viewer)).to include(favourite)
+
       viewer.block!(owner)
 
       expect(described_class.visible_to(viewer)).to include(favourite)

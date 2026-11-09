@@ -12,59 +12,33 @@ RSpec.describe InstanceMetadataUpdateWorker do
   end
 
   describe '#perform' do
-    it 'calls FetchInstanceThemeColorService with the domain' do
-      service = instance_double(FetchInstanceThemeColorService)
-      allow(FetchInstanceThemeColorService).to receive(:new).and_return(service)
-      allow(service).to receive(:call)
-
-      worker.perform('example.com')
-
-      expect(service).to have_received(:call).with('example.com')
-    end
-
-    it 'accepts the manual refresh marker' do
+    it 'calls FetchInstanceThemeColorService with the domain, with or without the manual refresh marker' do
       service = instance_double(FetchInstanceThemeColorService, call: nil)
       allow(FetchInstanceThemeColorService).to receive(:new).and_return(service)
 
+      worker.perform('example.com')
       worker.perform('example.com', 'manual')
 
-      expect(service).to have_received(:call).with('example.com')
+      expect(service).to have_received(:call).with('example.com').twice
     end
 
-    it 'returns early for blank domain' do
+    it 'returns early for a blank or nil domain' do
       allow(FetchInstanceThemeColorService).to receive(:new)
 
       worker.perform('')
-
-      expect(FetchInstanceThemeColorService).to_not have_received(:new)
-    end
-
-    it 'returns early for nil domain' do
-      allow(FetchInstanceThemeColorService).to receive(:new)
-
       worker.perform(nil)
 
       expect(FetchInstanceThemeColorService).to_not have_received(:new)
     end
 
-    it 'logs errors and does not raise by default' do
+    it 'logs errors without raising by default and re-raises them when priority is true' do
       service = instance_double(FetchInstanceThemeColorService)
       allow(FetchInstanceThemeColorService).to receive(:new).and_return(service)
       allow(service).to receive(:call).and_raise(StandardError.new('test error'))
       allow(Rails.logger).to receive(:error)
 
       expect { worker.perform('example.com') }.to_not raise_error
-
       expect(Rails.logger).to have_received(:error).with(/Failed to update instance metadata/)
-    end
-
-    it 're-raises errors when priority is true' do
-      service = instance_double(FetchInstanceThemeColorService)
-      allow(FetchInstanceThemeColorService).to receive(:new).and_return(service)
-      allow(service).to receive(:call).and_raise(StandardError.new('test error'))
-
-      allow(Rails.logger).to receive(:error)
-
       expect { worker.perform('example.com', priority: true) }.to raise_error(StandardError, 'test error')
     end
   end

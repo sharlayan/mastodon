@@ -9,32 +9,27 @@ RSpec.describe AvatarDecoration do
   end
 
   describe 'validations' do
-    it 'requires a name' do
-      decoration = described_class.new(name: '', image: Rails.root.join('spec', 'fixtures', 'files', 'emojo.png').open)
-      expect(decoration).to_not be_valid
-      expect(decoration.errors[:name]).to be_present
+    let(:image) { Rails.root.join('spec', 'fixtures', 'files', 'emojo.png').open }
+
+    it 'requires a name and limits name and description lengths' do
+      blank_name = described_class.new(name: '', image: image)
+      long_name = described_class.new(name: 'a' * 257, image: image)
+      long_description = described_class.new(name: 'test', description: 'a' * 2049, image: image)
+
+      expect(blank_name).to_not be_valid
+      expect(blank_name.errors[:name]).to be_present
+      expect(long_name).to_not be_valid
+      expect(long_description).to_not be_valid
     end
 
-    it 'limits name length to 256 characters' do
-      decoration = described_class.new(name: 'a' * 257, image: Rails.root.join('spec', 'fixtures', 'files', 'emojo.png').open)
-      expect(decoration).to_not be_valid
-    end
+    it 'requires an image or accepts a remote URL in its place without downloading it' do
+      missing = described_class.new(name: 'test')
+      remote = described_class.new(name: 'test', image_remote_url: 'https://example.com/deco.png', host: 'example.com', remote_id: '1')
 
-    it 'limits description length to 2048 characters' do
-      decoration = described_class.new(name: 'test', description: 'a' * 2049, image: Rails.root.join('spec', 'fixtures', 'files', 'emojo.png').open)
-      expect(decoration).to_not be_valid
-    end
-
-    it 'requires image or remote URL' do
-      decoration = described_class.new(name: 'test')
-      expect(decoration).to_not be_valid
-      expect(decoration.errors[:image]).to be_present
-    end
-
-    it 'accepts remote URL in place of image' do
-      decoration = described_class.new(name: 'test', image_remote_url: 'https://example.com/deco.png', host: 'example.com', remote_id: '1')
-      expect(decoration.errors[:image]).to be_blank
-      expect(a_request(:get, decoration.image_remote_url)).to_not have_been_made
+      expect(missing).to_not be_valid
+      expect(missing.errors[:image]).to be_present
+      expect(remote.errors[:image]).to be_blank
+      expect(a_request(:get, remote.image_remote_url)).to_not have_been_made
     end
 
     it 'enforces remote_id uniqueness per host' do
@@ -50,40 +45,27 @@ RSpec.describe AvatarDecoration do
     let!(:remote_approved) { Fabricate(:avatar_decoration, host: 'remote.example', approved: true, image_remote_url: 'https://remote.example/d.png', remote_id: 'r1', image: nil) }
     let!(:remote_pending) { Fabricate(:avatar_decoration, host: 'remote.example', approved: false, image_remote_url: 'https://remote.example/d2.png', remote_id: 'r2', image: nil) }
 
-    describe '.local' do
-      it 'returns only decorations with nil host' do
-        expect(described_class.local).to contain_exactly(local_approved, local_pending)
-      end
-    end
-
-    describe '.remote' do
-      it 'returns only decorations with a host' do
-        expect(described_class.remote).to contain_exactly(remote_approved, remote_pending)
-      end
-    end
-
-    describe '.approved' do
-      it 'returns only approved decorations' do
-        expect(described_class.approved).to contain_exactly(local_approved, remote_approved)
-      end
-    end
-
-    describe '.pending_approval' do
-      it 'returns all unapproved decorations' do
-        expect(described_class.pending_approval).to contain_exactly(local_pending, remote_pending)
-      end
+    it 'filter decorations by host and approval state' do
+      expect(described_class.local).to contain_exactly(local_approved, local_pending)
+      expect(described_class.remote).to contain_exactly(remote_approved, remote_pending)
+      expect(described_class.approved).to contain_exactly(local_approved, remote_approved)
+      expect(described_class.pending_approval).to contain_exactly(local_pending, remote_pending)
     end
   end
 
   describe '.visible_configs_for' do
     before { Setting.avatar_decorations_enabled = true }
 
-    it 'hides a remote decoration whose image has not been downloaded' do
-      account = Fabricate(:account, domain: 'remote.example')
-      decoration = Fabricate(:avatar_decoration, host: 'remote.example', remote_id: 'x', image_remote_url: 'https://remote.example/x.png', image: nil)
-      account.update_columns(avatar_decorations: [{ 'id' => decoration.id }])
+    it 'hides a remote decoration whose image has not been downloaded and a local decoration that is no longer approved' do
+      remote_account = Fabricate(:account, domain: 'remote.example')
+      remote_decoration = Fabricate(:avatar_decoration, host: 'remote.example', remote_id: 'x', image_remote_url: 'https://remote.example/x.png', image: nil)
+      remote_account.update_columns(avatar_decorations: [{ 'id' => remote_decoration.id }])
+      local_account = Fabricate(:account)
+      unapproved_decoration = Fabricate(:avatar_decoration, approved: false)
+      local_account.update_columns(avatar_decorations: [{ 'id' => unapproved_decoration.id }])
 
-      expect(described_class.visible_configs_for(account)).to be_empty
+      expect(described_class.visible_configs_for(remote_account)).to be_empty
+      expect(described_class.visible_configs_for(local_account)).to be_empty
     end
 
     it 'hides a local decoration once the account role no longer meets its requirement' do
@@ -99,50 +81,27 @@ RSpec.describe AvatarDecoration do
 
       expect(described_class.visible_configs_for(user.account.reload)).to be_empty
     end
-
-    it 'hides a local decoration that is no longer approved' do
-      account = Fabricate(:account)
-      decoration = Fabricate(:avatar_decoration, approved: false)
-      account.update_columns(avatar_decorations: [{ 'id' => decoration.id }])
-
-      expect(described_class.visible_configs_for(account)).to be_empty
-    end
   end
 
-  describe '#local?' do
-    it 'returns true when host is nil' do
-      expect(Fabricate(:avatar_decoration, host: nil).local?).to be true
-    end
+  describe 'local and remote image URLs' do
+    it 'serves local decorations from paperclip with a static variant for GIFs' do
+      decoration = Fabricate(:avatar_decoration, host: nil)
 
-    it 'returns false when host is present' do
-      decoration = Fabricate(:avatar_decoration, host: 'example.com', image_remote_url: 'https://example.com/d.png', remote_id: 'x1', image: nil)
-      expect(decoration.local?).to be false
-    end
-  end
-
-  describe '#image_url' do
-    it 'returns paperclip URL for local decorations' do
-      decoration = Fabricate(:avatar_decoration)
+      expect(decoration.local?).to be true
       expect(decoration.image_url).to include('/original/')
-    end
 
-    it 'returns the remote URL until the asynchronous cache download completes' do
-      decoration = Fabricate(:avatar_decoration, host: 'example.com', image_remote_url: 'https://example.com/deco.png', remote_id: 'r1', image: nil)
-      expect(decoration.image_url).to eq('https://example.com/deco.png')
-    end
-  end
-
-  describe '#image_static_url' do
-    it 'returns static URL for local GIF decorations' do
-      decoration = Fabricate(:avatar_decoration)
       decoration.image_content_type = 'image/gif'
       expect(decoration.image_static_url).to include('/static/')
-    end
 
-    it 'returns same URL as image_url for non-GIF' do
-      decoration = Fabricate(:avatar_decoration)
       decoration.image_content_type = 'image/png'
       expect(decoration.image_static_url).to eq(decoration.image_url)
+    end
+
+    it 'returns the remote URL for remote decorations until the asynchronous cache download completes' do
+      decoration = Fabricate(:avatar_decoration, host: 'example.com', image_remote_url: 'https://example.com/deco.png', remote_id: 'r1', image: nil)
+
+      expect(decoration.local?).to be false
+      expect(decoration.image_url).to eq('https://example.com/deco.png')
     end
   end
 end

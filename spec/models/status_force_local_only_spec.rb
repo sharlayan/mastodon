@@ -15,24 +15,15 @@ RSpec.describe Status do
     Setting.force_local_only = false
   end
 
-  it 'forces local_only when a client explicitly asks to federate' do
-    status = PostStatusService.new.call(account, text: 'explicit federate', local_only: false)
+  it 'forces local_only whether a client asks to federate explicitly, with a string "false", or omits the param' do
+    explicit = PostStatusService.new.call(account, text: 'explicit federate', local_only: false)
+    omitted = PostStatusService.new.call(account, text: 'no param')
+    string_false = PostStatusService.new.call(account, text: 'string false', local_only: 'false')
 
-    expect(status.local_only).to be true
+    expect(explicit.local_only).to be true
+    expect(omitted.local_only).to be true
+    expect(string_false.local_only).to be true
     expect(ActivityPub::DistributionWorker).to_not have_received(:perform_async)
-  end
-
-  it 'forces local_only when a client does not support the param at all' do
-    status = PostStatusService.new.call(account, text: 'no param')
-
-    expect(status.local_only).to be true
-    expect(ActivityPub::DistributionWorker).to_not have_received(:perform_async)
-  end
-
-  it 'forces local_only on a string "false" from a lenient client' do
-    status = PostStatusService.new.call(account, text: 'string false', local_only: 'false')
-
-    expect(status.local_only).to be true
   end
 
   it 'forces local_only on a reblog of a remote status' do

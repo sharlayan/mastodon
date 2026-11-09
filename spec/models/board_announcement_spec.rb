@@ -18,21 +18,14 @@ RSpec.describe BoardAnnouncement do
   end
 
   describe 'sort_priority validation' do
-    it 'rejects a blank priority instead of failing the not-null constraint' do
-      announcement = described_class.new(title: 'Title', text: 'Body', sort_priority: '')
+    it 'rejects blank or out-of-range priorities and accepts negative and positive priorities within range' do
+      blank = described_class.new(title: 'Title', text: 'Body', sort_priority: '')
+      out_of_range = described_class.new(title: 'Title', text: 'Body', sort_priority: '99999999999')
 
-      expect(announcement).to_not be_valid
-      expect(announcement.errors[:sort_priority]).to be_present
-    end
-
-    it 'rejects a priority outside the integer column range' do
-      announcement = described_class.new(title: 'Title', text: 'Body', sort_priority: '99999999999')
-
-      expect(announcement).to_not be_valid
-      expect(announcement.errors[:sort_priority]).to be_present
-    end
-
-    it 'accepts negative and positive priorities within range' do
+      expect(blank).to_not be_valid
+      expect(blank.errors[:sort_priority]).to be_present
+      expect(out_of_range).to_not be_valid
+      expect(out_of_range.errors[:sort_priority]).to be_present
       expect(described_class.new(title: 'Title', text: 'Body', sort_priority: '-5')).to be_valid
       expect(described_class.new(title: 'Title', text: 'Body', sort_priority: '2147483647')).to be_valid
     end

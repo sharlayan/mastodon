@@ -6,47 +6,39 @@ RSpec.describe Sharlayan::ActivityPubCreateExtensions do
   subject(:activity) { ActivityPub::Activity::Create.allocate }
 
   describe '#sharlayan_status_params' do
-    it 'maps MFM source and limited scope from the parser' do
-      parser = instance_double(
+    it 'maps MFM source and limited scope from the parser without retaining source text for non-MFM statuses' do
+      mfm_parser = instance_double(
         ActivityPub::Parser::StatusParser,
         mfm?: true,
         mfm_source_text: '$[tada hello]',
         limited_scope: 'circle'
       )
+      plain_parser = instance_double(ActivityPub::Parser::StatusParser, mfm?: false, limited_scope: nil)
 
-      expect(activity.send(:sharlayan_status_params, parser)).to eq(
+      expect(activity.send(:sharlayan_status_params, mfm_parser)).to eq(
         mfm: true,
         mfm_text: '$[tada hello]',
         limited_scope: 'circle'
       )
-    end
-
-    it 'does not retain source text for a non-MFM status' do
-      parser = instance_double(ActivityPub::Parser::StatusParser, mfm?: false, limited_scope: nil)
-
-      expect(activity.send(:sharlayan_status_params, parser)).to eq(
+      expect(activity.send(:sharlayan_status_params, plain_parser)).to eq(
         mfm: false,
         mfm_text: nil,
         limited_scope: nil
       )
     end
 
-    it 'suppresses the public timeline stream for a relay configured to do so' do
-      relay_account = Fabricate(:account, domain: 'relay.example', inbox_url: 'https://relay.example/inbox')
-      Fabricate(:relay, inbox_url: relay_account.inbox_url, state: :accepted, suppress_public_timeline_stream: true)
+    it 'suppresses the public timeline stream only for a relay configured to do so' do
+      suppressing = Fabricate(:account, domain: 'relay.example', inbox_url: 'https://relay.example/inbox')
+      streaming = Fabricate(:account, domain: 'other-relay.example', inbox_url: 'https://other-relay.example/inbox')
+      Fabricate(:relay, inbox_url: suppressing.inbox_url, state: :accepted, suppress_public_timeline_stream: true)
+      Fabricate(:relay, inbox_url: streaming.inbox_url, state: :accepted)
 
-      activity.instance_variable_set(:@options, { relayed_through_actor: relay_account })
-
+      activity.instance_variable_set(:@options, { relayed_through_actor: suppressing })
       expect(activity.send(:relay_public_timeline_stream_suppressed?)).to be(true)
-    end
 
-    it 'does not suppress the public timeline stream for a relay with it enabled' do
-      relay_account = Fabricate(:account, domain: 'relay.example', inbox_url: 'https://relay.example/inbox')
-      Fabricate(:relay, inbox_url: relay_account.inbox_url, state: :accepted)
-
-      activity.instance_variable_set(:@options, { relayed_through_actor: relay_account })
-
-      expect(activity.send(:relay_public_timeline_stream_suppressed?)).to be(false)
+      other_activity = ActivityPub::Activity::Create.allocate
+      other_activity.instance_variable_set(:@options, { relayed_through_actor: streaming })
+      expect(other_activity.send(:relay_public_timeline_stream_suppressed?)).to be(false)
     end
   end
 
@@ -122,16 +114,12 @@ RSpec.describe Sharlayan::ActivityPubCreateExtensions do
       end
     end
 
-    it 'rejects relay delivery from a domain configured to reject relays' do
+    it 'rejects relay delivery from a domain configured to reject relays and keeps it for an unrestricted domain' do
       allow(DomainBlock).to receive(:reject_relay?).with('remote.example').and_return(true)
-
       expect(activity.send(:accepted_through_relay?)).to be false
-    end
 
-    it 'keeps relay delivery enabled for an unrestricted domain' do
       allow(DomainBlock).to receive(:reject_relay?).with('remote.example').and_return(false)
-
-      expect(activity.send(:accepted_through_relay?)).to be true
+      expect(relay_activity_class.new(instance_double(Account, domain: 'remote.example')).send(:accepted_through_relay?)).to be true
     end
   end
 end

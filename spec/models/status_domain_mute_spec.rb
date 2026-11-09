@@ -24,13 +24,10 @@ RSpec.describe Status do
     context 'with a muted domain' do
       before { account.mute_domain!('muted.example') }
 
-      it 'excludes statuses from the muted domain' do
+      it 'excludes statuses from the muted domain and their reblogs' do
         expect(subject).to_not include(muted_status.id)
-        expect(subject).to include(other_status.id, local_status.id)
-      end
-
-      it 'excludes reblogs of statuses from the muted domain' do
         expect(subject).to_not include(muted_status_reblog.id)
+        expect(subject).to include(other_status.id, local_status.id)
       end
 
       context 'when the account follows someone on the muted domain' do

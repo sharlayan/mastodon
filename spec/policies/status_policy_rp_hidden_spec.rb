@@ -21,23 +21,11 @@ RSpec.describe StatusPolicy, type: :model do
   end
 
   permissions :show? do
-    it 'permits the owner to view a hidden status' do
+    it 'permits only the owner to view a hidden status' do
       expect(subject).to permit(owner, status)
-    end
-
-    it 'denies a non-owner administrator' do
       expect(subject).to_not permit(admin, status)
-    end
-
-    it 'denies the author of the hidden status' do
       expect(subject).to_not permit(author, status)
-    end
-
-    it 'denies a stranger' do
       expect(subject).to_not permit(stranger, status)
-    end
-
-    it 'denies an anonymous viewer' do
       expect(subject).to_not permit(nil, status)
     end
   end
@@ -72,24 +60,16 @@ RSpec.describe StatusPolicy, type: :model do
     end
 
     permissions :destroy? do
-      it 'permits the owner to delete another local account status' do
+      it 'permits only the owner to delete another local account status while soft-hide deletion is enabled' do
+        remote_status = Fabricate(:status, account: Fabricate(:account, domain: 'remote.example'))
+
         expect(subject).to permit(owner, visible_status)
-      end
-
-      it 'denies a non-owner administrator' do
         expect(subject).to_not permit(admin, visible_status)
-      end
+        expect(subject).to_not permit(owner, remote_status)
 
-      it 'denies the owner when soft-hide deletion is disabled' do
         Setting.soft_hide_deletion = false
 
         expect(subject).to_not permit(owner, visible_status)
-      end
-
-      it 'denies the owner access to a remote status' do
-        remote_status = Fabricate(:status, account: Fabricate(:account, domain: 'remote.example'))
-
-        expect(subject).to_not permit(owner, remote_status)
       end
     end
 

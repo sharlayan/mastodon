@@ -19,17 +19,11 @@ RSpec.describe Sharlayan::FederationAggregationRunner do
     end
   end
 
-  it 'returns the aggregation result while holding the shared lock' do
-    expect(successful_runner_class.new.call { 7 }).to eq(7)
-  end
-
-  it 'runs an aggregation through the real Redis lock' do
-    expect(described_class.call { 7 }).to eq(7)
-  end
-
-  it 'returns zero without running the aggregation when the lock is unavailable' do
+  it 'returns the aggregation result while holding the shared or real Redis lock and zero without running it when the lock is unavailable' do
     aggregation = instance_spy(Proc)
 
+    expect(successful_runner_class.new.call { 7 }).to eq(7)
+    expect(described_class.call { 7 }).to eq(7)
     expect(unavailable_runner_class.new.call { aggregation.call }).to eq(0)
     expect(aggregation).to_not have_received(:call)
   end

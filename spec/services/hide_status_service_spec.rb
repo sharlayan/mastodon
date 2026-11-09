@@ -50,59 +50,40 @@ RSpec.describe HideStatusService do
   context 'with a simple local status' do
     let!(:status) { PostStatusService.new.call(alice, text: 'Hello world') }
 
-    it 'hides the status from the default scope but preserves the row' do
-      subject.call(status)
+    it 'hides the status from the default scope, preserving the row, recording who hid it and updating counts and feeds' do
+      allow(FeedManager.instance).to receive(:unpush_from_home)
+
+      expect { subject.call(status, hidden_by_account_id: bob.id) }
+        .to change { alice.reload.statuses_count }.by(-1)
 
       expect(Status.find_by(id: status.id)).to be_nil
       expect(Status.with_rp_hidden.find_by(id: status.id)).to eq(status)
       expect(RpHiddenStatus.exists?(status_id: status.id)).to be(true)
       expect(status.reload.rp_hidden?).to be(true)
-    end
-
-    it 'records the account that hid the status' do
-      subject.call(status, hidden_by_account_id: bob.id)
-
       expect(RpHiddenStatus.find_by(status_id: status.id).hidden_by_account_id).to eq(bob.id)
-    end
-
-    it 'decrements the author statuses_count' do
-      expect { subject.call(status) }
-        .to change { alice.reload.statuses_count }.by(-1)
-    end
-
-    it 'unpushes the status from local follower home feeds' do
-      allow(FeedManager.instance).to receive(:unpush_from_home)
-
-      subject.call(status)
-
       expect(FeedManager.instance).to have_received(:unpush_from_home).with(bob, status)
     end
 
-    it 'is idempotent and does not create a duplicate hidden record' do
-      subject.call(status)
-
-      expect { subject.call(status) }
-        .to not_change { alice.reload.statuses_count }
-        .and(not_change { RpHiddenStatus.where(status_id: status.id).count })
-    end
-
-    it 'cleans interactions when retrying an already hidden status' do
+    it 'is idempotent without a duplicate hidden record and cleans interactions when retrying' do
       subject.call(status)
       favourite = Fabricate(:favourite, status: status, account: bob)
       Fabricate(:notification, type: :favourite, activity: favourite, account: alice, from_account: bob)
 
       expect { subject.call(status) }
-        .to(not_change { alice.reload.statuses_count })
+        .to not_change { alice.reload.statuses_count }
+        .and(not_change { RpHiddenStatus.where(status_id: status.id).count })
 
       expect(Favourite.where(status_id: status.id)).to be_empty
       expect(Notification.where(activity_type: 'Favourite', activity_id: favourite.id)).to be_empty
     end
 
-    it 'removes favourites and reactions with their cached counts' do
+    it 'removes favourites, reactions, bookmarks and clip entries with their cached counts' do
       favourite = Fabricate(:favourite, status: status, account: bob)
       reaction = Fabricate(:status_reaction, status: status, account: bob, name: '👍')
       favourite_notification = Fabricate(:notification, type: :favourite, activity: favourite, account: alice, from_account: bob)
       reaction_notification = Fabricate(:notification, type: :reaction, activity: reaction, account: alice, from_account: bob)
+      bookmark = Fabricate(:bookmark, status: status, account: bob)
+      clip_status = ClipStatus.create!(clip: Fabricate(:clip, account: bob), status: status)
 
       subject.call(status)
 
@@ -111,14 +92,6 @@ RSpec.describe HideStatusService do
       expect(Notification.where(id: [favourite_notification.id, reaction_notification.id])).to be_empty
       expect(status.reload.favourites_count).to eq(0)
       expect(status.reactions_count).to eq(0)
-    end
-
-    it 'removes bookmarks and clip entries' do
-      bookmark = Fabricate(:bookmark, status: status, account: bob)
-      clip_status = ClipStatus.create!(clip: Fabricate(:clip, account: bob), status: status)
-
-      subject.call(status)
-
       expect(Bookmark.exists?(bookmark.id)).to be(false)
       expect(ClipStatus.exists?(clip_status.id)).to be(false)
     end

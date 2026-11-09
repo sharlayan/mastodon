@@ -20,68 +20,47 @@ RSpec.describe Form::AdminSettings do
     )
   end
 
-  it 'validates chat operating limits' do
+  it 'validates chat operating limits and configurable profile and remote media limits' do
     expect(described_class.new(chat_max_group_members: '50', chat_max_attachments: '4', chat_delete_window_hours: '24')).to be_valid
     expect(described_class.new(chat_max_group_members: '1', chat_max_attachments: '5', chat_delete_window_hours: '-1')).to_not be_valid
+    expect(described_class.new(profile_fields_limit: '0', remote_media_attachments_limit: '4')).to be_valid
+    expect(described_class.new(profile_fields_limit: '51', remote_media_attachments_limit: '17')).to_not be_valid
   end
 
-  it 'validates optional server background presentation settings' do
+  it 'validates server background presentation, feed access modes and theme colors' do
+    invalid_access = described_class.new(local_account_statuses_access: 'unknown', local_status_page_access: 'unknown', theme_color: 'red')
+
     expect(described_class.new(background_color: '', background_opacity: '100')).to be_valid
     expect(described_class.new(background_color: '#12aBcD', background_opacity: '45')).to be_valid
     expect(described_class.new(background_color: 'red', background_opacity: '101')).to_not be_valid
+    expect(described_class.new(local_account_statuses_access: 'authenticated', local_status_page_access: 'disabled', theme_color: '#12aBcD')).to be_valid
+    expect(invalid_access).to_not be_valid
+    expect(invalid_access.errors).to include(:local_account_statuses_access, :local_status_page_access, :theme_color)
   end
 
-  it 'validates the avatar decoration count limit' do
+  it 'validates the avatar decoration count limit and requires a status character limit of at least 300' do
     expect(described_class.new(avatar_decorations_max_count: '4')).to be_valid
     expect(described_class.new(avatar_decorations_max_count: '')).to_not be_valid
     expect(described_class.new(avatar_decorations_max_count: '1.5')).to_not be_valid
     expect(described_class.new(avatar_decorations_max_count: '17')).to_not be_valid
-  end
-
-  it 'requires a status character limit of at least 300' do
     expect(described_class.new(status_character_limit: '500')).to be_valid
     expect(described_class.new(status_character_limit: '299')).to_not be_valid
     expect(described_class.new(status_character_limit: '300')).to be_valid
   end
 
-  it 'validates configurable profile and remote media limits' do
-    expect(described_class.new(profile_fields_limit: '0', remote_media_attachments_limit: '4')).to be_valid
-    expect(described_class.new(profile_fields_limit: '51', remote_media_attachments_limit: '17')).to_not be_valid
-  end
+  it 'derives defaults from MAX_TOOT_CHARS and the legacy environment variables, ignoring invalid character limits' do
+    ClimateControl.modify MAX_TOOT_CHARS: '1000', MAX_PROFILE_FIELDS: '12', REMOTE_MEDIA_ATTACHMENTS_LIMIT: '8' do
+      defaults = Sharlayan::SettingExtensions.sharlayan_defaults
 
-  it 'uses MAX_TOOT_CHARS as the default when configured' do
-    ClimateControl.modify MAX_TOOT_CHARS: '1000' do
-      expect(Sharlayan::SettingExtensions.sharlayan_defaults.fetch('status_character_limit')).to eq(1000)
+      expect(defaults.fetch('status_character_limit')).to eq(1000)
+      expect(defaults.fetch('profile_fields_limit')).to eq(12)
+      expect(defaults.fetch('remote_media_attachments_limit')).to eq(8)
     end
-  end
 
-  it 'uses the configured default when MAX_TOOT_CHARS is invalid or below the minimum' do
     ['invalid', '299', ''].each do |value|
       ClimateControl.modify MAX_TOOT_CHARS: value do
         expect(Sharlayan::SettingExtensions.sharlayan_defaults.fetch('status_character_limit')).to eq(500)
       end
     end
-  end
-
-  it 'uses the legacy environment variables as defaults' do
-    ClimateControl.modify MAX_PROFILE_FIELDS: '12', REMOTE_MEDIA_ATTACHMENTS_LIMIT: '8' do
-      defaults = Sharlayan::SettingExtensions.sharlayan_defaults
-
-      expect(defaults.fetch('profile_fields_limit')).to eq(12)
-      expect(defaults.fetch('remote_media_attachments_limit')).to eq(8)
-    end
-  end
-
-  it 'validates feed access modes and theme colors' do
-    settings = described_class.new(local_account_statuses_access: 'unknown', local_status_page_access: 'unknown', theme_color: 'red')
-
-    expect(settings).to_not be_valid
-    expect(settings.errors).to include(:local_account_statuses_access, :local_status_page_access, :theme_color)
-  end
-
-  it 'accepts valid feed access modes and theme colors' do
-    settings = described_class.new(local_account_statuses_access: 'authenticated', local_status_page_access: 'disabled', theme_color: '#12aBcD')
-
-    expect(settings).to be_valid
   end
 end

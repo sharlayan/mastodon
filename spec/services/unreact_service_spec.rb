@@ -16,11 +16,8 @@ RSpec.describe UnreactService, type: :service do
       subject.call(sender, status, '👍')
     end
 
-    it 'removes a reaction' do
+    it 'removes a reaction and enqueues BroadcastStatusUpdateWorker' do
       expect(status.reactions.first).to be_nil
-    end
-
-    it 'enqueues BroadcastStatusUpdateWorker' do
       expect(BroadcastStatusUpdateWorker).to have_enqueued_sidekiq_job(status.id)
     end
   end
@@ -35,11 +32,8 @@ RSpec.describe UnreactService, type: :service do
       subject.call(sender, status, '👍')
     end
 
-    it 'removes a reaction' do
+    it 'removes a reaction and enqueues ReactionsDistributionWorker with target inbox' do
       expect(status.reactions.first).to be_nil
-    end
-
-    it 'enqueues ReactionsDistributionWorker with target inbox' do
       expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, 'http://example.com/inbox')
     end
   end

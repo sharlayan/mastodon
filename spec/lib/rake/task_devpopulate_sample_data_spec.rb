@@ -14,11 +14,7 @@ RSpec.describe Rake::Task do
 
     describe '.invoke' do
       context 'when the task is invoked successfully' do
-        it 'runs without aborting' do
-          expect { subject.invoke }.to_not raise_error
-        end
-
-        it 'populates accounts and users' do
+        it 'populates accounts and users without aborting' do
           expect { subject.invoke }
             .to change(Account, :count).by(3)
             .and change(User, :count).by(2)

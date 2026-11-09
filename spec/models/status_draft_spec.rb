@@ -5,13 +5,6 @@ require 'rails_helper'
 RSpec.describe StatusDraft do
   let(:account) { Fabricate(:account) }
 
-  it 'rejects draft data above the per-item byte limit' do
-    draft = Fabricate.build(:status_draft, account: account, data: { status: 'x' * described_class::MAX_DATA_BYTES })
-
-    expect(draft).to_not be_valid
-    expect(draft.errors).to include(:data)
-  end
-
   it 'rejects writes that would exceed the account storage quota' do
     existing = Fabricate(:status_draft, account: account)
     existing.update_column(:data, { status: 'x' * described_class::MAX_ACCOUNT_DATA_BYTES })
@@ -30,7 +23,12 @@ RSpec.describe StatusDraft do
     expect(draft).to be_valid
   end
 
-  it 'measures data the same way as the list size filter' do
+  it 'rejects draft data above the per-item byte limit, measured the same way as the list size filter' do
+    oversized = Fabricate.build(:status_draft, account: account, data: { status: 'x' * described_class::MAX_DATA_BYTES })
+
+    expect(oversized).to_not be_valid
+    expect(oversized.errors).to include(:data)
+
     items = Array.new(4_000) { |i| "item#{i}" }
     compact_bytes = JSON.generate({ status: '', poll: { options: items } }).bytesize
     draft = Fabricate.build(:status_draft, account: account, data: { status: 'x' * (described_class::MAX_DATA_BYTES - compact_bytes), poll: { options: items } })

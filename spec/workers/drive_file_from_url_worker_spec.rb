@@ -73,41 +73,22 @@ RSpec.describe DriveFileFromURLWorker do
     expect(account.drive_files.sole).to_not be_sensitive
   end
 
-  it 'preserves sensitive metadata when the download matches an existing file and the option is nil' do
+  it 'preserves sensitive and description metadata for a matching existing file unless sensitive is explicitly false' do
     digest = Digest::SHA256.file(Rails.root.join('spec', 'fixtures', 'files', 'avatar.gif')).hexdigest
-    existing = DriveFile.create!(account: account, file: attachment_fixture('avatar.gif'), sha256: digest, sensitive: true)
+    existing = DriveFile.create!(account: account, file: attachment_fixture('avatar.gif'), sha256: digest, sensitive: true, description: 'kept')
 
     expect do
       worker.perform(account.id, 'https://example.com/avatar.gif', { 'sensitive' => nil })
     end.to_not change(account.drive_files, :count)
-
     expect(existing.reload).to be_sensitive
-  end
-
-  it 'preserves sensitive metadata when the download matches an existing file and the option is omitted' do
-    digest = Digest::SHA256.file(Rails.root.join('spec', 'fixtures', 'files', 'avatar.gif')).hexdigest
-    existing = DriveFile.create!(account: account, file: attachment_fixture('avatar.gif'), sha256: digest, sensitive: true)
 
     worker.perform(account.id, 'https://example.com/avatar.gif')
-
     expect(existing.reload).to be_sensitive
-  end
-
-  it 'preserves the description when the download matches an existing file and none is given' do
-    digest = Digest::SHA256.file(Rails.root.join('spec', 'fixtures', 'files', 'avatar.gif')).hexdigest
-    existing = DriveFile.create!(account: account, file: attachment_fixture('avatar.gif'), sha256: digest, description: 'kept')
 
     worker.perform(account.id, 'https://example.com/avatar.gif', {})
-
     expect(existing.reload.description).to eq 'kept'
-  end
-
-  it 'clears sensitive metadata when the download matches an existing file and false is explicit' do
-    digest = Digest::SHA256.file(Rails.root.join('spec', 'fixtures', 'files', 'avatar.gif')).hexdigest
-    existing = DriveFile.create!(account: account, file: attachment_fixture('avatar.gif'), sha256: digest, sensitive: true)
 
     worker.perform(account.id, 'https://example.com/avatar.gif', { 'sensitive' => false })
-
     expect(existing.reload).to_not be_sensitive
   end
 

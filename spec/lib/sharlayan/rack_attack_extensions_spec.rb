@@ -31,17 +31,13 @@ RSpec.describe Sharlayan::RackAttackExtensions do
       Rails.cache = original_cache
     end
 
-    it 'reads the limit from the authenticated user role' do
-      expect(request.role_rate_limit(:api)).to eq(2_000)
-    end
-
     it 'uses the default when the role has no override' do
       role.update!(api_rate_limit: nil)
 
       expect(request.role_rate_limit(:api)).to eq(1_500)
     end
 
-    it 'shares role limits between requests without loading the user again' do
+    it 'reads the limit from the authenticated user role and shares it between requests without loading the user again' do
       allow(User).to receive(:includes).and_call_original
       expect(request.role_rate_limit(:api)).to eq(2_000)
       another_request = request_class.new(user.id)
@@ -60,17 +56,13 @@ RSpec.describe Sharlayan::RackAttackExtensions do
         Setting.rate_limit_bypass_enabled = false
       end
 
-      it 'allows a role with the bypass permission' do
-        expect(request.bypasses_rate_limit?).to be true
-      end
-
       it 'denies a role without the bypass permission' do
         role.update!(extra_permissions: 0)
 
         expect(request.bypasses_rate_limit?).to be false
       end
 
-      it 'shares the bypass decision between requests without loading the user again' do
+      it 'allows a role with the bypass permission and shares the decision between requests without loading the user again' do
         allow(User).to receive(:includes).and_call_original
         expect(request.bypasses_rate_limit?).to be true
         another_request = request_class.new(user.id)
@@ -79,16 +71,12 @@ RSpec.describe Sharlayan::RackAttackExtensions do
         expect(User).to have_received(:includes).once
       end
 
-      it 'does not look up anonymous requests' do
+      it 'does not look up anonymous requests or users when the bypass setting is disabled' do
         allow(User).to receive(:includes).and_call_original
 
         expect(request_class.new(nil).bypasses_rate_limit?).to be false
-        expect(User).to_not have_received(:includes)
-      end
 
-      it 'does not look up users when the bypass setting is disabled' do
         Setting.rate_limit_bypass_enabled = false
-        allow(User).to receive(:includes).and_call_original
 
         expect(request.bypasses_rate_limit?).to be false
         expect(User).to_not have_received(:includes)

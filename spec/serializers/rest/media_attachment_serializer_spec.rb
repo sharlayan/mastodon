@@ -16,34 +16,20 @@ RSpec.describe REST::MediaAttachmentSerializer do
   let(:original_path) { "/drive_media/#{attachment.drive_access_key}/original" }
   let(:preview_path) { "/drive_media/#{attachment.drive_access_key}/small" }
 
-  it 'uses drive resolver URLs in REST output' do
-    result = serialized_record_json(attachment, described_class)
+  it 'uses drive resolver URLs in REST, ActivityPub, SEO and Misskey-compatible output' do
+    rest = serialized_record_json(attachment, described_class)
+    document = serialized_record_json(status, ActivityPub::NoteSerializer, adapter: ActivityPub::Adapter).fetch('attachment').first
+    image = serialized_record_json(status, SEO::SocialMediaPostingSerializer, adapter: SEO::Adapter).fetch('image').first
+    misskey = MisskeyCompat::DriveFileSerializer.serialize(attachment)
 
-    expect(URI(result['url']).path).to eq(original_path)
-    expect(URI(result['preview_url']).path).to eq(preview_path)
-  end
-
-  it 'uses drive resolver URLs in ActivityPub output' do
-    result = serialized_record_json(status, ActivityPub::NoteSerializer, adapter: ActivityPub::Adapter)
-    document = result.fetch('attachment').first
-
+    expect(URI(rest['url']).path).to eq(original_path)
+    expect(URI(rest['preview_url']).path).to eq(preview_path)
     expect(URI(document['url']).path).to eq(original_path)
     expect(URI(document.dig('icon', 'url')).path).to eq(preview_path)
-  end
-
-  it 'uses drive resolver URLs in SEO output' do
-    result = serialized_record_json(status, SEO::SocialMediaPostingSerializer, adapter: SEO::Adapter)
-    image = result.fetch('image').first
-
     expect(URI(image['contentURL']).path).to eq(original_path)
     expect(URI(image['thumbnailURL']).path).to eq(preview_path)
-  end
-
-  it 'uses drive resolver URLs in Misskey-compatible output' do
-    result = MisskeyCompat::DriveFileSerializer.serialize(attachment)
-
-    expect(URI(result[:url]).path).to eq(original_path)
-    expect(URI(result[:thumbnailUrl]).path).to eq(preview_path)
+    expect(URI(misskey[:url]).path).to eq(original_path)
+    expect(URI(misskey[:thumbnailUrl]).path).to eq(preview_path)
   end
 
   it 'uses the redownload proxy for an evicted remote attachment in Misskey-compatible output' do
@@ -75,17 +61,13 @@ RSpec.describe REST::MediaAttachmentSerializer do
       described_class.new(record.reload, current_account: viewer).as_json[:preview_url]
     end
 
-    it 'gives a protected preview of an image' do
+    it 'gives a protected preview of an image but no preview of audio without a thumbnail or an unknown file' do
       expect(URI(preview_url(media)).path).to eq("/media_proxy/#{media.id}/small")
-    end
 
-    it 'gives no preview of audio without a thumbnail' do
       media.update_columns(type: MediaAttachment.types[:audio], file_content_type: 'audio/mpeg')
 
       expect(preview_url(media)).to be_nil
-    end
 
-    it 'gives no preview of an unknown file' do
       media.update_columns(type: MediaAttachment.types[:unknown], file_content_type: 'application/octet-stream')
 
       expect(preview_url(media)).to be_nil

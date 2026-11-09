@@ -69,42 +69,34 @@ RSpec.describe FetchInstanceThemeColorService do
       expect(InstanceMetadata.find_by(domain: domain).metadata_updated_at).to be_within(5.seconds).of(Time.now.utc)
     end
 
-    it 'creates and returns instance metadata' do
+    it 'creates metadata from the homepage with timestamps, theme color, name and a saved favicon, fetching the homepage once' do
       result = subject.call(domain)
-      expect(result).to be_a(InstanceMetadata)
-      expect(result.domain).to eq(domain)
-    end
 
-    it 'updates metadata timestamps' do
-      result = subject.call(domain)
+      expect(result).to be_a(InstanceMetadata)
+      expect(result).to have_attributes(domain: domain, theme_color: '#FF5500', instance_name: 'Remote Instance', software: nil)
       expect(result.theme_color_updated_at).to be_within(5.seconds).of(Time.now.utc)
       expect(result.metadata_updated_at).to be_within(5.seconds).of(Time.now.utc)
-    end
-
-    it 'fetches homepage HTML only once' do
-      stub_request(:get, "https://#{domain}/favicon.ico").to_return(status: 404)
-      stub_request(:get, "https://#{domain}/custom-favicon.png").to_return(status: 200, body: 'png-data')
-
-      subject.call(domain)
-
+      expect(result.favicon_url).to start_with('/system/instance_favicons/')
+      expect(Rails.public_path.join(result.favicon_url.delete_prefix('/'))).to exist
       expect(WebMock).to have_requested(:get, "https://#{domain}").once
     end
 
-    it 'fetches nodeinfo only once when used by both software and name detection' do
+    it 'uses the NodeInfo nodeName, fetching NodeInfo only once for software and name detection' do
       nodeinfo_well_known = {
         links: [{ rel: 'http://nodeinfo.diaspora.software/ns/schema/2.0', href: "https://#{domain}/nodeinfo/2.0" }],
       }.to_json
 
       nodeinfo_response = {
         software: { name: 'mastodon', version: '4.0.0' },
-        metadata: { nodeName: 'Mastodon Instance' },
+        metadata: { nodeName: 'Node Instance' },
       }.to_json
 
       stub_request(:get, "https://#{domain}/.well-known/nodeinfo").to_return(status: 200, body: nodeinfo_well_known, headers: { 'Content-Type' => 'application/json' })
       stub_request(:get, "https://#{domain}/nodeinfo/2.0").to_return(status: 200, body: nodeinfo_response, headers: { 'Content-Type' => 'application/json' })
 
-      subject.call(domain)
+      result = subject.call(domain)
 
+      expect(result.instance_name).to eq('Node Instance')
       expect(WebMock).to have_requested(:get, "https://#{domain}/.well-known/nodeinfo").once
       expect(WebMock).to have_requested(:get, "https://#{domain}/nodeinfo/2.0").once
     end
@@ -238,11 +230,6 @@ RSpec.describe FetchInstanceThemeColorService do
       expect(result.theme_color).to eq('#112233')
     end
 
-    it 'extracts theme-color meta tag' do
-      result = subject.call(domain)
-      expect(result.theme_color).to eq('#FF5500')
-    end
-
     it 'extracts msapplication-TileColor as fallback' do
       html = <<~HTML
         <html><head>
@@ -338,17 +325,6 @@ RSpec.describe FetchInstanceThemeColorService do
 
       result = subject.call(domain)
       expect(result.favicon_url).to eq("#{favicon_dir}/#{domain_digest}.png")
-      expect(WebMock).to have_requested(:get, 'https://cdn.misskey.example/icon.png')
-    end
-
-    it 'captures the Misskey API iconUrl even when the instance name is present' do
-      stub_nodeinfo(software: 'misskey')
-      misskey_meta_response = { name: 'Misskey Instance', iconUrl: 'https://cdn.misskey.example/icon.png' }.to_json
-      stub_request(:post, "https://#{domain}/api/meta").to_return(status: 200, body: misskey_meta_response, headers: { 'Content-Type' => 'application/json' })
-      stub_request(:get, 'https://cdn.misskey.example/icon.png').to_return(status: 200, body: 'misskey-icon', headers: { 'Content-Type' => 'image/png' })
-
-      subject.call(domain)
-
       expect(WebMock).to have_requested(:get, 'https://cdn.misskey.example/icon.png')
     end
 
@@ -480,11 +456,6 @@ RSpec.describe FetchInstanceThemeColorService do
       expect(result.software).to eq('pleroma')
       expect(result.version).to eq('2.6.0')
     end
-
-    it 'returns nil when all methods fail' do
-      result = subject.call(domain)
-      expect(result.software).to be_nil
-    end
   end
 
   describe 'instance name resolution' do
@@ -506,19 +477,6 @@ RSpec.describe FetchInstanceThemeColorService do
       result = subject.call(domain)
 
       expect(result.instance_name).to eq('Misskey Hub')
-    end
-
-    it 'falls back to nodeinfo nodeName' do
-      nodeinfo_well_known = {
-        links: [{ rel: 'http://nodeinfo.diaspora.software/ns/schema/2.0', href: "https://#{domain}/nodeinfo/2.0" }],
-      }.to_json
-      nodeinfo_response = { software: { name: 'mastodon', version: '4.0.0' }, metadata: { nodeName: 'Node Instance' } }.to_json
-
-      stub_request(:get, "https://#{domain}/.well-known/nodeinfo").to_return(status: 200, body: nodeinfo_well_known, headers: { 'Content-Type' => 'application/json' })
-      stub_request(:get, "https://#{domain}/nodeinfo/2.0").to_return(status: 200, body: nodeinfo_response, headers: { 'Content-Type' => 'application/json' })
-
-      result = subject.call(domain)
-      expect(result.instance_name).to eq('Node Instance')
     end
 
     it 'uses NodeInfo metadata.name when nodeName is absent' do
@@ -552,11 +510,6 @@ RSpec.describe FetchInstanceThemeColorService do
       result = subject.call(domain)
 
       expect(result.instance_name).to eq('Manifest Instance')
-    end
-
-    it 'falls back to HTML og:site_name' do
-      result = subject.call(domain)
-      expect(result.instance_name).to eq('Remote Instance')
     end
 
     it 'falls back to Mastodon API v1 title' do
@@ -621,7 +574,7 @@ RSpec.describe FetchInstanceThemeColorService do
   end
 
   describe 'error handling' do
-    it 'handles HTTP::Error gracefully and still returns metadata with defaults' do
+    it 'handles HTTP::Error gracefully, returning metadata with defaults and updated timestamps' do
       stub_request(:get, "https://#{domain}").to_raise(HTTP::Error)
       stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_raise(HTTP::Error)
       stub_request(:post, "https://#{domain}/api/meta").to_raise(HTTP::Error)
@@ -630,6 +583,9 @@ RSpec.describe FetchInstanceThemeColorService do
       expect(result).to be_a(InstanceMetadata)
       expect(result.software).to be_nil
       expect(result.instance_name_with_fallback).to eq(domain)
+      metadata = InstanceMetadata.find_by(domain: domain)
+      expect(metadata.theme_color_updated_at).to be_within(5.seconds).of(Time.now.utc)
+      expect(metadata.metadata_updated_at).to be_within(5.seconds).of(Time.now.utc)
     end
 
     it 'handles OpenSSL::SSL::SSLError gracefully' do
@@ -651,45 +607,9 @@ RSpec.describe FetchInstanceThemeColorService do
       expect(result).to be_a(InstanceMetadata)
       expect(result.software).to be_nil
     end
-
-    it 'updates timestamps even when individual fetches fail' do
-      stub_request(:get, "https://#{domain}").to_raise(HTTP::Error)
-      stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_raise(HTTP::Error)
-      stub_request(:post, "https://#{domain}/api/meta").to_raise(HTTP::Error)
-
-      subject.call(domain)
-      metadata = InstanceMetadata.find_by(domain: domain)
-      expect(metadata.theme_color_updated_at).to be_within(5.seconds).of(Time.now.utc)
-      expect(metadata.metadata_updated_at).to be_within(5.seconds).of(Time.now.utc)
-    end
   end
 
   describe 'favicon download' do
-    it 'downloads and saves favicon to local storage' do
-      stub_request(:get, "https://#{domain}/custom-favicon.png").to_return(status: 200, body: 'png-data')
-
-      result = subject.call(domain)
-      expect(result.favicon_url).to start_with('/system/instance_favicons/')
-
-      file_path = Rails.public_path.join(result.favicon_url.delete_prefix('/'))
-      expect(File.exist?(file_path)).to be true
-    end
-
-    it 'uses a digest of the domain for the filename' do
-      special_domain = 'sub.example.com'
-      stub_request(:get, "https://#{special_domain}").to_return(status: 200, body: default_html)
-      stub_request(:get, "https://#{special_domain}/nodeinfo/2.1").to_return(status: 404)
-      stub_request(:post, "https://#{special_domain}/api/meta").to_return(status: 404)
-      stub_request(:get, "https://#{special_domain}/.well-known/nodeinfo").to_return(status: 404)
-      stub_request(:get, "https://#{special_domain}/manifest.json").to_return(status: 404)
-      stub_request(:get, "https://#{special_domain}/api/v1/instance").to_return(status: 404)
-      stub_request(:get, "https://#{special_domain}/api/v2/instance").to_return(status: 404)
-      stub_request(:get, "https://#{special_domain}/custom-favicon.png").to_return(status: 200, body: 'png-data', headers: { 'Content-Type' => 'image/png' })
-
-      result = subject.call(special_domain)
-      expect(result.favicon_url).to eq("/system/instance_favicons/#{Digest::SHA1.hexdigest(special_domain)}.png")
-    end
-
     it 'falls back to a generated blank favicon when the download fails' do
       stub_request(:get, "https://#{domain}/custom-favicon.png").to_return(status: 500)
 

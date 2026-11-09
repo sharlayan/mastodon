@@ -24,44 +24,32 @@ RSpec.describe Sharlayan::REST::Account::RequestScopedCache do
   end
 
   context 'when serializing the same account twice in one request' do
-    it 'reuses the cached hash without returning the same object' do
+    it 'reuses a cached copy without recomputing the bio and keeps the cache intact when the caller mutates it' do
       first = serialize(account, viewer)
+
+      expect_any_instance_of(REST::AccountSerializer).to_not receive(:note) # rubocop:disable RSpec/AnyInstance
       second = serialize(account, viewer)
 
       expect(second).to eq(first)
       expect(second).to_not equal(first)
       expect(store.size).to eq 1
-    end
 
-    it 'does not recompute the bio' do
-      serialize(account, viewer)
-
-      expect_any_instance_of(REST::AccountSerializer).to_not receive(:note) # rubocop:disable RSpec/AnyInstance
-      serialize(account, viewer)
-    end
-
-    it 'keeps the cached hash intact when the caller mutates the result' do
-      serialize(account, viewer)[:username] = 'mutated'
+      second[:username] = 'mutated'
 
       expect(serialize(account, viewer)[:username]).to eq account.username
     end
   end
 
-  context 'when the viewer differs' do
-    it 'caches each viewer separately' do
+  context 'when the viewer or serializer differs' do
+    it 'caches each viewer and serializer separately' do
       serialize(account, viewer)
       serialize(account, other_viewer)
 
       expect(store.size).to eq 2
-    end
-  end
 
-  context 'when the serializer differs' do
-    it 'caches each serializer separately' do
-      serialize(account, viewer)
       serialize(account, viewer, serializer: REST::PartialAccountSerializer)
 
-      expect(store.size).to eq 2
+      expect(store.size).to eq 3
     end
   end
 

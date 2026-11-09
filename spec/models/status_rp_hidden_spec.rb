@@ -15,32 +15,14 @@ RSpec.describe Status do
       RpHiddenStatus.create!(status: hidden_status)
     end
 
-    it 'excludes hidden statuses from the default scope' do
+    it 'excludes hidden statuses from the default scope and account associations while with_rp_hidden and rp_hidden? expose them' do
       expect(described_class.all).to include(visible_status)
       expect(described_class.all).to_not include(hidden_status)
-    end
-
-    it 'makes hidden statuses unfindable through the default scope' do
       expect(described_class.find_by(id: hidden_status.id)).to be_nil
-    end
-
-    it 'includes hidden statuses through with_rp_hidden' do
+      expect(hidden_status.account.statuses).to_not include(hidden_status)
       expect(described_class.with_rp_hidden).to include(visible_status, hidden_status)
-    end
-
-    describe '#rp_hidden?' do
-      it 'is true for a hidden status' do
-        expect(described_class.with_rp_hidden.find(hidden_status.id).rp_hidden?).to be(true)
-      end
-
-      it 'is false for a visible status' do
-        expect(visible_status.rp_hidden?).to be(false)
-      end
-    end
-
-    it 'hides the status from account statuses associations' do
-      account = hidden_status.account
-      expect(account.statuses).to_not include(hidden_status)
+      expect(described_class.with_rp_hidden.find(hidden_status.id).rp_hidden?).to be(true)
+      expect(visible_status.rp_hidden?).to be(false)
     end
 
     context 'when roleplay mode is disabled' do

@@ -10,24 +10,19 @@ RSpec.describe AccountSwitchDevice do
       described_class.create!(account:, token_digest: SecureRandom.hex, first_seen_at: Time.current, last_seen_at: Time.current, trusted_at: Time.current, session_activation:)
     end
 
-    it 'ends the bound session of the device account' do
-      session_activation = Fabricate(:session_activation, user: Fabricate(:user, account:))
-      device = device_bound_to(session_activation)
+    it 'ends the bound session of the device account but keeps a session of another account that merely viewed it' do
+      own_session = Fabricate(:session_activation, user: Fabricate(:user, account:))
+      viewer_session = Fabricate(:session_activation)
+      own_device = device_bound_to(own_session)
+      viewer_device = device_bound_to(viewer_session)
 
-      device.revoke!
+      own_device.revoke!
+      viewer_device.revoke!
 
-      expect(SessionActivation.exists?(session_activation.id)).to be false
-      expect(device.reload).to_not be_trusted
-    end
-
-    it 'keeps a session of another account that merely viewed the linked account' do
-      session_activation = Fabricate(:session_activation)
-      device = device_bound_to(session_activation)
-
-      device.revoke!
-
-      expect(SessionActivation.exists?(session_activation.id)).to be true
-      expect(device.reload).to_not be_trusted
+      expect(SessionActivation.exists?(own_session.id)).to be false
+      expect(own_device.reload).to_not be_trusted
+      expect(SessionActivation.exists?(viewer_session.id)).to be true
+      expect(viewer_device.reload).to_not be_trusted
     end
   end
 end

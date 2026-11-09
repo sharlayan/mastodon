@@ -14,25 +14,13 @@ RSpec.describe PageSeries do
     end
   end
 
-  it 'generates an ID when persisted without one' do
+  it 'generates an ID when persisted without one, normalizes its title and description and defaults to being displayed' do
+    normalized = Fabricate.build(:page_series, account: account, title: '  Guides  ', description: '  A collection  ')
+
     expect(described_class.create!(account: account, title: 'Generated ID')).to be_persisted
-  end
-
-  it 'normalizes its title and description' do
-    series = Fabricate.build(:page_series, account: account, title: '  Guides  ', description: '  A collection  ')
-
-    expect(series).to be_valid
-    expect(series).to have_attributes(title: 'Guides', description: 'A collection')
-  end
-
-  it 'defaults to being displayed in the public bookcase' do
+    expect(normalized).to be_valid
+    expect(normalized).to have_attributes(title: 'Guides', description: 'A collection')
     expect(series).to be_displayed
-  end
-
-  it 'accepts a public page from the same series as its main page' do
-    page = Fabricate(:page, account: account, page_series: series)
-
-    expect(series.update(main_page: page)).to be true
   end
 
   it 'uses the oldest public page as its entry page when no main page is set' do
@@ -47,51 +35,41 @@ RSpec.describe PageSeries do
     expect(series.entry_page).to eq(newer_page)
   end
 
-  it 'rejects a main page from another series or account' do
-    other_page = Fabricate(:page)
+  it 'rejects a main page from another series or account, or one that does not exist' do
+    expect(series.update(main_page: Fabricate(:page))).to be false
+    expect(series.errors.of_kind?(:main_page, :invalid)).to be true
 
-    expect(series.update(main_page: other_page)).to be false
+    expect(series.update(main_page_id: Page.maximum(:id).to_i + 1000)).to be false
     expect(series.errors.of_kind?(:main_page, :invalid)).to be true
   end
 
-  it 'accepts only cover media owned by the same account' do
+  it 'accepts only existing cover media owned by the same account and not sent in a chat message' do
     own_cover = Fabricate(:media_attachment, account: account)
     other_cover = Fabricate(:media_attachment)
 
     expect(series.update(cover_media_attachment: own_cover)).to be true
     expect(series.update(cover_media_attachment: other_cover)).to be false
     expect(series.errors.of_kind?(:cover_media_attachment, :invalid)).to be true
-  end
 
-  it 'rejects a cover media id that does not exist' do
     expect(series.update(cover_media_attachment_id: MediaAttachment.maximum(:id).to_i + 1000)).to be false
     expect(series.errors.of_kind?(:cover_media_attachment, :invalid)).to be true
-  end
 
-  it 'rejects a main page id that does not exist' do
-    expect(series.update(main_page_id: Page.maximum(:id).to_i + 1000)).to be false
-    expect(series.errors.of_kind?(:main_page, :invalid)).to be true
-  end
-
-  it 'rejects cover media sent in a chat message' do
     expect(series.update(cover_media_attachment: chat_media_attachment(account))).to be false
     expect(series.errors.of_kind?(:cover_media_attachment, :invalid)).to be true
   end
 
-  it 'clears the main page when that page leaves the series' do
-    page = Fabricate(:page, account: account, page_series: series)
-    series.update!(main_page: page)
+  it 'clears the main page when that page leaves the series or is no longer public' do
+    leaving_page = Fabricate(:page, account: account, page_series: series)
+    series.update!(main_page: leaving_page)
 
-    page.update!(page_series: nil)
+    leaving_page.update!(page_series: nil)
 
     expect(series.reload.main_page).to be_nil
-  end
 
-  it 'clears the main page when it is no longer public' do
-    page = Fabricate(:page, account: account, page_series: series)
-    series.update!(main_page: page)
+    hidden_page = Fabricate(:page, account: account, page_series: series)
+    series.update!(main_page: hidden_page)
 
-    page.update!(visibility: 'private')
+    hidden_page.update!(visibility: 'private')
 
     expect(series.reload.main_page).to be_nil
   end

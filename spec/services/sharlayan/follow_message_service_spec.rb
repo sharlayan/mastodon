@@ -13,22 +13,17 @@ RSpec.describe Sharlayan::FollowMessageService do
   end
 
   describe '#store' do
-    it 'stores a bounded snapshot of the followed message' do
+    it 'stores a bounded snapshot of the followed message and ignores blank or non-string messages' do
+      blank_follow = Fabricate(:follow, account: recipient)
+      non_string_follow = Fabricate(:follow, account: recipient)
+
       service.store(follow, 'a' * 300)
+      service.store(blank_follow, '')
+      service.store(non_string_follow, ['Welcome'])
 
       expect(follow.reload.follow_message).to eq("#{'a' * 253}...")
-    end
-
-    it 'leaves the follow unchanged for a blank message' do
-      service.store(follow, '')
-
-      expect(follow.reload.follow_message).to be_nil
-    end
-
-    it 'ignores a message that is not a string' do
-      service.store(follow, ['Welcome'])
-
-      expect(follow.reload.follow_message).to be_nil
+      expect(blank_follow.reload.follow_message).to be_nil
+      expect(non_string_follow.reload.follow_message).to be_nil
     end
   end
 
@@ -37,18 +32,14 @@ RSpec.describe Sharlayan::FollowMessageService do
       follow.update_column(:follow_message, 'Welcome')
     end
 
-    it 'enqueues a follow accepted notification for a local recipient' do
+    it 'enqueues a follow accepted notification only for a local recipient' do
+      service.notify(follow, recipient: Fabricate(:remote_account))
+
+      expect(LocalNotificationWorker).to_not have_received(:perform_async)
+
       service.notify(follow, recipient:)
 
       expect(LocalNotificationWorker).to have_received(:perform_async).with(recipient.id, follow.id, 'Follow', 'follow_accepted')
-    end
-
-    it 'does not enqueue a notification for a remote recipient' do
-      remote_recipient = Fabricate(:remote_account)
-
-      service.notify(follow, recipient: remote_recipient)
-
-      expect(LocalNotificationWorker).to_not have_received(:perform_async)
     end
   end
 
