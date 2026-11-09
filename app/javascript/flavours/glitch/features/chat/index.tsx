@@ -3548,14 +3548,22 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     ],
   );
 
+  const settingRequests = useRef({
+    policy: 0,
+    allow_group_invites: 0,
+    notifications: 0,
+  });
+
   const handlePolicyChange = useCallback(
     (event: ChangeEvent<HTMLSelectElement>) => {
       setError(null);
+      const requestId = ++settingRequests.current.policy;
       void api()
         .patch<ChatSettings>('/api/v1/chat/settings', {
           policy: event.target.value,
         })
         .then((response) => {
+          if (requestId !== settingRequests.current.policy) return;
           setChatSettings((current) =>
             current
               ? { ...current, policy: response.data.policy }
@@ -3591,11 +3599,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         void Notification.requestPermission();
       }
       setError(null);
+      const requestId = ++settingRequests.current[key];
       void api()
         .patch<ChatSettings>('/api/v1/chat/settings', {
           [key]: checked,
         })
         .then((response) => {
+          if (requestId !== settingRequests.current[key]) return;
           setChatSettings((current) =>
             current ? { ...current, [key]: response.data[key] } : response.data,
           );

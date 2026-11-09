@@ -2239,6 +2239,29 @@ describe('Chat home', () => {
     });
   });
 
+  it('keeps the latest policy when an earlier change is answered last', async () => {
+    const first = deferred<{ data: unknown }>();
+    api.patch
+      .mockReturnValueOnce(first.promise)
+      .mockResolvedValueOnce({ data: { ...settings, policy: 'none' } });
+    await home();
+    const policy = screen.getByLabelText<HTMLSelectElement>(
+      'Who can start a direct chat',
+    );
+
+    fireEvent.change(policy, { target: { value: 'mutual' } });
+    fireEvent.change(policy, { target: { value: 'none' } });
+    await waitFor(() => {
+      expect(policy.value).toBe('none');
+    });
+    await act(async () => {
+      first.resolve({ data: { ...settings, policy: 'mutual' } });
+      await first.promise;
+    });
+
+    expect(policy.value).toBe('none');
+  });
+
   it('shows only the tabs and conversations until something is opened', async () => {
     const { container } = await home();
 
