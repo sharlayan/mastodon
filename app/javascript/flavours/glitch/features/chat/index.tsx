@@ -4007,7 +4007,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 {messagesList.map((message, index) => (
                   <Fragment key={message.id}>
                     {startsDay(messagesList, index) && (
-                      <div className='chat-native__date' role='separator'>
+                      <div className='chat-native__date'>
                         {intl.formatDate(message.created_at, {
                           year: 'numeric',
                           month: 'long',
