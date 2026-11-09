@@ -118,14 +118,28 @@ module Mastodon
           ''
         elsif head_file_content.start_with?('ref:')
           ref_path = head_file_content.sub('ref: ', '').strip
-          ref_file_path = File.join('.git', ref_path)
-          File.read(ref_file_path).strip[0, 5]
+          (read_loose_git_ref(ref_path) || read_packed_git_ref(ref_path)).to_s[0, 5]
         else
           head_file_content[0, 5]
         end
-      rescue Errno::ENOENT, Errno::EACCES, Errno::ENOTDIR, IOError
-        ''
       end
+    end
+
+    def read_loose_git_ref(ref_path)
+      hash = File.read(File.join('.git', ref_path)).strip
+      hash unless hash.empty?
+    rescue Errno::ENOENT, Errno::EACCES, Errno::ENOTDIR, IOError
+      nil
+    end
+
+    def read_packed_git_ref(ref_path)
+      File.foreach(File.join('.git', 'packed-refs')) do |line|
+        hash, name = line.split
+        return hash if name == ref_path && !line.start_with?('#', '^')
+      end
+      nil
+    rescue Errno::ENOENT, Errno::EACCES, Errno::ENOTDIR, IOError
+      nil
     end
 
     def current_git_branch
