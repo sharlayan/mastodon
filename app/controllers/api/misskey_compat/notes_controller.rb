@@ -355,9 +355,12 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def mentions
-    scope = Status.joins(:mentions).where(mentions: { account_id: current_account.id })
+    mentioned = Status.joins(:mentions).where(mentions: { account_id: current_account.id })
+    scope = mentioned.where(mentions: { silent: false }).or(mentioned.where(visibility: %i(direct limited)))
       .not_excluded_by_account(current_account)
       .joins(:account).merge(Account.without_suspended)
+    scope = scope.where(visibility: mention_visibilities) if params[:visibility].present?
+    scope = scope.where(account_id: current_account.following.select(:id)).or(scope.where(account_id: current_account.id)) if ActiveModel::Type::Boolean.new.cast(params[:following])
     render_notes scope.to_a_paginated_by_id(pagination_limit, max_id: until_id, since_id: since_id)
   end
 
@@ -537,6 +540,10 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def html_to_text(html)
     Nokogiri::HTML5.fragment(html.to_s.gsub(%r{</p><p>}, "\n\n").gsub('<br>', "\n").gsub('<br/>', "\n")).text
+  end
+
+  def mention_visibilities
+    MisskeyCompat::NoteSerializer::VISIBILITY_MAP.select { |_, visibility| visibility == params[:visibility] }.keys
   end
 
   def renote_id
