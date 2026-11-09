@@ -29,23 +29,17 @@ RSpec.describe ChatConversation do
   end
 
   describe '#destroy!' do
-    it 'does not query once for every message' do
+    it 'removes messages with their reactions, edits and attachment links without querying once for every message' do
       small = room_with_messages(2)
       large = room_with_messages(20)
+      message_ids = large.messages.pluck(:id)
 
       few = queries_during { small.destroy! }.size
       many = queries_during { large.destroy! }.size
 
       expect(many).to eq(few)
-    end
-
-    it 'removes messages with their reactions, edits and attachment links' do
-      room = room_with_messages(3)
-      message_ids = room.messages.pluck(:id)
-
-      room.destroy!
-
       expect(ChatMessage.where(id: message_ids)).to be_empty
+
       expect(ChatMessageReaction.where(chat_message_id: message_ids)).to be_empty
       expect(ChatMessageEdit.where(chat_message_id: message_ids)).to be_empty
     end

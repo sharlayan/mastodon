@@ -25,7 +25,12 @@ RSpec.describe 'Misskey chat account settings' do
     expect(response.parsed_body.dig(:policies, :chatAvailability)).to eq('unavailable')
   end
 
-  it 'persists chatScope and distributes the changed actor policy' do
+  it 'rejects invalid chat policies before applying other profile changes, then persists chatScope and distributes the changed actor policy' do
+    post '/api/i/update', params: { i: token.token, chatScope: 'invalid', name: 'Should not change' }, as: :json
+
+    expect(response).to have_http_status(400)
+    expect(user.account.reload.display_name).to_not eq('Should not change')
+
     expect do
       post '/api/i/update', params: { i: token.token, chatScope: 'following' }, as: :json
     end.to change(ActivityPub::UpdateDistributionWorker.jobs, :size).by(1)
@@ -33,12 +38,5 @@ RSpec.describe 'Misskey chat account settings' do
     expect(response).to have_http_status(200)
     expect(response.parsed_body[:chatScope]).to eq('following')
     expect(user.reload.settings[:chat_policy]).to eq('following')
-  end
-
-  it 'rejects invalid chat policies before applying other profile changes' do
-    post '/api/i/update', params: { i: token.token, chatScope: 'invalid', name: 'Should not change' }, as: :json
-
-    expect(response).to have_http_status(400)
-    expect(user.account.reload.display_name).to_not eq('Should not change')
   end
 end

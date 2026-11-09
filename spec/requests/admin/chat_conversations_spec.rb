@@ -16,62 +16,30 @@ RSpec.describe 'Admin Chat conversations' do
 
   after { Setting.chat_enabled = false }
 
-  it 'shows what a message said before its edits' do
-    message = Sharlayan::ChatService.new.create_message(first.account, conversation, text: 'current text')
+  it 'lists and inspects chat conversations, with what a message said before its edits, also while user chat is disabled' do
+    message = Sharlayan::ChatService.new.create_message(first.account, conversation, text: 'moderation-visible')
     message.edits.create!(text: 'the earlier text')
-
-    get admin_chat_conversation_path(conversation)
-
-    expect(response.body).to include('current text', 'the earlier text')
-  end
-
-  it 'lists and inspects chat conversations' do
-    Sharlayan::ChatService.new.create_message(first.account, conversation, text: 'moderation-visible')
 
     get admin_chat_conversations_path
     expect(response).to have_http_status(200)
 
     get admin_chat_conversation_path(conversation)
     expect(response).to have_http_status(200)
-    expect(response.body).to include('moderation-visible')
-  end
+    expect(response.body).to include('moderation-visible', 'the earlier text')
 
-  it 'deletes a conversation and all messages' do
-    message = Sharlayan::ChatService.new.create_message(first.account, conversation, text: 'delete-me')
-
-    delete admin_chat_conversation_path(conversation)
-
-    expect(response).to redirect_to(admin_chat_conversations_path)
-    expect(ChatConversation).to_not exist(conversation.id)
-    expect(ChatMessage).to_not exist(message.id)
-  end
-
-  it 'keeps moderation access available while user chat is disabled' do
     Setting.chat_enabled = false
-
     get admin_chat_conversation_path(conversation)
-
     expect(response).to have_http_status(200)
   end
 
-  it 'allows the management timeline permission to inspect local chat in roleplay mode' do
+  it 'lets the management timeline permission inspect local chat in roleplay mode, but not destroy it' do
     role = Fabricate(:user_role, extra_permissions: UserRole::EXTRA_FLAGS[:view_admin_timeline])
-    viewer = Fabricate(:user, role: role)
-    sign_in viewer
+    sign_in Fabricate(:user, role: role)
 
     ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
       get admin_chat_conversation_path(conversation)
-    end
+      expect(response).to have_http_status(200)
 
-    expect(response).to have_http_status(200)
-  end
-
-  it 'does not let the management timeline permission destroy chat conversations' do
-    role = Fabricate(:user_role, extra_permissions: UserRole::EXTRA_FLAGS[:view_admin_timeline])
-    viewer = Fabricate(:user, role: role)
-    sign_in viewer
-
-    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
       delete admin_chat_conversation_path(conversation)
     end
 
@@ -79,12 +47,16 @@ RSpec.describe 'Admin Chat conversations' do
     expect(ChatConversation).to exist(conversation.id)
   end
 
-  it 'records the deletion in the audit log' do
+  it 'deletes a conversation and all messages, and records the deletion in the audit log' do
     admin = Fabricate(:admin_user)
     sign_in admin
+    message = Sharlayan::ChatService.new.create_message(first.account, conversation, text: 'delete-me')
 
     delete admin_chat_conversation_path(conversation)
 
+    expect(response).to redirect_to(admin_chat_conversations_path)
+    expect(ChatConversation).to_not exist(conversation.id)
+    expect(ChatMessage).to_not exist(message.id)
     log = Admin::ActionLog.last
     expect(log).to have_attributes(account_id: admin.account_id, action: :destroy, target_type: 'ChatConversation', target_id: conversation.id)
 
@@ -122,16 +94,14 @@ RSpec.describe 'Admin Chat conversations' do
 
     after { Setting.chat_federation_enabled = false }
 
-    it 'is listed and can be inspected' do
+    it 'is listed and can be inspected, and is closed on this server with its owner told' do
       get admin_chat_conversations_path
       expect(response.body).to include(admin_chat_conversation_path(copy))
 
       get admin_chat_conversation_path(copy)
       expect(response).to have_http_status(200)
       expect(response.body).to include('remote.test')
-    end
 
-    it 'is closed on this server and its owner told' do
       expect { delete admin_chat_conversation_path(copy) }.to change(ActivityPub::DeliveryWorker.jobs, :size).by(1)
 
       expect(ChatConversation).to_not exist(copy.id)
@@ -152,19 +122,17 @@ RSpec.describe 'Admin Chat conversations' do
       sign_in Fabricate(:user, role: role)
     end
 
-    it 'does not reach a direct conversation with a remote account' do
-      get admin_chat_conversation_path(with_remote)
-
-      expect(response).to have_http_status(403)
-    end
-
-    it 'lists only conversations between local accounts' do
+    it 'lists only conversations between local accounts and does not reach a direct conversation with a remote account' do
       with_remote
 
       get admin_chat_conversations_path
 
       expect(response.body).to include(admin_chat_conversation_path(conversation))
       expect(response.body).to_not include(admin_chat_conversation_path(with_remote))
+
+      get admin_chat_conversation_path(with_remote)
+
+      expect(response).to have_http_status(403)
     end
   end
 end

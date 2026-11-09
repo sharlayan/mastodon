@@ -46,19 +46,14 @@ RSpec.describe Sharlayan::ChatService do
       SuspendAccountService.new.call(remote)
     end
 
-    it 'takes them out of the room' do
-      expect(room.memberships.exists?(account: remote)).to be(false)
-    end
-
-    it 'tells them and the other servers' do
+    it 'takes them out of the room, tells them and the other servers, and does not bring them back when the suspension ends' do
       removes = delivered('Remove')
 
+      expect(room.memberships.exists?(account: remote)).to be(false)
       expect(removes.map(&:first)).to contain_exactly(remote.inbox_url, bystander.inbox_url)
       expect(removes.map { |_, payload| payload['object'] }.uniq).to eq([remote.uri])
       expect(removes.map { |_, payload| payload['actor'] }.uniq).to eq([ActivityPub::TagManager.instance.uri_for(owner)])
-    end
 
-    it 'does not bring them back when the suspension ends' do
       stub_request(:get, /remote\.test/).to_return(status: 404)
       remote.unsuspend!
       UnsuspendAccountService.new.call(remote)
@@ -168,21 +163,16 @@ RSpec.describe Sharlayan::ChatService do
       remote.suspend!
     end
 
-    it 'refuses a direct message and stores nothing' do
+    it 'refuses a direct message and stores nothing, refuses to edit an earlier message, and refuses an invitation' do
       expect { service.create_message(member, direct, text: 'hello') }.to raise_error(described_class::Forbidden)
 
       expect(direct.messages).to be_empty
       expect(delivered('Create')).to be_empty
-    end
 
-    it 'refuses to edit an earlier message' do
       message = direct.messages.create!(account: member, text: 'before')
 
       expect { service.update_message(member, message, text: 'after') }.to raise_error(described_class::Forbidden)
       expect(message.reload.text).to eq('before')
-    end
-
-    it 'refuses an invitation' do
       expect { service.invite(owner, room, Fabricate(:account, domain: 'gone.test', suspended_at: Time.current)) }
         .to raise_error(described_class::Forbidden)
     end
@@ -221,27 +211,16 @@ RSpec.describe Sharlayan::ChatService do
       expect(conversation_json[:last_message][:id]).to eq(own.id.to_s)
     end
 
-    it 'does not leave a conversation unread' do
-      remote.suspend!
-
-      expect(conversation_json[:last_message]).to be_nil
-      expect(conversation_json[:unread]).to be(false)
-    end
-
-    it 'has their attachments closed to members' do
+    it 'does not leave a conversation unread, has their attachments closed to members, and keeps their messages out of an export' do
       media = Fabricate(:media_attachment, account: remote, status: nil, remote_url: 'https://remote.test/file.png')
       message.chat_message_media_attachments.create!(media_attachment: media)
       remote.suspend!
-
-      expect(MediaAttachmentPolicy.new(member, media).download?).to be(false)
-    end
-
-    it 'keeps their messages out of an export' do
-      remote.suspend!
-
       io = StringIO.new
       Export.new(member).write_chat_json(io)
 
+      expect(conversation_json[:last_message]).to be_nil
+      expect(conversation_json[:unread]).to be(false)
+      expect(MediaAttachmentPolicy.new(member, media).download?).to be(false)
       expect(JSON.parse(io.string).dig('chat_conversations', 0, 'messages')).to be_empty
     end
   end
@@ -259,15 +238,13 @@ RSpec.describe Sharlayan::ChatService do
       ActivityPub::DeliveryWorker.jobs.clear
     end
 
-    it 'cannot be accepted' do
+    it 'cannot be accepted, and sends nothing to them when rejected' do
       expect { service.accept_invitation(member, invitation) }.to raise_error(described_class::Forbidden)
 
       expect(invitation.reload).to be_pending
       expect(remote_room.memberships.exists?(account: member)).to be(false)
       expect(delivered('Accept')).to be_empty
-    end
 
-    it 'sends nothing to them when rejected' do
       service.reject_invitation(member, invitation)
 
       expect(ChatInvitation.where(id: invitation.id, state: :pending)).to be_empty
@@ -309,26 +286,18 @@ RSpec.describe Sharlayan::ChatService do
 
     before { room }
 
-    it 'does not stop them sending to the group' do
+    it 'does not stop them sending to the group or still seeing their messages, nor reacting when both block each other' do
       owner.block!(remote)
 
       expect { service.create_message(owner, room, text: 'hello') }.to change(ChatMessage, :count).by(1)
       expect(service.receive_group_message(remote, room_uri: room.uri, uri: 'https://remote.test/chat/messages/6', text: 'hi')).to be_present
-    end
+      expect(room.messages.visible_to(owner)).to include(message)
 
-    it 'does not stop them reacting in the group' do
-      owner.block!(remote)
       remote.block!(owner)
       mine = room.messages.create!(account: owner, text: 'mine')
 
       expect(service.react(owner, message, '👍')).to be_present
       expect { service.react_remote(remote, mine, '👍', activity_id: 'https://remote.test/reactions/1') }.to change { mine.reactions.count }.by(1)
-    end
-
-    it 'still shows them their messages' do
-      owner.block!(remote)
-
-      expect(room.messages.visible_to(owner)).to include(message)
     end
   end
 

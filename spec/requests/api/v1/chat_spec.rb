@@ -33,18 +33,14 @@ RSpec.describe 'API V1 Chat' do
     expect(response).to have_http_status(404)
   end
 
-  it 'does not allow a read-only token to mutate chat data' do
+  it 'does not allow a read-only token to mutate chat data or a write-only token to read it' do
     token.update!(scopes: 'read')
-
     post '/api/v1/chat/conversations', params: { type: 'direct', account_ids: [other.account.id] }, headers: headers
 
     expect(response).to have_http_status(403)
     expect(ChatConversation.count).to be_zero
-  end
 
-  it 'does not allow a write-only token to read chat data' do
     token.update!(scopes: 'write')
-
     get '/api/v1/chat/conversations', headers: headers
 
     expect(response).to have_http_status(403)
@@ -95,21 +91,15 @@ RSpec.describe 'API V1 Chat' do
   end
 
   describe 'direct chat' do
-    it 'creates one conversation per local account pair' do
-      post '/api/v1/chat/conversations', params: { type: 'direct', account_ids: [other.account.id] }, headers: headers
+    it 'creates one conversation per local account pair, also when the current account is in the participant array' do
+      post '/api/v1/chat/conversations', params: { type: 'direct', account_ids: [user.account.id, other.account.id] }, headers: headers
+      expect(response).to have_http_status(200)
       first_id = response.parsed_body[:id]
 
       post '/api/v1/chat/conversations', params: { type: 'direct', account_ids: [other.account.id] }, headers: headers
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body[:id]).to eq(first_id)
-      expect(ChatConversation.chat_direct.count).to eq(1)
-    end
-
-    it 'continues to accept the current account in the participant array' do
-      post '/api/v1/chat/conversations', params: { type: 'direct', account_ids: [user.account.id, other.account.id] }, headers: headers
-
-      expect(response).to have_http_status(200)
       expect(ChatConversation.chat_direct.count).to eq(1)
     end
 
@@ -178,28 +168,22 @@ RSpec.describe 'API V1 Chat' do
       expect(response).to have_http_status(404)
     end
 
-    it 'attaches owned unattached media to a message' do
+    it 'rejects media owned by another account and attaches owned unattached media to a message' do
       conversation = Sharlayan::ChatService.new.create_conversation(user.account, type: :direct, account_ids: [other.account.id])
+      foreign = Fabricate(:media_attachment, account: other.account, status: nil)
       media = Fabricate(:media_attachment, account: user.account, status: nil)
 
-      post "/api/v1/chat/conversations/#{conversation.id}/messages", params: { media_ids: [media.id] }, headers: headers
+      post "/api/v1/chat/conversations/#{conversation.id}/messages", params: { media_ids: [foreign.id] }, headers: headers
+      expect(response).to have_http_status(422)
+      expect(conversation.messages).to be_empty
 
+      post "/api/v1/chat/conversations/#{conversation.id}/messages", params: { media_ids: [media.id] }, headers: headers
       expect(response).to have_http_status(200)
       expect(response.parsed_body[:media_attachments].pluck(:id)).to contain_exactly(media.id.to_s)
       expect(conversation.messages.last.media_attachments).to contain_exactly(media)
     end
 
-    it 'rejects media owned by another account' do
-      conversation = Sharlayan::ChatService.new.create_conversation(user.account, type: :direct, account_ids: [other.account.id])
-      media = Fabricate(:media_attachment, account: other.account, status: nil)
-
-      post "/api/v1/chat/conversations/#{conversation.id}/messages", params: { media_ids: [media.id] }, headers: headers
-
-      expect(response).to have_http_status(422)
-      expect(conversation.messages).to be_empty
-    end
-
-    it 'issues an expiring attachment URL that remains bound to the chat member' do
+    it 'issues an expiring attachment URL that rejects tampering and remains bound to the chat member' do
       conversation = Sharlayan::ChatService.new.create_conversation(user.account, type: :group, title: 'Group')
       conversation.memberships.create!(account: other.account)
       media = Fabricate(:media_attachment, account: user.account, status: nil)
@@ -211,30 +195,16 @@ RSpec.describe 'API V1 Chat' do
       attachment_path = URI.parse(attachment_url).request_uri
 
       expect(attachment_url).to include('chat_token=')
+      get attachment_path.sub(/chat_token=[^&]+/, 'chat_token=invalid')
+      expect(response).to have_http_status(404)
       get attachment_path
       expect(response).to have_http_status(:redirect)
+      travel(11.minutes) { get attachment_path }
+      expect(response).to have_http_status(404)
 
       conversation.memberships.find_by!(account: other.account).destroy!
       get attachment_path
       expect(response).to have_http_status(404)
-    end
-
-    it 'rejects tampered and expired chat attachment capabilities' do
-      conversation = Sharlayan::ChatService.new.create_conversation(user.account, type: :direct, account_ids: [other.account.id])
-      media = Fabricate(:media_attachment, account: user.account, status: nil)
-      message = Sharlayan::ChatService.new.create_message(user.account, conversation, text: nil, media_ids: [media.id])
-      token.update!(resource_owner_id: other.id)
-
-      get "/api/v1/chat/messages/#{message.id}", headers: headers
-      attachment_path = URI.parse(response.parsed_body.fetch(:media_attachments).first.fetch(:url)).request_uri
-
-      get attachment_path.sub(/chat_token=[^&]+/, 'chat_token=invalid')
-      expect(response).to have_http_status(404)
-
-      travel 11.minutes do
-        get attachment_path
-        expect(response).to have_http_status(404)
-      end
     end
 
     it 'prevents a non-member from reacting to a message' do
@@ -326,25 +296,19 @@ RSpec.describe 'API V1 Chat' do
       expect(conversation.memberships.exists?(account: other.account)).to be false
     end
 
-    it 'allows only the inviter to cancel a pending invitation' do
+    it 'allows only the inviter, not the invitee, to cancel a pending invitation' do
       conversation = Sharlayan::ChatService.new.create_conversation(user.account, type: :group, account_ids: [other.account.id], title: 'Group')
       invitation = conversation.invitations.find_by!(invitee_account: other.account)
 
-      delete "/api/v1/chat/invitations/#{invitation.id}", headers: headers
-
-      expect(response).to have_http_status(200)
-      expect(invitation.reload).to be_cancelled
-    end
-
-    it 'does not let the invitee cancel a pending invitation' do
-      conversation = Sharlayan::ChatService.new.create_conversation(user.account, type: :group, account_ids: [other.account.id], title: 'Group')
-      invitation = conversation.invitations.find_by!(invitee_account: other.account)
       token.update!(resource_owner_id: other.id)
-
       delete "/api/v1/chat/invitations/#{invitation.id}", headers: headers
-
       expect(response).to have_http_status(403)
       expect(invitation.reload).to be_pending
+
+      token.update!(resource_owner_id: user.id)
+      delete "/api/v1/chat/invitations/#{invitation.id}", headers: headers
+      expect(response).to have_http_status(200)
+      expect(invitation.reload).to be_cancelled
     end
 
     it 'removes attachments and reactions when a message is soft-deleted' do
@@ -425,8 +389,12 @@ RSpec.describe 'API V1 Chat' do
       expect(media.reload).to have_attributes(status_id: nil, status_draft_id: nil)
     end
 
-    it 'makes archived groups read-only until the owner unarchives them' do
+    it 'allows the owner to update active group details and makes archived groups read-only' do
       conversation = Sharlayan::ChatService.new.create_conversation(user.account, type: :group, account_ids: [], title: 'Group')
+
+      patch "/api/v1/chat/conversations/#{conversation.id}", params: { title: 'Renamed', description: 'Updated description' }, headers: headers
+      expect(response).to have_http_status(200)
+      expect(conversation.reload).to have_attributes(title: 'Renamed', description: 'Updated description')
 
       post "/api/v1/chat/conversations/#{conversation.id}/archive", headers: headers
       post "/api/v1/chat/conversations/#{conversation.id}/messages", params: { text: 'archived' }, headers: headers
@@ -435,17 +403,8 @@ RSpec.describe 'API V1 Chat' do
 
       expect(message_status).to eq(422)
       expect(response).to have_http_status(422)
-      expect(conversation.reload.title).to eq('Group')
+      expect(conversation.reload.title).to eq('Renamed')
       expect(conversation.messages).to be_empty
-    end
-
-    it 'allows the owner to update active group details' do
-      conversation = Sharlayan::ChatService.new.create_conversation(user.account, type: :group, account_ids: [], title: 'Group')
-
-      patch "/api/v1/chat/conversations/#{conversation.id}", params: { title: 'Renamed', description: 'Updated description' }, headers: headers
-
-      expect(response).to have_http_status(200)
-      expect(conversation.reload).to have_attributes(title: 'Renamed', description: 'Updated description')
     end
 
     it 'enforces the group member limit for later invitations' do
@@ -529,24 +488,15 @@ RSpec.describe 'API V1 Chat' do
       expect(response.parsed_body[:remote]).to be(true)
     end
 
-    it 'accepts mutual and none policy values and normalizes legacy values' do
-      patch '/api/v1/chat/settings', params: { policy: 'mutual' }, headers: headers
+    it 'accepts mutual and none policy values, normalizes legacy values, and redistributes the actor only when the policy changes' do
+      expect { patch '/api/v1/chat/settings', params: { policy: 'mutual' }, headers: headers }
+        .to change(ActivityPub::UpdateDistributionWorker.jobs, :size).by(1)
       expect(response).to have_http_status(200)
       expect(user.reload.settings[:chat_policy]).to eq('mutual')
 
       patch '/api/v1/chat/settings', params: { policy: 'nobody' }, headers: headers
       expect(response).to have_http_status(200)
       expect(user.reload.settings[:chat_policy]).to eq('none')
-    end
-
-    it 'redistributes the actor when the chat policy changes' do
-      expect { patch '/api/v1/chat/settings', params: { policy: 'none' }, headers: headers }
-        .to change(ActivityPub::UpdateDistributionWorker.jobs, :size).by(1)
-    end
-
-    it 'does not redistribute the actor when the chat policy stays the same' do
-      user.settings[:chat_policy] = 'none'
-      user.save!
 
       expect { patch '/api/v1/chat/settings', params: { policy: 'none', notifications: false }, headers: headers }
         .to_not change(ActivityPub::UpdateDistributionWorker.jobs, :size)

@@ -24,22 +24,19 @@ RSpec.describe 'Chat federation in roleplay mode' do
     Setting.chat_federation_enabled = true
   end
 
-  it 'does not take chat activities from other servers even when the stored setting is on' do
+  it 'does not take chat activities from other servers even when the stored setting is on, and tells servers and clients that chat federation is off' do
     expect(Sharlayan::ChatFederation::Incoming.enabled?).to be(false)
+    expect(serialized_record_json(user.account, ActivityPub::ActorSerializer, adapter: ActivityPub::Adapter)['_misskey_canChat']).to be(false)
+    expect(MisskeyCompat::UserSerializer.serialize(remote, detailed: true)).to include(canChat: false)
+
+    get '/api/v1/chat/settings', headers: headers
+
+    expect(response.parsed_body[:federation_enabled]).to be(false)
   end
 
-  it 'does not advertise chat to other servers' do
-    json = serialized_record_json(user.account, ActivityPub::ActorSerializer, adapter: ActivityPub::Adapter)
-
-    expect(json['_misskey_canChat']).to be(false)
-  end
-
-  it 'does not open a direct conversation with a remote account' do
+  it 'does not open a direct conversation with or invite a remote account' do
     expect { service.create_conversation(user.account, type: :direct, account_ids: [remote.id]) }
       .to raise_error(Sharlayan::ChatService::Error, 'Chat federation is disabled')
-  end
-
-  it 'does not invite a remote account' do
     expect { service.invite(user.account, room, remote) }.to raise_error(Sharlayan::ChatService::Error, 'Chat federation is disabled')
   end
 
@@ -52,38 +49,17 @@ RSpec.describe 'Chat federation in roleplay mode' do
     expect(ActivityPub::DeliveryWorker.jobs).to be_empty
   end
 
-  it 'does not fetch attachments of remote chat messages' do
+  it 'does not fetch attachments of remote chat messages, neither in the worker nor through the media proxy' do
     room.memberships.create!(account: remote)
     message = room.messages.create!(account: remote, text: 'remote', uri: 'https://remote.test/notes/1')
-    media = Fabricate(:media_attachment, account: remote, remote_url: 'https://remote.test/files/1.png', file: nil)
-    message.chat_message_media_attachments.create!(media_attachment: media)
-    request = stub_request(:get, 'https://remote.test/files/1.png')
-
-    ChatMediaDownloadWorker.new.perform(message.id)
-
-    expect(request).to_not have_been_requested
-  end
-
-  it 'does not fetch a remote chat attachment through the media proxy' do
-    room.memberships.create!(account: remote)
-    message = room.messages.create!(account: remote, text: 'remote', uri: 'https://remote.test/notes/1')
-    media = Fabricate(:media_attachment, account: remote, remote_url: 'https://remote.test/files/2.png', file: nil)
-    message.chat_message_media_attachments.create!(media_attachment: media)
-    request = stub_request(:get, 'https://remote.test/files/2.png')
+    media = %w(1 2).map { |name| Fabricate(:media_attachment, account: remote, remote_url: "https://remote.test/files/#{name}.png", file: nil) }
+    media.each { |attachment| message.chat_message_media_attachments.create!(media_attachment: attachment) }
+    requests = %w(1 2).map { |name| stub_request(:get, "https://remote.test/files/#{name}.png") }
     sign_in user
 
-    get "/media_proxy/#{media.id}/original"
+    ChatMediaDownloadWorker.new.perform(message.id)
+    get "/media_proxy/#{media.last.id}/original"
 
-    expect(request).to_not have_been_requested
-  end
-
-  it 'tells clients that chat federation is off' do
-    get '/api/v1/chat/settings', headers: headers
-
-    expect(response.parsed_body[:federation_enabled]).to be(false)
-  end
-
-  it 'reports remote accounts as unable to chat through the Misskey-compatible API' do
-    expect(MisskeyCompat::UserSerializer.serialize(remote, detailed: true)).to include(canChat: false)
+    requests.each { |request| expect(request).to_not have_been_requested }
   end
 end

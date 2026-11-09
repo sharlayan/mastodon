@@ -38,22 +38,18 @@ RSpec.describe 'Chat streaming lifecycle', type: :model do
     expect(native_events('chat.reaction').size).to eq(2)
   end
 
-  it 'announces the actual account after accepting a local invitation' do
+  it 'announces the actual account after accepting a local invitation, and a remote acceptance, to local room members' do
     room = service.create_conversation(owner, type: :group, title: 'Room')
     invitation = service.invite(owner, room, member)
-
-    service.accept_invitation(member, invitation)
-
-    expect(native_events('chat.member_join')).to contain_exactly('conversation_id' => room.id.to_s, 'account_id' => member.id.to_s)
-  end
-
-  it 'announces a remote acceptance to local room members' do
-    room = service.create_conversation(owner, type: :group, title: 'Room')
     service.invite(owner, room, remote)
 
+    service.accept_invitation(member, invitation)
     service.receive_accept(remote, room_uri: room.uri)
 
-    expect(native_events('chat.member_join')).to contain_exactly('conversation_id' => room.id.to_s, 'account_id' => remote.id.to_s)
+    expect(native_events('chat.member_join')).to contain_exactly(
+      { 'conversation_id' => room.id.to_s, 'account_id' => member.id.to_s },
+      { 'conversation_id' => room.id.to_s, 'account_id' => remote.id.to_s }
+    )
   end
 
   it 'announces a remote roster addition only once across retries' do

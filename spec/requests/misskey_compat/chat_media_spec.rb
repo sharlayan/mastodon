@@ -30,13 +30,7 @@ RSpec.describe 'Misskey chat media downloads' do
     URI.parse(MisskeyCompat::ChatSerializer.message(message, viewer: viewer).dig(:file, :url)).request_uri
   end
 
-  it 'allows the authorized client to load its attachment without a Rails session' do
-    get download_path
-
-    expect(response).to have_http_status(:redirect)
-  end
-
-  it 'stops an issued attachment URL as soon as compatibility is turned off, and not one from the chat API' do
+  it 'stops an issued attachment URL as soon as compatibility is turned off, and not one from the chat API, but takes it again if compatibility comes back before it expires' do
     misskey_path = download_path
     rest_path = URI.parse(REST::MediaAttachmentSerializer.new(media, current_account: viewer).as_json[:url]).request_uri
 
@@ -47,24 +41,20 @@ RSpec.describe 'Misskey chat media downloads' do
 
     get rest_path
     expect(response).to have_http_status(:redirect)
-  end
 
-  it 'takes an issued attachment URL again if compatibility comes back before it expires' do
-    path = download_path
-    Setting.misskey_compat_enabled = false
     Setting.misskey_compat_enabled = true
-
-    get path
-
+    get misskey_path
     expect(response).to have_http_status(:redirect)
   end
 
-  it 'revokes an issued attachment URL when its viewer leaves the room' do
+  it 'allows the authorized client to load its attachment without a Rails session, and revokes the URL when its viewer leaves the room' do
     path = download_path
-    conversation.memberships.find_by!(account: viewer).destroy!
 
     get path
+    expect(response).to have_http_status(:redirect)
 
+    conversation.memberships.find_by!(account: viewer).destroy!
+    get path
     expect(response).to have_http_status(404)
   end
 
@@ -103,7 +93,7 @@ RSpec.describe 'Misskey chat media downloads' do
       expect(response).to have_http_status(404)
     end
 
-    it 'lets a signed-in member keep opening the attachment' do
+    it 'lets a signed-in member keep opening the attachment, also with a token given as a list, until they have left the room' do
       sign_in viewer.user
       path = download_path
 
@@ -114,6 +104,15 @@ RSpec.describe 'Misskey chat media downloads' do
 
       get "/media_proxy/#{media.id}/original", params: { chat_token: 'invalid' }
       expect(response).to redirect_to(%r{system/media_attachments})
+
+      get "/media_proxy/#{media.id}/original", params: { chat_token: ['forged'], token: ['forged'] }
+      expect(response).to redirect_to(%r{system/media_attachments})
+
+      conversation.memberships.find_by!(account: viewer).destroy!
+      travel 11.minutes do
+        get path
+        expect(response).to have_http_status(404)
+      end
     end
 
     it 'refuses a signed-in account that is not a member' do
@@ -122,17 +121,6 @@ RSpec.describe 'Misskey chat media downloads' do
       get "/media_proxy/#{media.id}/original", params: { chat_token: 'invalid' }
 
       expect(response).to have_http_status(404)
-    end
-
-    it 'refuses a signed-in member once they have left the room' do
-      sign_in viewer.user
-      path = download_path
-      conversation.memberships.find_by!(account: viewer).destroy!
-
-      travel 11.minutes do
-        get path
-        expect(response).to have_http_status(404)
-      end
     end
 
     it 'does not open public media to a signed-out visitor in limited federation mode' do
@@ -151,14 +139,6 @@ RSpec.describe 'Misskey chat media downloads' do
 
       expect(response).to have_http_status(404), params.inspect
     end
-  end
-
-  it 'still lets a signed-in member open the attachment when the token is a list' do
-    sign_in viewer.user
-
-    get "/media_proxy/#{media.id}/original", params: { chat_token: ['forged'], token: ['forged'] }
-
-    expect(response).to redirect_to(%r{system/media_attachments})
   end
 
   it 'does not allow a previously issued URL to reveal a deleted message attachment' do

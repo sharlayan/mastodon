@@ -21,19 +21,13 @@ RSpec.describe 'ActivityPub chat messages' do
     Setting.chat_federation_enabled = false
   end
 
-  it 'returns 401 without a signature header' do
+  it 'returns 401 without a signature header, 404 to an unrelated signed actor, and the Note to a conversation member' do
     get "/chat/messages/#{message.id}"
-
     expect(response).to have_http_status(401)
-  end
 
-  it 'returns 404 to an unrelated signed actor' do
     get "/chat/messages/#{message.id}", headers: { 'Accept' => 'application/activity+json' }, sign_with: stranger
-
     expect(response).to have_http_status(404)
-  end
 
-  it 'returns the Note to a conversation member' do
     get "/chat/messages/#{message.id}", headers: { 'Accept' => 'application/activity+json' }, sign_with: member
 
     expect(response).to have_http_status(200)

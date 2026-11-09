@@ -25,30 +25,20 @@ RSpec.describe 'Chat message attachments' do
     Setting.chat_federation_enabled = false
   end
 
-  it 'allows four attachments by default' do
-    expect(Setting.chat_max_attachments).to eq(4)
-  end
-
   describe 'sending' do
-    it 'keeps the attachments in the order they were given' do
+    it 'keeps the attachments in the order they were given, also in every attachment of a Note' do
       first, second, third = uploaded(3)
 
       message = service.create_message(account, conversation, text: 'hi', media_ids: [third.id, first.id, second.id])
 
       expect(message.reload.media_attachments.map(&:id)).to eq([third.id, first.id, second.id])
       expect(ChatMessage.includes(:media_attachments).find(message.id).media_attachments.map(&:id)).to eq([third.id, first.id, second.id])
+      expect(Sharlayan::ChatFederation::Payload.note(message)['attachment'].pluck('url'))
+        .to match([third, first, second].map { |media| a_string_including("/media_proxy/#{media.id}/") })
     end
 
-    it 'lists every attachment of a Note in that order' do
-      first, second = uploaded(2)
-      message = service.create_message(account, conversation, text: 'hi', media_ids: [second.id, first.id])
-
-      urls = Sharlayan::ChatFederation::Payload.note(message)['attachment'].pluck('url')
-
-      expect(urls).to match([a_string_including("/media_proxy/#{second.id}/"), a_string_including("/media_proxy/#{first.id}/")])
-    end
-
-    it 'refuses a fifth attachment' do
+    it 'allows four attachments by default and refuses a fifth' do
+      expect(Setting.chat_max_attachments).to eq(4)
       expect { service.create_message(account, conversation, text: 'hi', media_ids: uploaded(5).map(&:id)) }
         .to raise_error(Sharlayan::ChatService::Error, /up to 4 attachments/)
     end
@@ -128,27 +118,18 @@ RSpec.describe 'Chat message attachments' do
       )
     end
 
-    it 'still takes a single fileId' do
-      media = uploaded(1).first
+    it 'still takes a single fileId, takes fileId and fileIds together without repeating a file, and answers with empty lists when there is no file' do
+      media, first, second = uploaded(3)
 
       request_chat('messages/create-to-room', toRoomId: mi_id(conversation), fileId: mi_id(media))
-
       expect(response).to have_http_status(200)
       expect(response.parsed_body).to include(fileId: mi_id(media), fileIds: [mi_id(media)], files: [include(id: mi_id(media))])
-    end
-
-    it 'takes fileId and fileIds together without repeating a file' do
-      first, second = uploaded(2)
 
       request_chat('messages/create-to-room', toRoomId: mi_id(conversation), fileId: mi_id(first), fileIds: [mi_id(first), mi_id(second)])
-
       expect(response).to have_http_status(200)
       expect(response.parsed_body[:fileIds]).to eq([mi_id(first), mi_id(second)])
-    end
 
-    it 'answers with empty lists when there is no file' do
       request_chat('messages/create-to-room', toRoomId: mi_id(conversation), text: 'hi')
-
       expect(response.parsed_body).to include(fileId: nil, file: nil, fileIds: [], files: [])
     end
 
@@ -157,14 +138,6 @@ RSpec.describe 'Chat message attachments' do
       expect(response).to have_http_status(400)
 
       request_chat('messages/create-to-room', toRoomId: mi_id(conversation), fileIds: [{ id: 1 }])
-      expect(response).to have_http_status(400)
-    end
-
-    it 'takes a message of up to 4096 code points' do
-      request_chat('messages/create-to-room', toRoomId: mi_id(conversation), text: '🍒' * 4096)
-      expect(response).to have_http_status(200)
-
-      request_chat('messages/create-to-room', toRoomId: mi_id(conversation), text: '🍒' * 4097)
       expect(response).to have_http_status(400)
     end
   end

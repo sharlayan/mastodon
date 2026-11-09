@@ -33,14 +33,16 @@ RSpec.describe Sharlayan::ChatService do
   describe 'invitation lifecycle' do
     let(:conversation) { service.create_conversation(local_account, type: :group, title: 'Room') }
 
-    %w(rejected cancelled accepted).each do |state|
-      it "allows a new invitation after a previous #{state} invitation" do
-        invitation = service.invite(local_account, conversation, remote_account)
+    it 'allows a new invitation after a previous rejected, cancelled or accepted invitation' do
+      invitation = service.invite(local_account, conversation, remote_account)
+
+      %w(rejected cancelled accepted).each do |state|
         invitation.update!(state: state)
         new_invitation = service.invite(local_account, conversation, remote_account)
 
-        expect(new_invitation).to be_pending
-        expect(new_invitation.id).to_not eq(invitation.id)
+        expect(new_invitation).to be_pending, state
+        expect(new_invitation.id).to_not eq(invitation.id), state
+        invitation = new_invitation
       end
     end
 
@@ -121,8 +123,8 @@ RSpec.describe Sharlayan::ChatService do
   describe 'media ownership' do
     let(:conversation) { service.create_conversation(local_account, type: :direct, account_ids: [remote_account.id]) }
 
-    %i(scheduled_status status_draft page).each do |usage|
-      it "rejects an attachment already referenced by a #{usage}" do
+    it 'rejects an attachment already referenced by a scheduled status, a status draft or a page' do
+      %i(scheduled_status status_draft page).each do |usage|
         media = Fabricate(:media_attachment, account: local_account)
         if usage == :page
           Fabricate(:page, account: local_account, eye_catching_media_attachment: media)
@@ -130,9 +132,9 @@ RSpec.describe Sharlayan::ChatService do
           media.update!(usage => Fabricate(usage, account: local_account))
         end
 
-        expect { service.create_message(local_account, conversation, text: 'private', media_ids: [media.id]) }.to raise_error(described_class::Error)
-        expect(conversation.messages).to be_empty
+        expect { service.create_message(local_account, conversation, text: 'private', media_ids: [media.id]) }.to raise_error(described_class::Error), usage.to_s
       end
+      expect(conversation.messages).to be_empty
     end
   end
 
@@ -162,16 +164,11 @@ RSpec.describe Sharlayan::ChatService do
   end
 
   describe 'remote conversations' do
-    it 'creates a direct conversation with a remote account' do
+    it 'creates a direct conversation with a remote account and delivers Create to the remote counterpart' do
       conversation = service.create_conversation(local_account, type: 'direct', account_ids: [remote_account.id])
 
       expect(conversation).to be_chat_direct
       expect(conversation.accounts).to contain_exactly(local_account, remote_account)
-    end
-
-    it 'delivers Create to the remote counterpart' do
-      conversation = service.create_conversation(local_account, type: 'direct', account_ids: [remote_account.id])
-
       expect { service.create_message(local_account, conversation, text: 'hi') }
         .to change(ActivityPub::DeliveryWorker.jobs, :size).by(1)
     end
@@ -201,15 +198,6 @@ RSpec.describe Sharlayan::ChatService do
       expect(conversation.memberships.exists?(account: local_account)).to be(true)
     end
 
-    it 'rejects a direct message when the local recipient policy denies it' do
-      local_account.user.settings[:chat_policy] = 'none'
-      local_account.user.save!
-
-      expect do
-        service.receive_direct_message(local_account, remote_account, uri: 'https://remote.test/chat/messages/1', text: 'hi')
-      end.to raise_error(Sharlayan::ChatService::Forbidden)
-    end
-
     it 'federates deletion of a local room that has remote members' do
       conversation = service.create_conversation(local_account, type: :group, account_ids: [remote_account.id], title: 'Local room')
       conversation.memberships.create!(account: remote_account)
@@ -219,9 +207,14 @@ RSpec.describe Sharlayan::ChatService do
       expect(ChatConversation.find_by(id: conversation.id)).to be_nil
     end
 
-    it 'delivers a reply to a chat the policy-restricted recipient started' do
+    it 'rejects a direct message the local recipient policy denies, but delivers a reply to a chat the recipient started' do
       local_account.user.settings[:chat_policy] = 'none'
       local_account.user.save!
+
+      expect do
+        service.receive_direct_message(local_account, remote_account, uri: 'https://remote.test/chat/messages/1', text: 'hi')
+      end.to raise_error(Sharlayan::ChatService::Forbidden)
+
       conversation = service.create_conversation(local_account, type: :direct, account_ids: [remote_account.id])
 
       message = service.receive_direct_message(local_account, remote_account, uri: 'https://remote.test/chat/messages/reply', text: 'hi')
@@ -329,12 +322,10 @@ RSpec.describe Sharlayan::ChatService do
       service.archive(local_account, room, archived: true)
     end
 
-    it 'rejects a remote reaction undo' do
+    it 'rejects a remote reaction undo but still lets a remote author delete a message' do
       expect { service.unreact_remote(remote_account, local_message, '👍') }.to raise_error(Sharlayan::ChatService::Error)
       expect(local_message.reactions.count).to eq(1)
-    end
 
-    it 'still lets a remote author delete a message' do
       service.delete_remote_message(remote_account, message.reload)
 
       expect(message.reload).to be_deleted
@@ -348,16 +339,14 @@ RSpec.describe Sharlayan::ChatService do
 
     before { membership.destroy! }
 
-    it 'lets the author delete them' do
+    it 'does not let the author edit them, but lets the author delete them' do
+      expect { service.update_remote_message(remote_account, message.reload, text: 'new', edited_at: nil) }.to raise_error(Sharlayan::ChatService::Forbidden)
+      expect(message.reload.text).to eq('old')
+
       service.delete_remote_message(remote_account, message.reload)
 
       expect(message.reload).to be_deleted
       expect(message.text).to be_nil
-    end
-
-    it 'does not let the author edit them' do
-      expect { service.update_remote_message(remote_account, message.reload, text: 'new', edited_at: nil) }.to raise_error(Sharlayan::ChatService::Forbidden)
-      expect(message.reload.text).to eq('old')
     end
   end
 
@@ -407,7 +396,7 @@ RSpec.describe Sharlayan::ChatService do
       ActivityPub::DeliveryWorker.clear
     end
 
-    it 'removes the membership, messages and reactions but keeps other content' do
+    it 'removes the membership, messages and reactions but keeps other content, and tells remote members about the deleted room and the departure' do
       service.purge_account(local_account)
 
       expect(ChatConversation.where(id: [direct.id, owned_room.id])).to be_empty
@@ -415,13 +404,7 @@ RSpec.describe Sharlayan::ChatService do
       expect(ChatMessage.where(id: own_message.id)).to be_empty
       expect(kept_message.reload.reactions).to be_empty
       expect(joined_room.last_message).to eq(kept_message)
-    end
-
-    it 'tells remote members about the deleted room and the departure' do
-      service.purge_account(local_account)
-
-      types = ActivityPub::DeliveryWorker.jobs.map { |job| JSON.parse(job['args'][0])['type'] }
-      expect(types).to contain_exactly('Delete', 'Remove')
+      expect(ActivityPub::DeliveryWorker.jobs.map { |job| JSON.parse(job['args'][0])['type'] }).to contain_exactly('Delete', 'Remove')
     end
 
     it 'does not federate when asked not to' do

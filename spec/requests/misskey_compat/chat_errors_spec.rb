@@ -97,21 +97,14 @@ RSpec.describe 'Misskey-compat chat errors' do
       expect(message.reactions.reload).to be_empty
     end
 
-    it 'refuses the caller own message' do
+    it 'refuses the caller own message, a message that does not exist, and one outside the conversations of the caller' do
       request_chat('messages/react', messageId: mi_id(message_from_me), reaction: '👍')
-
       expect_refusal(*no_such_message)
-    end
 
-    it 'refuses a message that does not exist' do
       request_chat('messages/react', messageId: missing_id, reaction: '👍')
-
       expect_refusal(*no_such_message)
-    end
 
-    it 'refuses a message outside the conversations of the caller' do
       request_chat('messages/react', { messageId: mi_id(message_from_other), reaction: '👍' }, as_user: outsider)
-
       expect_refusal(*no_such_message)
     end
 
@@ -143,17 +136,13 @@ RSpec.describe 'Misskey-compat chat errors' do
       expect_refusal('This message cannot have any more reactions.', 'TOO_MANY_REACTIONS', '635702f5-0dfd-40c3-b669-1d6922055b20')
     end
 
-    it 'refuses an emoji that this server does not have' do
+    it 'refuses an emoji that this server does not have and text that is not an emoji' do
       message = message_from_other
 
       request_chat('messages/react', messageId: mi_id(message), reaction: ':no_such_emoji:')
-
       expect_refusal('That reaction is not an emoji available on this server.', 'INVALID_REACTION', '140ddc7a-276d-42b5-80ef-7aae6c0a8114')
-    end
 
-    it 'refuses text that is not an emoji' do
-      request_chat('messages/react', messageId: mi_id(message_from_other), reaction: 'not an emoji')
-
+      request_chat('messages/react', messageId: mi_id(message), reaction: 'not an emoji')
       expect_refusal('That reaction is not an emoji available on this server.', 'INVALID_REACTION', '140ddc7a-276d-42b5-80ef-7aae6c0a8114')
     end
 
@@ -171,15 +160,11 @@ RSpec.describe 'Misskey-compat chat errors' do
   describe 'messages/unreact' do
     let(:no_such_message) { ['No such message.', 'NO_SUCH_MESSAGE', 'c39ea42f-e3ca-428a-ad57-390e0a711595'] }
 
-    it 'refuses a message that does not exist' do
+    it 'refuses a message that does not exist and one outside the conversations of the caller' do
       request_chat('messages/unreact', messageId: missing_id, reaction: '👍')
-
       expect_refusal(*no_such_message)
-    end
 
-    it 'refuses a message outside the conversations of the caller' do
       request_chat('messages/unreact', { messageId: mi_id(message_from_other), reaction: '👍' }, as_user: outsider)
-
       expect_refusal(*no_such_message)
     end
 
@@ -198,27 +183,19 @@ RSpec.describe 'Misskey-compat chat errors' do
   describe 'messages/update' do
     let(:no_such_message) { ['No such message.', 'NO_SUCH_MESSAGE', '31846552-b85d-4908-808f-64bf91000151'] }
 
-    it 'refuses a deleted message' do
-      message = message_from_me
-      service.delete_message(account, message)
+    it 'refuses a deleted message, a message from someone else, and a message that does not exist' do
+      deleted = message_from_me
+      service.delete_message(account, deleted)
+      theirs = message_from_other
 
-      request_chat('messages/update', messageId: mi_id(message), text: 'after')
-
+      request_chat('messages/update', messageId: mi_id(deleted), text: 'after')
       expect_refusal(*no_such_message)
-    end
 
-    it 'refuses a message from someone else' do
-      message = message_from_other
-
-      request_chat('messages/update', messageId: mi_id(message), text: 'stolen')
-
+      request_chat('messages/update', messageId: mi_id(theirs), text: 'stolen')
       expect_refusal(*no_such_message)
-      expect(message.reload.text).to eq('theirs')
-    end
+      expect(theirs.reload.text).to eq('theirs')
 
-    it 'refuses a message that does not exist' do
       request_chat('messages/update', messageId: missing_id, text: 'after')
-
       expect_refusal(*no_such_message)
     end
 
@@ -269,18 +246,14 @@ RSpec.describe 'Misskey-compat chat errors' do
   describe 'messages/delete' do
     let(:no_such_message) { ['No such message.', 'NO_SUCH_MESSAGE', '36b67f0e-66a6-414b-83df-992a55294f17'] }
 
-    it 'refuses a message from someone else' do
+    it 'refuses a message from someone else and a message that does not exist' do
       message = message_from_other
 
       request_chat('messages/delete', messageId: mi_id(message))
-
       expect_refusal(*no_such_message)
       expect(message.reload).to_not be_deleted
-    end
 
-    it 'refuses a message that does not exist' do
       request_chat('messages/delete', messageId: missing_id)
-
       expect_refusal(*no_such_message)
     end
   end
@@ -288,15 +261,11 @@ RSpec.describe 'Misskey-compat chat errors' do
   describe 'messages/show' do
     let(:no_such_message) { ['No such message.', 'NO_SUCH_MESSAGE', '3710865b-1848-4da9-8d61-cfed15510b93'] }
 
-    it 'refuses a message that does not exist' do
+    it 'refuses a message that does not exist and one outside the conversations of the caller' do
       request_chat('messages/show', messageId: missing_id)
-
       expect_refusal(*no_such_message)
-    end
 
-    it 'refuses a message outside the conversations of the caller' do
       request_chat('messages/show', { messageId: mi_id(message_from_other) }, as_user: outsider)
-
       expect_refusal(*no_such_message)
     end
   end
@@ -305,15 +274,11 @@ RSpec.describe 'Misskey-compat chat errors' do
     let(:no_such_room) { ['No such room.', 'NO_SUCH_ROOM', '8098520d-2da5-4e8f-8ee1-df78b55a4ec6'] }
     let(:no_such_file) { ['No such file.', 'NO_SUCH_FILE', 'b6accbd3-1d7b-4d9f-bdb7-eb185bac06db'] }
 
-    it 'refuses a room that does not exist' do
+    it 'refuses a room that does not exist and a room the caller is not in' do
       request_chat('messages/create-to-room', toRoomId: missing_id, text: 'hello')
-
       expect_refusal(*no_such_room)
-    end
 
-    it 'refuses a room the caller is not in' do
       request_chat('messages/create-to-room', { toRoomId: mi_id(room), text: 'hello' }, as_user: outsider)
-
       expect_refusal(*no_such_room)
     end
 
@@ -331,18 +296,14 @@ RSpec.describe 'Misskey-compat chat errors' do
       expect_refusal('Content required. You need to set text or fileIds.', 'CONTENT_REQUIRED', '340517b7-6d04-42c0-bac1-37ee804e3594')
     end
 
-    it 'refuses a file that belongs to someone else', :attachment_processing do
-      request_chat('messages/create-to-room', toRoomId: mi_id(room), fileId: mi_id(media_file(other.account)))
-
-      expect_refusal(*no_such_file)
-    end
-
-    it 'refuses a file that is already attached to a message', :attachment_processing do
+    it 'refuses a file that belongs to someone else and a file that is already attached to a message', :attachment_processing do
       media = media_file
       service.create_message(account, room, text: 'first', media_ids: [media.id])
 
-      request_chat('messages/create-to-room', toRoomId: mi_id(room), fileId: mi_id(media))
+      request_chat('messages/create-to-room', toRoomId: mi_id(room), fileId: mi_id(media_file(other.account)))
+      expect_refusal(*no_such_file)
 
+      request_chat('messages/create-to-room', toRoomId: mi_id(room), fileId: mi_id(media))
       expect_refusal(*no_such_file)
     end
 
@@ -355,17 +316,12 @@ RSpec.describe 'Misskey-compat chat errors' do
       expect_refusal('One or more media attachments are still being processed', 'NO_SUCH_FILE', 'b6accbd3-1d7b-4d9f-bdb7-eb185bac06db')
     end
 
-    it 'refuses more files than a message can have when the two ways of naming them add up to that' do
+    it 'refuses more files than a message can have when the two ways of naming them add up to that, and more than this server allows' do
       request_chat('messages/create-to-room', toRoomId: mi_id(room), fileId: MisskeyCompat::MiId.encode(5), fileIds: (1..4).map { |id| MisskeyCompat::MiId.encode(id) })
-
       expect_refusal('A message can have up to 4 files.', 'TOO_MANY_FILES', 'c202ecbf-65fe-402a-8dd6-d257ea82cf70')
-    end
 
-    it 'refuses more files than this server allows' do
       Setting.chat_max_attachments = 2
-
       request_chat('messages/create-to-room', toRoomId: mi_id(room), fileIds: (1..3).map { |id| MisskeyCompat::MiId.encode(id) })
-
       expect_refusal('A message can have up to 2 files.', 'TOO_MANY_FILES', 'c202ecbf-65fe-402a-8dd6-d257ea82cf70')
     end
 
@@ -394,6 +350,7 @@ RSpec.describe 'Misskey-compat chat errors' do
       request_chat('messages/create-to-user', toUserId: mi_id(account), text: 'hello')
 
       expect_refusal('You can not send a message to yourself.', 'RECIPIENT_IS_YOURSELF', '17e2ba79-e22a-4cbc-bf91-d327643f4a7e')
+      expect(ChatConversation.count).to be_zero
     end
 
     it 'refuses a recipient that does not exist' do
@@ -464,21 +421,14 @@ RSpec.describe 'Misskey-compat chat errors' do
   end
 
   describe 'reading messages' do
-    it 'refuses the timeline with a user who does not exist' do
+    it 'refuses the timeline with a user who does not exist, and the timeline of and a search in a room the caller is not in' do
       request_chat('messages/user-timeline', userId: missing_id)
-
       expect_refusal('No such user.', 'NO_SUCH_USER', '11795c64-40ea-4198-b06e-3c873ed9039d')
-    end
 
-    it 'refuses the timeline of a room the caller is not in' do
       request_chat('messages/room-timeline', { roomId: mi_id(room) }, as_user: outsider)
-
       expect_refusal('No such room.', 'NO_SUCH_ROOM', 'c4d9f88c-9270-4632-b032-6ed8cee36f7f')
-    end
 
-    it 'refuses a search in a room the caller is not in' do
       request_chat('messages/search', { query: 'hello', roomId: mi_id(room) }, as_user: outsider)
-
       expect_refusal('No such room.', 'NO_SUCH_ROOM', '460b3669-81b0-4dc9-a997-44442141bf83')
     end
   end
@@ -486,33 +436,22 @@ RSpec.describe 'Misskey-compat chat errors' do
   describe 'rooms/show' do
     let(:no_such_room) { ['No such room.', 'NO_SUCH_ROOM', '857ae02f-8759-4d20-9adb-6e95fffe4fd7'] }
 
-    it 'refuses a room that does not exist' do
+    it 'refuses a room that does not exist and a room the caller is not in' do
       request_chat('rooms/show', roomId: missing_id)
-
       expect_refusal(*no_such_room)
-    end
 
-    it 'refuses a room the caller is not in' do
       request_chat('rooms/show', { roomId: mi_id(room) }, as_user: outsider)
-
       expect_refusal(*no_such_room)
     end
 
-    it 'tells someone who was in a deleted room that it was deleted' do
+    it 'tells someone who was in a deleted room that it was deleted, but not anyone else that it ever existed' do
       room_id = mi_id(room_with_other)
       service.destroy_conversation(account, room)
 
       request_chat('rooms/show', { roomId: room_id }, as_user: other)
-
       expect_refusal('This room was deleted.', 'ROOM_DELETED', '688e3c65-58d2-4a50-8098-eb9b5e48fdec')
-    end
-
-    it 'does not tell anyone else that a deleted room ever existed' do
-      room_id = mi_id(room_with_other)
-      service.destroy_conversation(account, room)
 
       request_chat('rooms/show', { roomId: room_id }, as_user: outsider)
-
       expect_refusal(*no_such_room)
     end
   end
@@ -528,17 +467,13 @@ RSpec.describe 'Misskey-compat chat errors' do
   describe 'rooms/update' do
     let(:no_such_room) { ['No such room.', 'NO_SUCH_ROOM', 'fcdb0f92-bda6-47f9-bd05-343e0e020932'] }
 
-    it 'refuses a member who does not own the room' do
+    it 'refuses a member who does not own the room and someone who is not in it' do
       request_chat('rooms/update', { roomId: mi_id(room_with_other), name: 'stolen' }, as_user: other)
+      expect_refusal(*no_such_room)
 
+      request_chat('rooms/update', { roomId: mi_id(room), name: 'stolen' }, as_user: outsider)
       expect_refusal(*no_such_room)
       expect(room.reload.title).to eq('Room')
-    end
-
-    it 'refuses a room the caller is not in' do
-      request_chat('rooms/update', { roomId: mi_id(room), name: 'stolen' }, as_user: outsider)
-
-      expect_refusal(*no_such_room)
     end
 
     it 'refuses to rename an archived room' do
@@ -553,16 +488,12 @@ RSpec.describe 'Misskey-compat chat errors' do
   describe 'rooms/delete' do
     let(:no_such_room) { ['No such room.', 'NO_SUCH_ROOM', 'd4e3753d-97bf-4a19-ab8e-21080fbc0f4b'] }
 
-    it 'refuses a member who does not own the room' do
+    it 'refuses a member who does not own the room and a room that does not exist' do
       request_chat('rooms/delete', { roomId: mi_id(room_with_other) }, as_user: other)
-
       expect_refusal(*no_such_room)
       expect(ChatConversation.exists?(room.id)).to be(true)
-    end
 
-    it 'refuses a room that does not exist' do
       request_chat('rooms/delete', roomId: missing_id)
-
       expect_refusal(*no_such_room)
     end
 
@@ -587,15 +518,11 @@ RSpec.describe 'Misskey-compat chat errors' do
   describe 'rooms/leave' do
     let(:no_such_room) { ['No such room.', 'NO_SUCH_ROOM', 'cb7f3179-50e8-4389-8c30-dbe2650a67c9'] }
 
-    it 'refuses a room the caller is not in' do
+    it 'refuses a room the caller is not in, and the owner, who is not a member in CherryPick' do
       request_chat('rooms/leave', { roomId: mi_id(room) }, as_user: outsider)
-
       expect_refusal(*no_such_room)
-    end
 
-    it 'refuses the owner, who is not a member in CherryPick' do
       request_chat('rooms/leave', roomId: mi_id(room))
-
       expect_refusal(*no_such_room)
       expect(room.memberships.exists?(account: account)).to be(true)
     end
@@ -676,15 +603,11 @@ RSpec.describe 'Misskey-compat chat errors' do
   describe 'rooms/invitations/create' do
     let(:no_such_room) { ['No such room.', 'NO_SUCH_ROOM', '916f9507-49ba-4e90-b57f-1fd4deaa47a5'] }
 
-    it 'refuses a room the caller is not in' do
+    it 'refuses a room the caller is not in and a member who does not own the room' do
       request_chat('rooms/invitations/create', { roomId: mi_id(room), userId: mi_id(other.account) }, as_user: outsider)
-
       expect_refusal(*no_such_room)
-    end
 
-    it 'refuses a member who does not own the room' do
       request_chat('rooms/invitations/create', { roomId: mi_id(room_with_other), userId: mi_id(outsider.account) }, as_user: other)
-
       expect_refusal(*no_such_room)
     end
 
@@ -705,15 +628,11 @@ RSpec.describe 'Misskey-compat chat errors' do
       expect_refusal('This room is full.', 'ROOM_IS_FULL', '579fc80c-985c-45d1-b7f2-8022083dfa40')
     end
 
-    it 'refuses the caller' do
+    it 'refuses the caller and someone who does not exist' do
       request_chat('rooms/invitations/create', roomId: mi_id(room), userId: mi_id(account))
-
       expect_refusal('You cannot invite yourself.', 'CANNOT_INVITE_YOURSELF', '88605621-e640-4d2d-a96d-168b598f0c67')
-    end
 
-    it 'refuses someone who does not exist' do
       request_chat('rooms/invitations/create', roomId: mi_id(room), userId: missing_id)
-
       expect_refusal('No such user.', 'NO_SUCH_USER', '167a1ccf-d9ab-415e-941d-d08f28b2ca07')
     end
 
@@ -766,30 +685,22 @@ RSpec.describe 'Misskey-compat chat errors' do
   end
 
   describe 'answering invitations' do
-    it 'refuses to cancel an invitation that does not exist' do
-      request_chat('rooms/invitations/cancel', invitationId: missing_id)
-
-      expect_refusal('No such invitation.', 'NO_SUCH_INVITATION', '8c8f38f0-3b7e-4f5e-9c6d-2e3f4a5b6c7d')
-    end
-
-    it 'refuses to cancel an invitation someone else sent' do
+    it 'refuses to cancel an invitation that does not exist or that someone else sent' do
       invitation = service.invite(account, room, other.account)
 
-      request_chat('rooms/invitations/cancel', { invitationId: mi_id(invitation) }, as_user: outsider)
+      request_chat('rooms/invitations/cancel', invitationId: missing_id)
+      expect_refusal('No such invitation.', 'NO_SUCH_INVITATION', '8c8f38f0-3b7e-4f5e-9c6d-2e3f4a5b6c7d')
 
+      request_chat('rooms/invitations/cancel', { invitationId: mi_id(invitation) }, as_user: outsider)
       expect_refusal('No such invitation.', 'NO_SUCH_INVITATION', '8c8f38f0-3b7e-4f5e-9c6d-2e3f4a5b6c7d')
       expect(invitation.reload).to be_pending
     end
 
-    it 'refuses to ignore without an invitation' do
+    it 'refuses to ignore or reject without an invitation' do
       request_chat('rooms/invitations/ignore', { roomId: mi_id(room) }, as_user: other)
-
       expect_refusal('No such room.', 'NO_SUCH_ROOM', '5130557e-5a11-4cfb-9cc5-fe60cda5de0d')
-    end
 
-    it 'refuses to reject without an invitation' do
       request_chat('rooms/invitations/reject', { roomId: mi_id(room) }, as_user: other)
-
       expect_refusal('No such room.', 'NO_SUCH_ROOM', '5130557e-5a11-4cfb-9cc5-fe60cda5de0d')
     end
 

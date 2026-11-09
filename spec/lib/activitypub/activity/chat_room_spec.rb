@@ -37,19 +37,20 @@ RSpec.describe 'ActivityPub chat rooms', type: :model do
       expect(conversation.accounts).to include(carol)
     end
 
-    it 'updates the mirror room from Update' do
+    it 'ignores a room update from a non-owner and updates the mirror room from an Update by its owner' do
+      hijack = {
+        'type' => 'Update',
+        'actor' => carol.uri,
+        'object' => { 'id' => room_uri, 'type' => 'Group', 'name' => 'Hijacked', 'attributedTo' => carol.uri },
+      }
+      ActivityPub::Activity.factory(hijack, carol).perform
+      expect(conversation.reload.title).to eq('Remote room')
+
       update = {
         'type' => 'Update',
         'actor' => bob.uri,
-        'object' => {
-          'id' => room_uri,
-          'type' => 'Group',
-          'name' => 'New name',
-          'summary' => 'New description',
-          'attributedTo' => bob.uri,
-        },
+        'object' => { 'id' => room_uri, 'type' => 'Group', 'name' => 'New name', 'summary' => 'New description', 'attributedTo' => bob.uri },
       }
-
       ActivityPub::Activity.factory(update, bob).perform
 
       expect(conversation.reload.title).to eq('New name')
@@ -86,23 +87,6 @@ RSpec.describe 'ActivityPub chat rooms', type: :model do
 
       expect(ChatConversation.find_by(id: conversation.id)).to be_nil
     end
-
-    it 'ignores a room update from a non-owner' do
-      update = {
-        'type' => 'Update',
-        'actor' => carol.uri,
-        'object' => {
-          'id' => room_uri,
-          'type' => 'Group',
-          'name' => 'Hijacked',
-          'attributedTo' => carol.uri,
-        },
-      }
-
-      ActivityPub::Activity.factory(update, carol).perform
-
-      expect(conversation.reload.title).to eq('Remote room')
-    end
   end
 
   context 'with a local invitation' do
@@ -130,12 +114,15 @@ RSpec.describe 'ActivityPub chat rooms', type: :model do
       Setting.chat_federation_enabled = false
     end
 
-    it 'adds the invitee on Accept' do
+    it 'adds the invitee on Accept and removes the member on Remove' do
       accept = { 'type' => 'Accept', 'actor' => bob.uri, 'object' => invite_object }
+      remove = { 'type' => 'Remove', 'actor' => bob.uri, 'target' => room_uri, 'object' => bob.uri }
 
       expect { ActivityPub::Activity.factory(accept, bob).perform }
         .to change { conversation.memberships.exists?(account: bob) }.from(false).to(true)
       expect(conversation.invitations.find_by(invitee_account: bob)).to be_accepted
+      expect { ActivityPub::Activity.factory(remove, bob).perform }
+        .to change { conversation.memberships.exists?(account: bob) }.from(true).to(false)
     end
 
     it 'marks the invitation rejected on Reject' do
@@ -144,19 +131,6 @@ RSpec.describe 'ActivityPub chat rooms', type: :model do
       ActivityPub::Activity.factory(reject, bob).perform
 
       expect(conversation.invitations.find_by(invitee_account: bob)).to be_rejected
-    end
-
-    it 'removes the member on Remove' do
-      service.receive_accept(bob, room_uri: room_uri)
-      remove = {
-        'type' => 'Remove',
-        'actor' => bob.uri,
-        'target' => room_uri,
-        'object' => bob.uri,
-      }
-
-      expect { ActivityPub::Activity.factory(remove, bob).perform }
-        .to change { conversation.memberships.exists?(account: bob) }.from(true).to(false)
     end
   end
 end

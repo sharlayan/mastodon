@@ -48,35 +48,19 @@ RSpec.describe ChatMediaDownloadWorker, :attachment_processing do
     Setting.chat_federation_enabled = false
   end
 
-  it 'starts with attachments that cannot be shown yet' do
+  it 'starts with attachments that cannot be shown yet, then redraws the message in order as each arrives, without marking it edited' do
     expect(message.media_attachments.reload.map(&:type)).to all(eq('unknown'))
     expect(message.media_attachments.map(&:needs_redownload?)).to all(be(true))
-  end
 
-  it 'redraws the message as each attachment arrives, until all of them show' do
-    urls.each { |url| serve(url) }
-
-    worker.perform(message.id)
-
-    expect(redraws.size).to eq(4)
-    expect(redraws.map { |redraw| types_in(redraw).count('image') }).to eq([1, 2, 3, 4])
-    expect(redraws.pluck('id')).to all(eq(message.id.to_s))
-  end
-
-  it 'keeps the order of the attachments in every redraw' do
-    urls.each { |url| serve(url) }
-
-    worker.perform(message.id)
-
-    expected = message.chat_message_media_attachments.order(:id).pluck(:media_attachment_id).map(&:to_s)
-    expect(redraws.map { |redraw| redraw['media_attachments'].pluck('id') }).to all(eq(expected))
-  end
-
-  it 'does not mark the message as edited or keep an earlier version' do
     urls.each { |url| serve(url) }
 
     expect { worker.perform(message.id) }.to_not(change { message.reload.edited_at })
 
+    expected = message.chat_message_media_attachments.order(:id).pluck(:media_attachment_id).map(&:to_s)
+    expect(redraws.size).to eq(4)
+    expect(redraws.map { |redraw| types_in(redraw).count('image') }).to eq([1, 2, 3, 4])
+    expect(redraws.pluck('id')).to all(eq(message.id.to_s))
+    expect(redraws.map { |redraw| redraw['media_attachments'].pluck('id') }).to all(eq(expected))
     expect(redraws.pluck('edited_at')).to all(be_nil)
     expect(message.edits).to be_empty
   end

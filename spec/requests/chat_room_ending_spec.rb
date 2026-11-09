@@ -54,15 +54,23 @@ RSpec.describe 'What became of a chat room' do
     expect(response.parsed_body).to include(reason: 'removed')
   end
 
-  it 'tells a member and the owner when the group was deleted' do
+  it 'tells a member and the owner when the group was deleted, on the stream only those who did not delete it, and nobody else that it ever existed' do
     room_id = room.id
+    allow(service).to receive(:broadcast_to)
     service.destroy_conversation(user.account, room)
+
+    expect(service).to have_received(:broadcast_to).with(user.account, 'chat.conversation_delete', { conversation_id: room_id.to_s })
+    expect(service).to have_received(:broadcast_to).with(member.account, 'chat.conversation_delete', { conversation_id: room_id.to_s, reason: 'deleted' })
 
     open_room(room_id)
     expect(response.parsed_body).to include(reason: 'deleted')
 
     open_room(room_id, as: user)
     expect(response.parsed_body).to include(reason: 'deleted')
+
+    open_room(room_id, as: Fabricate(:user))
+    expect(response).to have_http_status(404)
+    expect(response.parsed_body).to_not have_key(:reason)
   end
 
   it 'tells someone who was removed that the group was deleted later' do
@@ -73,17 +81,6 @@ RSpec.describe 'What became of a chat room' do
     open_room(room_id)
 
     expect(response.parsed_body).to include(reason: 'deleted')
-  end
-
-  it 'does not tell anyone else that the group ever existed' do
-    outsider = Fabricate(:user)
-    room_id = room.id
-    service.destroy_conversation(user.account, room)
-
-    open_room(room_id, as: outsider)
-
-    expect(response).to have_http_status(404)
-    expect(response.parsed_body).to_not have_key(:reason)
   end
 
   it 'keeps the room open for someone who came back' do
@@ -126,13 +123,5 @@ RSpec.describe 'What became of a chat room' do
     open_room(conversation_id)
 
     expect(response.parsed_body).to include(reason: 'deleted')
-  end
-
-  it 'announces the reason on the stream, but not to whoever deleted the group' do
-    allow(service).to receive(:broadcast_to)
-    service.destroy_conversation(user.account, room)
-
-    expect(service).to have_received(:broadcast_to).with(user.account, 'chat.conversation_delete', { conversation_id: room.id.to_s })
-    expect(service).to have_received(:broadcast_to).with(member.account, 'chat.conversation_delete', { conversation_id: room.id.to_s, reason: 'deleted' })
   end
 end

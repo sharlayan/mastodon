@@ -20,7 +20,7 @@ RSpec.describe 'ActivityPub chat message lifecycle', type: :model do
     Setting.chat_federation_enabled = false
   end
 
-  it 'updates an authored message' do
+  it 'updates and then soft-deletes an authored message' do
     update = {
       'type' => 'Update',
       'actor' => bob.uri,
@@ -37,15 +37,8 @@ RSpec.describe 'ActivityPub chat message lifecycle', type: :model do
     expect { ActivityPub::Activity.factory(update, bob).perform }
       .to change { message.reload.text }.from('hello').to('edited')
     expect(message.edited_at).to be_present
-  end
 
-  it 'soft-deletes an authored message' do
-    delete = {
-      'type' => 'Delete',
-      'actor' => bob.uri,
-      'object' => { 'id' => message.uri, 'type' => 'Tombstone', 'formerType' => 'Note' },
-    }
-
+    delete = { 'type' => 'Delete', 'actor' => bob.uri, 'object' => { 'id' => message.uri, 'type' => 'Tombstone', 'formerType' => 'Note' } }
     ActivityPub::Activity.factory(delete, bob).perform
 
     expect(message.reload.deleted_at).to be_present

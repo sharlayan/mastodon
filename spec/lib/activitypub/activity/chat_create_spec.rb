@@ -51,31 +51,35 @@ RSpec.describe 'Incoming ActivityPub chat messages', type: :model do
     expect(ChatMessage.find_by!(uri: payload['object']['id']).created_at).to be_within(1.minute).of(Time.current)
   end
 
-  %w(Create Update).each do |type|
-    it "handles a dereferenced chat #{type} without creating a status" do
-      object = payload['object'].merge('@context' => 'https://www.w3.org/ns/activitystreams')
-      stub_request(:get, object['id']).to_return(body: object.to_json, headers: { 'Content-Type' => 'application/activity+json' })
+  def perform_dereferenced(type, overrides = {})
+    object = payload['object'].merge('@context' => 'https://www.w3.org/ns/activitystreams', 'id' => "https://remote.test/chat/messages/#{type}").merge(overrides)
+    stub_request(:get, object['id']).to_return(body: object.to_json, headers: { 'Content-Type' => 'application/activity+json' })
+    ActivityPub::Activity.factory(payload.merge('type' => type, 'object' => object['id']), bob, delivered_to_account_id: alice.id).perform
+    object['id']
+  end
 
-      ActivityPub::Activity.factory(payload.merge('type' => type, 'object' => object['id']), bob, delivered_to_account_id: alice.id).perform
+  it 'handles a dereferenced chat Create or Update without creating a status' do
+    %w(Create Update).each do |type|
+      uri = perform_dereferenced(type)
 
-      expect(ChatMessage.find_by(uri: object['id'])).to be_present
-      expect(Status.where(uri: object['id'])).to be_empty
+      expect(ChatMessage.find_by(uri: uri)).to be_present, type
+      expect(Status.where(uri: uri)).to be_empty, type
     end
+  end
 
-    it "keeps a dereferenced chat #{type} as a private status when federation is disabled" do
-      Setting.chat_federation_enabled = false
-      object = payload['object'].merge('@context' => 'https://www.w3.org/ns/activitystreams', 'published' => Time.current.utc.iso8601)
-      stub_request(:get, object['id']).to_return(body: object.to_json, headers: { 'Content-Type' => 'application/activity+json' })
+  it 'keeps a dereferenced chat Create or Update as a private status when federation is disabled' do
+    Setting.chat_federation_enabled = false
 
-      ActivityPub::Activity.factory(payload.merge('type' => type, 'object' => object['id']), bob, delivered_to_account_id: alice.id).perform
+    %w(Create Update).each do |type|
+      uri = perform_dereferenced(type, 'published' => Time.current.utc.iso8601)
 
-      expect(ChatMessage.where(uri: object['id'])).to be_empty
-      expect(Status.where(uri: object['id']).pluck(:visibility)).to eq(['limited'])
+      expect(ChatMessage.where(uri: uri)).to be_empty, type
+      expect(Status.where(uri: uri).pluck(:visibility)).to eq(['limited']), type
     end
   end
 
   %i(chat_enabled chat_federation_enabled).each do |setting|
-    it "keeps a chat note as a private status when #{setting} is off" do
+    it "keeps a chat note as a private status when #{setting} is off, and applies an edit to that status" do
       Setting.public_send(:"#{setting}=", false)
 
       ActivityPub::Activity.factory(payload, bob, delivered_to_account_id: alice.id).perform
@@ -84,39 +88,23 @@ RSpec.describe 'Incoming ActivityPub chat messages', type: :model do
       expect(status).to have_attributes(visibility: 'limited', account: bob)
       expect(status.mentions.pluck(:account_id)).to eq([alice.id])
       expect(ChatMessage.where(uri: payload['object']['id'])).to be_empty
-    end
 
-    it "applies an edit to that status when #{setting} is off" do
-      Setting.public_send(:"#{setting}=", false)
-      ActivityPub::Activity.factory(payload, bob, delivered_to_account_id: alice.id).perform
       changed = payload['object'].merge('content' => 'changed', '_misskey_content' => 'changed', 'updated' => '2026-11-03T00:00:00Z')
-
       ActivityPub::Activity.factory(payload.merge('type' => 'Update', 'object' => changed), bob, delivered_to_account_id: alice.id).perform
 
-      expect(Status.find_by!(uri: payload['object']['id']).text).to eq('changed')
+      expect(status.reload.text).to eq('changed')
     end
   end
 
   context 'when the server is in roleplay mode' do
     around { |example| ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { example.run } }
 
-    it 'ignores a chat note from another server' do
+    it 'ignores a chat note and a dereferenced chat Create or Update from another server' do
       ActivityPub::Activity.factory(payload, bob, delivered_to_account_id: alice.id).perform
+      uris = %w(Create Update).map { |type| perform_dereferenced(type, 'published' => Time.current.utc.iso8601) }
 
-      expect(ChatMessage.where(uri: payload['object']['id'])).to be_empty
-      expect(Status.where(uri: payload['object']['id'])).to be_empty
-    end
-
-    %w(Create Update).each do |type|
-      it "ignores a dereferenced chat #{type} from another server" do
-        object = payload['object'].merge('@context' => 'https://www.w3.org/ns/activitystreams', 'published' => Time.current.utc.iso8601)
-        stub_request(:get, object['id']).to_return(body: object.to_json, headers: { 'Content-Type' => 'application/activity+json' })
-
-        ActivityPub::Activity.factory(payload.merge('type' => type, 'object' => object['id']), bob, delivered_to_account_id: alice.id).perform
-
-        expect(ChatMessage.where(uri: object['id'])).to be_empty
-        expect(Status.where(uri: object['id'])).to be_empty
-      end
+      expect(ChatMessage.where(uri: [payload['object']['id'], *uris])).to be_empty
+      expect(Status.where(uri: [payload['object']['id'], *uris])).to be_empty
     end
 
     it 'ignores an edit of a chat note kept as a status before roleplay mode' do
