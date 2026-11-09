@@ -39,7 +39,7 @@ class RedownloadAvatarDecorationWorker
 
     return unless decoration.image_repairable?
     return if decoration.host.present? && (AvatarDecorationDomainBlock.blocked?(decoration.host) || DomainBlock.reject_media?(decoration.host))
-    return unless within_download_budget?(decoration.host, account_id)
+    return reschedule(decoration, account_id) unless within_download_budget?(decoration.host, account_id)
 
     decoration.repair_image!
   rescue ActiveRecord::RecordNotFound
@@ -47,6 +47,12 @@ class RedownloadAvatarDecorationWorker
   end
 
   private
+
+  def reschedule(decoration, account_id)
+    delay = BUDGET_PERIOD - (Time.now.to_i % BUDGET_PERIOD) + rand(60)
+    redis.set(self.class.deduplication_key(decoration), 1, ex: delay + DEDUPLICATION_TTL)
+    self.class.perform_in(delay, decoration.id, account_id)
+  end
 
   def within_download_budget?(host, account_id)
     bucket = Time.now.to_i / BUDGET_PERIOD
