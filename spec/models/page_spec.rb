@@ -205,6 +205,20 @@ RSpec.describe Page do
       expect(page).to_not be_valid
       expect(page.errors.of_kind?(:eye_catching_media_attachment, :invalid)).to be true
     end
+
+    it 'rejects an eye-catching image id that does not exist' do
+      page = Fabricate.build(:page, account: account, eye_catching_media_attachment_id: MediaAttachment.maximum(:id).to_i + 1000)
+
+      expect(page).to_not be_valid
+      expect(page.errors.of_kind?(:eye_catching_media_attachment, :invalid)).to be true
+    end
+
+    it 'rejects a series id that does not exist' do
+      page = Fabricate.build(:page, account: account, page_series_id: PageSeries.maximum(:id).to_i + 1000)
+
+      expect(page).to_not be_valid
+      expect(page.errors.of_kind?(:page_series, :invalid)).to be true
+    end
   end
 
   describe 'creation limits' do

@@ -51,7 +51,7 @@ class PageSeries < ApplicationRecord
   end
 
   def validate_main_page
-    return if main_page.nil?
+    return if main_page_id.nil?
 
     errors.add(:main_page, :invalid) unless valid_main_page?(main_page)
   end
@@ -61,7 +61,7 @@ class PageSeries < ApplicationRecord
   end
 
   def validate_cover_media_attachment
-    return if cover_media_attachment.nil?
+    return if cover_media_attachment_id.nil?
     return if account_id.present? && account.media_attachments.outside_chat.where(id: cover_media_attachment_id).lock.exists?
 
     errors.add(:cover_media_attachment, :invalid)
