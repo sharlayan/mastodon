@@ -129,7 +129,7 @@ class ApplicationController < ActionController::Base
       cookies.delete(:switch_parent_stack)
     else
       cookies.signed[:switch_parent_stack] = {
-        value: { owner: owner_id, stack: new_stack }.to_json,
+        value: { owner: owner_id, stack: new_stack, parent_version: switch_parent_version(new_stack.first) }.to_json,
         expires: 30.days.from_now,
         httponly: true,
         secure: Rails.configuration.x.use_https,
@@ -164,10 +164,23 @@ class ApplicationController < ActionController::Base
       nil
     end
 
-    return payload['stack'] if payload.is_a?(Hash) && payload['owner'].to_i == owner_id
+    if payload.is_a?(Hash) && payload['owner'].to_i == owner_id
+      stack = Array(payload['stack'])
+      version = payload['parent_version']
+      current_version = switch_parent_version(stack.first) if stack.one?
+      return stack if version.is_a?(String) && current_version && ActiveSupport::SecurityUtils.secure_compare(version, current_version)
+    end
 
     clear_switch_parent_stack
     nil
+  end
+
+  def switch_parent_version(parent_id)
+    user = Account.find_by(id: parent_id)&.user
+    return if user.nil?
+
+    key = Rails.application.key_generator.generate_key('account-switch-parent-version', 32)
+    OpenSSL::HMAC.hexdigest('SHA256', key, user.authenticatable_salt.to_s)
   end
 
   def switch_parent_authorized?(parent_id, owner_id)

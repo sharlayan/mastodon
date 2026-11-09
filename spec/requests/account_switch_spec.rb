@@ -57,7 +57,51 @@ RSpec.describe 'Account switching' do
     end
   end
 
+  describe 'after the parent password changes while switched' do
+    let(:sibling_user) { Fabricate(:user) }
+
+    before do
+      Fabricate(:account_switch_authorization, account: parent, target_account: sibling_user.account)
+      switch_to_child
+      parent_user.change_password!('a-new-password-123')
+    end
+
+    it 'signs out instead of restoring the parent and preserves the link' do
+      delete destroy_user_session_path
+
+      expect(response).to redirect_to(new_user_session_path)
+      expect(AccountSwitchAuthorization.exists?(authorization.id)).to be(true)
+    end
+
+    it 'rejects explicit return to the parent' do
+      post switch_account_path, params: { switch_to: parent.id }
+
+      expect(flash[:alert]).to eq(I18n.t('account_switcher.switch_unauthorized'))
+    end
+
+    it 'does not expose the parent’s other linked accounts' do
+      body = account_switches_as(child_user)
+      expect(body[:parent]).to be_nil
+      expect(body[:root_account_id]).to eq(child.id.to_s)
+      expect(body[:children]).to be_empty
+    end
+
+    it 'rejects switching to another account linked by the parent' do
+      post switch_account_path, params: { switch_to: sibling_user.account.id }
+      expect(flash[:alert]).to eq(I18n.t('account_switcher.switch_unauthorized'))
+    end
+  end
+
   describe 'switching to an authorized child account' do
+    it 'returns to the parent on logout while its credentials are unchanged' do
+      switch_to_child
+
+      delete destroy_user_session_path
+
+      expect(response).to redirect_to(root_path)
+      expect(request.env['warden'].user).to eq(parent_user)
+    end
+
     it 'signs in as the child and records the parent' do
       switch_to_child
 
