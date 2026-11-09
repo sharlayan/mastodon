@@ -3,7 +3,7 @@
 @use 'variables/light-mixin';
 @use 'micro-interactions/star';
 
-[data-color-scheme='light'] {
+:root[data-color-scheme='light'] {
   @include light-mixin.tokens;
 }
 
