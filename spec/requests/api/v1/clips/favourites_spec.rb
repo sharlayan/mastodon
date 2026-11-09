@@ -15,16 +15,13 @@ RSpec.describe 'Clip Favourites' do
     context 'with a public clip owned by someone else' do
       let(:clip) { Fabricate(:clip, account: other, public: true, title: 'public') }
 
-      it 'creates a favourite and reports favourited' do
+      it 'creates a favourite, reports favourited, and is idempotent when called twice' do
         expect { subject }.to change(ClipFavourite, :count).by(1)
         expect(response).to have_http_status(200)
         expect(response.parsed_body[:favourited]).to be(true)
         expect(user.account.favourite_clips).to include(clip)
-      end
 
-      it 'is idempotent when called twice' do
-        post "/api/v1/clips/#{clip.id}/favourite", headers: headers
-        expect { subject }.to_not change(ClipFavourite, :count)
+        expect { post "/api/v1/clips/#{clip.id}/favourite", headers: headers }.to_not change(ClipFavourite, :count)
         expect(response).to have_http_status(200)
       end
     end

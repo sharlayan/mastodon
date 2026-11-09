@@ -18,15 +18,13 @@ RSpec.describe 'Inline compose tabs API' do
 
     it_behaves_like 'forbidden for wrong scope', 'read read:accounts'
 
-    it 'stores normalized tabs for the current user' do
+    it 'stores normalized tabs for the current user and allows all tabs to be removed' do
       subject
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body['tabs']).to eq(params[:tabs].map(&:stringify_keys))
       expect(JSON.parse(user.reload.settings[:inline_compose_tabs])).to eq(params[:tabs].map(&:stringify_keys))
-    end
 
-    it 'allows all tabs to be removed' do
       put '/api/v1/inline_compose_tabs', headers: headers, params: { tabs: [] }, as: :json
 
       expect(response).to have_http_status(200)

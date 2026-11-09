@@ -29,23 +29,20 @@ RSpec.describe 'Admin Settings Other' do
       expect(Setting.misskey_compat_signin_flow_enabled).to be false
     end
 
-    it 'renders the federation request counter as an editable default-on control' do
-      get admin_settings_custom_extensions_path
+    it 'renders editable federation statistics controls with their defaults and no soft-hide deletion outside roleplay mode' do
+      ClimateControl.modify OC_ROLEPLAY_OPTION: 'false' do
+        get admin_settings_custom_extensions_path
+      end
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body.at_css('input[name="form_admin_settings[federation_request_statistics_enabled]"][disabled]')).to be_nil
-      expect(Setting.federation_request_statistics_enabled).to be true
-    end
-
-    it 'renders the federation graph aggregation as an editable opt-in control' do
-      get admin_settings_custom_extensions_path
-
-      expect(response).to have_http_status(200)
       expect(response.parsed_body.at_css('input[name="form_admin_settings[federation_instance_edges_enabled]"][disabled]')).to be_nil
+      expect(response.parsed_body.at_css('input[type="checkbox"][name="form_admin_settings[soft_hide_deletion]"]')).to be_nil
+      expect(Setting.federation_request_statistics_enabled).to be true
       expect(Setting.federation_instance_edges_enabled).to be false
     end
 
-    it 'disables both federation statistics controls in roleplay mode' do
+    it 'disables both federation statistics controls and shows soft-hide deletion in roleplay mode' do
       ClimateControl.modify OC_ROLEPLAY_OPTION: 'true' do
         get admin_settings_custom_extensions_path
       end
@@ -53,19 +50,6 @@ RSpec.describe 'Admin Settings Other' do
       expect(response).to have_http_status(200)
       expect(response.parsed_body.at_css('input[name="form_admin_settings[federation_request_statistics_enabled]"][disabled]')).to be_present
       expect(response.parsed_body.at_css('input[name="form_admin_settings[federation_instance_edges_enabled]"][disabled]')).to be_present
-    end
-
-    it 'shows soft-hide deletion only in roleplay mode' do
-      ClimateControl.modify OC_ROLEPLAY_OPTION: 'false' do
-        get admin_settings_custom_extensions_path
-      end
-
-      expect(response.parsed_body.at_css('input[type="checkbox"][name="form_admin_settings[soft_hide_deletion]"]')).to be_nil
-
-      ClimateControl.modify OC_ROLEPLAY_OPTION: 'true' do
-        get admin_settings_custom_extensions_path
-      end
-
       expect(response.parsed_body.at_css('input[type="checkbox"][name="form_admin_settings[soft_hide_deletion]"]')).to be_present
     end
   end

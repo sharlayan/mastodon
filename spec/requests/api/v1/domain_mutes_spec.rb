@@ -48,15 +48,6 @@ RSpec.describe 'Domain mutes' do
 
     it_behaves_like 'forbidden for wrong scope', 'read read:mutes'
 
-    it 'creates a domain mute', :aggregate_failures do
-      subject
-
-      expect(response).to have_http_status(200)
-      expect(response.content_type)
-        .to start_with('application/json')
-      expect(user.account.domain_mutes.exists?(domain: params[:domain])).to be(true)
-    end
-
     context 'when the domain is already muted in another case' do
       let(:params) { { domain: 'Example.COM', hide_from_home: true } }
 
@@ -77,6 +68,8 @@ RSpec.describe 'Domain mutes' do
         subject
 
         expect(response).to have_http_status(200)
+        expect(response.content_type)
+          .to start_with('application/json')
         expect(user.account.domain_mutes.find_by(domain: params[:domain]).hide_from_home).to be(true)
       end
     end

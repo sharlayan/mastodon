@@ -73,63 +73,43 @@ RSpec.describe 'Drive files API' do
           nested_file.update!(file_file_size: 25, display_name: '25')
         end
 
-        it 'paginates without skipping or repeating files' do
+        it 'paginates forward and back without skipping or repeating files' do
           get '/api/v1/drive/files', headers: headers, params: { sort: sort, limit: 2, folder_id: '' }
 
           expect(response).to have_http_status(200)
           expect(response.parsed_body.pluck(:id)).to eq(expected_ids.first(2))
-          next_page = response.headers['Link'][/<([^>]+)>; rel="next"/, 1]
 
-          get URI.parse(next_page).request_uri, headers: headers
+          get link_request_uri('next'), headers: headers
 
           expect(response).to have_http_status(200)
           expect(response.parsed_body.pluck(:id)).to eq(expected_ids.slice(2, 2))
-          next_page = response.headers['Link'][/<([^>]+)>; rel="next"/, 1]
+          previous_page = link_request_uri('prev')
 
-          get URI.parse(next_page).request_uri, headers: headers
+          get link_request_uri('next'), headers: headers
 
           expect(response).to have_http_status(200)
           expect(response.parsed_body.pluck(:id)).to eq(expected_ids.last(1))
           expect(response.headers['Link']).to_not include('rel="next"')
-        end
 
-        it 'uses the previous link to retrieve files before the current sort position' do
-          get '/api/v1/drive/files', headers: headers, params: { sort: sort, limit: 2, folder_id: '' }
-          next_page = response.headers['Link'][/<([^>]+)>; rel="next"/, 1]
+          get previous_page, headers: headers
 
-          get URI.parse(next_page).request_uri, headers: headers
-          previous_page = response.headers['Link'][/<([^>]+)>; rel="prev"/, 1]
-
-          get URI.parse(previous_page).request_uri, headers: headers
-
-          expect(response).to have_http_status(200)
           expect(response.parsed_body.pluck(:id)).to eq(expected_ids.first(2))
         end
       end
     end
 
-    it 'flags files that no status uses as orphaned' do
+    it 'flags files that no status or page uses as orphaned' do
       attached_file = insert_drive_file
-      unused_file = insert_drive_file
-      attach_to_status(attached_file)
-
-      subject
-
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body.index_by { |file| file[:id] }.transform_values { |file| file[:orphaned] })
-        .to eq(attached_file.id.to_s => false, unused_file.id.to_s => true)
-    end
-
-    it 'flags files used by pages as not orphaned' do
       page_file = insert_drive_file
       unused_file = insert_drive_file
+      attach_to_status(attached_file)
       attach_to_page(page_file, eye_catching: true)
 
       subject
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body.index_by { |file| file[:id] }.transform_values { |file| file[:orphaned] })
-        .to eq(page_file.id.to_s => false, unused_file.id.to_s => true)
+        .to eq(attached_file.id.to_s => false, page_file.id.to_s => false, unused_file.id.to_s => true)
     end
 
     context 'when filtering to orphaned files' do
@@ -214,8 +194,10 @@ RSpec.describe 'Drive files API' do
       expect(RateLimiter).to_not have_received(:new)
     end
 
-    it 'returns the existing file for a duplicate upload' do
+    it 'falls back to the uploaded file name and returns the existing file for a duplicate upload' do
       post_drive_file
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body[:name]).to eq('attachment.jpg')
       first_id = response.parsed_body[:id]
 
       expect { post_drive_file }.to_not change(DriveFile, :count)
@@ -230,13 +212,6 @@ RSpec.describe 'Drive files API' do
       expect(response.parsed_body[:name]).to eq('설정 자료.jpg')
       expect(response.parsed_body[:file_name]).to eq(DriveFile.find(response.parsed_body[:id]).file_file_name)
       expect(response.parsed_body[:file_name]).to_not eq('설정 자료.jpg')
-    end
-
-    it 'falls back to the uploaded file name when no display name is given' do
-      post_drive_file
-
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body[:name]).to eq('attachment.jpg')
     end
 
     it 'does not keep an uploaded name when that preference is disabled' do
@@ -288,13 +263,10 @@ RSpec.describe 'Drive files API' do
       expect(DriveFile.find(response.parsed_body[:id]).folder_id).to be_nil
     end
 
-    it 'rejects a file type the administrator has not allowed' do
+    it 'accepts a file type only once the administrator has allowed it' do
       expect { post_text_file }.to_not change(DriveFile, :count)
-
       expect(response).to have_http_status(422)
-    end
 
-    it 'accepts a file type the administrator has allowed' do
       Setting.drive_allowed_extensions = 'txt, pdf'
 
       expect { post_text_file }.to change(DriveFile, :count).by(1)
@@ -334,16 +306,18 @@ RSpec.describe 'Drive files API' do
   describe 'PUT /api/v1/drive/files/:id' do
     let(:file) { insert_drive_file }
 
-    it 'renames the file for display without renaming the stored file' do
+    it 'renames the file for display, keeps the name across other metadata changes, and restores the stored name when cleared' do
       put "/api/v1/drive/files/#{file.id}", headers: headers, params: { name: '설정 자료' }
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body).to include(name: '설정 자료', file_name: 'attachment.jpg')
       expect(file.reload.file_file_name).to eq('attachment.jpg')
-    end
 
-    it 'restores the stored file name when the display name is cleared' do
-      put "/api/v1/drive/files/#{file.id}", headers: headers, params: { name: '설정 자료' }
+      put "/api/v1/drive/files/#{file.id}", headers: headers, params: { description: 'A portrait' }
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to include(name: '설정 자료', description: 'A portrait')
+
       put "/api/v1/drive/files/#{file.id}", headers: headers, params: { name: '' }
 
       expect(response).to have_http_status(200)
@@ -351,27 +325,17 @@ RSpec.describe 'Drive files API' do
       expect(file.reload.custom_name).to be_nil
     end
 
-    it 'caps the display name at 128 characters' do
+    it 'caps the display name at 128 characters and strips control characters' do
       put "/api/v1/drive/files/#{file.id}", headers: headers, params: { name: 'ㄱ' * 200 }
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body[:name]).to eq('ㄱ' * 128)
       expect(file.reload.custom_name.name.length).to eq(128)
-    end
 
-    it 'strips control characters from the display name' do
       put "/api/v1/drive/files/#{file.id}", headers: headers, params: { name: "port\u0000rait\nfile" }
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body[:name]).to eq('port rait file')
-    end
-
-    it 'keeps the display name when other metadata changes' do
-      put "/api/v1/drive/files/#{file.id}", headers: headers, params: { name: '설정 자료' }
-      put "/api/v1/drive/files/#{file.id}", headers: headers, params: { description: 'A portrait' }
-
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body).to include(name: '설정 자료', description: 'A portrait')
     end
   end
 
@@ -455,13 +419,11 @@ RSpec.describe 'Drive files API' do
   describe 'file ownership' do
     let(:foreign_file) { insert_drive_file(account_id: Fabricate(:account).id) }
 
-    it 'does not show another account file' do
+    it 'does not show or attach another account file' do
       get "/api/v1/drive/files/#{foreign_file.id}", headers: headers
 
       expect(response).to have_http_status(404)
-    end
 
-    it 'does not attach another account file' do
       expect do
         post "/api/v1/drive/files/#{foreign_file.id}/attach", headers: headers
       end.to_not change(MediaAttachment, :count)
@@ -488,6 +450,10 @@ RSpec.describe 'Drive files API' do
       expect(response.parsed_body.pluck(:id)).to eq [pointers[0].status_id.to_s]
       expect(LinkHeader.parse(response.headers['Link']).find_link(%w(rel next))).to be_nil
     end
+  end
+
+  def link_request_uri(rel)
+    URI.parse(response.headers['Link'][/<([^>]+)>; rel="#{rel}"/, 1]).request_uri
   end
 
   def sorted_drive_file_fixtures

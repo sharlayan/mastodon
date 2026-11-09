@@ -79,17 +79,15 @@ RSpec.describe 'Federation universe' do
     expect(response.parsed_body['edges'].pluck('target')).to contain_exactly('far.example', 'other.example')
   end
 
-  it 'is unavailable when aggregation is disabled' do
+  it 'requires a signed-in user and is unavailable when aggregation is disabled' do
+    get '/api/v1/federation_universe'
+
+    expect(response).to have_http_status(401)
+
     Setting.federation_instance_edges_enabled = false
 
     get '/api/v1/federation_universe', headers: headers
 
     expect(response).to have_http_status(404)
-  end
-
-  it 'requires a signed-in user' do
-    get '/api/v1/federation_universe'
-
-    expect(response).to have_http_status(401)
   end
 end

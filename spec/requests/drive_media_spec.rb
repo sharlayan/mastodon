@@ -11,13 +11,17 @@ RSpec.describe 'Drive media', :attachment_processing do
     Setting.drive_enabled = false
   end
 
-  it 'serves original files from local storage while disabled' do
+  it 'serves original files inline under their display name from local storage while disabled' do
+    drive_file.update!(display_name: '설정 자료.png')
+
     get drive_media_path(pointer.drive_access_key, :original)
 
     expect(response).to have_http_status(200)
     expect(response.media_type).to eq('image/png')
     expect(response.body.b).to eq(File.binread(drive_file.file.path(:original)))
     expect(response.headers['Cache-Control']).to include('public', 'immutable')
+    expect(response.headers['Content-Disposition']).to start_with('inline')
+    expect(response.headers['Content-Disposition']).to include('%EC%84%A4%EC%A0%95')
   end
 
   it 'serves previews from local storage with their actual format' do
@@ -35,15 +39,6 @@ RSpec.describe 'Drive media', :attachment_processing do
     expect(response).to have_http_status(206)
     expect(response.headers['Content-Range']).to eq("bytes 0-9/#{File.size(drive_file.file.path(:original))}")
     expect(response.body.b).to eq(File.binread(drive_file.file.path(:original), 10))
-  end
-
-  it 'serves media inline under its display name' do
-    drive_file.update!(display_name: '설정 자료.png')
-
-    get drive_media_path(pointer.drive_access_key, :original)
-
-    expect(response.headers['Content-Disposition']).to start_with('inline')
-    expect(response.headers['Content-Disposition']).to include('%EC%84%A4%EC%A0%95')
   end
 
   it 'forces non-media Drive files to download without content sniffing' do
@@ -141,22 +136,19 @@ RSpec.describe 'Drive media', :attachment_processing do
     expect(response).to have_http_status(404)
   end
 
-  it 'does not serve media attached to a removed status' do
+  it 'serves media attached to a visible status until the status is removed' do
     status = Fabricate(:status, account: account)
     pointer.update!(status: status)
+
+    get drive_media_path(pointer.drive_access_key, :original)
+
+    expect(response).to have_http_status(200)
+
     status.discard
 
     get drive_media_path(pointer.drive_access_key, :original)
 
     expect(response).to have_http_status(404)
-  end
-
-  it 'keeps serving media attached to a visible status' do
-    pointer.update!(status: Fabricate(:status, account: account))
-
-    get drive_media_path(pointer.drive_access_key, :original)
-
-    expect(response).to have_http_status(200)
   end
 
   it 'does not resolve a numeric media attachment ID as an access key' do

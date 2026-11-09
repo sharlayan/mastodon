@@ -29,7 +29,7 @@ RSpec.describe 'Pages' do
       end
     end
 
-    it 'returns up to 365 cached daily values and the current total character count' do
+    it 'returns up to 365 cached daily values, the current total character count, and clamps requested ranges to 30 through 365 days' do
       page = Fabricate(:page, account: user.account, summary: 'summary', content: [{ type: 'text', text: '**hello world**' }], created_at: 2.months.ago)
       PageDailyStatistic.record!(account_id: user.account_id, characters_delta: 3, updated: 1, activity_date: 1.day.ago.to_date)
 
@@ -41,9 +41,7 @@ RSpec.describe 'Pages' do
       expect(response.parsed_body[:days].size).to eq(365)
       expect(response.parsed_body[:days].last).to include(activity: 'created')
       expect(response.parsed_body[:days].second_to_last).to include(characters_delta: 3, activity: 'updated')
-    end
 
-    it 'clamps a requested range to 30 through 365 days' do
       get '/api/v1/pages/statistics', params: { days: 7 }, headers: headers
       expect(response.parsed_body[:days].size).to eq(30)
 
@@ -121,51 +119,34 @@ RSpec.describe 'Pages' do
     let(:other_token) { Fabricate(:accessible_access_token, resource_owner_id: other_user.id, scopes: scopes) }
     let(:other_headers) { { 'Authorization' => "Bearer #{other_token.token}" } }
 
-    it 'includes drafts in the owner list' do
+    it 'shows drafts to the owner in the list, by ID, and through the account-scoped slug route' do
       get '/api/v1/pages', headers: headers
-
       expect(response).to have_http_status(200)
       expect(response.parsed_body.pluck(:id)).to contain_exactly(draft_page.id.to_s, published_page.id.to_s)
-    end
 
-    it 'allows the owner to open a draft by ID' do
       get "/api/v1/pages/#{draft_page.id}", headers: headers
-
       expect(response).to have_http_status(200)
       expect(response.parsed_body[:draft]).to be true
-    end
 
-    it 'hides a draft by ID from another user' do
-      get "/api/v1/pages/#{draft_page.id}", headers: other_headers
-
-      expect(response).to have_http_status(404)
-    end
-
-    it 'hides drafts from the public account list' do
-      get "/api/v1/accounts/#{user.account_id}/pages"
-
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body.pluck(:id)).to contain_exactly(published_page.id.to_s)
-    end
-
-    it 'hides drafts from featured pages' do
-      get '/api/v1/pages/featured', headers: headers
-
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body.pluck(:id)).to contain_exactly(published_page.id.to_s)
-    end
-
-    it 'hides a draft from the account-scoped slug route' do
-      get "/api/v1/accounts/#{draft_page.account_id}/pages/#{draft_page.name}"
-
-      expect(response).to have_http_status(404)
-    end
-
-    it 'allows the owner to open a draft through the account-scoped slug route' do
       get "/api/v1/accounts/#{draft_page.account_id}/pages/#{draft_page.name}", headers: headers
-
       expect(response).to have_http_status(200)
       expect(response.parsed_body[:id]).to eq(draft_page.id.to_s)
+    end
+
+    it 'hides drafts from other users, the public account list, featured pages, and the anonymous slug route' do
+      get "/api/v1/pages/#{draft_page.id}", headers: other_headers
+      expect(response).to have_http_status(404)
+
+      get "/api/v1/accounts/#{user.account_id}/pages"
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to contain_exactly(published_page.id.to_s)
+
+      get '/api/v1/pages/featured', headers: headers
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to contain_exactly(published_page.id.to_s)
+
+      get "/api/v1/accounts/#{draft_page.account_id}/pages/#{draft_page.name}"
+      expect(response).to have_http_status(404)
     end
   end
 
@@ -241,7 +222,7 @@ RSpec.describe 'Pages' do
       21.times { Fabricate(:page, account: user.account) }
     end
 
-    it 'returns owner pages in batches of 20' do
+    it 'returns owner and public account pages in batches of 20' do
       get '/api/v1/pages', headers: headers
 
       expect(response).to have_http_status(200)
@@ -250,9 +231,7 @@ RSpec.describe 'Pages' do
       get '/api/v1/pages', params: { offset: 20 }, headers: headers
 
       expect(response.parsed_body.size).to eq(1)
-    end
 
-    it 'returns public account pages in batches of 20' do
       get "/api/v1/accounts/#{user.account_id}/pages"
 
       expect(response).to have_http_status(200)
@@ -268,7 +247,7 @@ RSpec.describe 'Pages' do
     let!(:page) { Fabricate(:page, account: user.account) }
     let(:crawler_headers) { { 'User-Agent' => 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' } }
 
-    it 'hides page details and lists from crawlers when the owner disables indexing' do
+    it 'hides page details and lists from crawlers when the owner disables indexing without restricting authenticated readers' do
       user.settings['noindex'] = true
       user.save!
 
@@ -278,6 +257,9 @@ RSpec.describe 'Pages' do
       get "/api/v1/accounts/#{user.account_id}/pages", headers: crawler_headers
       expect(response).to have_http_status(200)
       expect(response.parsed_body).to be_empty
+
+      get "/api/v1/pages/#{page.id}", headers: headers.merge(crawler_headers)
+      expect(response).to have_http_status(200)
     end
 
     it 'allows crawlers when the owner explicitly enables indexing' do
@@ -285,15 +267,6 @@ RSpec.describe 'Pages' do
       user.save!
 
       get "/api/v1/pages/#{page.id}", headers: crawler_headers
-
-      expect(response).to have_http_status(200)
-    end
-
-    it 'does not restrict an authenticated reader based on User-Agent' do
-      user.settings['noindex'] = true
-      user.save!
-
-      get "/api/v1/pages/#{page.id}", headers: headers.merge(crawler_headers)
 
       expect(response).to have_http_status(200)
     end
@@ -323,32 +296,13 @@ RSpec.describe 'Pages' do
       end
     end
 
-    it 'keeps authenticated page reads private', :aggregate_failures do
+    it 'keeps authenticated page reads and page creation responses private', :aggregate_failures do
       get "/api/v1/pages/#{page.id}", headers: headers
 
       expect(response).to have_http_status(200)
       expect(response.cache_control).to include(private: true, no_store: true)
       expect(response.cache_control).to_not include(:public)
-    end
 
-    it 'requires authentication for featured pages', :aggregate_failures do
-      get '/api/v1/pages/featured'
-
-      expect(response).to have_http_status(401)
-      expect(response.cache_control).to include(private: true, no_store: true)
-      expect(response.cache_control).to_not include(:public)
-    end
-
-    it 'returns featured pages to authenticated users without public caching', :aggregate_failures do
-      get '/api/v1/pages/featured', headers: headers
-
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body.pluck(:id)).to include(page.id.to_s)
-      expect(response.cache_control).to include(private: true, no_store: true)
-      expect(response.cache_control).to_not include(:public)
-    end
-
-    it 'keeps page creation responses private', :aggregate_failures do
       post '/api/v1/pages', params: {
         title: 'New public page',
         name: 'new-public-page',
@@ -356,6 +310,21 @@ RSpec.describe 'Pages' do
       }, headers: headers
 
       expect(response).to have_http_status(200)
+      expect(response.cache_control).to include(private: true, no_store: true)
+      expect(response.cache_control).to_not include(:public)
+    end
+
+    it 'requires authentication for featured pages and never caches them publicly', :aggregate_failures do
+      get '/api/v1/pages/featured'
+
+      expect(response).to have_http_status(401)
+      expect(response.cache_control).to include(private: true, no_store: true)
+      expect(response.cache_control).to_not include(:public)
+
+      get '/api/v1/pages/featured', headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to include(page.id.to_s)
       expect(response.cache_control).to include(private: true, no_store: true)
       expect(response.cache_control).to_not include(:public)
     end
@@ -385,20 +354,14 @@ RSpec.describe 'Pages' do
       expect(response.cache_control).to include(private: true, no_store: true)
     end
 
-    it 'keeps budgets separate for different pages' do
+    it 'keeps budgets separate for different pages and does not apply them to authenticated readers' do
       other_page = Fabricate(:page, account: user.account)
       60.times { page_view_limiter(page, remote_ip).record! }
 
       get "/api/v1/pages/#{other_page.id}", headers: request_headers
-
       expect(response).to have_http_status(200)
-    end
-
-    it 'does not apply the anonymous budget to authenticated readers' do
-      60.times { page_view_limiter(page, remote_ip).record! }
 
       get "/api/v1/pages/#{page.id}", headers: headers.merge(request_headers)
-
       expect(response).to have_http_status(200)
     end
 
@@ -441,18 +404,15 @@ RSpec.describe 'Pages' do
       )
     end
 
-    it 'omits page bodies from public account lists but keeps them in detail responses', :aggregate_failures do
+    it 'omits page bodies from public account and owner lists but keeps them in detail responses', :aggregate_failures do
       get "/api/v1/accounts/#{user.account_id}/pages"
+      expect(response.parsed_body.first).to include(content: [], attached_media: [])
+
+      get '/api/v1/pages', headers: headers
       expect(response.parsed_body.first).to include(content: [], attached_media: [])
 
       get "/api/v1/pages/#{page.id}"
       expect(response.parsed_body.dig(:content, 0, :text)).to eq('Large body')
-    end
-
-    it 'omits page bodies from owner lists' do
-      get '/api/v1/pages', headers: headers
-
-      expect(response.parsed_body.first).to include(content: [], attached_media: [])
     end
 
     it 'does not read page bodies for owner, account, and featured lists', :aggregate_failures do
@@ -582,42 +542,38 @@ RSpec.describe 'Pages' do
       expect(Page.find_by!(name: 'protected-page').valid_access_password?('another-password')).to be true
     end
 
-    it 'keeps the existing password when an edit omits it' do
+    it 'keeps the existing password when an edit omits it and clears it when changing visibility' do
       put "/api/v1/pages/#{password_page.id}", params: { title: 'Updated', visibility: 'password' }, headers: headers
 
       expect(response).to have_http_status(200)
       expect(password_page.reload.valid_access_password?('correct-password')).to be true
-    end
 
-    it 'clears the password when changing visibility' do
       put "/api/v1/pages/#{password_page.id}", params: { visibility: 'public' }, headers: headers
 
       expect(response).to have_http_status(200)
       expect(password_page.reload.access_password_digest).to be_nil
     end
 
-    it 'lists locked metadata without protected content' do
-      get "/api/v1/accounts/#{user.account_id}/pages"
+    it 'lists locked metadata without protected content, hides header media outside lists, and excludes the page from featured pages' do
+      password_page.update_column(:likes_count, 10)
 
+      get "/api/v1/accounts/#{user.account_id}/pages"
       result = response.parsed_body.find { |page| page[:id] == password_page.id.to_s }
       expect(result).to include('visibility' => 'password', 'locked' => true, 'content' => [], 'attached_media' => [])
       expect(result).to include('eye_catching_media_attachment_id' => header_media.id.to_s)
       expect(result.dig(:eye_catching_media_attachment, :id)).to eq(header_media.id.to_s)
-    end
 
-    it 'hides protected header media outside page lists' do
       get "/api/v1/pages/#{password_page.id}"
-
       expect(response.parsed_body).to include('locked' => true, 'eye_catching_media_attachment_id' => nil, 'eye_catching_media_attachment' => nil)
+
+      get '/api/v1/pages/featured', headers: headers
+      expect(response.parsed_body.pluck(:id)).to_not include(password_page.id.to_s)
     end
 
-    it 'rejects a wrong password' do
+    it 'rejects a wrong password and returns the page and a reusable access token for the correct password' do
       post "/api/v1/pages/#{password_page.id}/unlock", params: { password: 'wrong-password' }
-
       expect(response).to have_http_status(403)
-    end
 
-    it 'returns the page and a reusable access token for the correct password' do
       post "/api/v1/pages/#{password_page.id}/unlock", params: { password: 'correct-password' }
 
       expect(response).to have_http_status(200)
@@ -637,13 +593,6 @@ RSpec.describe 'Pages' do
       post "/api/v1/pages/#{password_page.id}/unlock", params: { access_token: token }
 
       expect(response).to have_http_status(403)
-    end
-
-    it 'excludes password pages from featured pages' do
-      password_page.update_column(:likes_count, 10)
-      get '/api/v1/pages/featured', headers: headers
-
-      expect(response.parsed_body.pluck(:id)).to_not include(password_page.id.to_s)
     end
 
     context 'when community mode is enabled' do
@@ -705,16 +654,14 @@ RSpec.describe 'Pages' do
       expect(response.parsed_body.pluck(:id)).to_not include(authenticated_page.id.to_s)
     end
 
-    it 'allows signed-in users to view the page and account listing entry' do
+    it 'allows signed-in users to view, list, and like the page but excludes it from featured pages' do
       get "/api/v1/pages/#{authenticated_page.id}", headers: other_headers
       expect(response).to have_http_status(200)
       expect(response.parsed_body).to include('visibility' => 'authenticated')
 
       get "/api/v1/accounts/#{user.account_id}/pages", headers: other_headers
       expect(response.parsed_body.pluck(:id)).to include(authenticated_page.id.to_s)
-    end
 
-    it 'allows a signed-in user to like the page but excludes it from featured pages' do
       post "/api/v1/pages/#{authenticated_page.id}/like", headers: other_headers
       expect(response).to have_http_status(200)
 
@@ -786,23 +733,16 @@ RSpec.describe 'Pages' do
   describe 'owner-only actions on another account page' do
     let(:other_page) { Fabricate(:page, account: Fabricate(:account), title: 'Original', content: [{ 'type' => 'text', 'text' => 'body' }]) }
 
-    it 'does not update the page' do
+    it 'does not update, delete, or change the main page' do
       put "/api/v1/pages/#{other_page.id}", params: { title: 'Hijacked', visibility: 'private' }, headers: headers
-
       expect(response).to have_http_status(404)
       expect(other_page.reload).to have_attributes(title: 'Original', visibility: 'public')
-    end
 
-    it 'does not delete the page' do
       delete "/api/v1/pages/#{other_page.id}", headers: headers
-
       expect(response).to have_http_status(404)
       expect(Page.exists?(other_page.id)).to be(true)
-    end
 
-    it 'does not change the main page' do
       post "/api/v1/pages/#{other_page.id}/set_main", headers: headers
-
       expect(response).to have_http_status(404)
       expect(other_page.reload.is_main).to be(false)
     end

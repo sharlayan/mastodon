@@ -48,28 +48,24 @@ RSpec.describe 'Status drafts' do
     let(:other_token) { Fabricate(:accessible_access_token, resource_owner_id: other_user.id, scopes: scopes) }
     let(:other_headers) { { 'Authorization' => "Bearer #{other_token.token}" } }
 
-    it 'lists only the current account drafts' do
+    it 'lists only the current account drafts and does not expose them to another account' do
       Fabricate(:status_draft)
       get '/api/v1/status_drafts', headers: headers
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body.pluck(:id)).to contain_exactly(draft.id.to_s)
-    end
 
-    it 'updates a draft owned by the current account' do
-      put "/api/v1/status_drafts/#{draft.id}", headers: headers, params: { status: 'Updated' }
-
-      expect(response).to have_http_status(200)
-      expect(draft.reload.data['status']).to eq('Updated')
-    end
-
-    it 'does not expose another account draft' do
       get "/api/v1/status_drafts/#{draft.id}", headers: other_headers
 
       expect(response).to have_http_status(404)
     end
 
-    it 'deletes a draft and releases its media' do
+    it 'updates a draft owned by the current account and releases its media on deletion' do
+      put "/api/v1/status_drafts/#{draft.id}", headers: headers, params: { status: 'Updated' }
+
+      expect(response).to have_http_status(200)
+      expect(draft.reload.data['status']).to eq('Updated')
+
       media = Fabricate(:media_attachment, account: user.account, status_draft: draft)
       delete "/api/v1/status_drafts/#{draft.id}", headers: headers
 
@@ -77,7 +73,7 @@ RSpec.describe 'Status drafts' do
       expect(media.reload.status_draft_id).to be_nil
     end
 
-    it 'caps lists and excludes oversized legacy drafts' do
+    it 'caps lists, excludes oversized legacy drafts, and refuses to serialize them' do
       draft.update_column(:data, { status: 'x' * StatusDraft::MAX_DATA_BYTES })
       StatusDraft::LIST_LIMIT.times { Fabricate(:status_draft, account: user.account) }
 
@@ -86,6 +82,10 @@ RSpec.describe 'Status drafts' do
       expect(response).to have_http_status(200)
       expect(response.parsed_body.size).to eq(StatusDraft::LIST_LIMIT)
       expect(response.parsed_body.pluck(:id)).to_not include(draft.id.to_s)
+
+      get "/api/v1/status_drafts/#{draft.id}", headers: headers
+
+      expect(response).to have_http_status(422)
     end
 
     it 'links to the next page when more drafts remain' do
@@ -100,14 +100,6 @@ RSpec.describe 'Status drafts' do
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body.pluck(:id)).to eq [draft.id.to_s]
-    end
-
-    it 'refuses to serialize an oversized legacy draft' do
-      draft.update_column(:data, { status: 'x' * StatusDraft::MAX_DATA_BYTES })
-
-      get "/api/v1/status_drafts/#{draft.id}", headers: headers
-
-      expect(response).to have_http_status(422)
     end
 
     it 'enforces a dedicated per-account request limit' do

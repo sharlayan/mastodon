@@ -13,28 +13,13 @@ RSpec.describe 'API V1 Board Announcements Reactions' do
     Setting.board_announcements_enabled = true
   end
 
-  describe 'PUT /api/v1/board_announcements/:board_announcement_id/reactions/:id' do
-    it 'creates a reaction for a visible announcement', :aggregate_failures do
+  describe 'PUT and DELETE /api/v1/board_announcements/:board_announcement_id/reactions/:id' do
+    it 'creates and removes a reaction for a visible announcement', :aggregate_failures do
       put "/api/v1/board_announcements/#{announcement.id}/reactions/#{escaped_emoji}", headers: headers
 
       expect(response).to have_http_status(200)
       expect(response.content_type).to start_with('application/json')
       expect(announcement.board_announcement_reactions.find_by(name: '😂', account: user.account)).to_not be_nil
-    end
-
-    it 'does not create a reaction for an announcement hidden from the account', :aggregate_failures do
-      hidden_announcement = BoardAnnouncement.create!(title: 'Hidden', text: 'Body', published: true, published_at: 1.day.ago, for_existing_users: true)
-
-      put "/api/v1/board_announcements/#{hidden_announcement.id}/reactions/#{escaped_emoji}", headers: headers
-
-      expect(response).to have_http_status(404)
-      expect(hidden_announcement.board_announcement_reactions.find_by(name: '😂', account: user.account)).to be_nil
-    end
-  end
-
-  describe 'DELETE /api/v1/board_announcements/:board_announcement_id/reactions/:id' do
-    it 'removes a reaction from a visible announcement', :aggregate_failures do
-      announcement.board_announcement_reactions.create!(account: user.account, name: '😂')
 
       delete "/api/v1/board_announcements/#{announcement.id}/reactions/#{escaped_emoji}", headers: headers
 
@@ -43,8 +28,14 @@ RSpec.describe 'API V1 Board Announcements Reactions' do
       expect(announcement.board_announcement_reactions.find_by(name: '😂', account: user.account)).to be_nil
     end
 
-    it 'does not remove a reaction from an announcement hidden from the account', :aggregate_failures do
+    it 'neither creates nor removes a reaction for an announcement hidden from the account', :aggregate_failures do
       hidden_announcement = BoardAnnouncement.create!(title: 'Hidden', text: 'Body', published: true, published_at: 1.day.ago, for_existing_users: true)
+
+      put "/api/v1/board_announcements/#{hidden_announcement.id}/reactions/#{escaped_emoji}", headers: headers
+
+      expect(response).to have_http_status(404)
+      expect(hidden_announcement.board_announcement_reactions.find_by(name: '😂', account: user.account)).to be_nil
+
       reaction = hidden_announcement.board_announcement_reactions.create!(account: user.account, name: '😂')
 
       delete "/api/v1/board_announcements/#{hidden_announcement.id}/reactions/#{escaped_emoji}", headers: headers

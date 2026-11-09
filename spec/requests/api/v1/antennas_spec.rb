@@ -23,22 +23,17 @@ RSpec.describe 'Antennas' do
   describe 'POST /api/v1/antennas' do
     subject { post '/api/v1/antennas', headers: headers, params: { title: 'new antenna', keywords: %w(commission) } }
 
-    it 'creates an antenna' do
-      expect { subject }.to change(Antenna, :count).by(1)
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body[:title]).to eq('new antenna')
-      expect(response.parsed_body[:keywords]).to eq(%w(commission))
-    end
-
-    it 'locks the account while validating the per-account limit' do
+    it 'creates an antenna while locking the account to validate the per-account limit' do
       queries = []
       callback = lambda do |_name, _started, _finished, _unique_id, payload|
         queries << payload[:sql] if payload[:name] != 'SCHEMA' && !payload[:cached]
       end
 
-      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') { subject }
+      expect { ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') { subject } }.to change(Antenna, :count).by(1)
 
       expect(response).to have_http_status(200)
+      expect(response.parsed_body[:title]).to eq('new antenna')
+      expect(response.parsed_body[:keywords]).to eq(%w(commission))
       expect(queries.any? { |sql| sql.include?('FROM "accounts"') && sql.include?('FOR UPDATE') }).to be(true)
     end
   end
@@ -104,20 +99,12 @@ RSpec.describe 'Antennas' do
   end
 
   describe 'POST /api/v1/antennas/:id/domains' do
-    subject { post "/api/v1/antennas/#{antenna.id}/domains", headers: headers, params: { domains: ['example.com'] } }
-
     let(:antenna) { Fabricate(:antenna, account: user.account) }
 
-    it 'adds an include domain condition' do
-      subject
-
-      expect(response).to have_http_status(200)
-      expect(antenna.antenna_domains.includes_only.pluck(:name)).to include('example.com')
-    end
-
-    it 'stores domains in the same form as account domains' do
+    it 'adds include domain conditions in the same form as account domains' do
       post "/api/v1/antennas/#{antenna.id}/domains", headers: headers, params: { domains: ['Example.COM', 'xn--3e0b707e.example', '한국.example'] }
 
+      expect(response).to have_http_status(200)
       expect(antenna.antenna_domains.includes_only.pluck(:name)).to contain_exactly('example.com', 'xn--3e0b707e.example')
     end
 
