@@ -4876,21 +4876,23 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     loading={loadingMore}
                   />
                 )}
-                {conversationsLoaded && visibleConversations.length === 0 && (
-                  <div className='empty-column-indicator'>
-                    {activeTab === 'home' ? (
-                      <FormattedMessage
-                        id='chat.no_history'
-                        defaultMessage='You have no chat history yet.'
-                      />
-                    ) : (
-                      <FormattedMessage
-                        id='chat.no_rooms'
-                        defaultMessage='There are no groups here.'
-                      />
-                    )}
-                  </div>
-                )}
+                {conversationsLoaded &&
+                  !nextConversationId &&
+                  visibleConversations.length === 0 && (
+                    <div className='empty-column-indicator'>
+                      {activeTab === 'home' ? (
+                        <FormattedMessage
+                          id='chat.no_history'
+                          defaultMessage='You have no chat history yet.'
+                        />
+                      ) : (
+                        <FormattedMessage
+                          id='chat.no_rooms'
+                          defaultMessage='There are no groups here.'
+                        />
+                      )}
+                    </div>
+                  )}
               </div>
             )}
           </>

@@ -659,6 +659,26 @@ describe('Chat pagination', () => {
     },
   );
 
+  it('does not say there are no groups while more conversations can be loaded', async () => {
+    const firstPage = Array.from({ length: 20 }, (_, index) => ({
+      ...conversation(String(30 - index)),
+      type: 'direct',
+      current_role: null,
+    }));
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/conversations'
+        ? Promise.resolve({ data: firstPage })
+        : getResponse(url),
+    );
+    mountChat('/chat');
+    await screen.findByRole('button', { name: 'Load more' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Your groups' }));
+
+    expect(screen.getByRole('button', { name: 'Load more' })).toBeTruthy();
+    expect(screen.queryByText('There are no groups here.')).toBeNull();
+  });
+
   it('loads conversations beyond the first page', async () => {
     const firstPage = Array.from({ length: 20 }, (_, index) =>
       conversation(String(30 - index)),
