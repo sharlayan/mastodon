@@ -37,12 +37,9 @@ RSpec.describe 'Status detail access from the management timeline' do
   context 'with a direct status authored by an owner' do
     let!(:status) { Fabricate(:status, account: owner.account, visibility: :direct, local_only: true) }
 
-    it 'keeps it out of both the timeline and the detail view for a privilege holder', :aggregate_failures do
+    it 'allows only the owner through both entry points', :aggregate_failures do
       expect(timeline_ids_for(viewer)).to_not include(status.id.to_s)
       expect(detail_status_for(viewer, status)).to eq(404)
-    end
-
-    it 'lets the owner read it from both entry points', :aggregate_failures do
       expect(timeline_ids_for(owner)).to include(status.id.to_s)
       expect(detail_status_for(owner, status)).to eq(200)
     end
@@ -53,12 +50,9 @@ RSpec.describe 'Status detail access from the management timeline' do
 
     before { Fabricate(:mention, status: status, account: owner.account) }
 
-    it 'keeps it out of both the timeline and the detail view for a privilege holder', :aggregate_failures do
+    it 'allows only the owner through both entry points', :aggregate_failures do
       expect(timeline_ids_for(viewer)).to_not include(status.id.to_s)
       expect(detail_status_for(viewer, status)).to eq(404)
-    end
-
-    it 'lets the owner read it from both entry points', :aggregate_failures do
       expect(timeline_ids_for(owner)).to include(status.id.to_s)
       expect(detail_status_for(owner, status)).to eq(200)
     end

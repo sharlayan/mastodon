@@ -45,31 +45,17 @@ RSpec.describe Sharlayan::Status::AdminTimelineGuard do
   end
 
   describe '.admin_timeline_eligible' do
-    let!(:federated_public) { status_for(:public, local_only: false) }
-    let!(:federated_direct) { status_for(:direct, local_only: false) }
-    let!(:federated_private) { status_for(:private, local_only: false) }
-    let!(:federated_unlisted) { status_for(:unlisted, local_only: false) }
-    let!(:local_direct) { status_for(:direct, local_only: true) }
-    let!(:local_private) { status_for(:private, local_only: true) }
-    let!(:local_unlisted) { status_for(:unlisted, local_only: true) }
-
-    it 'excludes federated posts that are not public' do
-      expect(Status.admin_timeline_eligible)
-        .to include(federated_public, local_direct, local_private, local_unlisted)
-        .and not_include(federated_direct)
-        .and not_include(federated_private)
-        .and not_include(federated_unlisted)
-    end
-
-    it 'excludes conversations a remote account takes part in' do
+    it 'excludes federated restricted posts and conversations with remote participants' do
+      federated_public = status_for(:public, local_only: false)
+      federated_restricted = %i(direct private unlisted).map { |visibility| status_for(visibility, local_only: false) }
+      local_restricted = %i(direct private unlisted).map { |visibility| status_for(visibility, local_only: true) }
       mentioning = status_for(:direct, local_only: true)
       Fabricate(:mention, status: mentioning, account: remote_account)
       replying = Fabricate(:status, account: account, visibility: :private, local_only: true, in_reply_to_account_id: remote_account.id)
 
       expect(Status.admin_timeline_eligible)
-        .to include(local_direct)
-        .and not_include(mentioning)
-        .and not_include(replying)
+        .to include(federated_public, *local_restricted)
+        .and not_include(*federated_restricted, mentioning, replying)
     end
 
     it 'treats a null local_only column as federated' do

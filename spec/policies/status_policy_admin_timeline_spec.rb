@@ -22,26 +22,17 @@ RSpec.describe StatusPolicy, type: :model do
     context 'with a local-only followers-only status' do
       let(:status) { Fabricate(:status, account: author, visibility: :private, local_only: true) }
 
-      it 'permits the owner' do
+      it 'permits full management access and denies accounts without it' do
         expect(subject).to permit(owner, status)
-      end
-
-      it 'permits a management timeline privilege holder' do
         expect(subject).to permit(viewer, status)
-      end
-
-      it 'denies an account without the privilege' do
         expect(subject).to_not permit(stranger, status)
+        expect(subject).to_not permit(leader, status)
       end
 
       it 'permits a followers-only privilege holder when the author follows them' do
         Fabricate(:follow, account: author, target_account: leader)
 
         expect(subject).to permit(leader, status)
-      end
-
-      it 'denies a followers-only privilege holder when the author does not follow them' do
-        expect(subject).to_not permit(leader, status)
       end
     end
 
@@ -56,11 +47,8 @@ RSpec.describe StatusPolicy, type: :model do
     context 'with a direct status an owner takes part in' do
       let(:status) { Fabricate(:status, account: owner, visibility: :direct, local_only: true) }
 
-      it 'permits the owner' do
+      it 'permits the owner and denies a management timeline privilege holder' do
         expect(subject).to permit(owner, status)
-      end
-
-      it 'denies a management timeline privilege holder' do
         expect(subject).to_not permit(viewer, status)
       end
     end
@@ -100,11 +88,8 @@ RSpec.describe StatusPolicy, type: :model do
     context 'with a status only the management timeline bypass exposes' do
       let(:status) { Fabricate(:status, account: author, visibility: :private, local_only: true) }
 
-      it 'denies a management timeline privilege holder' do
+      it 'denies both a management timeline privilege holder and the owner' do
         expect(subject).to_not permit(viewer, status)
-      end
-
-      it 'denies the owner' do
         expect(subject).to_not permit(owner, status)
       end
     end

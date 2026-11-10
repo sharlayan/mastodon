@@ -31,15 +31,13 @@ RSpec.describe Sharlayan::AdminTimelineFanOut do
   it 'publishes public posts to the management timeline' do
     status = Fabricate(:status, account: account, visibility: :public, local_only: false)
 
-    expect(published_channels_for(status)).to include('timeline:admin')
-    expect(published_channels_for(status)).to include('timeline:admin:owner')
+    expect(published_channels_for(status)).to include('timeline:admin', 'timeline:admin:owner')
   end
 
   it 'publishes local-only restricted posts' do
     status = Fabricate(:status, account: account, visibility: :private, local_only: true)
 
-    expect(published_channels_for(status)).to include('timeline:admin')
-    expect(published_channels_for(status)).to include('timeline:admin:owner')
+    expect(published_channels_for(status)).to include('timeline:admin', 'timeline:admin:owner')
   end
 
   it 'publishes posts to management streams for accounts followed by the author' do

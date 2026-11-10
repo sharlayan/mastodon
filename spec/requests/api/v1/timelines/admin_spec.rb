@@ -30,28 +30,21 @@ RSpec.describe 'Management timeline API' do
     response.parsed_body.pluck(:id)
   end
 
-  it 'lists public posts whether or not they federated' do
+  it 'lists public and local-only posts while excluding federated restricted posts and remote participation' do
     federated = status_for(:public, local_only: false)
     local = status_for(:public, local_only: true)
-
-    expect(timeline_ids).to include(federated.id.to_s, local.id.to_s)
-  end
-
-  it 'hides federated direct, followers-only, unlisted and limited posts' do
     hidden = %i(direct private unlisted limited).map { |visibility| status_for(visibility, local_only: false) }
     shown = %i(direct private unlisted limited).map { |visibility| status_for(visibility, local_only: true) }
+    remote = Fabricate(:account, domain: 'remote.example', username: 'stranger')
+    remote_status = Fabricate(:status, account: remote, visibility: :public, local_only: false)
+    mentioning = status_for(:direct, local_only: true)
+    Fabricate(:mention, status: mentioning, account: remote)
+    replying = Fabricate(:status, account: poster, visibility: :private, local_only: true, in_reply_to_account_id: remote.id)
 
     ids = timeline_ids
 
-    expect(ids).to include(*shown.map { |status| status.id.to_s })
-    expect(ids).to_not include(*hidden.map { |status| status.id.to_s })
-  end
-
-  it 'does not list cached posts authored by remote accounts' do
-    remote = Fabricate(:account, domain: 'remote.example', username: 'remote-poster')
-    status = Fabricate(:status, account: remote, visibility: :public, local_only: false)
-
-    expect(timeline_ids).to_not include(status.id.to_s)
+    expect(ids).to include(*[federated, local, *shown].map { |status| status.id.to_s })
+    expect(ids).to_not include(*[remote_status, mentioning, replying, *hidden].map { |status| status.id.to_s })
   end
 
   context 'when community mode is enabled after a federated install' do
@@ -65,19 +58,6 @@ RSpec.describe 'Management timeline API' do
         .to include(legacy_public.id.to_s)
         .and not_include(legacy_restricted.id.to_s)
     end
-  end
-
-  it 'hides conversations a remote account takes part in' do
-    remote = Fabricate(:account, domain: 'remote.example', username: 'stranger')
-    mentioning = status_for(:direct, local_only: true)
-    Fabricate(:mention, status: mentioning, account: remote)
-    replying = Fabricate(:status, account: poster, visibility: :private, local_only: true, in_reply_to_account_id: remote.id)
-    local_only_dm = status_for(:direct, local_only: true)
-
-    ids = timeline_ids
-
-    expect(ids).to include(local_only_dm.id.to_s)
-    expect(ids).to_not include(mentioning.id.to_s, replying.id.to_s)
   end
 
   it 'is not reachable while either gate is disabled' do
@@ -148,21 +128,16 @@ RSpec.describe 'Management timeline API' do
 
     before { Fabricate(:follow, account: follower, target_account: user.account) }
 
-    it 'lists eligible posts from the viewer followers only' do
+    it 'lists eligible follower posts but excludes unrelated posts and owner conversations' do
       follower_status = Fabricate(:status, account: follower, visibility: :private, local_only: true)
       unrelated_status = Fabricate(:status, account: unrelated, visibility: :public)
-
-      expect(timeline_ids)
-        .to include(follower_status.id.to_s)
-        .and not_include(unrelated_status.id.to_s)
-    end
-
-    it 'hides owner conversations authored by a follower' do
       owner = Fabricate(:user, role: UserRole.find_by(name: 'Owner')).account
       status = Fabricate(:status, account: follower, visibility: :direct, local_only: true)
       Fabricate(:mention, status: status, account: owner)
 
-      expect(timeline_ids).to_not include(status.id.to_s)
+      expect(timeline_ids)
+        .to include(follower_status.id.to_s)
+        .and not_include(unrelated_status.id.to_s, status.id.to_s)
     end
   end
 end

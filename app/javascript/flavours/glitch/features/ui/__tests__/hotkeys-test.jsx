@@ -32,10 +32,7 @@ describe('UI timeline hotkeys', () => {
     container?.remove();
   });
 
-  it.each([
-    ['j', 'handleMoveDown'],
-    ['k', 'handleMoveUp'],
-  ])('focuses the current column post with %s from its header in legacy mode', (_key, handler) => {
+  it('focuses the current column post with j and k from its header in legacy mode', () => {
     container = document.createElement('div');
     container.innerHTML = `
       <div class="column" data-column-root>
@@ -58,12 +55,13 @@ describe('UI timeline hotkeys', () => {
 
     const header = container.querySelector('button');
     const post = container.querySelector('#current-post');
-    header.focus();
-
     const ui = new UI({ dispatch: vi.fn() });
 
-    expect(document.activeElement).toBe(header);
-    expect(ui[handler]()).toBe(true);
-    expect(document.activeElement).toBe(post);
+    for (const handler of ['handleMoveDown', 'handleMoveUp']) {
+      header.focus();
+      expect(document.activeElement, handler).toBe(header);
+      expect(ui[handler](), handler).toBe(true);
+      expect(document.activeElement, handler).toBe(post);
+    }
   });
 });
