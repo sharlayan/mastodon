@@ -87,6 +87,16 @@ const acctsFromStatus = (state, statusId) => {
   return accts;
 };
 
+export const directMessageMentions = (state, { inReplyToId, recipientIds }) => {
+  let accts = acctsFromIds(state, recipientIds || []);
+
+  if (accts.length === 0 && inReplyToId) {
+    accts = acctsFromStatus(state, inReplyToId);
+  }
+
+  return [...new Set(accts)].map(acct => `@${acct}`).join(' ');
+};
+
 export const submitDirectMessage = (conversationId, { inReplyToId, recipientIds }) => (dispatch, getState) => {
   const state = getState();
 
@@ -104,13 +114,7 @@ export const submitDirectMessage = (conversationId, { inReplyToId, recipientIds 
     return Promise.resolve();
   }
 
-  let accts = acctsFromIds(state, recipientIds || []);
-
-  if (accts.length === 0 && inReplyToId) {
-    accts = acctsFromStatus(state, inReplyToId);
-  }
-
-  const mentions = [...new Set(accts)].map(acct => `@${acct}`).join(' ');
+  const mentions = directMessageMentions(state, { inReplyToId, recipientIds });
   const status   = mentions ? `${mentions} ${text}`.trim() : text;
   const notificationStatusIds = state.getIn(['timelines', `conversation:${conversationId}`, 'items'], ImmutableList())
     .filter(id => state.getIn(['statuses', id, 'visibility']) === 'direct')

@@ -36,8 +36,16 @@ class Api::V1::ReactionsController < Api::BaseController
 
   def account_reactions
     scope = current_account.status_reactions
-    scope = scope.where(name: params[:name]) if params[:name].present?
-    scope
+    return scope if params[:name].blank?
+
+    name, domain = params[:name].to_s.split('@', 2)
+    scope = scope.where(name: name)
+
+    if domain.present?
+      scope.joins(:custom_emoji).where(custom_emojis: { domain: domain })
+    else
+      scope.left_joins(:custom_emoji).where(custom_emojis: { domain: nil })
+    end
   end
 
   def build_reaction_summary
@@ -67,11 +75,11 @@ class Api::V1::ReactionsController < Api::BaseController
   end
 
   def next_path
-    api_v1_reactions_url pagination_params(max_id: pagination_max_id) if records_continue?
+    api_v1_reactions_url pagination_params(max_id: pagination_max_id, name: params[:name].presence) if records_continue?
   end
 
   def prev_path
-    api_v1_reactions_url pagination_params(min_id: pagination_since_id) unless results.empty?
+    api_v1_reactions_url pagination_params(min_id: pagination_since_id, name: params[:name].presence) unless results.empty?
   end
 
   def pagination_collection

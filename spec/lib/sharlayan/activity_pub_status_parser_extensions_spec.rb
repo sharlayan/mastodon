@@ -39,14 +39,11 @@ RSpec.describe Sharlayan::ActivityPubStatusParserExtensions do
       ]
     end
 
-    it 'recognizes the server and grants public notes follower auto-approval' do
-      expect(parser).to be_from_misskey
-      expect(parser.quote_policy).to eq(InteractionPolicy::POLICY_FLAGS[:followers] << 16)
-    end
-
-    it 'removes only the synthetic break before an inline quote' do
+    it 'recognizes the server, grants public notes follower auto-approval and removes only the synthetic break before an inline quote' do
       object['content'] = 'body<br/><span class="quote-inline">quote</span><br/>tail'
 
+      expect(parser).to be_from_misskey
+      expect(parser.quote_policy).to eq(InteractionPolicy::POLICY_FLAGS[:followers] << 16)
       expect(parser.text).to eq('body<span class="quote-inline">quote</span><br/>tail')
     end
 
@@ -59,18 +56,12 @@ RSpec.describe Sharlayan::ActivityPubStatusParserExtensions do
     end
   end
 
-  context 'with a limited scope URI' do
-    before { object['limitedScope'] = 'Mutual' }
-
-    it 'maps the URI value to the status enum' do
-      expect(parser.limited_scope).to eq('mutual')
-    end
-  end
-
   context 'without a Misskey context' do
-    it 'keeps content unchanged and does not claim Misskey origin' do
+    it 'keeps content unchanged, does not claim Misskey origin and maps a limited scope URI to the status enum' do
       object['content'] = 'body<br/><span class="quote-inline">quote</span>'
+      object['limitedScope'] = 'Mutual'
 
+      expect(parser.limited_scope).to eq('mutual')
       expect(parser).to_not be_from_misskey
       expect(parser.text).to eq('body<br/><span class="quote-inline">quote</span>')
     end

@@ -4,8 +4,10 @@ require 'rails_helper'
 
 RSpec.describe Sharlayan::PageMarkdown do
   describe '.to_html' do
-    it 'renders Markdown with the advanced text formatter' do
+    it 'renders Markdown with the advanced text formatter, separately per source text and with nil as an empty document' do
       expect(described_class.to_html('**bold**')).to eq(AdvancedTextFormatter.new('**bold**', content_type: 'text/markdown').to_s)
+      expect(described_class.to_html('*one*')).to_not eq(described_class.to_html('*two*'))
+      expect { described_class.to_html(nil) }.to_not raise_error
     end
 
     it 'reuses the rendered HTML for the same source text' do
@@ -16,14 +18,6 @@ RSpec.describe Sharlayan::PageMarkdown do
 
       expect(second).to eq(first)
       expect(AdvancedTextFormatter).to have_received(:new).once
-    end
-
-    it 'renders different source text separately' do
-      expect(described_class.to_html('*one*')).to_not eq(described_class.to_html('*two*'))
-    end
-
-    it 'treats nil as an empty document' do
-      expect { described_class.to_html(nil) }.to_not raise_error
     end
   end
 

@@ -90,18 +90,9 @@ RSpec.describe 'Clip statuses' do
 
     before { stub_const('Clip::STATUSES_LIMIT', 1) }
 
-    it 'rejects a different status once the clip is full' do
-      clip.clip_statuses.create!(status: Fabricate(:status))
-
-      expect do
-        post "/api/v1/clips/#{clip.id}/statuses", params: { status_id: Fabricate(:status).id }, headers: headers
-      end.to_not change(ClipStatus, :count)
-
-      expect(response).to have_http_status(422)
-    end
-
-    it 'remains idempotent for a status already in a full clip' do
+    it 'remains idempotent for a status already in a full clip but rejects a different status' do
       status = Fabricate(:status)
+      other_status = Fabricate(:status)
       clip.clip_statuses.create!(status: status)
 
       expect do
@@ -109,6 +100,12 @@ RSpec.describe 'Clip statuses' do
       end.to_not change(ClipStatus, :count)
 
       expect(response).to have_http_status(200)
+
+      expect do
+        post "/api/v1/clips/#{clip.id}/statuses", params: { status_id: other_status.id }, headers: headers
+      end.to_not change(ClipStatus, :count)
+
+      expect(response).to have_http_status(422)
     end
 
     it 'does not add a status the owner cannot see' do

@@ -8,20 +8,14 @@ RSpec.describe CustomEmojiMute do
   describe 'per-account limit' do
     before { stub_const('CustomEmojiMute::PER_ACCOUNT_LIMIT', 2) }
 
-    it 'rejects creation beyond the limit' do
+    it 'rejects creation beyond the limit but still allows updating an existing record at the limit' do
       2.times { |index| account.custom_emoji_mutes.create!(prefix: "mute#{index}") }
 
       mute = account.custom_emoji_mutes.new(prefix: 'overflow')
 
       expect(mute).to_not be_valid
       expect(mute.errors[:base]).to include(I18n.t('custom_emoji_mutes.errors.limit'))
-    end
-
-    it 'still allows updating an existing record at the limit' do
-      2.times { |index| account.custom_emoji_mutes.create!(prefix: "mute#{index}") }
-      mute = account.custom_emoji_mutes.last
-
-      expect(mute.update(reject_reactions: true)).to be true
+      expect(described_class.where(account: account).last.update(reject_reactions: true)).to be true
     end
 
     it 'counts only the owning account' do

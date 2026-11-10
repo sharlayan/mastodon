@@ -40,53 +40,35 @@ RSpec.describe 'Federated chat attachments' do
     get "#{uri.path}?#{uri.query}"
   end
 
-  it 'gives each server its own address for an attachment' do
+  it 'gives each server its own address for an attachment, also when the message is edited' do
     message
+    service.update_message(owner, message, text: 'changed')
 
     expect(delivered_url(bob.inbox_url, 'Create')).to include("/media_proxy/#{media.id}/original?token=")
     expect(delivered_url(carol.inbox_url, 'Create')).to include("/media_proxy/#{media.id}/original?token=")
     expect(delivered_url(bob.inbox_url, 'Create')).to_not eq(delivered_url(carol.inbox_url, 'Create'))
-  end
-
-  it 'does the same when the message is edited' do
-    message
-    service.update_message(owner, message, text: 'changed')
-
     expect(delivered_url(bob.inbox_url, 'Update')).to_not eq(delivered_url(carol.inbox_url, 'Update'))
   end
 
-  it 'opens for a server that has a current member' do
-    message
-
-    fetch(delivered_url(bob.inbox_url, 'Create'))
-
-    expect(response).to have_http_status(:redirect)
-  end
-
-  it 'closes for a server once its last member is removed' do
+  it 'opens for a server that has a current member, closes once its last member is removed and stays open for other servers' do
     message
     url = delivered_url(bob.inbox_url, 'Create')
+    other_url = delivered_url(carol.inbox_url, 'Create')
+    fetch(url)
+    expect(response).to have_http_status(:redirect)
 
     service.kick(owner, room, bob)
     fetch(url)
-
     expect(response).to have_http_status(404)
+
+    fetch(other_url)
+    expect(response).to have_http_status(:redirect)
   end
 
   it 'stays open while the server has another member' do
     room.memberships.create!(account: bea)
     message
     url = delivered_url(bob.inbox_url, 'Create')
-
-    service.kick(owner, room, bob)
-    fetch(url)
-
-    expect(response).to have_http_status(:redirect)
-  end
-
-  it 'stays open for other servers when one is removed' do
-    message
-    url = delivered_url(carol.inbox_url, 'Create')
 
     service.kick(owner, room, bob)
     fetch(url)
@@ -118,24 +100,16 @@ RSpec.describe 'Federated chat attachments' do
   end
 
   describe 'years after the message was sent' do
-    it 'still opens for a server that has a current member' do
+    it 'still opens for a server that has a current member and closes once its last member has been removed' do
       message
       url = delivered_url(bob.inbox_url, 'Create')
 
       travel 5.years
       fetch(url)
-
       expect(response).to have_http_status(:redirect)
-    end
 
-    it 'closes once the last member of that server has been removed' do
-      message
-      url = delivered_url(bob.inbox_url, 'Create')
-
-      travel 5.years
       service.kick(owner, room, bob)
       fetch(url)
-
       expect(response).to have_http_status(404)
     end
 
@@ -160,40 +134,19 @@ RSpec.describe 'Federated chat attachments' do
 
       expect(response).to have_http_status(404)
     end
-
-    it 'does not make a token good for another attachment' do
-      other_media = Fabricate(:media_attachment, account: owner, status: nil)
-      service.create_message(owner, room, text: 'other', media_ids: [other_media.id])
-      token = Sharlayan::ChatFederation::MediaToken.generate(other_media, domain: bob.domain)
-      message
-
-      travel 5.years
-      get "/media_proxy/#{media.id}/original", params: { token: token }
-
-      expect(response).to have_http_status(404)
-    end
   end
 
-  describe 'a token made when these had a time limit' do
-    let(:token) { Rails.application.message_verifier('sharlayan_chat_media').generate({ 'id' => media.id, 'domain' => bob.domain }, expires_in: 1.year, purpose: :chat_media) }
+  it 'still takes a token made when these had a time limit until that limit, and not after' do
+    message
+    token = Rails.application.message_verifier('sharlayan_chat_media').generate({ 'id' => media.id, 'domain' => bob.domain }, expires_in: 1.year, purpose: :chat_media)
 
-    before { message }
+    travel 11.months
+    get "/media_proxy/#{media.id}/original", params: { token: token }
+    expect(response).to have_http_status(:redirect)
 
-    it 'is still taken until that limit' do
-      used = token
-      travel 11.months
-      get "/media_proxy/#{media.id}/original", params: { token: used }
-
-      expect(response).to have_http_status(:redirect)
-    end
-
-    it 'is not taken after that limit' do
-      used = token
-      travel 13.months
-      get "/media_proxy/#{media.id}/original", params: { token: used }
-
-      expect(response).to have_http_status(404)
-    end
+    travel 2.months
+    get "/media_proxy/#{media.id}/original", params: { token: token }
+    expect(response).to have_http_status(404)
   end
 
   it 'does not take a token that names no server' do
@@ -204,14 +157,17 @@ RSpec.describe 'Federated chat attachments' do
     expect(response).to have_http_status(404)
   end
 
-  it 'does not take a token issued for another attachment' do
+  it 'does not take a token issued for another attachment, now or years later' do
     other_media = Fabricate(:media_attachment, account: owner, status: nil)
     service.create_message(owner, room, text: 'other', media_ids: [other_media.id])
     token = Sharlayan::ChatFederation::MediaToken.generate(other_media, domain: bob.domain)
     message
 
     get "/media_proxy/#{media.id}/original", params: { token: token }
+    expect(response).to have_http_status(404)
 
+    travel 5.years
+    get "/media_proxy/#{media.id}/original", params: { token: token }
     expect(response).to have_http_status(404)
   end
 

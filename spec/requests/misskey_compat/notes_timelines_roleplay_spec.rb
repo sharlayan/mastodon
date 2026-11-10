@@ -32,17 +32,14 @@ RSpec.describe 'Misskey-compat roleplay timelines' do
     end
   end
 
-  it 'allows a user with feed-view permission to read the local timeline' do
+  it 'allows a user with feed-view permission to read the local timeline unless the hard-hide option is enabled' do
     user.update!(role: Fabricate(:user_role, permissions: UserRole::FLAGS[:view_feeds]))
 
     post '/api/notes/local-timeline', params: { i: token }, as: :json
 
     expect(response).to have_http_status(200)
     expect(response.parsed_body.pluck(:id)).to include(MisskeyCompat::MiId.encode(status.id))
-  end
 
-  it 'hides timelines from a permitted user when the hard-hide option is enabled' do
-    user.update!(role: Fabricate(:user_role, permissions: UserRole::FLAGS[:view_feeds]))
     Setting.roleplay_hide_public_timelines_from_admins = true
 
     post '/api/notes/local-timeline', params: { i: token }, as: :json

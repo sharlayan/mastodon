@@ -15,47 +15,23 @@ RSpec.describe GrantChatPermissionsToMisskeyAccessGrants do
     MisskeyCompat::MiAuth.issue_token(user, name: 'App', permissions: permissions).misskey_access_grant
   end
 
-  it 'gives MiAuth applications issued before chat both chat permissions' do
-    grant = grant_with(previous_permissions)
-
-    migrate!
-
-    expect(grant.reload.permissions).to match_array(MisskeyCompat::MiAuth::SUPPORTED_PERMISSIONS)
-  end
-
-  it 'gives web sign-in grants issued before chat both chat permissions' do
-    grant = MisskeyCompat::MiAuth.issue_native_token(user).misskey_access_grant
-    grant.update_columns(permissions: previous_permissions)
-
-    migrate!
-
-    expect(grant.reload.permissions).to match_array(MisskeyCompat::MiAuth::SUPPORTED_PERMISSIONS)
-  end
-
-  it 'gives a grant only the chat permission of the kinds it already had' do
+  it 'gives grants issued before chat only the chat permission of the kinds they already had, without duplicating or filling empty grants' do
+    miauth = grant_with(previous_permissions)
+    web = MisskeyCompat::MiAuth.issue_native_token(user).misskey_access_grant
+    web.update_columns(permissions: previous_permissions)
     reader = grant_with(%w(read:account read:notifications))
     writer = grant_with(%w(write:notes))
+    empty = grant_with(%w(read:account))
+    empty.update_columns(permissions: [])
+    current = MisskeyCompat::MiAuth.issue_native_token(user).misskey_access_grant
 
     migrate!
 
+    expect(miauth.reload.permissions).to match_array(MisskeyCompat::MiAuth::SUPPORTED_PERMISSIONS)
+    expect(web.reload.permissions).to match_array(MisskeyCompat::MiAuth::SUPPORTED_PERMISSIONS)
     expect(reader.reload.permissions).to eq(%w(read:account read:notifications read:chat))
     expect(writer.reload.permissions).to eq(%w(write:notes write:chat))
-  end
-
-  it 'leaves a grant without permissions empty' do
-    grant = grant_with(%w(read:account))
-    grant.update_columns(permissions: [])
-
-    migrate!
-
-    expect(grant.reload.permissions).to eq([])
-  end
-
-  it 'does not duplicate chat permissions that a grant already has' do
-    grant = MisskeyCompat::MiAuth.issue_native_token(user).misskey_access_grant
-
-    migrate!
-
-    expect(grant.reload.permissions).to eq(MisskeyCompat::MiAuth::SUPPORTED_PERMISSIONS)
+    expect(empty.reload.permissions).to eq([])
+    expect(current.reload.permissions).to eq(MisskeyCompat::MiAuth::SUPPORTED_PERMISSIONS)
   end
 end

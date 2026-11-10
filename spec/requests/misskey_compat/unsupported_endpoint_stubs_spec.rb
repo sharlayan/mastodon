@@ -91,30 +91,26 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
   before { Setting.misskey_compat_enabled = true }
   after  { Setting.misskey_compat_enabled = false }
 
-  it 'returns an empty object from every object stub' do
+  it 'returns an empty object, an empty array, or no content from every object, array, and void stub' do
     object_endpoints.each do |endpoint|
       post "/api/#{endpoint}", as: :json
 
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body).to eq({})
+      expect(response).to have_http_status(200), endpoint
+      expect(response.parsed_body).to eq({}), endpoint
     end
-  end
 
-  it 'returns an empty array from every array stub' do
     array_endpoints.each do |endpoint|
       post "/api/#{endpoint}", as: :json
 
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body).to eq([])
+      expect(response).to have_http_status(200), endpoint
+      expect(response.parsed_body).to eq([]), endpoint
     end
-  end
 
-  it 'returns no content from every void stub' do
     void_endpoints.each do |endpoint|
       post "/api/#{endpoint}", as: :json
 
-      expect(response).to have_http_status(204)
-      expect(response.body).to be_empty
+      expect(response).to have_http_status(204), endpoint
+      expect(response.body).to be_empty, endpoint
     end
   end
 

@@ -393,15 +393,10 @@ RSpec.describe 'Accounts show response' do
       account.user.save!
     end
 
-    it 'exposes the target account for a public Page view' do
+    it 'exposes the target account and skin for a public Page view without changing the visitor color scheme' do
       get "/@#{account.username}/pages/example"
 
       expect(response.parsed_body.at('meta[name="pageBlogViewAccount"]')&.[]('content')).to eq(account.acct)
-    end
-
-    it 'exposes the target account skin without changing the visitor color scheme' do
-      get "/@#{account.username}/pages/example"
-
       expect(response.parsed_body.at('meta[name="pageBlogViewSkin"]')&.[]('content')).to eq('default')
       expect(response.parsed_body.at('link#page-blog-theme')).to be_nil
       expect(response.parsed_body.at('html')&.[]('data-color-scheme')).to eq('auto')

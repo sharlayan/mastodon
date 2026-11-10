@@ -13,6 +13,21 @@ RSpec.describe 'Misskey-compat notification endpoints' do
   after  { Setting.misskey_compat_enabled = false }
 
   describe 'POST /api/i/notifications' do
+    it 'omits notes after the recipient loses access to them' do
+      account.follow!(actor)
+      status = Fabricate(:status, account: actor, visibility: :private)
+      notification = Fabricate(:notification, account: account, type: :status, activity: status)
+
+      post '/api/i/notifications', params: { i: read_token, markAsRead: false }, as: :json
+      expect(response.parsed_body).to contain_exactly(include(id: MisskeyCompat::MiId.encode(notification.id), note: include(text: status.text)))
+
+      account.unfollow!(actor)
+
+      post '/api/i/notifications', params: { i: read_token, markAsRead: false }, as: :json
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to eq([])
+    end
+
     it 'requires authentication and read scope' do
       post '/api/i/notifications', as: :json
       expect(response).to have_http_status(401)
@@ -22,19 +37,10 @@ RSpec.describe 'Misskey-compat notification endpoints' do
       expect(response.parsed_body.dig(:error, :code)).to eq('PERMISSION_DENIED')
     end
 
-    it 'excludes notifications held back by the notification policy' do
-      shown = Fabricate(:notification, account: account, type: :follow, activity: Fabricate(:follow, account: actor, target_account: account))
-      Fabricate(:notification, account: account, type: :follow, activity: Fabricate(:follow, account: Fabricate(:account), target_account: account), filtered: true)
-
-      post '/api/i/notifications', params: { i: read_token }, as: :json
-
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body.pluck(:id)).to eq([MisskeyCompat::MiId.encode(shown.id)])
-    end
-
-    it 'returns only supported notifications owned by the authenticated account' do
+    it 'returns only supported notifications owned by the authenticated account and not held back by the notification policy' do
       follow = Fabricate(:follow, account: actor, target_account: account)
       notification = Fabricate(:notification, account: account, type: :follow, activity: follow)
+      Fabricate(:notification, account: account, type: :follow, activity: Fabricate(:follow, account: Fabricate(:account), target_account: account), filtered: true)
       foreign_follow = Fabricate(:follow, account: account, target_account: actor)
       Fabricate(:notification, account: actor, type: :follow, activity: foreign_follow)
       Fabricate(:notification, account: account, type: :update, activity: Fabricate(:status, account: actor))
@@ -171,21 +177,16 @@ RSpec.describe 'Misskey-compat notification endpoints' do
   end
 
   describe 'POST /api/i/read-all-notifications' do
-    it 'rejects a read-only token without advancing the marker' do
+    it 'rejects a read-only token without advancing the marker, then advances it to the latest owned notification' do
       follow = Fabricate(:follow, account: actor, target_account: account)
-      Fabricate(:notification, account: account, type: :follow, activity: follow)
+      latest = Fabricate(:notification, account: account, type: :follow, activity: follow)
+      foreign_follow = Fabricate(:follow, account: account, target_account: actor)
+      Fabricate(:notification, account: actor, type: :follow, activity: foreign_follow)
 
       post '/api/i/read-all-notifications', params: { i: read_token }, as: :json
 
       expect(response).to have_http_status(403)
       expect(user.markers.find_by(timeline: 'notifications')).to be_nil
-    end
-
-    it 'advances the notification marker to the latest owned notification' do
-      follow = Fabricate(:follow, account: actor, target_account: account)
-      latest = Fabricate(:notification, account: account, type: :follow, activity: follow)
-      foreign_follow = Fabricate(:follow, account: account, target_account: actor)
-      Fabricate(:notification, account: actor, type: :follow, activity: foreign_follow)
 
       post '/api/i/read-all-notifications', params: { i: write_token }, as: :json
 

@@ -63,15 +63,20 @@ beforeEach(() => {
 });
 
 describe('redesign composer custom state', () => {
-  it.each(['COMPOSE_SET_DRAFT', 'COMPOSE_SET_SCHEDULED'])('opens and focuses loaded content for %s', (type) => {
-    expect(composer(undefined, { type })).toMatchObject({
+  it('opens and focuses loaded drafts and scheduled posts', () => {
+    expect(composer(undefined, { type: 'COMPOSE_SET_DRAFT' })).toMatchObject({
+      displayState: 'showing',
+      pendingFocus: { selection: null },
+    });
+    expect(composer(undefined, { type: 'COMPOSE_SET_SCHEDULED' })).toMatchObject({
       displayState: 'showing',
       pendingFocus: { selection: null },
     });
   });
 
-  it.each(['draft_id', 'scheduled_at'])('keeps an empty saved source when %s is present', (field) => {
-    expect(selectComposerIsChanged(makeState({ text: '', [field]: 'saved' }))).toBe(true);
+  it('keeps an empty saved draft or scheduled source as changed', () => {
+    expect(selectComposerIsChanged(makeState({ text: '', draft_id: 'saved' }))).toBe(true);
+    expect(selectComposerIsChanged(makeState({ text: '', scheduled_at: 'saved' }))).toBe(true);
   });
 
   it('preserves the shared reducer thread continuation after publishing', () => {
@@ -97,8 +102,10 @@ describe('redesign composer custom state', () => {
     expect(state.composer.displayState).toBe('hidden');
   });
 
-  it.each(['is_submitting', 'is_uploading', 'is_changing_upload'])('does not submit during %s', (field) => {
-    runSubmit(makeState({ [field]: true }));
+  it('does not submit while submitting, uploading or changing an upload', () => {
+    runSubmit(makeState({ is_submitting: true }));
+    runSubmit(makeState({ is_uploading: true }));
+    runSubmit(makeState({ is_changing_upload: true }));
     expect(mocks.submit).not.toHaveBeenCalled();
   });
 

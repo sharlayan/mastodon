@@ -12,14 +12,17 @@ RSpec.describe Sharlayan::Status::Reactions do
     Fabricate(:status_reaction, status: status, account: viewer, name: 'party', custom_emoji: remote_emoji)
   end
 
-  describe '.reaction_groups_map' do
+  describe '.reaction_groups_map and #reactions' do
     it 'preloads custom emoji and local counterpart associations' do
       reaction = Status.reaction_groups_map([status.id], viewer.id).fetch(status.id).first
+      direct_reaction = status.reactions(viewer.id).first
 
       expect(reaction.association(:custom_emoji)).to be_loaded
       expect(reaction.custom_emoji.association(:local_counterpart)).to be_loaded
       expect(reaction.custom_emoji.local_counterpart).to eq(local_counterpart)
       expect(reaction.me).to be true
+      expect(direct_reaction.association(:custom_emoji)).to be_loaded
+      expect(direct_reaction.custom_emoji.association(:local_counterpart)).to be_loaded
     end
 
     it 'does not show suspended accounts among the reacting users' do
@@ -76,15 +79,6 @@ RSpec.describe Sharlayan::Status::Reactions do
       expect(viewer_reaction.account_ids).to contain_exactly(visible_account.id.to_s)
       expect(other_viewer_reaction.count).to eq(2)
       expect(other_viewer_reaction.account_ids).to contain_exactly(muted_account.id.to_s, visible_account.id.to_s)
-    end
-  end
-
-  describe '#reactions' do
-    it 'preloads custom emoji and local counterpart associations' do
-      reaction = status.reactions(viewer.id).first
-
-      expect(reaction.association(:custom_emoji)).to be_loaded
-      expect(reaction.custom_emoji.association(:local_counterpart)).to be_loaded
     end
   end
 end

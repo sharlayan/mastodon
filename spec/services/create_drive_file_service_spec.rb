@@ -19,19 +19,13 @@ RSpec.describe CreateDriveFileService do
     )
   end
 
-  it 'preserves sensitive metadata when it is omitted from a duplicate upload' do
+  it 'preserves sensitive metadata when it is omitted from or nil in a duplicate upload' do
     expect(upload_again).to eq(existing)
     expect(existing.reload).to be_sensitive
-  end
 
-  context 'when sensitive is explicitly nil' do
-    let(:options) { { sensitive: nil } }
+    described_class.new.call(account: account, user: account.user, file: upload, sensitive: nil)
 
-    it 'preserves the existing sensitive metadata' do
-      upload_again
-
-      expect(existing.reload).to be_sensitive
-    end
+    expect(existing.reload).to be_sensitive
   end
 
   context 'when sensitive is explicitly false' do

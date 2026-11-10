@@ -10,31 +10,18 @@ RSpec.describe 'Mute creation with malformed parameters' do
   before { Setting.avatar_decorations_enabled = true }
 
   shared_examples 'a mute endpoint rejecting malformed parameters' do |path|
-    it 'rejects an array account id' do
-      post path, params: { account_id: [target.id] }, headers: headers
+    it 'rejects array account ids and malformed or array domains but still accepts a valid domain', :aggregate_failures do
+      [
+        { account_id: [target.id] },
+        { domain: 'exa mple.com' },
+        { domain: 'a@b' },
+        { domain: ['example.com'] },
+      ].each do |params|
+        post path, params: params, headers: headers
 
-      expect(response).to have_http_status(422)
-    end
+        expect(response).to have_http_status(422), -> { "#{params.inspect} returned #{response.status}" }
+      end
 
-    it 'rejects a domain with a space' do
-      post path, params: { domain: 'exa mple.com' }, headers: headers
-
-      expect(response).to have_http_status(422)
-    end
-
-    it 'rejects a domain with an at sign' do
-      post path, params: { domain: 'a@b' }, headers: headers
-
-      expect(response).to have_http_status(422)
-    end
-
-    it 'rejects an array domain' do
-      post path, params: { domain: ['example.com'] }, headers: headers
-
-      expect(response).to have_http_status(422)
-    end
-
-    it 'still accepts a valid domain' do
       post path, params: { domain: 'Example.com' }, headers: headers
 
       expect(response).to have_http_status(200)
@@ -56,25 +43,17 @@ RSpec.describe 'Mute creation with malformed parameters' do
   end
 
   describe 'POST /api/v1/custom_emoji_mutes' do
-    it 'rejects a domain with a space' do
-      post '/api/v1/custom_emoji_mutes', params: { prefix: 'blob', domain: 'exa mple.com' }, headers: headers
+    it 'rejects malformed or array domains and array prefixes but still accepts a valid domain', :aggregate_failures do
+      [
+        { prefix: 'blob', domain: 'exa mple.com' },
+        { prefix: 'blob', domain: ['example.com'] },
+        { prefix: ['blob'] },
+      ].each do |params|
+        post '/api/v1/custom_emoji_mutes', params: params, headers: headers
 
-      expect(response).to have_http_status(422)
-    end
+        expect(response).to have_http_status(422), -> { "#{params.inspect} returned #{response.status}" }
+      end
 
-    it 'rejects an array domain' do
-      post '/api/v1/custom_emoji_mutes', params: { prefix: 'blob', domain: ['example.com'] }, headers: headers
-
-      expect(response).to have_http_status(422)
-    end
-
-    it 'rejects an array prefix' do
-      post '/api/v1/custom_emoji_mutes', params: { prefix: ['blob'] }, headers: headers
-
-      expect(response).to have_http_status(422)
-    end
-
-    it 'still accepts a valid domain' do
       post '/api/v1/custom_emoji_mutes', params: { prefix: 'blob', domain: 'Example.com' }, headers: headers
 
       expect(response).to have_http_status(200)

@@ -33,28 +33,6 @@ RSpec.describe 'Misskey-compat Drive endpoints', :attachment_processing do
       expect(response.parsed_body.dig(:error, :code)).to eq('RATE_LIMIT_EXCEEDED')
     end
 
-    it 'stores a persistent Drive file whenever the server Drive feature is enabled' do
-      expect do
-        post '/api/drive/files/create', params: { i: token, file: fixture_file_upload('attachment.jpg', 'image/jpeg'), comment: 'Alt text' }
-      end.to change(DriveFile, :count).by(1).and not_change(MediaAttachment, :count)
-
-      expect(response).to have_http_status(200)
-
-      drive_file = account.drive_files.last
-      expect(response.parsed_body).to include(
-        id: MisskeyCompat::MiId.encode(drive_file.id),
-        comment: 'Alt text',
-        folderId: nil
-      )
-      expect(response.parsed_body[:md5]).to match(/\A[0-9a-f]{32}\z/)
-      expect(response.parsed_body[:md5]).to eq(Digest::MD5.file(drive_file.file.path(:original)).hexdigest)
-
-      post '/api/notes/create', params: { i: token, text: 'Persistent upload', fileIds: [response.parsed_body[:id]] }, as: :json
-
-      expect(response).to have_http_status(200)
-      expect(account.statuses.last.media_attachments.first).to be_drive_pointer
-    end
-
     it 'keeps the legacy upload path when the server Drive feature is disabled' do
       Setting.drive_enabled = false
 
@@ -66,7 +44,7 @@ RSpec.describe 'Misskey-compat Drive endpoints', :attachment_processing do
       expect(account.media_attachments.last).to_not be_drive_pointer
     end
 
-    it 'stores a DriveFile without creating a pointer when Drive persistence is enabled' do
+    it 'stores a persistent DriveFile without creating a pointer whenever the server Drive feature is enabled' do
       folder = account.drive_folders.create!(name: 'Aria')
       user.update!(settings_attributes: { drive_default_folder_id: folder.id.to_s })
 
@@ -92,6 +70,7 @@ RSpec.describe 'Misskey-compat Drive endpoints', :attachment_processing do
         folderId: MisskeyCompat::MiId.encode(folder.id),
         userId: MisskeyCompat::MiId.encode(account.id)
       )
+      expect(response.parsed_body[:md5]).to eq(Digest::MD5.file(drive_file.file.path(:original)).hexdigest)
 
       post '/api/notes/create', params: { i: token, text: 'Persistent upload', fileIds: [response.parsed_body[:id]] }, as: :json
 

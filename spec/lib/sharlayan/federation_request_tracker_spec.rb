@@ -13,26 +13,12 @@ RSpec.describe Sharlayan::FederationRequestTracker do
     end
   end
 
-  describe '.enabled?' do
-    it 'follows the admin setting' do
+  describe 'when disabled' do
+    it 'follows the admin setting and buffers nothing while it is off' do
       expect(described_class).to be_enabled
 
       Setting.federation_request_statistics_enabled = false
       expect(described_class).to_not be_enabled
-    ensure
-      Setting.federation_request_statistics_enabled = true
-    end
-
-    it 'stays off in roleplay mode even when the admin setting is on' do
-      ClimateControl.modify OC_ROLEPLAY_OPTION: 'true' do
-        expect(described_class).to_not be_enabled
-      end
-    end
-  end
-
-  describe 'when disabled' do
-    it 'buffers nothing while the admin setting is off' do
-      Setting.federation_request_statistics_enabled = false
 
       described_class.track_deliver_success!('example.com')
       described_class.track_inbox_received!('example.com')
@@ -44,8 +30,9 @@ RSpec.describe Sharlayan::FederationRequestTracker do
       Setting.federation_request_statistics_enabled = true
     end
 
-    it 'buffers nothing in roleplay mode' do
+    it 'stays off and buffers nothing in roleplay mode even when the admin setting is on' do
       ClimateControl.modify OC_ROLEPLAY_OPTION: 'true' do
+        expect(described_class).to_not be_enabled
         described_class.track_deliver_failure!('example.com')
       end
 
@@ -73,21 +60,17 @@ RSpec.describe Sharlayan::FederationRequestTracker do
       expect(other.inbox_received_count).to eq(1)
     end
 
-    it 'adds to an existing bucket row instead of replacing it' do
+    it 'drains the buffer so repeated flushes do not double count, then adds to the existing bucket row' do
       described_class.track_deliver_success!('example.com')
       described_class.flush!
+
+      expect(described_class.flush!).to eq(0)
+      expect(FederationRequestStatistic.find_by(domain: 'example.com').deliver_succeeded_count).to eq(1)
+
       described_class.track_deliver_success!('example.com')
       described_class.flush!
 
       expect(FederationRequestStatistic.find_by(domain: 'example.com').deliver_succeeded_count).to eq(2)
-    end
-
-    it 'drains the buffer so repeated flushes do not double count' do
-      described_class.track_inbox_received!('example.com')
-      described_class.flush!
-
-      expect(described_class.flush!).to eq(0)
-      expect(FederationRequestStatistic.find_by(domain: 'example.com').inbox_received_count).to eq(1)
     end
 
     it 'flushes buckets left behind by earlier hours within the flush window' do

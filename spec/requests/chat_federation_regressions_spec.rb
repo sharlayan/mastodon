@@ -160,12 +160,10 @@ RSpec.describe 'Chat federation regressions' do
       expect(media.reload.file).to be_present
     end
 
-    it 'denies anonymous visitors' do
+    it 'denies anonymous visitors and authenticated nonmembers' do
       get "/media_proxy/#{media.id}/original"
       expect(response).to have_http_status(404)
-    end
 
-    it 'denies authenticated nonmembers' do
       sign_in invitee.user
       get "/media_proxy/#{media.id}/original"
       expect(response).to have_http_status(404)
@@ -306,17 +304,13 @@ RSpec.describe 'Chat federation regressions' do
 
   %i(chat_enabled chat_federation_enabled).each do |setting|
     context "when #{setting} is disabled" do
-      it 'keeps chat Creates as private statuses without creating messages' do
+      it 'keeps chat Creates as private statuses without creating messages and does not accept invitations' do
         json = note_json
+        invite = invite_json
         Setting.public_send(:"#{setting}=", false)
         expect { perform(json) }.to_not change(ChatMessage, :count)
         expect(Status.where(uri: json['object']['id']).pluck(:visibility)).to eq(['limited'])
-      end
-
-      it 'does not accept invitations' do
-        json = invite_json
-        Setting.public_send(:"#{setting}=", false)
-        expect { perform(json) }.to_not change(ChatInvitation, :count)
+        expect { perform(invite) }.to_not change(ChatInvitation, :count)
       end
 
       it 'does not change room membership, metadata or invitations' do
@@ -362,16 +356,14 @@ RSpec.describe 'Chat federation regressions' do
     end
   end
 
-  it 'does not let a foreign actor tombstone another actors future message' do
-    uri = 'https://remote.test/chat/messages/96'
-    perform({ 'type' => 'Delete', 'object' => uri }, Fabricate(:account, domain: 'attacker.test', uri: 'https://attacker.test/users/eve'))
-    expect { perform(note_json(uri)) }.to change(ChatMessage, :count).by(1)
-  end
+  it 'does not let a foreign or same-origin actor tombstone another actors future message' do
+    foreign_uri = 'https://remote.test/chat/messages/96'
+    same_origin_uri = 'https://remote.test/chat/messages/97'
+    perform({ 'type' => 'Delete', 'object' => foreign_uri }, Fabricate(:account, domain: 'attacker.test', uri: 'https://attacker.test/users/eve'))
+    perform({ 'type' => 'Delete', 'object' => same_origin_uri }, Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/eve'))
 
-  it 'does not let a same-origin actor tombstone another actors future message' do
-    uri = 'https://remote.test/chat/messages/97'
-    perform({ 'type' => 'Delete', 'object' => uri }, Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/eve'))
-    expect { perform(note_json(uri)) }.to change(ChatMessage, :count).by(1)
+    expect { perform(note_json(foreign_uri)) }.to change(ChatMessage, :count).by(1)
+    expect { perform(note_json(same_origin_uri)) }.to change(ChatMessage, :count).by(1)
   end
 
   it 'honors an authenticated senders own pre-arrival deletion' do

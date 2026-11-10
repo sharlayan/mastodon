@@ -10,17 +10,15 @@ RSpec.describe 'Circles API' do
       get '/api/v1/circles', headers: headers
     end
 
-    it 'returns not found when circles are disabled' do
+    it 'returns not found while circles are disabled and the current account circles once enabled' do
       subject
 
       expect(response).to have_http_status(404)
-    end
 
-    it 'returns the current account circles when enabled' do
       Setting.circles_enabled = true
       circle = Circle.create!(account: user.account, title: 'Friends')
 
-      subject
+      get '/api/v1/circles', headers: headers
 
       expect(response)
         .to have_http_status(200)

@@ -22,34 +22,20 @@ RSpec.describe 'Acknowledging a streaming subscription', :inline_jobs, :streamin
     redis.publish("timeline:#{user_account.id}", JSON.generate(event: event, payload: JSON.generate(payload)))
   end
 
-  it 'answers a client that asks, without being sent anything else' do
+  it 'answers each asking subscription, including repeats and second connections, and delivers what is published after answering' do
     streaming_client.subscribe('user', ack: true)
 
     expect(streaming_client.wait_for_message).to eq(subscribed)
     expect(streaming_client.messages.size).to eq(1)
-  end
-
-  it 'delivers what is published the moment after it has answered' do
-    streaming_client.subscribe('user', ack: true)
-    streaming_client.wait_for_message
 
     publish_to_user('chat.message', { id: '1' })
 
     expect(streaming_client.wait_for_message).to eq(stream: ['user'], event: 'chat.message', payload: { id: '1' })
-  end
-
-  it 'answers again for a channel the connection has already subscribed to' do
-    streaming_client.subscribe('user', ack: true)
-    streaming_client.wait_for_message
 
     streaming_client.subscribe('user', ack: true)
 
     expect(streaming_client.wait_for_message).to eq(subscribed)
-  end
 
-  it 'answers a second connection to a channel that Redis is already subscribed to' do
-    streaming_client.subscribe('user', ack: true)
-    streaming_client.wait_for_message
     other_connection = StreamingClient.new
     other_connection.authenticate(access_token.token)
     other_connection.connect
@@ -61,16 +47,9 @@ RSpec.describe 'Acknowledging a streaming subscription', :inline_jobs, :streamin
     other_connection&.close
   end
 
-  it 'sends a client that does not ask nothing new' do
+  it 'sends nothing new to a client that does not ask or asks with anything but a real true' do
     streaming_client.subscribe('user')
-    streaming_client.subscribe('public:local', ack: true)
-
-    expect(streaming_client.wait_for_message).to eq(stream: ['public:local'], event: 'subscribed')
-    expect(streaming_client.messages.size).to eq(1)
-  end
-
-  it 'takes only a real true as asking' do
-    streaming_client.subscribe('user', ack: 'true')
+    streaming_client.subscribe('public', ack: 'true')
     streaming_client.subscribe('public:local', ack: true)
 
     expect(streaming_client.wait_for_message).to eq(stream: ['public:local'], event: 'subscribed')

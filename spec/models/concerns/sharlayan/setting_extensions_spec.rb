@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Sharlayan::SettingExtensions do
   describe '.merge_defaults' do
-    it 'overrides branded defaults and preserves upstream defaults' do
+    it 'overrides branded defaults, preserves upstream defaults and provides feature-off defaults for optional integrations' do
       defaults = described_class.merge_defaults('site_title' => 'Upstream', 'profile_directory' => true)
 
       expect(defaults).to include(
@@ -12,12 +12,7 @@ RSpec.describe Sharlayan::SettingExtensions do
         'profile_directory' => true,
         'theme_color' => '#FFFD78'
       )
-    end
-
-    it 'provides feature-off defaults for optional integrations' do
-      defaults = described_class.merge_defaults({})
-
-      expect(defaults).to include(
+      expect(described_class.merge_defaults({})).to include(
         'drive_enabled' => false,
         'chat_delete_window_hours' => 24,
         'chat_enabled' => false,

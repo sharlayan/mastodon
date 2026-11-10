@@ -22,7 +22,8 @@ const messages = defineMessages({
 export const ImageUploadField: React.FC<{
   value: ApiMediaAttachmentJSON | null;
   onChange: (media: ApiMediaAttachmentJSON | null) => void;
-}> = ({ value, onChange }) => {
+  crop?: boolean;
+}> = ({ value, onChange, crop = false }) => {
   const dispatch = useAppDispatch();
   const intl = useIntl();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -68,6 +69,25 @@ export const ImageUploadField: React.FC<{
         return;
       }
 
+      if (!crop) {
+        setUploading(true);
+        event.target.value = '';
+
+        apiUploadPageMedia(file)
+          .then((media) => {
+            onChange(media);
+            return media;
+          })
+          .catch((error: unknown) => {
+            dispatch(showAlertForError(error));
+          })
+          .finally(() => {
+            setUploading(false);
+          });
+
+        return;
+      }
+
       const reader = new FileReader();
       reader.addEventListener('load', () => {
         if (typeof reader.result === 'string') {
@@ -78,7 +98,7 @@ export const ImageUploadField: React.FC<{
 
       event.target.value = '';
     },
-    [openCropModal],
+    [crop, dispatch, onChange, openCropModal],
   );
 
   const handleBrowseClick = useCallback(() => {

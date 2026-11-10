@@ -29,66 +29,38 @@ RSpec.describe 'Chat input that is not a single id' do
   end
 
   describe 'attachment ids' do
-    it 'keeps the given order when an id is written with a leading zero' do
-      first, second = uploaded(2)
-
-      message = service.create_message(account, room, text: 'hi', media_ids: ["0#{second.id}", first.id.to_s])
-
-      expect(message.reload.media_attachments.map(&:id)).to eq([second.id, first.id])
-    end
-
     it 'refuses an id that is not a number' do
       expect { service.create_message(account, room, text: 'hi', media_ids: ['abc']) }
         .to raise_error(Sharlayan::ChatService::Error, /not found/)
     end
 
-    it 'sends a leading-zero id over the API instead of failing' do
+    it 'sends a leading-zero id over the API instead of failing, keeping the given order' do
       first, second = uploaded(2)
 
       post "/api/v1/chat/conversations/#{room.id}/messages", params: { text: 'hi', media_ids: ["0#{second.id}", first.id.to_s] }, headers: headers, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body['media_attachments'].pluck('id')).to eq([second.id.to_s, first.id.to_s])
+      expect(ChatMessage.find(response.parsed_body['id']).media_attachments.map(&:id)).to eq([second.id, first.id])
     end
   end
 
-  describe 'POST /api/v1/chat/conversations/:id/read' do
-    it 'rejects a list of message ids' do
-      message = service.create_message(account, room, text: 'hi')
+  it 'rejects a list where one message id, account id or paging cursor is expected' do
+    message = service.create_message(account, room, text: 'hi')
 
-      post "/api/v1/chat/conversations/#{room.id}/read", params: { message_id: [message.id] }, headers: headers, as: :json
+    post "/api/v1/chat/conversations/#{room.id}/read", params: { message_id: [message.id] }, headers: headers, as: :json
+    expect(response).to have_http_status(400)
 
-      expect(response).to have_http_status(400)
-    end
-  end
+    post "/api/v1/chat/conversations/#{room.id}/invitations", params: { account_id: [member.id] }, headers: headers, as: :json
+    expect(response).to have_http_status(400)
+    expect(room.invitations).to be_empty
 
-  describe 'POST /api/v1/chat/conversations/:id/invitations' do
-    it 'rejects a list of account ids' do
-      post "/api/v1/chat/conversations/#{room.id}/invitations", params: { account_id: [member.id] }, headers: headers, as: :json
-
-      expect(response).to have_http_status(400)
-      expect(room.invitations).to be_empty
-    end
-  end
-
-  describe 'paging with a list as the cursor' do
-    it 'rejects it for conversations' do
-      get '/api/v1/chat/conversations', params: { max_id: [room.id] }, headers: headers
-
-      expect(response).to have_http_status(400)
-    end
-
-    it 'rejects it for messages' do
-      get "/api/v1/chat/conversations/#{room.id}/messages", params: { max_id: ['1'] }, headers: headers
-
-      expect(response).to have_http_status(400)
-    end
-
-    it 'rejects it for invitations' do
-      get '/api/v1/chat/invitations', params: { max_id: ['1'] }, headers: headers
-
-      expect(response).to have_http_status(400)
-    end
+    get '/api/v1/chat/conversations', params: { max_id: [room.id] }, headers: headers
+    expect(response).to have_http_status(400)
+    get "/api/v1/chat/conversations/#{room.id}/messages", params: { max_id: ['1'] }, headers: headers
+    expect(response).to have_http_status(400)
+    get '/api/v1/chat/invitations', params: { max_id: ['1'] }, headers: headers
+    expect(response).to have_http_status(400)
   end
 
   describe 'starting a chat while federation is off' do

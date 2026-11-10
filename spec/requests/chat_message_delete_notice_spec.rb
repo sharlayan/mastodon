@@ -34,40 +34,25 @@ RSpec.describe 'Chat message deletion notice' do
     response.parsed_body[:deletes_for_everyone]
   end
 
-  it 'reports that a recent message is deleted for everyone' do
+  it 'reports that a recent message is deleted for everyone unless soft delete or roleplay mode only hides it, and deletes it by the same rule' do
     expect(deletes_for_everyone).to be(true)
+
+    Setting.chat_soft_delete_enabled = true
+    expect(deletes_for_everyone).to be(false)
+
+    Setting.chat_soft_delete_enabled = false
+    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { expect(deletes_for_everyone).to be(false) }
+
+    expect(message.within_delete_window?).to be(true)
+    Sharlayan::ChatService.new.delete_message(user.account, message)
+    expect(message.reload).to be_deleted
   end
 
   context 'when the delete window has passed' do
     let(:age) { 25.hours }
 
-    it 'reports that the message is only hidden' do
+    it 'reports that the message is only hidden, and hides it by the same rule' do
       expect(deletes_for_everyone).to be(false)
-    end
-  end
-
-  it 'reports that soft delete only hides the message' do
-    Setting.chat_soft_delete_enabled = true
-
-    expect(deletes_for_everyone).to be(false)
-  end
-
-  it 'reports that roleplay mode only hides the message' do
-    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { expect(deletes_for_everyone).to be(false) }
-  end
-
-  it 'decides deletion by the same rule it reports' do
-    expect(message.within_delete_window?).to be(true)
-
-    Sharlayan::ChatService.new.delete_message(user.account, message)
-
-    expect(message.reload).to be_deleted
-  end
-
-  context 'when the same rule says the window has passed' do
-    let(:age) { 25.hours }
-
-    it 'hides the message' do
       expect(message.within_delete_window?).to be(false)
 
       Sharlayan::ChatService.new.delete_message(user.account, message)

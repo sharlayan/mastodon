@@ -6,16 +6,14 @@ RSpec.describe 'Admin Settings Discovery' do
   before { sign_in Fabricate(:admin_user) }
 
   describe 'GET /admin/settings/discovery' do
-    it 'keeps trends editable outside roleplay mode' do
+    it 'keeps trends editable outside roleplay mode and disables them in roleplay mode' do
       ClimateControl.modify OC_ROLEPLAY_OPTION: 'false' do
         get admin_settings_discovery_path
       end
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body.at_css('input[name="form_admin_settings[trends]"][disabled]')).to be_nil
-    end
 
-    it 'disables trends in roleplay mode' do
       ClimateControl.modify OC_ROLEPLAY_OPTION: 'true' do
         get admin_settings_discovery_path
       end

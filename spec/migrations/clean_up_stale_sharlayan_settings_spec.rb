@@ -5,7 +5,7 @@ require Rails.root.join('db', 'migrate', '20260802010300_clean_up_stale_sharlaya
 
 RSpec.describe CleanUpStaleSharlayanSettings do
   describe '#up' do
-    it 'removes only clip columns whose clips no longer exist' do
+    it 'removes only missing clip columns and blank custom emoji mutes, leaving other settings and mutes unchanged' do
       user = Fabricate(:user)
       clip = Fabricate(:clip, account: user.account)
       setting = Web::Setting.create!(
@@ -19,26 +19,13 @@ RSpec.describe CleanUpStaleSharlayanSettings do
           ],
         }
       )
-
-      described_class.new.up
-
-      expect(setting.reload.data.fetch('columns').pluck('uuid')).to eq(%w(home existing list))
-    end
-
-    it 'leaves settings without a columns array unchanged' do
-      setting = Web::Setting.create!(user: Fabricate(:user), data: { theme: 'mastodon-light' })
-
-      expect { described_class.new.up }.to_not(change { setting.reload.data })
-    end
-
-    it 'removes blank custom emoji mutes while preserving valid mutes' do
-      account = Fabricate(:account)
-      blank_mute = account.custom_emoji_mutes.create!(prefix: 'temporary')
-      valid_mute = account.custom_emoji_mutes.create!(prefix: 'blob')
+      columnless_setting = Web::Setting.create!(user: Fabricate(:user), data: { theme: 'mastodon-light' })
+      blank_mute = user.account.custom_emoji_mutes.create!(prefix: 'temporary')
+      valid_mute = user.account.custom_emoji_mutes.create!(prefix: 'blob')
       blank_mute.update_column(:prefix, ' ')
 
-      described_class.new.up
-
+      expect { described_class.new.up }.to_not(change { columnless_setting.reload.data })
+      expect(setting.reload.data.fetch('columns').pluck('uuid')).to eq(%w(home existing list))
       expect(CustomEmojiMute.where(id: blank_mute.id)).to_not exist
       expect(CustomEmojiMute.where(id: valid_mute.id)).to exist
     end

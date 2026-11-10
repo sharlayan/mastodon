@@ -124,4 +124,28 @@ describe('useDrive', () => {
     expect(apiGetDriveUsage).toHaveBeenCalled();
     expect(dispatch).toHaveBeenCalledTimes(1);
   });
+
+  it('does not keep the previous folder files when opening a folder fails', async () => {
+    vi.mocked(apiGetDriveFiles).mockImplementation((params) =>
+      params?.folder_id === 'b'
+        ? Promise.reject(new Error('network'))
+        : Promise.resolve(page(['root1'], '/api/v1/drive/files?max_id=root1')),
+    );
+
+    const { result } = renderHook(() => useDrive());
+    await waitFor(() => {
+      expect(result.current.files.map((entry) => entry.id)).toEqual(['root1']);
+    });
+
+    act(() => {
+      result.current.openFolder('b');
+    });
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.currentFolderId).toBe('b');
+    expect(result.current.files).toEqual([]);
+    expect(result.current.hasMore).toBe(false);
+  });
 });

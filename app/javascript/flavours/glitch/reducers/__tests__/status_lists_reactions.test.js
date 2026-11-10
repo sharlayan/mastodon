@@ -13,23 +13,22 @@ describe('reaction list response ownership', () => {
     expect(statusLists(undefined, { type: '@@INIT' }).getIn(['reactions', 'isLoading'])).toBeUndefined();
   });
 
-  it.each([
-    REACTED_STATUSES_FETCH_SUCCESS,
-    REACTED_STATUSES_FETCH_FAIL,
-    REACTED_STATUSES_EXPAND_SUCCESS,
-    REACTED_STATUSES_EXPAND_FAIL,
-  ])('ignores a stale %s without changing the current list or loading state', type => {
+  it('ignores stale fetch and expand responses without changing the current list or loading state', () => {
     const state = statusLists(undefined, { type: REACTED_STATUSES_FETCH_REQUEST, requestId: 'current' });
+    const types = [
+      REACTED_STATUSES_FETCH_SUCCESS,
+      REACTED_STATUSES_FETCH_FAIL,
+      REACTED_STATUSES_EXPAND_SUCCESS,
+      REACTED_STATUSES_EXPAND_FAIL,
+    ];
 
-    const result = statusLists(state, {
+    expect(types.filter(type => statusLists(state, {
       type,
       requestId: 'old',
       statuses: [{ id: 'old-status' }],
       next: '/old-next',
       error: new Error('Obsolete failure'),
-    });
-
-    expect(result).toBe(state);
+    }) !== state)).toEqual([]);
   });
 
   it('invalidates outstanding requests and the old cursor when changing filters', () => {

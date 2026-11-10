@@ -9,20 +9,14 @@ RSpec.describe Notification do
     expect(described_class::TARGET_STATUS_INCLUDES_BY_TYPE).to include(reaction: [status_reaction: [:status, :custom_emoji]])
   end
 
-  it 'exposes a reaction target through both association names' do
+  it 'resolves reaction notifications and exposes their target through both association names' do
     reaction = Fabricate(:status_reaction)
     notification = Fabricate.build(:notification, type: :reaction, activity: reaction)
 
     expect(notification.reaction).to eq(reaction)
     expect(notification.target_status).to eq(reaction.status)
-  end
-
-  it 'resolves the notification type from a reaction activity' do
-    status = Fabricate(:status)
-    reaction = Fabricate(:status_reaction, status: status)
-
     expect(described_class.new(activity: StatusReaction.new).type).to eq(:reaction)
-    expect(described_class.new(activity: reaction).target_status).to eq(status)
+    expect(described_class.new(activity: reaction).target_status).to eq(reaction.status)
   end
 
   it 'preloads reaction target statuses with their associations' do

@@ -298,8 +298,13 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
 
   componentWillUnmount () {
     window.removeEventListener('keydown', this.handleKeyDown, false);
-    this.state.layers.forEach(layer => layer.sketcher.destroy());
+    this.state.layers.forEach(this.destroyLayer);
   }
+
+  destroyLayer = layer => {
+    layer.sketcher.destroy();
+    layer.fillWorker?.terminate();
+  };
 
   setStackRef = element => {
     this.stack = element;
@@ -308,9 +313,17 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
   makeLayer = (name, { background = false, color, sizeKey = this.size } = {}) => {
     const [width, height] = DOODLE_SIZES[sizeKey];
     const canvas = document.createElement('canvas');
-    const sketcher = new Atrament(canvas, { width, height, fill });
+    let fillWorker = null;
+    class TrackedFillWorker {
+      constructor () {
+        fillWorker = new fill();
+        return fillWorker;
+      }
+    }
+    const sketcher = new Atrament(canvas, { width, height, fill: TrackedFillWorker });
     const layer = {
       canvas,
+      fillWorker,
       background,
       color,
       history: { redos: [], undos: [] },
@@ -330,9 +343,9 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
     canvas.addEventListener('pointerup', event => this.endTextureStroke(layer, event));
     canvas.addEventListener('pointercancel', event => this.endTextureStroke(layer, event));
     sketcher.addEventListener('strokeend', () => {
-      if (this.state.activeLayerId === layer.id && this.state.texture !== 'chalk' && this.mode !== 'fill') this.saveLayerSnapshot(layer);
+      if (this.state.activeLayerId === layer.id && !(this.state.texture === 'chalk' && this.mode === 'draw') && this.mode !== 'fill') this.saveLayerSnapshot(layer);
     });
-    sketcher.addEventListener('fillend', () => this.saveLayerSnapshot(layer));
+    sketcher.addEventListener('fillend', () => queueMicrotask(() => this.saveLayerSnapshot(layer)));
     this.stack.appendChild(canvas);
     if (color) {
       const context = canvas.getContext('2d');
@@ -380,8 +393,8 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
     sketcher.pressureLow = 0.35;
     sketcher.pressureHigh = 1.8;
     sketcher.pressureSmoothing = 0.35;
-    sketcher.mode = this.state.texture === 'chalk' ? MODE_DISABLED : this.mode === 'erase' ? MODE_ERASE : this.mode === 'fill' ? MODE_FILL : MODE_DRAW;
-    layer.canvas.getContext('2d').globalAlpha = this.state.texture === 'marker' ? 0.35 : this.opacity;
+    sketcher.mode = this.mode === 'erase' ? MODE_ERASE : this.mode === 'fill' ? MODE_FILL : this.state.texture === 'chalk' ? MODE_DISABLED : MODE_DRAW;
+    layer.canvas.getContext('2d').globalAlpha = this.state.texture === 'marker' && this.mode === 'draw' ? 0.35 : this.opacity;
   };
 
   saveLayerSnapshot = layer => {
@@ -551,7 +564,7 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
 
     if (!layer || layer.background || !confirm(this.props.intl.formatMessage(messages.deleteLayerConfirm, { name: layer.name }))) return;
 
-    layer.sketcher.destroy();
+    this.destroyLayer(layer);
     layer.canvas.remove();
     this.setState(state => {
       const layers = state.layers.filter(item => item.id !== layer.id);
@@ -591,7 +604,7 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
     if (size === this.size || !confirm(this.props.intl.formatMessage(messages.changeSizeConfirm))) return;
 
     this.state.layers.forEach(layer => {
-      layer.sketcher.destroy();
+      this.destroyLayer(layer);
       layer.canvas.remove();
     });
     this.props.setOpt({ size });

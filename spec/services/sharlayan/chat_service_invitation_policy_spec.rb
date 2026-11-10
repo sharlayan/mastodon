@@ -17,14 +17,12 @@ RSpec.describe Sharlayan::ChatService do
     Setting.chat_enabled = false
   end
 
-  it 'rejects inviting a nonfollower when creating a group' do
+  it 'rejects inviting a nonfollower when creating a group, and allows it once they follow' do
     expect do
       service.create_conversation(sender, type: :group, title: 'Room', account_ids: [recipient.id])
     end.to raise_error(described_class::Forbidden)
       .and(not_change(ChatInvitation, :count))
-  end
 
-  it 'allows inviting a follower when creating a group' do
     recipient.follow!(sender)
 
     room = service.create_conversation(sender, type: :group, title: 'Room', account_ids: [recipient.id])

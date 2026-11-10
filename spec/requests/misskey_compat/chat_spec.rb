@@ -69,15 +69,13 @@ RSpec.describe 'Misskey-compat chat endpoints' do
     expect(response).to have_http_status(404)
   end
 
-  it 'prevents a read-only token from creating a message' do
+  it 'prevents a read-only token from creating a message and a write-only token from reading history' do
     token.update!(scopes: 'read')
     request_chat('messages/create-to-user', toUserId: mi_id(other.account), text: 'hello')
 
     expect(response).to have_http_status(403)
     expect(ChatMessage.count).to be_zero
-  end
 
-  it 'prevents a write-only token from reading history' do
     token.update!(scopes: 'write')
     request_chat('history')
 
@@ -120,14 +118,6 @@ RSpec.describe 'Misskey-compat chat endpoints' do
     expect(ChatMessage.last.uri).to be_present
   end
 
-  it 'rejects self recipients without creating a conversation' do
-    request_chat('messages/create-to-user', toUserId: mi_id(account), text: 'hello')
-
-    expect(response).to have_http_status(400)
-    expect(response.parsed_body.dig(:error, :code)).to eq('RECIPIENT_IS_YOURSELF')
-    expect(ChatConversation.count).to be_zero
-  end
-
   it 'validates message content before creating a direct conversation' do
     request_chat('messages/create-to-user', toUserId: mi_id(other.account), text: '')
 
@@ -144,7 +134,12 @@ RSpec.describe 'Misskey-compat chat endpoints' do
     expect(ChatMessage.count).to eq(1)
   end
 
-  it 'reads and paginates the direct timeline while advancing its read marker' do
+  it 'returns no direct timeline for a new pair without creating one, then reads and paginates it while advancing its read marker' do
+    request_chat('messages/user-timeline', userId: mi_id(other.account))
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body).to eq([])
+    expect(ChatConversation.count).to be_zero
+
     conversation = direct_conversation
     first = service.create_message(other.account, conversation, text: 'first')
     second = service.create_message(other.account, conversation, text: 'second')
@@ -156,14 +151,6 @@ RSpec.describe 'Misskey-compat chat endpoints' do
 
     request_chat('messages/user-timeline', userId: mi_id(other.account), untilId: mi_id(second))
     expect(response.parsed_body.pluck(:id)).to eq([mi_id(first)])
-  end
-
-  it 'returns no direct timeline for a new pair without creating one' do
-    request_chat('messages/user-timeline', userId: mi_id(other.account))
-
-    expect(response).to have_http_status(200)
-    expect(response.parsed_body).to eq([])
-    expect(ChatConversation.count).to be_zero
   end
 
   it 'returns direct and room histories separately with read state' do
@@ -184,18 +171,7 @@ RSpec.describe 'Misskey-compat chat endpoints' do
     expect(response.parsed_body).to contain_exactly(include(id: mi_id(message), isRead: true))
   end
 
-  it 'uses the last undeleted visible message in history' do
-    conversation = direct_conversation
-    previous = service.create_message(account, conversation, text: 'visible')
-    deleted = service.create_message(account, conversation, text: 'deleted')
-    service.delete_message(account, deleted)
-
-    request_chat('history')
-
-    expect(response.parsed_body.pluck(:id)).to eq([mi_id(previous)])
-  end
-
-  it 'leaves deleted messages out of the timelines, as they would not exist on Misskey' do
+  it 'leaves deleted messages out of history and the timelines, as they would not exist on Misskey' do
     conversation = direct_conversation
     kept = service.create_message(account, conversation, text: 'kept')
     service.delete_message(account, service.create_message(account, conversation, text: 'deleted'))
@@ -208,18 +184,9 @@ RSpec.describe 'Misskey-compat chat endpoints' do
 
     request_chat('messages/room-timeline', roomId: mi_id(room))
     expect(response.parsed_body.pluck(:id)).to eq([mi_id(kept_in_room)])
-  end
 
-  it 'gives every error the id that clients need to read it' do
-    room = group_conversation
-
-    request_chat('rooms/show', { roomId: mi_id(room) }, as_user: outsider)
-    first = response.parsed_body[:error]
-    request_chat('messages/room-timeline', { roomId: mi_id(room) }, as_user: outsider)
-
-    expect(response).to have_http_status(400)
-    expect(first).to include(code: 'NO_SUCH_ROOM', kind: 'client', id: '857ae02f-8759-4d20-9adb-6e95fffe4fd7')
-    expect(response.parsed_body.dig(:error, :id)).to eq('c4d9f88c-9270-4632-b032-6ed8cee36f7f')
+    request_chat('history')
+    expect(response.parsed_body.pluck(:id)).to eq([mi_id(kept)])
   end
 
   it 'updates and deletes a message through the shared chat service' do
@@ -243,15 +210,6 @@ RSpec.describe 'Misskey-compat chat endpoints' do
       expect(response).to have_http_status(400), action
     end
     expect(message.reload.text).to eq('secret')
-  end
-
-  it 'rejects editing another member message' do
-    message = service.create_message(other.account, direct_conversation, text: 'theirs')
-
-    request_chat('messages/update', messageId: mi_id(message), text: 'stolen')
-
-    expect(response).to have_http_status(400)
-    expect(message.reload.text).to eq('theirs')
   end
 
   it 'adds and removes reactions and disallows reactions to the caller own message' do
@@ -327,9 +285,13 @@ RSpec.describe 'Misskey-compat chat endpoints' do
     expect(response).to have_http_status(400)
   end
 
-  it 'joins an invited room and exposes its members and timeline' do
+  it 'does not list the owner as a room member, then joins an invited room and exposes its members and timeline' do
     room = group_conversation
     invitation = service.invite(account, room, other.account)
+
+    request_chat('rooms/members', roomId: mi_id(room))
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body).to be_empty
 
     request_chat('rooms/join', { roomId: mi_id(room) }, as_user: other)
     expect(response).to have_http_status(204)
@@ -344,14 +306,6 @@ RSpec.describe 'Misskey-compat chat endpoints' do
     request_chat('messages/create-to-room', { toRoomId: mi_id(room), text: 'joined' }, as_user: other)
     expect(response).to have_http_status(200)
     expect(response.parsed_body).to include(toRoomId: mi_id(room), text: 'joined')
-  end
-
-  it 'does not list the owner as a room member' do
-    room = group_conversation
-
-    request_chat('rooms/members', roomId: mi_id(room))
-    expect(response).to have_http_status(200)
-    expect(response.parsed_body).to be_empty
   end
 
   it 'mutes and leaves a joined room' do

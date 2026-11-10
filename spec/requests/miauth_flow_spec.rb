@@ -22,12 +22,10 @@ RSpec.describe 'MiAuth web flow' do
   context 'when authenticated' do
     before { sign_in user }
 
-    it 'renders the approval page' do
+    it 'renders the approval page and a completion page that navigates to the HTTPS callback with session on approve' do
       get "/miauth/#{session_id}", params: { name: 'Flare', callback: callback }
       expect(response).to have_http_status(200)
-    end
 
-    it 'renders the completion page that navigates to the HTTPS callback with session on approve' do
       post "/miauth/#{session_id}", params: { name: 'Flare', callback: callback }
       expect(response).to have_http_status(200)
       expect(response.body).to include("#{callback}?session=#{session_id}")
@@ -226,12 +224,7 @@ RSpec.describe 'MiAuth web flow' do
       %i(id username createdAt isLocked isSilenced isSuspended fields followersCount followingCount notesCount pinnedNoteIds pinnedNotes publicReactions)
     end
 
-    it 'includes every non-nullable field the Flare Misskey User model requires' do
-      payload = MisskeyCompat::UserSerializer.serialize(user.account, detailed: true)
-      expect(required_fields - payload.keys).to be_empty
-    end
-
-    it 'includes avatar decoration display effects' do
+    it 'includes every non-nullable field the Flare Misskey User model requires and avatar decoration display effects' do
       decoration = Fabricate(:avatar_decoration)
       user.account.update!(avatar_decorations: [{ id: decoration.id, scale: 1.25, opacity: 0.6 }])
       previous_setting = Setting.avatar_decorations_enabled
@@ -239,6 +232,7 @@ RSpec.describe 'MiAuth web flow' do
 
       payload = MisskeyCompat::UserSerializer.serialize(user.account, detailed: true)
 
+      expect(required_fields - payload.keys).to be_empty
       expect(payload[:avatarDecorations]).to contain_exactly(include(scale: 1.25, opacity: 0.6))
     ensure
       Setting.avatar_decorations_enabled = previous_setting

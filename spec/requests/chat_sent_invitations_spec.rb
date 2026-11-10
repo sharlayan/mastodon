@@ -35,46 +35,44 @@ RSpec.describe 'Invitations a group owner has sent' do
   end
 
   describe 'GET /api/v1/chat/invitations with a conversation' do
-    it 'lists who has not answered yet in that group only' do
+    it 'lists who has not answered yet in that group only, with what the screen needs to tell the invited apart, and every group when none is named' do
       other_room
 
       expect(sent_to(room).map { |invitation| invitation.dig(:invitee, :id) }).to contain_exactly(member.id.to_s, nari.id.to_s, waiting.id.to_s)
-      expect(sent_to(other_room).map { |invitation| invitation.dig(:invitee, :id) }).to contain_exactly(waiting.id.to_s)
-    end
-
-    it 'gives what the screen needs to tell the invited apart' do
-      expect(sent_to(room).find { |invitation| invitation.dig(:invitee, :id) == nari.id.to_s }).to include(
+      expect(response.parsed_body.find { |invitation| invitation.dig(:invitee, :id) == nari.id.to_s }).to include(
         id: be_a(String),
         state: 'pending',
         invitee: include(acct: 'nari@cherry.test', avatar: be_a(String))
       )
-    end
-
-    it 'drops someone who accepted' do
-      service.accept_invitation(member, room.invitations.pending.find_by!(invitee_account: member))
-
-      expect(sent_to(room).map { |invitation| invitation.dig(:invitee, :id) }).to_not include(member.id.to_s)
-    end
-
-    it 'shows nothing of the invitations of someone else' do
-      token.update!(resource_owner_id: member.user.id)
-
-      expect(sent_to(room)).to be_empty
-    end
-
-    it 'keeps listing every group when no conversation is named' do
-      other_room
+      expect(sent_to(other_room).map { |invitation| invitation.dig(:invitee, :id) }).to contain_exactly(waiting.id.to_s)
 
       get '/api/v1/chat/invitations', params: { direction: 'sent' }, headers: headers
 
       expect(response.parsed_body.size).to eq(4)
     end
+
+    it 'drops someone who accepted, and shows nothing of the invitations of someone else' do
+      service.accept_invitation(member, room.invitations.pending.find_by!(invitee_account: member))
+
+      expect(sent_to(room).map { |invitation| invitation.dig(:invitee, :id) }).to_not include(member.id.to_s)
+
+      token.update!(resource_owner_id: member.user.id)
+
+      expect(sent_to(room)).to be_empty
+    end
   end
 
   describe 'cancelling one from the members screen' do
-    it 'removes it and leaves the group in place' do
+    it 'is refused to someone who is not the owner, and otherwise removes it and leaves the group in place' do
       invitation = room.invitations.pending.find_by!(invitee_account: waiting)
+      token.update!(resource_owner_id: member.user.id)
 
+      delete "/api/v1/chat/invitations/#{invitation.id}", headers: headers
+
+      expect(response).to_not have_http_status(200)
+      expect(invitation.reload).to be_pending
+
+      token.update!(resource_owner_id: user.id)
       delete "/api/v1/chat/invitations/#{invitation.id}", headers: headers
 
       expect(response).to have_http_status(200)
@@ -92,16 +90,6 @@ RSpec.describe 'Invitations a group owner has sent' do
       delivered = ActivityPub::DeliveryWorker.jobs.map { |job| JSON.parse(job['args'].first) }
       expect(delivered.pluck('type')).to contain_exactly('Undo')
       expect(delivered.first.dig('object', 'type')).to eq('Invite')
-    end
-
-    it 'is refused to someone who is not the owner' do
-      token.update!(resource_owner_id: member.user.id)
-      invitation = room.invitations.pending.find_by!(invitee_account: waiting)
-
-      delete "/api/v1/chat/invitations/#{invitation.id}", headers: headers
-
-      expect(response).to_not have_http_status(200)
-      expect(invitation.reload).to be_pending
     end
   end
 
@@ -124,10 +112,11 @@ RSpec.describe 'Invitations a group owner has sent' do
       }
     end
 
-    it 'hears when a same-server account rejects' do
+    it 'hears when a same-server account rejects, and says nothing to anyone else' do
       service.reject_invitation(waiting, room.invitations.pending.find_by!(invitee_account: waiting))
 
       expect(told_owner).to contain_exactly(include('conversation_id' => room.id.to_s))
+      expect(published.select { |channel, event| event['event'] == 'chat.invitation_update' && channel != "timeline:#{user.account.id}" }).to be_empty
     end
 
     it 'hears when a same-server account accepts' do
@@ -154,12 +143,6 @@ RSpec.describe 'Invitations a group owner has sent' do
       service.cancel_invitation(user.account, room.invitations.pending.find_by!(invitee_account: waiting))
 
       expect(told_owner).to contain_exactly(include('conversation_id' => room.id.to_s))
-    end
-
-    it 'says nothing to anyone else' do
-      service.reject_invitation(waiting, room.invitations.pending.find_by!(invitee_account: waiting))
-
-      expect(published.select { |channel, event| event['event'] == 'chat.invitation_update' && channel != "timeline:#{user.account.id}" }).to be_empty
     end
   end
 end

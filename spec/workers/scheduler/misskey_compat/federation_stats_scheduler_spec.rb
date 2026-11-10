@@ -18,19 +18,18 @@ RSpec.describe Scheduler::MisskeyCompat::FederationStatsScheduler do
     expect { worker.perform }.to_not change(MisskeyFederationInstanceStat, :count)
   end
 
-  it 'runs the snapshot through the shared federation aggregation runner' do
-    worker.perform
-
-    expect(Sharlayan::FederationAggregationRunner).to have_received(:call)
-  end
-
-  it 'aggregates per-domain user, note and follow counts' do
+  it 'aggregates per-domain user, note and follow counts through the shared federation aggregation runner' do
     local = Fabricate(:account)
     remote = Fabricate(:account, domain: 'remote.example', username: 'bob')
     Fabricate(:status, account: remote)
     Fabricate(:follow, account: local, target_account: remote)
+    follower = Fabricate(:account, domain: 'follower.example', username: 'carol')
+    Fabricate(:follow, account: follower, target_account: local)
 
     worker.perform
+
+    expect(Sharlayan::FederationAggregationRunner).to have_received(:call)
+    expect(MisskeyFederationInstanceStat.find_by(domain: 'follower.example')).to have_attributes(following_count: 1, followers_count: 0)
 
     stat = MisskeyFederationInstanceStat.find_by(domain: 'remote.example')
     expect(stat).to have_attributes(
@@ -39,18 +38,6 @@ RSpec.describe Scheduler::MisskeyCompat::FederationStatsScheduler do
       followers_count: 1, # local users following this instance
       following_count: 0
     )
-  end
-
-  it 'counts remote-to-local follows as following_count' do
-    local = Fabricate(:account)
-    remote = Fabricate(:account, domain: 'remote.example', username: 'carol')
-    Fabricate(:follow, account: remote, target_account: local)
-
-    worker.perform
-
-    stat = MisskeyFederationInstanceStat.find_by(domain: 'remote.example')
-    expect(stat.following_count).to eq(1)
-    expect(stat.followers_count).to eq(0)
   end
 
   it 'upserts existing rows instead of duplicating them' do

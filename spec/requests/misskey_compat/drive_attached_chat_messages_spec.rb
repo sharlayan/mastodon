@@ -155,7 +155,8 @@ RSpec.describe 'Misskey-compat Drive attached chat messages', :attachment_proces
     expect(response.parsed_body.dig(:error, :code)).to eq('ENDPOINT_DISABLED')
   end
 
-  it 'requires read:drive permission and a credential' do
+  it 'requires both Drive and Chat read permissions and a credential' do
+    message = create_with_file(file)
     grant = MisskeyCompat::MiAuth.issue_token(user, name: 'Chat only', permissions: ['read:chat'])
     attached(mi_id(file), auth: grant.token)
     expect(response).to have_http_status(403)
@@ -163,7 +164,13 @@ RSpec.describe 'Misskey-compat Drive attached chat messages', :attachment_proces
 
     read_grant = MisskeyCompat::MiAuth.issue_token(user, name: 'Drive only', permissions: ['read:drive'])
     attached(mi_id(file), auth: read_grant.token)
+    expect(response).to have_http_status(403)
+    expect(response.parsed_body.dig(:error, :code)).to eq('PERMISSION_DENIED')
+
+    both_grant = MisskeyCompat::MiAuth.issue_token(user, name: 'Drive and Chat', permissions: ['read:drive', 'read:chat'])
+    attached(mi_id(file), auth: both_grant.token)
     expect(response).to have_http_status(200)
+    expect(response.parsed_body).to contain_exactly(include(id: mi_id(message), text: 'attached'))
 
     post '/api/drive/files/attached-chat-messages', params: { fileId: mi_id(file) }, as: :json
     expect(response).to have_http_status(401)

@@ -6,11 +6,13 @@ RSpec.describe 'Settings Preferences Appearance' do
   describe 'GET /settings/preferences/appearance' do
     before { sign_in Fabricate(:user) }
 
-    it 'renders the theme selector with standard label spacing' do
+    it 'renders the theme selector with standard label spacing and both legacy glitch skins' do
       get settings_preferences_appearance_path
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body.at_css('.input.select.with_label .label_input > label[for="theme"] + .label_input__wrapper select#theme')).to be_present
+      expect(response.parsed_body.css('select#theme option').pluck('value'))
+        .to include('glitch-classic/default', 'glitch-classic/birdsiteui')
     end
 
     it 'hides the theme selector when roleplay mode forces a skin' do
@@ -22,14 +24,6 @@ RSpec.describe 'Settings Preferences Appearance' do
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body.at_css('select#theme')).to be_nil
-    end
-
-    it 'offers both skins for the legacy glitch flavour' do
-      get settings_preferences_appearance_path
-
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body.css('select#theme option').pluck('value'))
-        .to include('glitch-classic/default', 'glitch-classic/birdsiteui')
     end
   end
 

@@ -442,7 +442,29 @@ const startServer = async () => {
    */
   const linkedNotificationAuthorized = async (accessTokenId, linkedAccountId) => {
     const result = await pgPool.query(
-      'SELECT 1 FROM account_switch_devices INNER JOIN session_activations ON session_activations.id = account_switch_devices.session_activation_id WHERE session_activations.access_token_id = $1 AND account_switch_devices.account_id = $2 AND account_switch_devices.trusted_at IS NOT NULL AND account_switch_devices.revoked_at IS NULL LIMIT 1',
+      `SELECT 1
+       FROM account_switch_devices
+       INNER JOIN session_activations ON session_activations.id = account_switch_devices.session_activation_id
+       WHERE session_activations.access_token_id = $1
+         AND account_switch_devices.trusted_at IS NOT NULL
+         AND account_switch_devices.revoked_at IS NULL
+         AND (
+           account_switch_devices.account_id = $2
+           OR EXISTS (
+             SELECT 1
+             FROM users
+             INNER JOIN account_switch_authorizations ON account_switch_authorizations.target_account_id = users.account_id
+             INNER JOIN account_switch_devices root_devices ON root_devices.account_id = account_switch_authorizations.account_id
+             WHERE users.id = session_activations.user_id
+               AND users.account_id = account_switch_devices.account_id
+               AND account_switch_authorizations.account_id = $2
+               AND account_switch_authorizations.account_id <> account_switch_authorizations.target_account_id
+               AND root_devices.token_digest = account_switch_devices.token_digest
+               AND root_devices.trusted_at IS NOT NULL
+               AND root_devices.revoked_at IS NULL
+           )
+         )
+       LIMIT 1`,
       [accessTokenId, linkedAccountId],
     );
 
@@ -1189,6 +1211,7 @@ const startServer = async () => {
 
     if (isInScope(req, ['read', 'read:notifications'])) {
       arr.push(`timeline:${req.accountId}:notifications`);
+      if (req.accessTokenId) arr.push(`timeline:access_token:${req.accessTokenId}:notifications`);
     }
 
     return arr;
@@ -1235,7 +1258,7 @@ const startServer = async () => {
       break;
     case 'user:notification':
       resolve({
-        channelIds: [`timeline:${req.accountId}:notifications`],
+        channelIds: req.accessTokenId ? [`timeline:${req.accountId}:notifications`, `timeline:access_token:${req.accessTokenId}:notifications`] : [`timeline:${req.accountId}:notifications`],
         options: { needsFiltering: false, allowLocalOnly: true },
       });
 

@@ -7,7 +7,7 @@
 @use 'index';
 @use 'variables/light-mixin';
 
-[data-color-scheme='light'] {
+:root[data-color-scheme='light'] {
   @include light-mixin.tokens;
 }
 

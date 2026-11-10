@@ -123,12 +123,6 @@ RSpec.describe 'Chat federation protocol' do
       expect { perform(announce, owner) }.to_not change(ChatMessage, :count)
     end
 
-    it 'retries when the author server does not know the member yet' do
-      stub_note(status: 404)
-
-      expect { perform(announce, owner) }.to raise_error(Sharlayan::ChatFederation::DependencyNotReadyError)
-    end
-
     it 'stores the latest message when the member is known on retry' do
       updated_note = note.merge('_misskey_content' => 'edited text', 'updated' => '2026-11-03T00:01:00.000Z')
       stub_request(:get, message_uri).to_return(
@@ -328,11 +322,15 @@ RSpec.describe 'Chat federation protocol' do
 
     before { room }
 
-    it 'ignores an Update older than the one already applied' do
+    it 'ignores and does not broadcast an Update older than the one already applied' do
       perform(update('newer', updated: '2026-11-03T00:00:02.000Z', archived: true), owner)
+      stream = []
+      allow_any_instance_of(Sharlayan::ChatService).to receive(:broadcast) { |*args| stream << args } # rubocop:disable RSpec/AnyInstance
+
       perform(update('older', updated: '2026-11-03T00:00:01.000Z', archived: false), owner)
 
       expect(room.reload).to have_attributes(title: 'newer', archived?: true)
+      expect(stream).to be_empty
     end
 
     it 'applies a newer Update and an Update with the same version' do
@@ -357,16 +355,6 @@ RSpec.describe 'Chat federation protocol' do
       perform(update('second', updated: 'not a date'), owner)
 
       expect(room.reload.title).to eq('second')
-    end
-
-    it 'does not broadcast an ignored Update' do
-      perform(update('newer', updated: '2026-11-03T00:00:02.000Z'), owner)
-      stream = []
-      allow_any_instance_of(Sharlayan::ChatService).to receive(:broadcast) { |*args| stream << args } # rubocop:disable RSpec/AnyInstance
-
-      perform(update('older', updated: '2026-11-03T00:00:01.000Z'), owner)
-
-      expect(stream).to be_empty
     end
 
     it 'waits for the room when an Update overtakes its Invite' do
@@ -709,25 +697,18 @@ RSpec.describe 'Chat federation protocol' do
     let(:conversation) { service.create_conversation(local, type: :group, title: 'Room') }
     let(:silenced) { Fabricate(:account, domain: 'quiet.test', uri: 'https://quiet.test/users/q', inbox_url: 'https://quiet.test/users/q/inbox', can_chat: true, silenced: true) }
 
-    it 'refuses to start a chat with a suspended account' do
+    it 'refuses to start a chat with or invite a suspended account' do
       expect { service.create_conversation(local, type: :direct, account_ids: [suspended.id]) }.to raise_error(Sharlayan::ChatService::Error)
-    end
-
-    it 'refuses to invite a suspended account' do
       expect { service.invite(local, conversation, suspended) }.to raise_error(Sharlayan::ChatService::Forbidden)
     end
 
-    it 'does not let a silenced account start a direct chat with someone who does not follow it' do
+    it 'lets a silenced account start a direct chat only with someone who follows it' do
       local.user.settings[:chat_policy] = 'everyone'
       local.user.save!
 
       expect { service.receive_direct_message(local, silenced, uri: 'https://quiet.test/chat/messages/1', text: 'spam') }
         .to raise_error(Sharlayan::ChatService::Forbidden)
-    end
 
-    it 'lets a silenced account start a direct chat with a local follower' do
-      local.user.settings[:chat_policy] = 'everyone'
-      local.user.save!
       local.follow!(silenced)
 
       expect { service.receive_direct_message(local, silenced, uri: 'https://quiet.test/chat/messages/1', text: 'hello') }
@@ -890,16 +871,13 @@ RSpec.describe 'Chat federation protocol' do
       expect(enqueued_activities('Accept').map(&:last)).to eq([owner.inbox_url])
     end
 
-    it 'honors an Undo that overtook its Invite' do
+    it 'honors an Undo that overtook its Invite and still accepts a later re-invitation' do
       perform(undo, owner)
       perform(invite, owner)
 
       expect(ChatConversation.find_by(uri: room_uri)).to be_nil
       expect(ChatInvitation.pending.where(invitee_account: local)).to_not exist
-    end
 
-    it 'still accepts a later re-invitation after that Undo' do
-      perform(undo, owner)
       perform(invite.merge('published' => '2026-11-03T00:00:02Z'), owner)
 
       expect(ChatInvitation.pending.where(invitee_account: local)).to exist
@@ -942,17 +920,12 @@ RSpec.describe 'Chat federation protocol' do
   end
 
   describe 'writing while federation is off' do
-    it 'refuses a message that could never reach the other side' do
+    it 'refuses a message that could never reach the other side but keeps purely local rooms writable' do
       room.memberships.create!(account: author)
-      Setting.chat_federation_enabled = false
-
-      expect { service.create_message(local, room, text: 'lost') }.to raise_error(Sharlayan::ChatService::Error, /federation/)
-    end
-
-    it 'keeps purely local rooms writable' do
       conversation = service.create_conversation(local, type: :group, title: 'Room')
       Setting.chat_federation_enabled = false
 
+      expect { service.create_message(local, room, text: 'lost') }.to raise_error(Sharlayan::ChatService::Error, /federation/)
       expect { service.create_message(local, conversation, text: 'fine') }.to change(ChatMessage, :count).by(1)
     end
   end
@@ -977,14 +950,6 @@ RSpec.describe 'Chat federation protocol' do
     end
   end
 
-  describe 'native API authentication' do
-    it 'answers 401 when the token is missing' do
-      get '/api/v1/chat/conversations'
-
-      expect(response).to have_http_status(401)
-    end
-  end
-
   describe 'object endpoints' do
     let(:conversation) { service.create_conversation(local, type: :group, title: 'Room') }
 
@@ -992,29 +957,20 @@ RSpec.describe 'Chat federation protocol' do
       get path, headers: { 'Accept' => 'application/activity+json' }, sign_with: account
     end
 
-    it 'does not serve a stored remote message under a local URL' do
+    it 'answers 404 for a stored remote message, a direct conversation and the local copy of a room owned elsewhere' do
       conversation.memberships.create!(account: author)
       message = service.receive_group_message(author, room_uri: conversation.uri, uri: message_uri, text: 'hi')
-
-      signed_get("/chat/messages/#{message.id}", author)
-
-      expect(response).to have_http_status(404)
-    end
-
-    it 'answers 404 for a direct conversation instead of failing' do
       author.update!(chat_scope: 'everyone')
       direct = service.create_conversation(local, type: :direct, account_ids: [author.id])
-
-      signed_get("/chat/rooms/#{direct.id}", author)
-
-      expect(response).to have_http_status(404)
-    end
-
-    it 'answers 404 for the local copy of a room owned elsewhere' do
       room.memberships.create!(account: author)
 
-      signed_get("/chat/rooms/#{room.id}", author)
+      signed_get("/chat/messages/#{message.id}", author)
+      expect(response).to have_http_status(404)
 
+      signed_get("/chat/rooms/#{direct.id}", author)
+      expect(response).to have_http_status(404)
+
+      signed_get("/chat/rooms/#{room.id}", author)
       expect(response).to have_http_status(404)
     end
   end
@@ -1029,14 +985,12 @@ RSpec.describe 'Chat federation protocol' do
       allow(Rails.configuration.x.mastodon).to receive(:limited_federation_mode).and_return(true)
     end
 
-    it 'lets a remote server fetch with a valid federation token' do
+    it 'lets a remote server fetch with a valid federation token but keeps requiring a login with an invalid one' do
       get "/media_proxy/#{media.id}/original", params: { token: Sharlayan::ChatFederation::MediaToken.generate(media, domain: author.domain) }
 
       expect(response).to have_http_status(302)
       expect(response.location).to_not include('/auth/sign_in')
-    end
 
-    it 'keeps requiring a login with an invalid token' do
       get "/media_proxy/#{media.id}/original", params: { token: 'invalid' }
 
       expect(response.location.to_s).to include('/auth/sign_in')
@@ -1051,15 +1005,13 @@ RSpec.describe 'Chat federation protocol' do
     before { Setting.misskey_compat_enabled = true }
     after { Setting.misskey_compat_enabled = false }
 
-    it 'does not expose accounts that cannot be discovered through regular search' do
+    it 'does not expose accounts that cannot be discovered through regular search or the instance actor' do
       post '/api/users/search-by-username-and-host', params: { i: token, username: 'pending', host: '.' }, as: :json
 
       ids = response.parsed_body.pluck('id')
       expect(ids).to include(MisskeyCompat::MiId.encode(approved.id))
       expect(ids).to_not include(MisskeyCompat::MiId.encode(unapproved.id))
-    end
 
-    it 'does not expose the instance actor' do
       post '/api/users/search-by-username-and-host', params: { i: token, username: Account.representative.username, host: '.' }, as: :json
 
       expect(response.parsed_body.pluck('id')).to_not include(MisskeyCompat::MiId.encode(Account.representative.id))

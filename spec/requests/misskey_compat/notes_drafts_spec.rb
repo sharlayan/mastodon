@@ -61,14 +61,6 @@ RSpec.describe 'Misskey-compat notes/drafts endpoints' do
     expect(media.reload.status_draft_id).to eq(StatusDraft.last.id)
   end
 
-  it 'rejects an invalid reaction acceptance value' do
-    rpc_post 'notes/drafts/create', text: 'Invalid', reactionAcceptance: 'customOnly'
-
-    expect(response).to have_http_status(400)
-    expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
-    expect(account.status_drafts).to be_empty
-  end
-
   it 'accepts a Drive file ID and returns the same ID' do
     Setting.drive_enabled = true
     drive_file = DriveFile.create!(account: account, file: attachment_fixture('attachment.jpg'))
@@ -173,17 +165,18 @@ RSpec.describe 'Misskey-compat notes/drafts endpoints' do
     expect(media.reload.status_draft_id).to be_nil
   end
 
-  it 'does not accept an invisible reply or renote reference' do
-    private_status = Fabricate(:status, visibility: :direct)
+  it 'rejects invalid reaction acceptance values, invisible reply references, and scheduled drafts without creating drafts' do
+    rpc_post 'notes/drafts/create', text: 'Invalid', reactionAcceptance: 'customOnly'
 
+    expect(response).to have_http_status(400)
+    expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
+
+    private_status = Fabricate(:status, visibility: :direct)
     rpc_post 'notes/drafts/create', text: 'Hidden reply', replyId: MisskeyCompat::MiId.encode(private_status.id)
 
     expect(response).to have_http_status(404)
     expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_REPLY_TARGET')
-    expect(account.status_drafts).to be_empty
-  end
 
-  it 'rejects scheduled drafts instead of pretending they will publish' do
     rpc_post 'notes/drafts/create', text: 'Scheduled', scheduledAt: 1.hour.from_now.to_i * 1000, isActuallyScheduled: true
 
     expect(response).to have_http_status(400)
@@ -191,7 +184,7 @@ RSpec.describe 'Misskey-compat notes/drafts endpoints' do
     expect(account.status_drafts).to be_empty
   end
 
-  it 'enforces read and write OAuth scopes' do
+  it 'enforces read and write OAuth scopes and fine-grained MiAuth account permissions' do
     read_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read').token
     write_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write').token
 
@@ -200,9 +193,7 @@ RSpec.describe 'Misskey-compat notes/drafts endpoints' do
 
     post '/api/notes/drafts/list', params: { i: write_token }, as: :json
     expect(response).to have_http_status(403)
-  end
 
-  it 'enforces fine-grained MiAuth account permissions' do
     access_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read write')
     MisskeyAccessGrant.create!(access_token: access_token, permissions: ['read:account'])
 

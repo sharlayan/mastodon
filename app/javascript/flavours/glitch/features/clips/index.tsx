@@ -16,6 +16,7 @@ import PublicIcon from '@/material-icons/400-24px/public.svg?react';
 import StarIcon from '@/material-icons/400-24px/star-fill.svg?react';
 import SquigglyArrow from '@/svg-icons/squiggly_arrow.svg?react';
 import { fetchClips, deleteClip } from 'flavours/glitch/actions/clips';
+import { openModal } from 'flavours/glitch/actions/modal';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
@@ -35,6 +36,18 @@ const messages = defineMessages({
   edit: { id: 'clips.edit', defaultMessage: 'Edit clip' },
   delete: { id: 'clips.delete', defaultMessage: 'Delete clip' },
   more: { id: 'status.more', defaultMessage: 'More' },
+  deleteTitle: {
+    id: 'confirmations.delete_clip.title',
+    defaultMessage: 'Delete clip?',
+  },
+  deleteMessage: {
+    id: 'confirmations.delete_clip.message',
+    defaultMessage: 'Are you sure you want to permanently delete this clip?',
+  },
+  deleteConfirm: {
+    id: 'confirmations.delete_clip.confirm',
+    defaultMessage: 'Delete',
+  },
 });
 
 const ClipItem: React.FC<{
@@ -45,8 +58,20 @@ const ClipItem: React.FC<{
   const { id, title, public: isPublic, statuses_count: statusesCount } = clip;
 
   const handleDeleteClick = useCallback(() => {
-    void dispatch(deleteClip({ id }));
-  }, [dispatch, id]);
+    dispatch(
+      openModal({
+        modalType: 'CONFIRM',
+        modalProps: {
+          title: intl.formatMessage(messages.deleteTitle),
+          message: intl.formatMessage(messages.deleteMessage),
+          confirm: intl.formatMessage(messages.deleteConfirm),
+          onConfirm: () => {
+            void dispatch(deleteClip({ id }));
+          },
+        },
+      }),
+    );
+  }, [dispatch, id, intl]);
 
   const menu = useMemo(
     () => [

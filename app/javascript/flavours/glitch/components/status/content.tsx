@@ -114,7 +114,7 @@ export const StatusContent: React.FC<
     ? nyaifyHtml(originalText)
     : originalText;
   const language = status.translation?.language ?? status.language;
-  const mfmContent = useRedesignMfmContent(status, text);
+  const mfmContent = useRedesignMfmContent(status, text, account?.acct);
 
   const isCollapsed =
     !collapseEnabled && !!onReadMore && collapsible && collapsed;

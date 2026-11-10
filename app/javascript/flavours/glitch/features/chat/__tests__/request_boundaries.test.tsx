@@ -1063,7 +1063,7 @@ describe('Review a99b', () => {
     expect(back).toBe(false);
   }, 30_000);
 
-  it('S4 a 429 on Load more keeps the server deadline for the next background list read', async () => {
+  it('S4 a 429 on Load more keeps the server deadline for the next background list read, and Load more waits for that read before retrying', async () => {
     numericRooms(25);
     usePagedRooms();
     const page = await loadPage();
@@ -1079,9 +1079,8 @@ describe('Review a99b', () => {
       headers: { 'Retry-After': '20' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
-    await waitFor(() => {
-      expect(readsOf(ROOMS)).toHaveLength(2);
-    });
+    await screen.findByText(REQUEST_FAILED);
+    expect(readsOf(ROOMS)).toHaveLength(2);
     await settle();
     const socket = await dropConnection(page.socket);
     await connect(socket);
@@ -1093,24 +1092,7 @@ describe('Review a99b', () => {
       notice: Boolean(screen.queryByText(REQUEST_FAILED)),
     });
     expect(within).toHaveLength(2);
-  }, 30_000);
 
-  it('waits for the rate-limited background list before retrying Load more', async () => {
-    numericRooms(25);
-    usePagedRooms();
-    const page = await loadPage();
-    await connect(page.socket);
-    page.open('/chat');
-    await screen.findByText('Room 25');
-    backend.refusals.push({
-      path: ROOMS,
-      status: 429,
-      headers: { 'Retry-After': '20' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
-    await screen.findByText(REQUEST_FAILED);
-    const socket = await dropConnection(page.socket);
-    await connect(socket);
     const release = holdNextAnswer(ROOMS);
     fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
     await later(20_500);
@@ -1123,7 +1105,7 @@ describe('Review a99b', () => {
     });
   }, 30_000);
 
-  it('S4b a 429 on loading older messages keeps the server deadline for the next resync', async () => {
+  it('S4b a 429 on loading older messages keeps the server deadline for the next resync, and older messages wait for that resync before retrying', async () => {
     seed('A', 1, 45);
     const MESSAGES = /\/conversations\/A\/messages$/;
     const page = await loadPage();
@@ -1138,9 +1120,8 @@ describe('Review a99b', () => {
       headers: { 'Retry-After': '20' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
-    await waitFor(() => {
-      expect(readsOf(MESSAGES)).toHaveLength(before + 1);
-    });
+    await screen.findByText(REQUEST_FAILED);
+    expect(readsOf(MESSAGES)).toHaveLength(before + 1);
     await settle();
     const socket = await dropConnection(page.socket);
     await connect(socket);
@@ -1150,25 +1131,7 @@ describe('Review a99b', () => {
       messageReadsAfterLoadMore: within,
     });
     expect(within).toHaveLength(1);
-  }, 30_000);
 
-  it('waits for a rate-limited message resync before retrying older messages', async () => {
-    seed('A', 1, 45);
-    const MESSAGES = /\/conversations\/A\/messages$/;
-    const page = await loadPage();
-    await connect(page.socket);
-    page.open('/chat/A');
-    await screen.findByText('Message 45');
-    const before = readsOf(MESSAGES).length;
-    backend.refusals.push({
-      path: MESSAGES,
-      status: 429,
-      headers: { 'Retry-After': '20' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
-    await screen.findByText(REQUEST_FAILED);
-    const socket = await dropConnection(page.socket);
-    await connect(socket);
     const release = holdNextAnswer(MESSAGES);
     fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
     await later(20_500);

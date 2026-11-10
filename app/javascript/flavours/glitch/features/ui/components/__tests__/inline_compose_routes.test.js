@@ -4,23 +4,23 @@ import {
 } from '../inline_compose_routes';
 
 describe('inline compose routes', () => {
-  it.each([
-    ['/deck/home', '/home'],
-    ['/deck/public/local', '/public/local'],
-    ['/deck/lists/123', '/lists/123'],
-  ])('normalizes the mobile advanced-interface path %s', (pathname, expected) => {
-    expect(normalizeInlineComposePath(pathname)).toBe(expected);
+  it('normalizes mobile advanced-interface paths', () => {
+    expect(
+      ['/deck/home', '/deck/public/local', '/deck/lists/123'].map(normalizeInlineComposePath),
+    ).toEqual(['/home', '/public/local', '/lists/123']);
   });
 
-  it.each([
-    '/deck/home',
-    '/deck/public/local',
-    '/deck/public',
-    '/deck/lists/123',
-    '/deck/antennas/456',
-    '/deck/timelines/direct',
-  ])('recognizes %s as a mobile advanced-interface feed', (pathname) => {
-    expect(isInlineComposeFeedRoute(pathname)).toBe(true);
+  it('recognizes mobile advanced-interface feeds', () => {
+    const paths = [
+      '/deck/home',
+      '/deck/public/local',
+      '/deck/public',
+      '/deck/lists/123',
+      '/deck/antennas/456',
+      '/deck/timelines/direct',
+    ];
+
+    expect(paths.filter((pathname) => !isInlineComposeFeedRoute(pathname))).toEqual([]);
   });
 
   it('does not treat a non-feed advanced-interface route as a feed', () => {

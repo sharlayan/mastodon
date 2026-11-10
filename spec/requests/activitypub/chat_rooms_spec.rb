@@ -20,23 +20,16 @@ RSpec.describe 'ActivityPub chat room fetches' do
     Setting.chat_federation_enabled = false
   end
 
-  it 'returns 401 without a signature header' do
+  it 'returns 401 without a signature header, 404 to an unrelated signed actor, and the Group to a pending invitee' do
     get "/chat/rooms/#{conversation.id}"
-
     expect(response).to have_http_status(401)
-  end
 
-  it 'returns the Group to a pending invitee' do
+    get "/chat/rooms/#{conversation.id}", headers: { 'Accept' => 'application/activity+json' }, sign_with: stranger
+    expect(response).to have_http_status(404)
+
     get "/chat/rooms/#{conversation.id}", headers: { 'Accept' => 'application/activity+json' }, sign_with: invitee
-
     expect(response).to have_http_status(200)
     expect(response.parsed_body['type']).to eq('Group')
     expect(response.headers['Cache-Control']).to eq('private, no-store')
-  end
-
-  it 'returns 404 to an unrelated signed actor' do
-    get "/chat/rooms/#{conversation.id}", headers: { 'Accept' => 'application/activity+json' }, sign_with: stranger
-
-    expect(response).to have_http_status(404)
   end
 end

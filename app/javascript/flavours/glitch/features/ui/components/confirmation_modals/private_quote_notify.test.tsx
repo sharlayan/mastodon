@@ -24,11 +24,12 @@ vi.mock('./confirmation_modal', () => ({
   ),
 }));
 
-it.each<StatusVisibility | undefined>(['private', undefined])(
-  'preserves the submission callback and %s privacy after confirmation',
-  (overridePrivacy) => {
+it('preserves the submission callback and a private or absent privacy after confirmation', () => {
+  const privacies: (StatusVisibility | undefined)[] = ['private', undefined];
+
+  for (const overridePrivacy of privacies) {
     const onSubmitSuccess = vi.fn();
-    render(
+    const { unmount } = render(
       <IntlProvider locale='en'>
         <PrivateQuoteNotify
           onClose={vi.fn()}
@@ -42,5 +43,6 @@ it.each<StatusVisibility | undefined>(['private', undefined])(
       onSubmitSuccess,
       overridePrivacy,
     );
-  },
-);
+    unmount();
+  }
+});

@@ -9,7 +9,7 @@ RSpec.describe 'Settings / Exports / Chat row' do
 
   after { Setting.chat_enabled = false }
 
-  it 'says that chats come with the archive' do
+  it 'says that chats come with the archive, and has no row while chat is disabled' do
     Setting.chat_enabled = true
 
     get '/settings/export'
@@ -17,9 +17,7 @@ RSpec.describe 'Settings / Exports / Chat row' do
     expect(response).to have_http_status(200)
     expect(response.body).to include(I18n.t('exports.chat_in_archive'))
     expect(response.body).to_not include('/settings/exports/chat')
-  end
 
-  it 'has no row while chat is disabled' do
     Setting.chat_enabled = false
 
     get '/settings/export'

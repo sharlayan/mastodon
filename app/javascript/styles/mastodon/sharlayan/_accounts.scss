@@ -119,7 +119,7 @@
 
 .account-switcher-modal__item__check {
   flex-shrink: 0;
-  color: var(--color-accent);
+  color: var(--color-text-brand);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -166,7 +166,7 @@
 
 .account-switcher-modal__add-button .icon,
 .account-switcher-modal__remove-button .icon {
-  color: var(--color-accent);
+  color: var(--color-text-brand);
 }
 
 .account-switcher-modal__remove-button {
@@ -187,7 +187,7 @@
 }
 
 .account-switcher-modal__check-button .icon {
-  color: var(--color-accent);
+  color: var(--color-text-brand);
 }
 
 .account-switcher-modal__item--switchable {
@@ -228,7 +228,7 @@
   flex: 0 0 auto;
   width: 24px;
   height: 24px;
-  color: var(--color-accent);
+  color: var(--color-text-brand);
 }
 
 .account-switcher-modal__authorization-overlay > span:first-of-type {
@@ -301,11 +301,11 @@
 }
 
 .account-switcher-modal__notif-button .icon {
-  color: var(--color-accent);
+  color: var(--color-text-brand);
 }
 
 .account-switcher-modal__notif-button.active .icon {
-  color: var(--color-accent);
+  color: var(--color-text-brand);
 }
 
 .account-switcher-modal__notif-settings {

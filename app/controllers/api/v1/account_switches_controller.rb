@@ -80,6 +80,8 @@ class Api::V1::AccountSwitchesController < Api::BaseController
         scope_name: :current_user
       ).as_json,
       children: serialized_children,
+      current_push_forward: current_push_forward(children_owner),
+      parent_session_authorized: parent_account.present? && parent_session_notifications_authorized?(children_owner),
       inbound: inbound_authorizations,
     }
   end
@@ -95,7 +97,10 @@ class Api::V1::AccountSwitchesController < Api::BaseController
       .where.not(account_switch_devices: { trusted_at: nil })
       .includes(target_account: { user: :markers })
 
-    render json: linked_unread_counts_for(auths)
+    accounts = auths.map(&:target_account)
+    accounts << children_owner if parent_session_notifications_authorized?(children_owner)
+
+    render json: linked_unread_counts_for(accounts)
   end
 
   def create_push_forward
@@ -125,8 +130,20 @@ class Api::V1::AccountSwitchesController < Api::BaseController
 
   private
 
+  def current_push_forward(children_owner)
+    return if children_owner.id == current_account.id
+
+    children_owner.account_switch_authorizations.find_by(target_account_id: current_account.id)&.push_forward
+  end
+
   def require_web_app_token!
     render json: { error: 'This method requires a web session token' }, status: 403 unless doorkeeper_token&.application&.superapp?
+  end
+
+  def parent_session_notifications_authorized?(root_account)
+    return false if root_account.id == current_account.id
+
+    AccountSwitchDevice.parent_notification_sessions(root_account.id).exists?(access_token_id: doorkeeper_token.id, user_id: current_user.id)
   end
 
   def linked_device_trusted?(account_id)
@@ -140,9 +157,8 @@ class Api::V1::AccountSwitchesController < Api::BaseController
     end
   end
 
-  def linked_unread_counts_for(authorizations)
-    pairs = authorizations.filter_map do |authorization|
-      account = authorization.target_account
+  def linked_unread_counts_for(accounts)
+    pairs = accounts.filter_map do |account|
       next unless account&.user
 
       marker = account.user.markers.find { |item| item.timeline == 'notifications' }

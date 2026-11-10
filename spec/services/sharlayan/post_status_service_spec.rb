@@ -76,16 +76,12 @@ RSpec.describe PostStatusService do
         Setting.mfm_allow_composition = false
       end
 
-      it 'downgrades an explicit MFM content type' do
-        status = subject.call(account, text: '$[x2 disabled]', content_type: 'text/x-mfm')
+      it 'downgrades an explicit MFM content type and does not classify detected MFM syntax as MFM' do
+        explicit = subject.call(account, text: '$[x2 disabled]', content_type: 'text/x-mfm')
+        detected = subject.call(account, text: '$[x2 disabled]', content_type: 'text/plain')
 
-        expect(status).to have_attributes(content_type: 'text/plain', mfm: false, mfm_text: nil)
-      end
-
-      it 'does not classify detected MFM syntax as MFM' do
-        status = subject.call(account, text: '$[x2 disabled]', content_type: 'text/plain')
-
-        expect(status).to have_attributes(content_type: 'text/plain', mfm: false, mfm_text: nil)
+        expect(explicit).to have_attributes(content_type: 'text/plain', mfm: false, mfm_text: nil)
+        expect(detected).to have_attributes(content_type: 'text/plain', mfm: false, mfm_text: nil)
       end
     end
 
@@ -108,16 +104,12 @@ RSpec.describe PostStatusService do
         Setting.mfm_allow_composition = true
       end
 
-      it 'keeps explicit MFM content' do
-        status = subject.call(account, text: '$[x2 enabled]', content_type: 'text/x-mfm')
+      it 'keeps explicit MFM content and classifies detected MFM syntax as MFM' do
+        explicit = subject.call(account, text: '$[x2 enabled]', content_type: 'text/x-mfm')
+        detected = subject.call(account, text: '$[x2 enabled]', content_type: 'text/plain')
 
-        expect(status).to have_attributes(content_type: 'text/x-mfm', mfm: true, mfm_text: '$[x2 enabled]')
-      end
-
-      it 'classifies detected MFM syntax as MFM' do
-        status = subject.call(account, text: '$[x2 enabled]', content_type: 'text/plain')
-
-        expect(status).to have_attributes(content_type: 'text/plain', mfm: true, mfm_text: '$[x2 enabled]')
+        expect(explicit).to have_attributes(content_type: 'text/x-mfm', mfm: true, mfm_text: '$[x2 enabled]')
+        expect(detected).to have_attributes(content_type: 'text/plain', mfm: true, mfm_text: '$[x2 enabled]')
       end
     end
   end
@@ -168,23 +160,17 @@ RSpec.describe PostStatusService do
       expect(status.mentions.map(&:account_id)).to eq [follower.id]
     end
 
-    it 'returns the existing status when the selected circle has been deleted' do
+    it 'returns the existing idempotent status after circles are disabled or the selected circle is deleted' do
       Setting.circles_enabled = true
-      options = { text: 'circle post', visibility: :private, circle_id: circle.id, idempotency: 'deleted-circle' }
-      status = described_class.new.call(account, **options)
-
-      circle.destroy!
-
-      expect(described_class.new.call(account, **options)).to eq(status)
-      expect(account.statuses.where(text: 'circle post').count).to eq(1)
-    end
-
-    it 'returns the existing status when circles have been disabled' do
-      Setting.circles_enabled = true
-      options = { text: 'circle post', visibility: :private, circle_id: circle.id, idempotency: 'disabled-circles' }
+      options = { text: 'circle post', visibility: :private, circle_id: circle.id, idempotency: 'circle-retry' }
       status = described_class.new.call(account, **options)
 
       Setting.circles_enabled = false
+
+      expect(described_class.new.call(account, **options)).to eq(status)
+
+      Setting.circles_enabled = true
+      circle.destroy!
 
       expect(described_class.new.call(account, **options)).to eq(status)
       expect(account.statuses.where(text: 'circle post').count).to eq(1)
@@ -298,22 +284,17 @@ RSpec.describe PostStatusService do
       expect(status.quote).to_not be_legacy
     end
 
-    it 'does not look for quotes in followers-only posts' do
-      status = subject.call(user.account, text: 'https://example.com/@alice/1', visibility: 'private')
-
-      expect(events).to be_empty
-      expect(status.quote).to be_nil
-      expect(status.mentions).to be_empty
-    end
-
-    it 'does not look for quotes in direct messages' do
+    it 'does not look for quotes in followers-only posts or direct messages' do
       recipient = Fabricate(:account, username: 'recipient')
 
-      status = subject.call(user.account, text: '@recipient https://example.com/@alice/1', visibility: 'direct')
+      private_status = subject.call(user.account, text: 'https://example.com/@alice/1', visibility: 'private')
+      direct_status = subject.call(user.account, text: '@recipient https://example.com/@alice/1', visibility: 'direct')
 
       expect(events).to be_empty
-      expect(status.quote).to be_nil
-      expect(status.mentions.map(&:account_id)).to eq [recipient.id]
+      expect(private_status.quote).to be_nil
+      expect(private_status.mentions).to be_empty
+      expect(direct_status.quote).to be_nil
+      expect(direct_status.mentions.map(&:account_id)).to eq [recipient.id]
     end
 
     it 'does not quote a local status whose author denies quotes' do

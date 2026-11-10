@@ -47,6 +47,7 @@ import { openModal } from '@/flavours/glitch/actions/modal';
 import { initMuteModal } from '@/flavours/glitch/actions/mutes';
 import { initReport } from '@/flavours/glitch/actions/reports';
 import {
+  STATUS_FETCH_FAIL,
   fetchStatus,
   muteStatus,
   unmuteStatus,
@@ -57,7 +58,7 @@ import {
   translateStatus,
   undoStatusTranslation,
 } from '@/flavours/glitch/actions/statuses';
-import { setStatusQuotePolicy } from '@/flavours/glitch/actions/statuses_typed';
+import { fetchContext, setStatusQuotePolicy } from '@/flavours/glitch/actions/statuses_typed';
 import { textForScreenReader, defaultMediaVisibility } from '@/flavours/glitch/components/status/legacy/status';
 import { Status as StatusComponent } from '@/flavours/glitch/components/status';
 import { deleteModal, localStatusPageAccess } from '@/flavours/glitch/initial_state';
@@ -165,18 +166,40 @@ export class Status extends ImmutablePureComponent {
      * Used to highlight newly added replies in the UI
      */
     newRepliesIds: [],
+    loginRequiredStatusId: undefined,
   };
 
-  _shouldBlockLoad () {
+  _mayRequireLogin () {
     const { signedIn } = this.props.identity;
     return !signedIn && localStatusPageAccess !== 'public';
   }
 
+  _fetchStatus (statusId) {
+    const { dispatch } = this.props;
+
+    if (!this._mayRequireLogin()) {
+      dispatch(fetchStatus(statusId, { forceFetch: true }));
+      return;
+    }
+
+    const watchLoginRequired = (innerDispatch, getState) => fetchStatus(statusId, { forceFetch: true, alsoFetchContext: false })(action => {
+      if (action?.type === STATUS_FETCH_FAIL && action.id === statusId && action.error?.status === 422) {
+        this.setState({ loginRequiredStatusId: statusId });
+      }
+
+      return innerDispatch(action);
+    }, getState);
+
+    dispatch(watchLoginRequired).then(found => {
+      if (found) {
+        dispatch(fetchContext({ statusId }));
+      }
+    });
+  }
+
   componentDidMount () {
     attachFullscreenListener(this.onFullScreenChange);
-    if (!this._shouldBlockLoad()) {
-      this.props.dispatch(fetchStatus(this.props.params.statusId, { forceFetch: true }));
-    }
+    this._fetchStatus(this.props.params.statusId);
   }
 
   static getDerivedStateFromProps(props, state) {
@@ -553,8 +576,8 @@ export class Status extends ImmutablePureComponent {
       }
     }
 
-    if (params.statusId && prevProps.params.statusId !== params.statusId && !this._shouldBlockLoad()) {
-      this.props.dispatch(fetchStatus(params.statusId, { forceFetch: true }));
+    if (params.statusId && prevProps.params.statusId !== params.statusId) {
+      this._fetchStatus(params.statusId);
     }
 
     if (status && status.get('id') !== this.state.loadedStatusId) {
@@ -590,7 +613,7 @@ export class Status extends ImmutablePureComponent {
     const { isLoading, status, settings, ancestorsIds, descendantsIds, refresh, intl, domain, multiColumn, pictureInPicture, mfmEnabled } = this.props;
     const { fullscreen } = this.state;
 
-    if (this._shouldBlockLoad()) {
+    if (this.state.loginRequiredStatusId === this.props.params.statusId) {
       return (
         <Column>
           <ColumnHeader

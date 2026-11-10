@@ -54,27 +54,16 @@ RSpec.describe 'Appearance API' do
       end
     end
 
-    context 'when expand_content_warnings is supplied' do
-      let(:params) { { expand_content_warnings: true } }
+    context 'when expand_content_warnings and use_my_archive are supplied' do
+      let(:params) { { expand_content_warnings: true, use_my_archive: true } }
 
-      it 'updates the auto-unfold preference' do
+      it 'updates the auto-unfold and My archive preferences' do
         subject
 
         expect(response).to have_http_status(200)
-        expect(response.parsed_body['expand_content_warnings']).to be true
+        expect(response.parsed_body).to include('expand_content_warnings' => true, 'use_my_archive' => true)
         expect(user.reload.settings['web.expand_content_warnings']).to be true
-      end
-    end
-
-    context 'when use_my_archive is supplied' do
-      let(:params) { { use_my_archive: true } }
-
-      it 'updates the My archive preference' do
-        subject
-
-        expect(response).to have_http_status(200)
-        expect(response.parsed_body['use_my_archive']).to be true
-        expect(user.reload.settings['web.use_my_archive']).to be true
+        expect(user.settings['web.use_my_archive']).to be true
       end
     end
 

@@ -30,19 +30,13 @@ RSpec.describe 'Chat conversation list' do
     ActiveSupport::Notifications.unsubscribe(subscriber)
   end
 
-  it 'does not multiply members by reactions in one query' do
-    room_with_reactions
+  it 'lists every member, not only the viewer, without multiplying members by reactions in one query' do
+    room = room_with_reactions
 
     sql = queries_during { get '/api/v1/chat/conversations', headers: headers }
 
     expect(response).to have_http_status(200)
     expect(sql).to(be_none { |query| query.include?('LEFT OUTER JOIN "chat_message_reactions"') })
-  end
-
-  it 'lists every member, not only the viewer' do
-    room = room_with_reactions
-
-    get '/api/v1/chat/conversations', headers: headers
 
     expect(response.parsed_body.first[:accounts].size).to eq(room.accounts.size)
     expect(response.parsed_body.first[:last_message][:reactions].size).to eq(3)

@@ -8,15 +8,12 @@ RSpec.describe MediaAttachment, :attachment_processing do
   describe 'Drive pointers' do
     subject(:media_attachment) { described_class.new(account: account, drive_file_id: 123) }
 
-    it 'accepts a local attachment without a file and generates an access key' do
+    it 'accepts a Drive pointer without a file and generates an access key while ordinary local attachments still require files' do
+      ordinary_attachment = described_class.new(account: account)
       media_attachment.validate
 
       expect(media_attachment.errors.of_kind?(:file, :blank)).to be false
       expect(media_attachment.drive_access_key).to match(/\A[-_A-Za-z0-9]{43}\z/)
-    end
-
-    it 'keeps requiring files for ordinary local attachments' do
-      ordinary_attachment = described_class.new(account: account)
 
       expect(ordinary_attachment).to_not be_valid
       expect(ordinary_attachment.errors.of_kind?(:file, :blank)).to be true

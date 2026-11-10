@@ -97,7 +97,7 @@ RSpec.describe 'Misskey-compat clips' do
       expect(response.parsed_body.pluck(:id)).to contain_exactly(MisskeyCompat::MiId.encode(statuses.first.id))
     end
 
-    it 'filters notes that are not visible to an anonymous reader' do
+    it 'filters notes that are not visible to an anonymous reader and hides clips owned by an account that has requested deletion' do
       hidden_status = statuses.last
       hidden_status.update!(visibility: :direct)
 
@@ -105,9 +105,7 @@ RSpec.describe 'Misskey-compat clips' do
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body.pluck(:id)).to_not include(MisskeyCompat::MiId.encode(hidden_status.id))
-    end
 
-    it 'hides clips owned by an account that has requested deletion' do
       clip.account.mark_deleted!
 
       post '/api/clips/notes', params: { clipId: MisskeyCompat::MiId.encode(clip.id) }, as: :json

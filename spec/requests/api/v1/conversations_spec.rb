@@ -94,16 +94,7 @@ RSpec.describe 'API V1 Conversations' do
       AccountConversation.add_status(user.account, expanded_status)
     end
 
-    it 'keeps a participant expansion in the existing grouped conversation', :aggregate_failures do
-      get '/api/v1/conversations', params: { grouped: '1', preserve_group: '1' }, headers: headers
-
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body.size).to eq 1
-      expect(response.parsed_body.first[:accounts].pluck(:id)).to contain_exactly(other.account.id.to_s, third.account.id.to_s)
-      expect(response.parsed_body.first[:member_ids]).to contain_exactly(response.parsed_body.first[:id])
-    end
-
-    it 'applies the group page limit in the database query' do
+    it 'keeps a participant expansion in the existing grouped conversation with the page limit in the query', :aggregate_failures do
       queries = []
       callback = lambda do |_name, _started, _finished, _unique_id, payload|
         queries << payload[:sql] if payload[:sql].include?('WITH rows AS MATERIALIZED')
@@ -115,6 +106,9 @@ RSpec.describe 'API V1 Conversations' do
 
       expect(response).to have_http_status(200)
       expect(queries).to contain_exactly(include('LIMIT 20'))
+      expect(response.parsed_body.size).to eq 1
+      expect(response.parsed_body.first[:accounts].pluck(:id)).to contain_exactly(other.account.id.to_s, third.account.id.to_s)
+      expect(response.parsed_body.first[:member_ids]).to contain_exactly(response.parsed_body.first[:id])
     end
 
     it 'returns the old and expanded messages without changing their recipients', :aggregate_failures do
@@ -199,13 +193,17 @@ RSpec.describe 'API V1 Conversations' do
 
     let(:conversation) { AccountConversation.where(account: user.account).first }
 
-    it 'returns every status across the merged threads in reverse-chronological order', :aggregate_failures do
+    it 'returns every status across the merged threads in reverse-chronological order with local read receipts', :aggregate_failures do
+      status = conversation.last_status
+      StatusReadReceipt.create!(status: status, account: user.account, read_at: Time.current)
+
       get "/api/v1/conversations/#{conversation.id}/statuses", headers: headers
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body.size).to eq 2
       expect(response.parsed_body.pluck(:content).join).to include('First thread', 'Second thread')
       expect(response.parsed_body.first[:id].to_i).to be > response.parsed_body.last[:id].to_i
+      expect(response.parsed_body.find { |item| item[:id] == status.id.to_s }[:read_receipts]).to contain_exactly(include(account_id: user.account.id.to_s))
     end
 
     it 'generates valid pagination headers including the conversation id', :aggregate_failures do
@@ -213,16 +211,6 @@ RSpec.describe 'API V1 Conversations' do
 
       expect(response).to have_http_status(200)
       expect(response.headers['Link']&.to_s).to include("/api/v1/conversations/#{conversation.id}/statuses")
-    end
-
-    it 'returns local read receipts with direct-message statuses' do
-      status = conversation.last_status
-      StatusReadReceipt.create!(status: status, account: user.account, read_at: Time.current)
-
-      get "/api/v1/conversations/#{conversation.id}/statuses", headers: headers
-
-      serialized_status = response.parsed_body.find { |item| item[:id] == status.id.to_s }
-      expect(serialized_status[:read_receipts]).to contain_exactly(include(account_id: user.account.id.to_s))
     end
   end
 
@@ -236,20 +224,14 @@ RSpec.describe 'API V1 Conversations' do
       AccountConversation.add_status(user.account, status)
     end
 
-    it 'records a status receipt when a local recipient reads the conversation' do
-      post "/api/v1/conversations/#{conversation.id}/read", headers: write_headers
-
-      expect(response).to have_http_status(200)
-      expect(StatusReadReceipt.find_by(status: status, account: user.account)).to be_present
-    end
-
-    it 'keeps the direct-message notification when the conversation is read' do
+    it 'records a status receipt and keeps the direct-message notification when a local recipient reads the conversation' do
       notification = user.account.notifications.find_by!(activity: status.mentions.find_by!(account: user.account))
 
       expect { post "/api/v1/conversations/#{conversation.id}/read", headers: write_headers }
         .to_not change { Notification.exists?(notification.id) }.from(true)
 
       expect(response).to have_http_status(200)
+      expect(StatusReadReceipt.find_by(status: status, account: user.account)).to be_present
     end
   end
 
@@ -294,16 +276,14 @@ RSpec.describe 'API V1 Conversations' do
       expect(response.parsed_body[:id]).to eq conversation.id.to_s
     end
 
-    it 'returns a null id when the status belongs to another conversation', :aggregate_failures do
+    it 'returns a null id when the status belongs to another conversation or is unknown', :aggregate_failures do
       stranger_status = Fabricate(:status, visibility: 'direct')
 
       get "/api/v1/conversations/with_status/#{stranger_status.id}", headers: headers
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body[:id]).to be_nil
-    end
 
-    it 'returns a null id for an unknown status', :aggregate_failures do
       get '/api/v1/conversations/with_status/0', headers: headers
 
       expect(response).to have_http_status(200)

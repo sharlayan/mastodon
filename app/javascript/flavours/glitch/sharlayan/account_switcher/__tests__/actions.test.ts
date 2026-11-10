@@ -6,6 +6,7 @@ import type { ApiAccountSwitchesResponseJSON } from '../api_types';
 import { accountSwitchesReducer } from '../reducer';
 
 vi.mock('../api', () => ({ apiGetAccountSwitches: vi.fn() }));
+vi.mock('flavours/glitch/initial_state', () => ({ me: '3' }));
 vi.mock('flavours/glitch/actions/importer', () => ({
   importFetchedAccounts: vi.fn(() => ({ type: 'TEST_IMPORT_ACCOUNTS' })),
 }));
@@ -41,13 +42,13 @@ const deferred = <T>() => {
   };
 };
 
-const storedPush = () =>
+const storedPush = (accountId = '2') =>
   (
     JSON.parse(localStorage.getItem('linked_notif_prefs_1') ?? '{}') as Record<
       string,
       { push?: boolean }
     >
-  )['2']?.push;
+  )[accountId]?.push;
 
 beforeEach(() => {
   localStorage.clear();
@@ -73,4 +74,29 @@ test('a response superseded by a newer request does not overwrite stored push pr
   await first;
 
   expect(storedPush()).toBe(true);
+});
+
+test('stores the push forwarding state of the current linked account', async () => {
+  const store = configureStore({
+    reducer: { accountSwitches: accountSwitchesReducer },
+  });
+  localStorage.setItem(
+    'linked_notif_prefs_1',
+    JSON.stringify({ '3': { inApp: true, push: false } }),
+  );
+  vi.mocked(apiGetAccountSwitches).mockResolvedValueOnce({
+    ...response(false),
+    current_push_forward: true,
+  });
+
+  await store.dispatch(refreshAccountSwitches() as never);
+
+  expect(storedPush('3')).toBe(true);
+  expect(
+    (
+      JSON.parse(
+        localStorage.getItem('linked_notif_prefs_1') ?? '{}',
+      ) as Record<string, { inApp?: boolean }>
+    )['3']?.inApp,
+  ).toBe(true);
 });

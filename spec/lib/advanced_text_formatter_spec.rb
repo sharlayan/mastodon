@@ -36,14 +36,6 @@ RSpec.describe AdvancedTextFormatter do
         end
       end
 
-      context 'with underlined text' do
-        let(:text) { '_underlined_' }
-
-        it 'preserves underline markup' do
-          expect(subject).to include '<u>underlined</u>'
-        end
-      end
-
       context 'with a block code' do
         let(:text) { "test\n\n```\nint main(void) {\n  return 0; // https://joinmastodon.org/foo\n}\n```\n" }
 

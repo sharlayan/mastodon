@@ -16,16 +16,18 @@ export const LinkedNotificationsPoller: React.FC = () => {
   const loaded = useAppSelector(
     (state) => state.accountSwitches.get('loaded') as boolean,
   );
-  const hasAuthorizedLinkedAccounts = useAppSelector((state) =>
-    (
-      state.accountSwitches.get('items') as
-        | {
-            some(
-              predicate: (item: { get(key: string): unknown }) => boolean,
-            ): boolean;
-          }
-        | undefined
-    )?.some((item) => item.get('session_authorized') === true),
+  const hasAuthorizedLinkedAccounts = useAppSelector(
+    (state) =>
+      state.accountSwitches.get('parentSessionAuthorized') === true ||
+      (
+        state.accountSwitches.get('items') as
+          | {
+              some(
+                predicate: (item: { get(key: string): unknown }) => boolean,
+              ): boolean;
+            }
+          | undefined
+      )?.some((item) => item.get('session_authorized') === true),
   );
 
   const [initialAttempt, setInitialAttempt] = useState(0);
@@ -72,7 +74,10 @@ export const LinkedNotificationsPoller: React.FC = () => {
     try {
       const switches = await dispatch(refreshAccountSwitches()).unwrap();
       if (!switches) return;
-      if (!switches.children.some((item) => item.session_authorized)) {
+      if (
+        !switches.parent_session_authorized &&
+        !switches.children.some((item) => item.session_authorized)
+      ) {
         dispatch(setLinkedUnreadCounts({}));
         return;
       }

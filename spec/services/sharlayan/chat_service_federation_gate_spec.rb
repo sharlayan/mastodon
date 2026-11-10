@@ -31,21 +31,14 @@ RSpec.describe Sharlayan::ChatService do
   end
 
   context 'when chat federation is turned off' do
-    it 'refuses to accept an invitation to a room owned elsewhere' do
+    it 'refuses to accept or reject an invitation to a room owned elsewhere' do
       invitation = receive_remote_invite('accept')
       Setting.chat_federation_enabled = false
 
       expect { service.accept_invitation(local, invitation) }.to raise_error(described_class::Error, 'Chat federation is disabled')
-      expect(invitation.reload).to be_pending
-      expect(invitation.chat_conversation.memberships.exists?(account: local)).to be(false)
-    end
-
-    it 'refuses to reject an invitation to a room owned elsewhere' do
-      invitation = receive_remote_invite('reject')
-      Setting.chat_federation_enabled = false
-
       expect { service.reject_invitation(local, invitation) }.to raise_error(described_class::Error, 'Chat federation is disabled')
       expect(invitation.reload).to be_pending
+      expect(invitation.chat_conversation.memberships.exists?(account: local)).to be(false)
     end
 
     it 'refuses to leave a room owned elsewhere' do

@@ -12,23 +12,17 @@ RSpec.describe AuthorizedFetchHelper do
     allow(Mastodon::Feature).to receive(:bloom_filters_enabled?).and_return(false)
   end
 
-  context 'when the setting is unset' do
-    before { Setting.authorized_fetch = nil }
+  it 'preserves unauthenticated fetch when unset and requires only actor signatures when actors are selected' do
+    Setting.authorized_fetch = nil
 
-    it 'preserves the legacy unauthenticated-fetch behavior' do
-      expect(helper.authorized_fetch_mode).to eq('none')
-      expect(helper.authorized_fetch_mode?).to be false
-      expect(helper.actors_require_signature?).to be false
-    end
-  end
+    expect(helper.authorized_fetch_mode).to eq('none')
+    expect(helper.authorized_fetch_mode?).to be false
+    expect(helper.actors_require_signature?).to be false
 
-  context 'when actor authentication is explicitly selected' do
-    before { Setting.authorized_fetch = 'actors' }
+    Setting.authorized_fetch = 'actors'
 
-    it 'requires signatures for actors without enabling full authorized fetch' do
-      expect(helper.authorized_fetch_mode).to eq('actors')
-      expect(helper.authorized_fetch_mode?).to be false
-      expect(helper.actors_require_signature?).to be true
-    end
+    expect(helper.authorized_fetch_mode).to eq('actors')
+    expect(helper.authorized_fetch_mode?).to be false
+    expect(helper.actors_require_signature?).to be true
   end
 end

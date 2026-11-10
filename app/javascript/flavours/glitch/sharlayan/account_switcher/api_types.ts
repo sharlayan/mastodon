@@ -13,6 +13,8 @@ export interface ApiAccountSwitchesResponseJSON {
   root_account_id: string;
   parent: ApiAccountJSON | null;
   children: ApiAccountSwitchAuthorizationJSON[];
+  current_push_forward?: boolean | null;
+  parent_session_authorized?: boolean;
   inbound: {
     id: string;
     created_at: string;

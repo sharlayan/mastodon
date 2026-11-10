@@ -5,20 +5,7 @@ require 'rails_helper'
 RSpec.describe CleanupRemoteAvatarDecorationsWorker do
   subject(:worker) { described_class.new }
 
-  it 'deletes an unreferenced remote decoration' do
-    decoration = remote_decoration('orphan')
-
-    expect { worker.perform([decoration.id]) }.to change(AvatarDecoration, :count).by(-1)
-  end
-
-  it 'preserves a remote decoration referenced by an account' do
-    decoration = remote_decoration('used')
-    Fabricate(:account, avatar_decorations: [{ id: decoration.id }])
-
-    expect { worker.perform([decoration.id]) }.to_not change(AvatarDecoration, :count)
-  end
-
-  it 'checks several decorations with a single account query' do
+  it 'deletes unreferenced remote decorations and preserves referenced ones with a single account query' do
     used = remote_decoration('used')
     orphan = remote_decoration('orphan')
     Fabricate(:account, avatar_decorations: [{ id: used.id }, { id: 1 }])

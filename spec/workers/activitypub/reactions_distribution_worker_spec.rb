@@ -17,16 +17,11 @@ RSpec.describe ActivityPub::ReactionsDistributionWorker do
     end
 
     context 'with empty target_inbox_url' do
-      it 'delivers to the reactor own followers servers, signed by the reactor' do
+      it 'delivers only to the reactor own followers servers, signed by the reactor' do
         subject.perform(json, reactor.id, '')
 
         expect(ActivityPub::DeliveryWorker)
           .to have_enqueued_sidekiq_job(json, reactor.id, 'http://reactor-follower.example.com/inbox', anything)
-      end
-
-      it 'does not deliver to unrelated servers' do
-        subject.perform(json, reactor.id, '')
-
         expect(ActivityPub::DeliveryWorker)
           .to_not have_enqueued_sidekiq_job(json, reactor.id, 'http://unrelated.example.com/inbox', anything)
       end

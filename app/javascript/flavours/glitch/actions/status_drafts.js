@@ -3,6 +3,7 @@ import { defineMessages } from 'react-intl';
 
 import api, { getLinks } from 'flavours/glitch/api';
 import { forceLocalOnly } from 'flavours/glitch/initial_state';
+import { uuid } from 'flavours/glitch/uuid';
 
 import { showAlert, showAlertForError } from './alerts';
 import { ensureComposeIsVisible } from './compose';
@@ -10,7 +11,9 @@ import { ensureComposeIsVisible } from './compose';
 export const STATUS_DRAFTS_FETCH_REQUEST = 'STATUS_DRAFTS_FETCH_REQUEST';
 export const STATUS_DRAFTS_FETCH_SUCCESS = 'STATUS_DRAFTS_FETCH_SUCCESS';
 export const STATUS_DRAFTS_FETCH_FAIL = 'STATUS_DRAFTS_FETCH_FAIL';
+export const STATUS_DRAFT_SAVE_REQUEST = 'STATUS_DRAFT_SAVE_REQUEST';
 export const STATUS_DRAFT_SAVE_SUCCESS = 'STATUS_DRAFT_SAVE_SUCCESS';
+export const STATUS_DRAFT_SAVE_FAIL = 'STATUS_DRAFT_SAVE_FAIL';
 export const STATUS_DRAFT_DELETE_SUCCESS = 'STATUS_DRAFT_DELETE_SUCCESS';
 
 const messages = defineMessages({
@@ -74,16 +77,61 @@ export const fetchStatusDrafts = () => (dispatch) => {
   });
 };
 
-export const saveStatusDraft = () => (dispatch, getState) => {
-  const id = getState().getIn(['compose', 'draft_id']);
-  const request = id
-    ? api().put(`/api/v1/status_drafts/${id}`, composePayload(getState()))
-    : api().post('/api/v1/status_drafts', composePayload(getState()));
+const pendingDraftSaves = new Map();
 
-  return request.then(({ data }) => {
-    dispatch({ type: STATUS_DRAFT_SAVE_SUCCESS, draft: fromJS(data) });
-    dispatch(showAlert({ message: messages.saved }));
-  }).catch(error => dispatch(showAlertForError(error)));
+export const saveStatusDraft = () => (dispatch, getState) => {
+  if (getState().getIn(['compose', 'draft_save_request'])) {
+    return Promise.resolve();
+  }
+
+  const id = getState().getIn(['compose', 'draft_id']);
+  const requestId = uuid();
+  const payload = composePayload(getState());
+  const pending = { discarded: false };
+
+  dispatch({ type: STATUS_DRAFT_SAVE_REQUEST, requestId });
+
+  const request = id
+    ? api().put(`/api/v1/status_drafts/${id}`, payload)
+    : api().post('/api/v1/status_drafts', payload);
+
+  pending.promise = request.then(({ data }) => {
+    dispatch({ type: STATUS_DRAFT_SAVE_SUCCESS, draft: fromJS(data), requestId });
+    if (!pending.discarded) {
+      dispatch(showAlert({ message: messages.saved }));
+    }
+    return data.id;
+  }).catch(error => {
+    dispatch({ type: STATUS_DRAFT_SAVE_FAIL, requestId });
+    if (!pending.discarded) {
+      dispatch(showAlertForError(error));
+    }
+    return null;
+  }).finally(() => {
+    pendingDraftSaves.delete(requestId);
+  });
+
+  pendingDraftSaves.set(requestId, pending);
+
+  return pending.promise.then(() => undefined);
+};
+
+export const getPendingStatusDraftSave = (requestId) =>
+  (requestId && pendingDraftSaves.get(requestId)) || null;
+
+export const discardPendingStatusDraftSave = (pending, keptDraftId) => (dispatch) => {
+  if (!pending) {
+    return Promise.resolve();
+  }
+
+  pending.discarded = true;
+
+  return pending.promise.then((savedDraftId) => {
+    if (savedDraftId && savedDraftId !== keptDraftId) {
+      return dispatch(deleteStatusDraft(savedDraftId));
+    }
+    return undefined;
+  });
 };
 
 export const deleteStatusDraft = (id) => (dispatch) =>

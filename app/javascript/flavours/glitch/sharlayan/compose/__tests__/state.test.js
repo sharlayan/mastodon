@@ -33,6 +33,7 @@ describe('Sharlayan compose state', () => {
       clip_ids: [],
       scheduled_at: null,
       draft_id: null,
+      draft_save_request: null,
       reaction_acceptance: null,
       default_reaction_acceptance: null,
     });
@@ -41,6 +42,7 @@ describe('Sharlayan compose state', () => {
       clip_ids: [],
       scheduled_at: null,
       draft_id: null,
+      draft_save_request: null,
       reaction_acceptance: null,
       default_reaction_acceptance: null,
       text: 'keep me',
@@ -105,16 +107,14 @@ describe('Sharlayan compose state', () => {
     expect(state.getIn(['advanced_options', 'threaded_mode'])).toBe(false);
   });
 
-  it.each([COMPOSE_MENTION, COMPOSE_DIRECT])('leaves threaded mode when starting a mention with %s', (type) => {
+  it('leaves threaded mode when starting a mention or direct message', () => {
     const state = composeReducer(undefined, { type: '@@INIT' })
       .setIn(['advanced_options', 'threaded_mode'], true);
 
-    const nextState = composeReducer(state, {
+    expect([COMPOSE_MENTION, COMPOSE_DIRECT].map(type => composeReducer(state, {
       type,
       account: ImmutableMap({ acct: 'alice' }),
-    });
-
-    expect(nextState.getIn(['advanced_options', 'threaded_mode'])).toBe(false);
+    }).getIn(['advanced_options', 'threaded_mode']))).toEqual([false, false]);
   });
 
   it('only clears scheduling metadata on a regular compose reset', () => {

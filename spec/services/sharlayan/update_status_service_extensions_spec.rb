@@ -36,18 +36,14 @@ RSpec.describe Sharlayan::UpdateStatusServiceExtensions do
       Setting.mfm_allow_composition = true
     end
 
-    it 'turns a plain status into MFM when MFM syntax is added' do
+    it 'turns a plain status into MFM when MFM syntax is added and clears it when the syntax is removed' do
       status = PostStatusService.new.call(account, text: 'plain')
 
       service.call(status, account.id, text: '$[tada edited]')
 
       expect(status.reload).to have_attributes(mfm: true, mfm_text: '$[tada edited]')
-    end
 
-    it 'clears MFM when the syntax is removed' do
-      status = PostStatusService.new.call(account, text: '$[tada first]')
-
-      service.call(status, account.id, text: 'plain')
+      UpdateStatusService.new.call(status, account.id, text: 'plain again')
 
       expect(status.reload).to have_attributes(mfm: false, mfm_text: nil)
     end

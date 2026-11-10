@@ -20,7 +20,7 @@ RSpec.describe 'Misskey-compat notes/create endpoint' do
       Setting.mfm_allow_composition = mfm_allow_composition
     end
 
-    it 'uses the Markdown fallback when composition is disabled' do
+    it 'uses the Markdown fallback when composition is disabled and posts MFM when it is enabled' do
       Setting.mfm_enabled = true
       Setting.mfm_allow_composition = false
 
@@ -28,16 +28,14 @@ RSpec.describe 'Misskey-compat notes/create endpoint' do
 
       expect(response).to have_http_status(200)
       expect(account.statuses.last).to have_attributes(content_type: 'text/markdown', mfm: false, mfm_text: nil, text: 'fallback')
-    end
 
-    it 'posts MFM when composition is enabled' do
-      Setting.mfm_enabled = true
       Setting.mfm_allow_composition = true
 
       post '/api/notes/create', params: { i: token, text: '$[x2 enabled]' }, as: :json
 
       expect(response).to have_http_status(200)
-      expect(account.statuses.last).to have_attributes(content_type: 'text/x-mfm', mfm: true, mfm_text: '$[x2 enabled]')
+      expect(Status.find(MisskeyCompat::MiId.decode(response.parsed_body.dig(:createdNote, :id))))
+        .to have_attributes(content_type: 'text/x-mfm', mfm: true, mfm_text: '$[x2 enabled]')
     end
   end
 
@@ -185,23 +183,18 @@ RSpec.describe 'Misskey-compat notes/create endpoint' do
       expect(response.parsed_body.dig(:reply, :id)).to eq(MisskeyCompat::MiId.encode(parent.id))
     end
 
-    it 'returns NO_SUCH_REPLY_TARGET for an unknown target' do
-      post '/api/notes/create', params: { i: token, text: 'a reply', replyId: MisskeyCompat::MiId.encode(Status.last&.id.to_i + 1_000_000) }, as: :json
-
-      expect(response).to have_http_status(404)
-      expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_REPLY_TARGET')
-    end
-
-    it 'returns NO_SUCH_REPLY_TARGET for a target the user cannot see' do
+    it 'returns NO_SUCH_REPLY_TARGET for an unknown target or a target the user cannot see' do
       hidden = Fabricate(:status, account: Fabricate(:account, username: 'carol'), visibility: :direct)
 
-      post '/api/notes/create', params: { i: token, text: 'a reply', replyId: MisskeyCompat::MiId.encode(hidden.id) }, as: :json
+      [hidden.id + 1_000_000, hidden.id].each do |reply_id|
+        post '/api/notes/create', params: { i: token, text: 'a reply', replyId: MisskeyCompat::MiId.encode(reply_id) }, as: :json
 
-      expect(response).to have_http_status(404)
-      expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_REPLY_TARGET')
+        expect(response).to have_http_status(404), reply_id.to_s
+        expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_REPLY_TARGET'), reply_id.to_s
+      end
     end
 
-    it 'limits a public reply to a home note to home visibility' do
+    it 'limits a public reply to a home note to home visibility and a home reply to a followers note to followers visibility' do
       parent.update!(visibility: :unlisted)
 
       post '/api/notes/create', params: { i: token, text: 'a reply', replyId: MisskeyCompat::MiId.encode(parent.id), visibility: 'public' }, as: :json
@@ -209,15 +202,13 @@ RSpec.describe 'Misskey-compat notes/create endpoint' do
       expect(response).to have_http_status(200)
       expect(account.statuses.last.visibility).to eq('unlisted')
       expect(response.parsed_body.dig(:createdNote, :visibility)).to eq('home')
-    end
 
-    it 'limits a home reply to a followers note to followers visibility' do
       private_parent = Fabricate(:status, account: account, visibility: :private)
 
       post '/api/notes/create', params: { i: token, text: 'a reply', replyId: MisskeyCompat::MiId.encode(private_parent.id), visibility: 'home' }, as: :json
 
       expect(response).to have_http_status(200)
-      expect(account.statuses.last.visibility).to eq('private')
+      expect(Status.find(MisskeyCompat::MiId.decode(response.parsed_body.dig(:createdNote, :id))).visibility).to eq('private')
       expect(response.parsed_body.dig(:createdNote, :visibility)).to eq('followers')
     end
 
@@ -233,7 +224,13 @@ RSpec.describe 'Misskey-compat notes/create endpoint' do
   end
 
   describe 'reactionAcceptance' do
-    it 'stores and serializes the selected value' do
+    it 'stores and serializes the selected value and rejects an unsupported value' do
+      post '/api/notes/create', params: { i: token, text: 'invalid', reactionAcceptance: 'customOnly' }, as: :json
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
+      expect(account.statuses).to be_empty
+
       post '/api/notes/create', params: { i: token, text: 'restricted reactions', reactionAcceptance: 'nonSensitiveOnly' }, as: :json
 
       expect(response).to have_http_status(200)
@@ -263,14 +260,6 @@ RSpec.describe 'Misskey-compat notes/create endpoint' do
       post '/api/notes/update', params: { i: token, noteId: MisskeyCompat::MiId.encode(status.id), text: status.text, reactionAcceptance: nil }, as: :json
       expect(response).to have_http_status(204)
       expect(status.reload.reaction_acceptance).to be_nil
-    end
-
-    it 'rejects an unsupported value' do
-      post '/api/notes/create', params: { i: token, text: 'invalid', reactionAcceptance: 'customOnly' }, as: :json
-
-      expect(response).to have_http_status(400)
-      expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
-      expect(account.statuses).to be_empty
     end
 
     it 'preserves the value in scheduled note data' do

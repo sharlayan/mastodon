@@ -1,11 +1,15 @@
 import type { useIntl } from 'react-intl';
 import { defineMessages } from 'react-intl';
 
+import { isFulfilled } from '@reduxjs/toolkit';
+
 import { refetchAccount } from '@/flavours/glitch/actions/accounts';
+import { showAlert, showAlertForError } from '@/flavours/glitch/actions/alerts';
 import {
   initDomainMuteModal,
   unmuteDomain,
 } from '@/flavours/glitch/actions/domain_mutes';
+import { createReactionMute } from '@/flavours/glitch/actions/reaction_mutes';
 import { apiRequestPost } from '@/flavours/glitch/api';
 import {
   avatarDecorationsEnabled,
@@ -50,6 +54,18 @@ const messages = defineMessages({
   muteDomainReactions: {
     id: 'account.menu.mute_domain_reactions',
     defaultMessage: "Don't receive reactions from {domain}",
+  },
+  muteDecorationsDone: {
+    id: 'account.menu.mute_decorations_done',
+    defaultMessage: "{name}'s decorations are now hidden",
+  },
+  muteReactionsDone: {
+    id: 'account.menu.mute_reactions_done',
+    defaultMessage: 'You will no longer receive reactions from {name}',
+  },
+  muteDomainReactionsDone: {
+    id: 'account.menu.mute_domain_reactions_done',
+    defaultMessage: 'You will no longer receive reactions from {domain}',
   },
 });
 
@@ -120,6 +136,7 @@ export function sharlayanDomainMuteItems({
 
 export function sharlayanReactionMuteItems({
   account,
+  dispatch,
   intl,
   remoteDomain,
 }: SharlayanMenuContext): MenuItem[] {
@@ -135,9 +152,18 @@ export function sharlayanReactionMuteItems({
         name: account.username,
       }),
       action: () => {
-        void apiRequestPost('v1/avatar_decoration_mutes', {
+        apiRequestPost('v1/avatar_decoration_mutes', {
           account_id: account.id,
-        });
+        })
+          .then(() =>
+            dispatch(
+              showAlert({
+                message: messages.muteDecorationsDone,
+                values: { name: account.username },
+              }),
+            ),
+          )
+          .catch((error: unknown) => dispatch(showAlertForError(error)));
       },
     });
   }
@@ -147,9 +173,20 @@ export function sharlayanReactionMuteItems({
       name: account.username,
     }),
     action: () => {
-      void apiRequestPost('v1/reaction_mutes', {
-        account_id: account.id,
-      });
+      void dispatch(createReactionMute({ account_id: account.id })).then(
+        (result) => {
+          if (isFulfilled(result)) {
+            dispatch(
+              showAlert({
+                message: messages.muteReactionsDone,
+                values: { name: account.username },
+              }),
+            );
+          }
+
+          return result;
+        },
+      );
     },
   });
 
@@ -159,9 +196,20 @@ export function sharlayanReactionMuteItems({
         domain: remoteDomain,
       }),
       action: () => {
-        void apiRequestPost('v1/reaction_mutes', {
-          domain: remoteDomain,
-        });
+        void dispatch(createReactionMute({ domain: remoteDomain })).then(
+          (result) => {
+            if (isFulfilled(result)) {
+              dispatch(
+                showAlert({
+                  message: messages.muteDomainReactionsDone,
+                  values: { domain: remoteDomain },
+                }),
+              );
+            }
+
+            return result;
+          },
+        );
       },
     });
   }

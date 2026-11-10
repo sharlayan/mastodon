@@ -1,7 +1,7 @@
 import { fromJS } from 'immutable';
 
 import { COMPOSE_REPLY, COMPOSE_RESET, COMPOSE_SET_STATUS, COMPOSE_SUBMIT_SUCCESS } from '../../actions/compose';
-import { STATUS_DRAFT_DELETE_SUCCESS } from '../../actions/status_drafts';
+import { STATUS_DRAFT_DELETE_SUCCESS, STATUS_DRAFT_SAVE_REQUEST, STATUS_DRAFT_SAVE_SUCCESS } from '../../actions/status_drafts';
 import { REDRAFT } from '../../actions/statuses';
 import { getScheduledSubmissionContext } from '../../sharlayan/compose/scheduled_submission';
 import { getSharlayanComposeSubmission } from '../../sharlayan/compose/submission';
@@ -84,15 +84,20 @@ describe('compose restoration transitions', () => {
     expect(submission.clipIds).toEqual(type === COMPOSE_SET_STATUS ? undefined : []);
   });
 
-  it.each([COMPOSE_SET_STATUS, REDRAFT])('does not carry over quote and reaction restrictions absent from the source with %s', type => {
-    const state = restore(loadedDraft(), type, sourceStatus
+  it('does not carry over quote and reaction restrictions absent from the source when editing or redrafting', () => {
+    const source = sourceStatus
       .delete('quote')
       .delete('quote_approval')
-      .delete('reaction_acceptance'));
+      .delete('reaction_acceptance');
 
-    expect(state.get('quoted_status_id')).toBeNull();
-    expect(state.get('quote_policy')).toBe('nobody');
-    expect(state.get('reaction_acceptance')).toBeNull();
+    expect([COMPOSE_SET_STATUS, REDRAFT].map(type => {
+      const state = restore(loadedDraft(), type, source);
+
+      return [type, state.get('quoted_status_id'), state.get('quote_policy'), state.get('reaction_acceptance')];
+    })).toEqual([
+      [COMPOSE_SET_STATUS, null, 'nobody', null],
+      [REDRAFT, null, 'nobody', null],
+    ]);
   });
 
   it('forgets the loaded draft when the composer is reset', () => {
@@ -111,6 +116,26 @@ describe('compose restoration transitions', () => {
 
     expect(state.get('in_reply_to')).toBe('posted');
     expect(state.get('draft_id')).toBeNull();
+  });
+
+  it.each([
+    ['reset', { type: COMPOSE_RESET }],
+    ['submitted', { type: COMPOSE_SUBMIT_SUCCESS, status: { id: 'posted', visibility: 'public' } }],
+  ])('ignores a draft save that finishes after the composer was %s', (_label, action) => {
+    const saving = composeReducer(undefined, { type: STATUS_DRAFT_SAVE_REQUEST, requestId: 'save-1' });
+    const state = composeReducer(composeReducer(saving, action), { type: STATUS_DRAFT_SAVE_SUCCESS, draft: fromJS({ id: 'late-draft' }), requestId: 'save-1' });
+
+    expect(state.get('draft_id')).toBeNull();
+    expect(state.get('draft_save_request')).toBeNull();
+  });
+
+  it('tracks the draft from a save that finishes while the composer is unchanged', () => {
+    const saving = composeReducer(undefined, { type: STATUS_DRAFT_SAVE_REQUEST, requestId: 'save-1' });
+    const state = composeReducer(saving, { type: STATUS_DRAFT_SAVE_SUCCESS, draft: fromJS({ id: 'saved-draft' }), requestId: 'save-1' });
+
+    expect(saving.get('draft_save_request')).toBe('save-1');
+    expect(state.get('draft_id')).toBe('saved-draft');
+    expect(state.get('draft_save_request')).toBeNull();
   });
 
   it('forgets the loaded draft only when that draft is deleted', () => {

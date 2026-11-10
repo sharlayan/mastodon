@@ -11,10 +11,6 @@ RSpec.describe Themes do
   end
 
   describe '#flavours' do
-    it 'includes the legacy glitch flavour alongside existing flavours' do
-      expect(themes.flavours).to include('glitch', 'glitch-classic', 'vanilla')
-    end
-
     context 'when only glitch compatible flavours are enabled' do
       before { stub_const('Themes::GLITCH_ONLY', true) }
 
@@ -39,16 +35,14 @@ RSpec.describe Themes do
   end
 
   describe 'legacy glitch assets' do
-    it 'shares the glitch JavaScript entrypoints and locale catalogue' do
+    it 'is listed alongside existing flavours, shares the glitch entrypoints and locales, and provides both skins with all color schemes' do
       legacy = themes.flavour('glitch-classic')
       glitch = themes.flavour('glitch')
 
+      expect(themes.flavours).to include('glitch', 'glitch-classic', 'vanilla')
       expect(legacy['pack_directory']).to eq(glitch['pack_directory'])
       expect(legacy['locales']).to match_array(glitch['locales'])
       expect(legacy['locales']).to include('en', 'ja', 'ko')
-    end
-
-    it 'provides both skins with automatic, light, and dark color schemes' do
       expect(themes.skins_for('glitch-classic')).to contain_exactly('default', 'birdsiteui')
 
       %w(default birdsiteui).each do |skin|

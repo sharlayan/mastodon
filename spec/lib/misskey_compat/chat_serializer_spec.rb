@@ -77,12 +77,8 @@ RSpec.describe MisskeyCompat::ChatSerializer do
       described_class.message(ChatMessage.find(message.id), viewer: member).dig(:file, :name)
     end
 
-    it 'comes from the declared type before the file is downloaded, not from the media ID' do
+    it 'comes from the declared type before the file is downloaded, not from the media ID, and stays the same after', :attachment_processing do
       expect(media.needs_redownload?).to be(true)
-      expect(file_name).to eq('file.png')
-    end
-
-    it 'stays the same after the file is downloaded', :attachment_processing do
       expect(file_name).to eq('file.png')
 
       media.update!(file: fixture_file_upload('emojo.png', 'image/png'))

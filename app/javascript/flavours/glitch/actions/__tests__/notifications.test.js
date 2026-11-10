@@ -61,13 +61,16 @@ describe('updateNotifications', () => {
     });
   };
 
-  it.each(['denied', 'default'])('keeps the DM notification without displaying a popup when permission is %s', permission => {
-    createNotification.permission = permission;
+  it('keeps the DM notification without displaying a popup when permission is denied or default', () => {
+    for (const permission of ['denied', 'default']) {
+      dispatch.mockClear();
+      createNotification.permission = permission;
 
-    receiveNotification();
+      receiveNotification();
 
-    expect(createNotification).not.toHaveBeenCalled();
-    expectReduxNotification();
+      expect(createNotification).not.toHaveBeenCalled();
+      expectReduxNotification();
+    }
   });
 
   it('keeps the DM notification when browser notifications are unsupported', () => {
@@ -97,16 +100,20 @@ describe('updateNotifications', () => {
     expect(popup.close).toHaveBeenCalledOnce();
   });
 
-  it.each([
-    new TypeError('Illegal constructor'),
-    new DOMException('Notifications are blocked', 'SecurityError'),
-  ])('keeps DM processing running when the browser notification constructor throws %s', error => {
-    createNotification.mockImplementation(function () { throw error; });
+  it('keeps DM processing running when the browser notification constructor throws TypeError or SecurityError', () => {
+    for (const error of [
+      new TypeError('Illegal constructor'),
+      new DOMException('Notifications are blocked', 'SecurityError'),
+    ]) {
+      dispatch.mockClear();
+      console.error.mockClear();
+      createNotification.mockImplementation(function () { throw error; });
 
-    expect(receiveNotification).not.toThrow();
+      expect(receiveNotification).not.toThrow();
 
-    expectReduxNotification();
-    expect(console.error).toHaveBeenCalled();
+      expectReduxNotification();
+      expect(console.error).toHaveBeenCalled();
+    }
   });
 
   it('keeps DM processing running when the popup message cannot be formatted', () => {

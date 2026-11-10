@@ -34,8 +34,15 @@ RSpec.describe 'Chat room member removal' do
 
   [false, true].each do |compat|
     context(compat ? 'Misskey-compatible API' : 'native REST API') do
-      it 'removes a member, retains history, and revokes read and write access' do
+      it 'requires a write-capable token, then removes a member, retains history, and revokes read and write access' do
         message = service.create_message(member.account, room, text: 'history')
+        token.update!(scopes: 'read')
+        remove_member(compat: compat)
+
+        expect(response).to have_http_status(403)
+        expect(room.memberships.exists?(account: member.account)).to be(true)
+
+        token.update!(scopes: 'read write')
         remove_member(compat: compat)
 
         expect(response).to have_http_status(compat ? 204 : 200)
@@ -58,20 +65,18 @@ RSpec.describe 'Chat room member removal' do
         expect(room.memberships.count).to eq(2)
       end
 
-      it 'does not allow the owner to remove themselves' do
+      it 'does not allow the owner to remove themselves, nor silently succeed for a non-member' do
         remove_member(user.account, compat: compat)
 
         expect(response).to have_http_status(compat ? 400 : 403)
         expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_MEMBER') if compat
         expect(room.reload.memberships.count).to eq(2)
-      end
 
-      it 'requires a write-capable token' do
-        token.update!(scopes: 'read')
-        remove_member(compat: compat)
+        remove_member(Fabricate(:user).account, compat: compat)
 
-        expect(response).to have_http_status(403)
-        expect(room.memberships.exists?(account: member.account)).to be(true)
+        expect(response).to have_http_status(compat ? 400 : 404)
+        expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_MEMBER') if compat
+        expect(room.memberships.count).to eq(2)
       end
 
       it 'allows moderation of an archived room' do
@@ -81,15 +86,6 @@ RSpec.describe 'Chat room member removal' do
         expect(response).to have_http_status(compat ? 204 : 200)
         expect(room.reload.archived_at).to be_present
         expect(room.memberships.exists?(account: member.account)).to be(false)
-      end
-
-      it 'does not silently succeed for a non-member' do
-        stranger = Fabricate(:user)
-        remove_member(stranger.account, compat: compat)
-
-        expect(response).to have_http_status(compat ? 400 : 404)
-        expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_MEMBER') if compat
-        expect(room.memberships.count).to eq(2)
       end
     end
   end

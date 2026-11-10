@@ -52,7 +52,10 @@ export const ClipButton: FC<ClipButtonProps> = ({ disabled = false }) => {
   const label =
     selectedCount > 0
       ? intl.formatMessage(
-          { id: 'compose_form.clip.count', defaultMessage: '{count} clips' },
+          {
+            id: 'compose_form.clip.count',
+            defaultMessage: '{count, plural, one {# clip} other {# clips}}',
+          },
           { count: selectedCount },
         )
       : intl.formatMessage(messages.select);

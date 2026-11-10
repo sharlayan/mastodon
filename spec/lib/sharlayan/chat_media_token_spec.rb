@@ -11,50 +11,34 @@ RSpec.describe Sharlayan::ChatMediaToken do
   before { travel_to Time.zone.at(((Time.now.to_i / 60) + 1) * 60) }
 
   describe 'staying the same so that a picture can be cached' do
-    it 'is the same for one person and one attachment within a minute' do
+    it 'differs between people, attachments and Misskey clients' do
+      first = described_class.generate(media, viewer)
+
+      expect(described_class.generate(media, other_viewer)).to_not eq(first)
+      expect(described_class.generate(other_media, viewer)).to_not eq(first)
+      expect(described_class.generate(media, viewer, misskey: true)).to_not eq(first)
+    end
+
+    it 'is the same for one person and one attachment within a minute, and changes in the next minute' do
       first = described_class.generate(media, viewer)
 
       travel 59.seconds
-
       expect(described_class.generate(media, viewer)).to eq(first)
-    end
 
-    it 'changes in the next minute' do
-      first = described_class.generate(media, viewer)
-
-      travel 60.seconds
-
+      travel 1.second
       expect(described_class.generate(media, viewer)).to_not eq(first)
-    end
-
-    it 'differs between people' do
-      expect(described_class.generate(media, viewer)).to_not eq(described_class.generate(media, other_viewer))
-    end
-
-    it 'differs between attachments' do
-      expect(described_class.generate(media, viewer)).to_not eq(described_class.generate(other_media, viewer))
-    end
-
-    it 'differs for a Misskey client' do
-      expect(described_class.generate(media, viewer)).to_not eq(described_class.generate(media, viewer, misskey: true))
     end
   end
 
   describe 'how long a token works' do
-    it 'never works longer than ten minutes after it was given' do
-      token = described_class.generate(media, viewer)
-
-      travel 10.minutes
-
-      expect(described_class.viewer(token, media)).to be_nil
-    end
-
-    it 'works for ten minutes when given at the start of a minute' do
+    it 'works for ten minutes when given at the start of a minute, and never longer' do
       token = described_class.generate(media, viewer)
 
       travel 10.minutes - 1.second
-
       expect(described_class.viewer(token, media)).to eq(viewer)
+
+      travel 1.second
+      expect(described_class.viewer(token, media)).to be_nil
     end
 
     it 'still works for nine minutes when given at the end of a minute' do
@@ -70,16 +54,9 @@ RSpec.describe Sharlayan::ChatMediaToken do
   describe '.signed_for?' do
     let(:token) { described_class.generate(media, viewer) }
 
-    it 'accepts a token for that attachment' do
+    it 'accepts a token for that attachment, but not for another attachment or once it expired' do
       expect(described_class.signed_for?(token, media.id.to_s)).to be(true)
-    end
-
-    it 'refuses a token for another attachment' do
       expect(described_class.signed_for?(token, other_media.id.to_s)).to be(false)
-    end
-
-    it 'refuses an expired token' do
-      token
 
       travel 10.minutes
 

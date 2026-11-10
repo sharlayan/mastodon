@@ -59,12 +59,6 @@ export const REACTION_REMOVE_REQUEST = 'REACTION_REMOVE_REQUEST';
 export const REACTION_REMOVE_SUCCESS = 'REACTION_REMOVE_SUCCESS';
 export const REACTION_REMOVE_FAIL    = 'REACTION_REMOVE_FAIL';
 
-export const REACTION_FETCH_REQUEST = 'REACTION_FETCH_REQUEST';
-export const REACTION_FETCH_SUCCESS = 'REACTION_FETCH_SUCCESS';
-export const REACTION_FETCH_FAIL    = 'REACTION_FETCH_FAIL';
-
-export const REACTION_UPDATE = 'REACTION_UPDATE';
-
 export * from "./interactions_typed";
 
 export function favourite(status) {
@@ -551,42 +545,6 @@ export function removeReactionFail(statusId, name, error) {
     name,
     error,
     skipLoading: true,
-  };
-}
-
-export function fetchReaction(id) {
-  return (dispatch) => {
-    dispatch(fetchReactionRequest(id));
-
-    api().get(`/api/v1/statuses/${id}/reacted_by`).then(response => {
-      dispatch(importFetchedAccounts(response.data));
-      dispatch(fetchReactionSuccess(id, response.data));
-    }).catch(error => {
-      dispatch(fetchReactionFail(id, error));
-    });
-  };
-}
-
-export function fetchReactionRequest(id) {
-  return {
-    type: REACTION_FETCH_REQUEST,
-    id,
-  };
-}
-
-export function fetchReactionSuccess(id, accounts) {
-  return {
-    type: REACTION_FETCH_SUCCESS,
-    id,
-    accounts,
-  };
-}
-
-export function fetchReactionFail(id, error) {
-  return {
-    type: REACTION_FETCH_FAIL,
-    id,
-    error,
   };
 }
 

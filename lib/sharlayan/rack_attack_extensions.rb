@@ -104,7 +104,12 @@ module Sharlayan
       end
 
       attack.throttle('throttle_page_password_attempts', limit: 10, period: 5.minutes) do |req|
-        "#{req.authenticated_user_id || req.throttleable_remote_ip}:#{req.path}" if req.post? && req.path.match?(%r{\A/api/v1/pages/\d+/unlock\z})
+        next unless req.post?
+
+        page_id = Rack::Utils.unescape_path(req.path).b[%r{\A/api/v1/pages/(.+)/unlock\z}m, 1]
+        next unless page_id
+
+        "#{req.authenticated_user_id || req.throttleable_remote_ip}:#{page_id.to_i}"
       end
 
       attack.throttle('throttle_misskey_signin_attempts/ip', limit: 25, period: 5.minutes) do |req|

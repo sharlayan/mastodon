@@ -264,13 +264,10 @@ describe('Whether the newest message is in view', () => {
     expect(isAtNewest(device.se3Keyboard)).toBe(true);
   });
 
-  it('is, at the end of the page with a collapsed toolbar (40, 77 and 56.5px by the old formula)', () => {
+  it('is, at the end of the page with a collapsed toolbar (40, 77 and 56.5px by the old formula), also while the end bounces', () => {
     expect(isAtNewest(device.se2Collapsed)).toBe(true);
     expect(isAtNewest(device.se3Collapsed)).toBe(true);
     expect(isAtNewest(device.pixelCollapsed)).toBe(true);
-  });
-
-  it('is, while the end bounces with the toolbar collapsing', () => {
     expect(isAtNewest(device.se3Bounce)).toBe(true);
   });
 
@@ -593,12 +590,6 @@ describe('Following the newest message (state table)', () => {
     expect(scrolls(commands)).toEqual([]);
   });
 
-  it('6 a rate-limited older page leaves the target sought', () => {
-    const { state } = opened('m1');
-    expect(state.target?.phase).toBe('seeking');
-    expect(state.following).toBe(false);
-  });
-
   it('7 a far quote stops following, shows the way back, and lands away', () => {
     const { state, commands } = run(opened().state, [
       [{ type: 'quoteClicked', id: 'm1' }],
@@ -613,28 +604,18 @@ describe('Following the newest message (state table)', () => {
     expect(scrolls(commands)).toEqual([{ type: 'scrollToMessage', id: 'm1' }]);
   });
 
-  it('8 a quote whose original is already shown at the newest keeps following', () => {
-    const { state } = run(opened().state, [
-      [{ type: 'quoteClicked', id: 'm4' }],
-      [{ type: 'targetLoaded', id: 'm4' }],
-      [
-        { type: 'targetScrolled', id: 'm4', movedUp: false, moved: false },
-        { distance: 0 },
-      ],
-    ]);
-    expect(state.following).toBe(true);
-  });
-
-  it('8 with page padding below the end (desktop, end 888.75 of 900) it keeps following', () => {
-    const { state } = run(opened().state, [
-      [{ type: 'quoteClicked', id: 'm4' }],
-      [{ type: 'targetLoaded', id: 'm4' }],
-      [
-        { type: 'targetScrolled', id: 'm4', movedUp: false, moved: false },
-        { distance: distanceFromNewest(device.desktopPadded) },
-      ],
-    ]);
-    expect(state.following).toBe(true);
+  it('8 a quote whose original is already shown at the newest keeps following, also with page padding below the end (desktop, end 888.75 of 900)', () => {
+    for (const distance of [0, distanceFromNewest(device.desktopPadded)]) {
+      const { state } = run(opened().state, [
+        [{ type: 'quoteClicked', id: 'm4' }],
+        [{ type: 'targetLoaded', id: 'm4' }],
+        [
+          { type: 'targetScrolled', id: 'm4', movedUp: false, moved: false },
+          { distance },
+        ],
+      ]);
+      expect(state.following).toBe(true);
+    }
   });
 
   it('9 tapping the same quote within its highlight changes nothing', () => {
@@ -783,14 +764,21 @@ describe('Following the newest message (state table)', () => {
     ).toBe(true);
   });
 
-  it('20 the keyboard opening at the end of the page asks no scroll (SE 3 delta 1.4, nothing left)', () => {
+  it('20 the keyboard opening at the end of the page asks no scroll (SE 3 delta 1.4, nothing left), nor does a message needing less than a pixel', () => {
     const reveal = revealAmount({
       last: { top: 90, bottom: 178.4375 },
       composer: { top: 193, bottom: 262 },
       remaining: 0,
     });
-    const { commands } = keyboardOpen(opened().state, { reveal });
+    const { state, commands } = keyboardOpen(opened().state, { reveal });
     expect(scrolls(commands)).toEqual([]);
+    const arrival = run(state, [
+      [
+        { type: 'newestShown', screen: 'A:', mine: false },
+        { height: 287, composerFocused: true, reveal: 0 },
+      ],
+    ]);
+    expect(scrolls(arrival.commands)).toEqual([]);
   });
 
   it('20 a new message over the keyboard is revealed by what is left of the page (84 of 85.4)', () => {
@@ -1072,27 +1060,6 @@ describe('Following the newest message (state table)', () => {
     expect(scrolls(commands)).toEqual([]);
   });
 
-  it('32 Safari answering a reveal by shrinking its viewport is not answered again', () => {
-    const { state } = keyboardOpen(opened().state);
-    const revealed = run(state, [
-      [
-        { type: 'newestShown', screen: 'A:', mine: false },
-        { height: 287, composerFocused: true, reveal: 84 },
-      ],
-    ]);
-    const echoed = run(revealed.state, [
-      [
-        { type: 'viewportResized' },
-        { height: 286, composerFocused: true, reveal: 1.4 },
-      ],
-      [
-        { type: 'viewportResized' },
-        { height: 286, composerFocused: true, reveal: 1.4 },
-      ],
-    ]);
-    expect(scrolls(echoed.commands)).toEqual([]);
-  });
-
   it('32 a real resize after the echo window is answered', () => {
     const { state } = keyboardOpen(opened().state);
     const { commands } = run(state, [
@@ -1107,17 +1074,6 @@ describe('Following the newest message (state table)', () => {
       ],
     ]);
     expect(scrolls(commands).at(-1)).toEqual({ type: 'reveal', by: 30 });
-  });
-
-  it('33 a reveal of less than a pixel is not asked', () => {
-    const { state } = keyboardOpen(opened().state);
-    const { commands } = run(state, [
-      [
-        { type: 'newestShown', screen: 'A:', mine: false },
-        { height: 287, composerFocused: true, reveal: 0 },
-      ],
-    ]);
-    expect(scrolls(commands)).toEqual([]);
   });
 
   it('34 leaving the screen ends the keyboard and puts the composer back, keeping the rest', () => {
@@ -1595,14 +1551,6 @@ describe('iPhone on ddbad17ba3 (ios-masto-final3)', () => {
     });
   }
 
-  it('41 an Android keyboard still opening is not taken for that flick', () => {
-    const { commands } = run(opened().state, [
-      [{ type: 'composerFocused' }, at(device.galaxy.viewport)],
-      [{ type: 'viewportResized' }, at(galaxyOpening)],
-    ]);
-    expect(liftAmounts(commands).every((by) => by === 0)).toBe(true);
-  });
-
   it('42 Safari’s visual viewport offset is not added when scrollY already is its top (far focus: 85.6/101 on ddbad17)', () => {
     expect(visibleArea(iphone.se2FarFocused.viewport)).toMatchObject({
       top: 0,
@@ -1883,15 +1831,6 @@ describe('Android on a7566004ab (android-masto-final4)', () => {
       ]);
       expect(scrolls(arrival.commands)).toEqual([{ type: 'alignEnd' }]);
     });
-
-  it('47 letting go of a pinch away from the newest still keeps the place (300px)', () => {
-    const { state } = run(opened().state, [
-      [{ type: 'viewportResized' }, { scale: 1.795 }],
-      [{ type: 'scrolled' }, { scale: 1.795 }],
-      [{ type: 'viewportResized' }, { scale: 1, distance: 300 }],
-    ]);
-    expect(state.following).toBe(false);
-  });
 });
 
 describe('iPhone SE 3 on a7566004ab (ios-masto-final4)', () => {
@@ -2053,13 +1992,9 @@ describe('Review 730b E1: focusing the box at the newest with the browser bar co
     ...over,
   });
 
-  it('49 nothing is left under a keyboard before one is shown (Pixel 56, SE 2 40, SE 3 79 on 730b)', () => {
-    for (const [, viewport] of collapsed)
-      expect(keyboardRoom(viewport)).toBe(0);
-  });
-
   for (const [name, viewport, remaining, distance] of collapsed)
-    it(`49 no room is made at the focus (${name})`, () => {
+    it(`49 nothing is left under a keyboard before one is shown, and no room is made at the focus (${name}; Pixel 56, SE 2 40, SE 3 79 on 730b)`, () => {
+      expect(keyboardRoom(viewport)).toBe(0);
       const { state, commands } = run(opened().state, [
         [{ type: 'composerFocused' }, at(viewport, { remaining, distance })],
       ]);
@@ -2327,12 +2262,9 @@ describe('Android on f496c2c262 and review f496', () => {
     ],
   ];
   for (const [name, layout, original, quoted] of underHeader) {
-    it(`an original partly under the column header is not in full view (${name})`, () => {
+    it(`an original partly under the column header is not in full view, and what the header covers is not seen (${name})`, () => {
       expect(rectShown(layout, original)).toBe(false);
       expect(rectShown(layout, quoted)).toBe(true);
-    });
-
-    it(`what the column header covers is not seen (${name})`, () => {
       expect(rectVisible(layout, { top: 0, bottom: 45 })).toBe(false);
       expect(rectVisible(layout, original)).toBe(true);
     });

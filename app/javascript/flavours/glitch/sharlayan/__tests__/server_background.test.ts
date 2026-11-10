@@ -51,27 +51,32 @@ describe('applyServerBackground', () => {
     ).toBe('');
   });
 
-  it.each([
-    '/settings',
-    '/settings/preferences/appearance',
-    '/admin/settings/custom/appearance',
-  ])('does not display the background on settings path %s', (pathname) => {
-    applyServerBackground({
-      color: '#102030',
-      pathname,
-      url: '/background.webp',
-    });
+  it('does not display the background on settings paths', () => {
+    const paths = [
+      '/settings',
+      '/settings/preferences/appearance',
+      '/admin/settings/custom/appearance',
+    ];
 
     expect(
-      document.documentElement.classList.contains(
-        'sharlayan-server-background',
-      ),
-    ).toBe(false);
-    expect(
-      document.documentElement.style.getPropertyValue(
-        '--sharlayan-server-background-image',
-      ),
-    ).toBe('');
+      paths.map((pathname) => {
+        applyServerBackground();
+        applyServerBackground({
+          color: '#102030',
+          pathname,
+          url: '/background.webp',
+        });
+
+        return [
+          document.documentElement.classList.contains(
+            'sharlayan-server-background',
+          ),
+          document.documentElement.style.getPropertyValue(
+            '--sharlayan-server-background-image',
+          ),
+        ];
+      }),
+    ).toEqual(paths.map(() => [false, '']));
   });
 
   it('allows the background on a settings path when explicitly enabled', () => {

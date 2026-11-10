@@ -205,21 +205,16 @@ RSpec.describe DeleteAccountService do
       Fabricate(:status_reaction, account: remaining_account, status: status, name: "\u2764")
     end
 
-    it 'subtracts every removed reaction while keeping other accounts reactions' do
-      described_class.new.call(account, skip_side_effects: true)
-
-      expect(status.reload.reactions_count).to eq(1)
-      expect(other_status.reload.reactions_count).to eq(0)
-      expect(status.status_reactions.pluck(:account_id)).to eq([remaining_account.id])
-    end
-
-    it 'invalidates the reaction summary and current status caches' do
+    it 'subtracts every removed reaction, keeps other accounts reactions and invalidates the status caches' do
       cache_keys = [StatusReaction.summary_cache_key(status.id), "v3:statuses/#{status.id}", "statuses/show:v3:statuses/#{status.id}"]
       cache_keys.each { |key| Rails.cache.write(key, 'stale') }
 
       described_class.new.call(account, skip_side_effects: true)
 
       expect(Rails.cache.read_multi(*cache_keys)).to be_empty
+      expect(status.reload.reactions_count).to eq(1)
+      expect(other_status.reload.reactions_count).to eq(0)
+      expect(status.status_reactions.pluck(:account_id)).to eq([remaining_account.id])
     end
   end
 

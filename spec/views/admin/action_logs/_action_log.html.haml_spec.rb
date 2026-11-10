@@ -23,40 +23,16 @@ RSpec.describe 'admin/action_logs/_action_log.html.haml' do
     context "with the #{locale} locale" do
       around { |example| I18n.with_locale(locale) { example.run } }
 
-      it 'renders avatar decoration logs with their names' do
-        crud_actions.each do |action|
-          html = render_log(action, decoration)
+      it 'renders translated decoration, domain block, announcement, drive file and account logs with their targets' do
+        logs = crud_actions.map { |action| [render_log(action, decoration), 'sparkle_ring'] } +
+               block_actions.map { |action| [render_log(action, domain_block), 'blocked.example'] } +
+               crud_actions.map { |action| [render_log(action, announcement), 'Maintenance window'] } +
+               [[render_log(:destroy, drive_file), 'attachment.jpg'], [render_log(:update, target_account), 'decorated']]
+
+        logs.each do |html, label|
           expect(html).to_not include('translation_missing')
-          expect(html).to include('sparkle_ring')
+          expect(html).to include(label)
         end
-      end
-
-      it 'renders avatar decoration domain block logs with their domains' do
-        block_actions.each do |action|
-          html = render_log(action, domain_block)
-          expect(html).to_not include('translation_missing')
-          expect(html).to include('blocked.example')
-        end
-      end
-
-      it 'renders board announcement logs with their titles' do
-        crud_actions.each do |action|
-          html = render_log(action, announcement)
-          expect(html).to_not include('translation_missing')
-          expect(html).to include('Maintenance window')
-        end
-      end
-
-      it 'renders drive file deletion logs with the file name' do
-        html = render_log(:destroy, drive_file)
-        expect(html).to_not include('translation_missing')
-        expect(html).to include('attachment.jpg')
-      end
-
-      it 'renders account update logs with the account' do
-        html = render_log(:update, target_account)
-        expect(html).to_not include('translation_missing')
-        expect(html).to include('decorated')
       end
     end
   end

@@ -136,7 +136,7 @@ export function normalizeStatus(status, normalOldStatus, { settings, bogusQuoteP
       if (oldReactions) {
         normalStatus.reactions = normalStatus.reactions.map(reaction => {
           const oldReaction = oldReactions.find(r => r.get('name') === reaction.name);
-          if (oldReaction && oldReaction.get('me')) {
+          if (!('me' in reaction) && oldReaction?.get('me')) {
             return { ...reaction, me: true };
           }
           return reaction;

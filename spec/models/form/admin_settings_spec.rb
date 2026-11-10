@@ -93,17 +93,13 @@ RSpec.describe Form::AdminSettings do
         expect(settings.cat_federation_enabled).to be(false)
       end
 
-      it 'saves the soft-hide deletion setting as a boolean' do
-        expect { described_class.new(soft_hide_deletion: '1').save }
-          .to change(Setting, :soft_hide_deletion).from(false).to(true)
-      end
-
-      it 'saves both timeline control settings as booleans' do
+      it 'saves the soft-hide deletion and timeline control settings as booleans' do
         Setting.roleplay_disable_local_timeline = true
 
         expect do
-          described_class.new(roleplay_disable_local_timeline: '0', roleplay_hide_public_timelines_from_admins: '1').save
-        end.to change(Setting, :roleplay_disable_local_timeline).from(true).to(false)
+          described_class.new(soft_hide_deletion: '1', roleplay_disable_local_timeline: '0', roleplay_hide_public_timelines_from_admins: '1').save
+        end.to change(Setting, :soft_hide_deletion).from(false).to(true)
+          .and change(Setting, :roleplay_disable_local_timeline).from(true).to(false)
           .and change(Setting, :roleplay_hide_public_timelines_from_admins).from(false).to(true)
       end
 
@@ -134,47 +130,27 @@ RSpec.describe Form::AdminSettings do
       end
     end
 
-    it 'saves drive settings with their declared types' do
-      expect { described_class.new(drive_enabled: '1', drive_quota: '2048').save }
+    it 'saves drive settings and upload limits with their declared types' do
+      expect { described_class.new(drive_enabled: '1', drive_quota: '2048', drive_max_file_size: '32', drive_allowed_extensions: 'pdf, zip').save }
         .to change(Setting, :drive_enabled).from(false).to(true)
         .and change(Setting, :drive_quota).from(500).to(2048)
-    end
-
-    it 'saves the status character limit as an integer' do
-      expect { described_class.new(status_character_limit: '1000').save }
-        .to change(Setting, :status_character_limit).from(500).to(1000)
-    end
-
-    it 'saves profile and remote media limits as integers' do
-      expect { described_class.new(profile_fields_limit: '12', remote_media_attachments_limit: '8').save }
-        .to change(Setting, :profile_fields_limit).from(10).to(12)
-        .and change(Setting, :remote_media_attachments_limit).from(16).to(8)
-    end
-
-    it 'rejects a negative drive quota' do
-      settings = described_class.new(drive_quota: '-1')
-
-      expect(settings).to_not be_valid
-      expect(settings.errors[:drive_quota]).to be_present
-    end
-
-    it 'saves the drive upload limits' do
-      expect { described_class.new(drive_max_file_size: '32', drive_allowed_extensions: 'pdf, zip').save }
-        .to change(Setting, :drive_max_file_size).from(20).to(32)
+        .and change(Setting, :drive_max_file_size).from(20).to(32)
         .and change(Setting, :drive_allowed_extensions).from('').to('pdf, zip')
     end
 
-    it 'rejects a drive file size limit of zero' do
-      settings = described_class.new(drive_max_file_size: '0')
-
-      expect(settings).to_not be_valid
-      expect(settings.errors[:drive_max_file_size]).to be_present
+    it 'saves the status character, profile field and remote media limits as integers' do
+      expect { described_class.new(status_character_limit: '1000', profile_fields_limit: '12', remote_media_attachments_limit: '8').save }
+        .to change(Setting, :status_character_limit).from(500).to(1000)
+        .and change(Setting, :profile_fields_limit).from(10).to(12)
+        .and change(Setting, :remote_media_attachments_limit).from(16).to(8)
     end
 
-    it 'rejects allowed extensions that could be served as script or markup' do
-      settings = described_class.new(drive_allowed_extensions: 'pdf, html, svg')
+    it 'rejects a negative drive quota, a zero file size limit and script or markup extensions' do
+      settings = described_class.new(drive_quota: '-1', drive_max_file_size: '0', drive_allowed_extensions: 'pdf, html, svg')
 
       expect(settings).to_not be_valid
+      expect(settings.errors[:drive_quota]).to be_present
+      expect(settings.errors[:drive_max_file_size]).to be_present
       expect(settings.errors[:drive_allowed_extensions].join).to include('html', 'svg')
     end
 

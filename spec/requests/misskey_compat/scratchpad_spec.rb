@@ -28,30 +28,18 @@ RSpec.describe 'Misskey-compat scratchpad' do
   after  { Setting.misskey_compat_enabled = false }
 
   describe 'GET /scratchpad' do
-    context 'when misskey compat is disabled' do
-      before { Setting.misskey_compat_enabled = false }
+    it 'redirects anonymous visitors to sign in and renders the form for signed-in users unless misskey compat is disabled' do
+      get '/scratchpad'
+      expect(response).to have_http_status(302)
 
-      it 'returns 404' do
-        sign_in user
-        get '/scratchpad'
-        expect(response).to have_http_status(404)
-      end
-    end
+      sign_in user
+      get '/scratchpad'
+      expect(response).to have_http_status(200)
+      expect(response.body).to include(I18n.t('misskey_compat.scratchpad.run'))
 
-    context 'when not signed in' do
-      it 'redirects to sign in' do
-        get '/scratchpad'
-        expect(response).to have_http_status(302)
-      end
-    end
-
-    context 'when signed in' do
-      it 'renders the scratchpad form' do
-        sign_in user
-        get '/scratchpad'
-        expect(response).to have_http_status(200)
-        expect(response.body).to include(I18n.t('misskey_compat.scratchpad.run'))
-      end
+      Setting.misskey_compat_enabled = false
+      get '/scratchpad'
+      expect(response).to have_http_status(404)
     end
   end
 
@@ -84,14 +72,12 @@ RSpec.describe 'Misskey-compat scratchpad' do
       expect(response.body).to include(CGI.escapeHTML('"state":"already-subscribed"'))
     end
 
-    it 'refuses code targeting another account' do
+    it 'refuses code targeting another account and rejects unrecognized code' do
       expect { post '/scratchpad', params: { code: aria_code(username: 'someoneelse') } }
         .to_not change(Web::PushSubscription, :count)
 
       expect(response.body).to include(CGI.escapeHTML(I18n.t('misskey_compat.scratchpad.wrong_account', expected: 'someoneelse', current: account.username)))
-    end
 
-    it 'rejects unrecognized code' do
       expect { post '/scratchpad', params: { code: 'let x = 1' } }
         .to_not change(Web::PushSubscription, :count)
 

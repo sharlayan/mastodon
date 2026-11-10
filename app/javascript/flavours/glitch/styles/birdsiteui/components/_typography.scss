@@ -20,11 +20,10 @@
   }
 
   // Things that should have the mid font-size
-  ._comp_account_header__bioButtonsWrapper__links,
   .columns-area__panels__pane--compositional
     .account__header__account-note
     textarea,
-  ._comp_account_header__bio,
+  ._comp_account_header__bioButtonsWrapper ._comp_account_bio__bio,
   .columns-area__panels__pane--compositional
     .compose-form
     .autosuggest-textarea__textarea,
@@ -36,7 +35,7 @@
   }
 
   // Exceptions
-  ._comp_account_header__bio {
+  ._comp_account_header__bioButtonsWrapper ._comp_account_bio__bio {
     line-height: 18px;
   }
 

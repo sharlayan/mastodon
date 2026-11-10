@@ -16,14 +16,12 @@ RSpec.describe 'Misskey-compat discovery endpoints' do
       BoardAnnouncement.create!(title: 'Notice', text: 'Details', published: true, published_at: Time.current)
     end
 
-    it 'requires a read-capable token' do
+    it 'requires a read-capable token and returns published announcements with their preloaded read state' do
       post '/api/announcements', params: { i: write_token }, as: :json
 
       expect(response).to have_http_status(403)
       expect(response.parsed_body.dig(:error, :code)).to eq('PERMISSION_DENIED')
-    end
 
-    it 'returns published announcements and preloads their read state' do
       BoardAnnouncementRead.create!(account: account, board_announcement: announcement)
       BoardAnnouncement.create!(title: 'Draft', text: 'Hidden', published: false)
 
@@ -50,15 +48,13 @@ RSpec.describe 'Misskey-compat discovery endpoints' do
     let(:uri)      { 'https://remote.example/@alice' }
     let(:resolved) { Fabricate(:account, domain: 'remote.example', uri: uri) }
 
-    it 'requires a read-capable token' do
+    it 'requires a read-capable token and rejects a blank URI before attempting resolution' do
+      allow(ResolveURLService).to receive(:new)
+
       post '/api/ap/show', params: { i: write_token, uri: uri }, as: :json
 
       expect(response).to have_http_status(403)
       expect(response.parsed_body.dig(:error, :code)).to eq('PERMISSION_DENIED')
-    end
-
-    it 'rejects a blank URI before attempting resolution' do
-      allow(ResolveURLService).to receive(:new)
 
       post '/api/ap/show', params: { i: read_token, uri: ' ' }, as: :json
 
@@ -109,7 +105,7 @@ RSpec.describe 'Misskey-compat discovery endpoints' do
       )
     end
 
-    it 'does not reveal roles that are not shown on profiles' do
+    it 'does not reveal roles that are not shown on profiles and returns NO_SUCH_ROLE for an unknown MiId' do
       unlisted = Fabricate(:user_role, name: 'Probation', highlighted: false, position: 5)
       Fabricate(:user, role: unlisted).account.update!(discoverable: true)
 
@@ -121,9 +117,7 @@ RSpec.describe 'Misskey-compat discovery endpoints' do
 
         expect(response).to have_http_status(404), endpoint
       end
-    end
 
-    it 'returns NO_SUCH_ROLE for an unknown MiId' do
       post '/api/roles/show', params: { i: read_token, roleId: MisskeyCompat::MiId.encode(-1) }, as: :json
 
       expect(response).to have_http_status(404)

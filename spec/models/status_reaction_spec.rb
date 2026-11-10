@@ -7,14 +7,9 @@ RSpec.describe StatusReaction do
   let(:status)  { Fabricate(:status) }
 
   describe 'validations' do
-    it 'allows a valid unicode emoji' do
-      reaction = described_class.new(account: account, status: status, name: '👍')
-      expect(reaction).to be_valid
-    end
-
-    it 'requires a name' do
-      reaction = described_class.new(account: account, status: status, name: '')
-      expect(reaction).to_not be_valid
+    it 'allows a valid unicode emoji and requires a name' do
+      expect(described_class.new(account: account, status: status, name: '👍')).to be_valid
+      expect(described_class.new(account: account, status: status, name: '')).to_not be_valid
     end
 
     it 'enforces uniqueness of account, status, and name' do
@@ -31,28 +26,10 @@ RSpec.describe StatusReaction do
     end
   end
 
-  describe 'associations' do
-    it 'belongs to account' do
-      reaction = described_class.new(account: account, status: status, name: '👍')
-      expect(reaction.account).to eq account
-    end
-
-    it 'belongs to status' do
-      reaction = described_class.new(account: account, status: status, name: '👍')
-      expect(reaction.status).to eq status
-    end
-  end
-
-  describe '#users' do
-    it 'returns accounts that reacted with the same emoji' do
+  describe '#users and #account_ids' do
+    it 'return the accounts and string account IDs that reacted with the same emoji' do
       reaction = described_class.create!(account: account, status: status, name: '👍')
       expect(reaction.users).to include(account)
-    end
-  end
-
-  describe '#account_ids' do
-    it 'returns string IDs of accounts that reacted' do
-      reaction = described_class.create!(account: account, status: status, name: '👍')
       expect(reaction.account_ids).to include(account.id.to_s)
     end
   end
@@ -96,17 +73,7 @@ RSpec.describe StatusReaction do
       expect(many_groups).to eq(one_group)
     end
 
-    it 'caps preloaded users at the display limit while keeping full account_ids' do
-      extra = Fabricate.times(StatusReaction::USERS_DISPLAY_LIMIT, :account)
-      extra.each { |reactor| described_class.create!(account: reactor, status: status, name: '👍') }
-
-      record = Status.reaction_groups_map([status.id])[status.id].first
-
-      expect(record.users.size).to eq(StatusReaction::USERS_DISPLAY_LIMIT)
-      expect(record.account_ids.size).to eq(3 + StatusReaction::USERS_DISPLAY_LIMIT)
-    end
-
-    it 'keeps the earliest reactors in reaction order when capping users' do
+    it 'caps preloaded users at the display limit with the earliest reactors while keeping full account_ids' do
       extra = Fabricate.times(StatusReaction::USERS_DISPLAY_LIMIT, :account)
       extra.each { |reactor| described_class.create!(account: reactor, status: status, name: '👍') }
 
@@ -152,13 +119,10 @@ RSpec.describe StatusReaction do
   end
 
   describe 'cache counters' do
-    it 'increments reactions_count on create' do
-      expect { described_class.create!(account: account, status: status, name: '👍') }
+    it 'increments reactions_count on create and decrements it on destroy' do
+      reaction = nil
+      expect { reaction = described_class.create!(account: account, status: status, name: '👍') }
         .to change { status.reload.reactions_count }.by(1)
-    end
-
-    it 'decrements reactions_count on destroy' do
-      reaction = described_class.create!(account: account, status: status, name: '👍')
       expect { reaction.destroy! }
         .to change { status.reload.reactions_count }.by(-1)
     end
@@ -167,16 +131,13 @@ RSpec.describe StatusReaction do
   describe 'summary cache' do
     let(:cache_key) { described_class.summary_cache_key(status.id) }
 
-    it 'expires the cached summary on create' do
+    it 'expires the cached summary on create and destroy' do
       Rails.cache.write(cache_key, [{ name: '👍' }])
 
-      described_class.create!(account: account, status: status, name: '👍')
+      reaction = described_class.create!(account: account, status: status, name: '👍')
 
       expect(Rails.cache.exist?(cache_key)).to be false
-    end
 
-    it 'expires the cached summary on destroy' do
-      reaction = described_class.create!(account: account, status: status, name: '👍')
       Rails.cache.write(cache_key, [{ name: '👍' }])
 
       reaction.destroy!

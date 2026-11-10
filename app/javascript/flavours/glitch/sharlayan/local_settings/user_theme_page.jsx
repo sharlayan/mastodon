@@ -21,10 +21,12 @@ const messages = defineMessages({
   spacing: { id: 'settings.user_theme.category.spacing', defaultMessage: 'Spacing' },
 });
 
+let savedUserTheme = userTheme;
+
 const UserThemePage = () => {
   const intl = useIntl();
   const catalog = useMemo(() => userThemeCatalogForActiveSkin(userThemeCatalog), []);
-  const [overrides, setOverrides] = useState(() => parseUserThemeOverrides(userTheme));
+  const [overrides, setOverrides] = useState(() => parseUserThemeOverrides(savedUserTheme));
   const config = useMemo(() => resolveUserThemeConfig(overrides, userThemeDefaults), [overrides]);
   const [activeCategories, setActiveCategories] = useState({ light: USER_THEME_VARIABLE_GROUPS[0].id, dark: USER_THEME_VARIABLE_GROUPS[0].id });
   const [importError, setImportError] = useState(false);
@@ -44,7 +46,9 @@ const UserThemePage = () => {
     const savedRevision = revision.current;
     setSaveState('saving');
     try {
-      await apiRequestPut('v1/appearance', { user_theme: encodeUserThemeStorage(parseUserThemeOverrides(overrides)) });
+      const encoded = encodeUserThemeStorage(parseUserThemeOverrides(overrides));
+      await apiRequestPut('v1/appearance', { user_theme: encoded });
+      savedUserTheme = encoded;
       setSaveState(revision.current === savedRevision ? 'saved' : 'dirty');
     } catch {
       setSaveState('error');

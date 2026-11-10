@@ -24,13 +24,15 @@ class Api::V1::Statuses::ReactionsController < Api::V1::Statuses::BaseController
       @status = reaction.status
       count = [@status.reactions_count - 1, 0].max
       UnreactWorker.perform_async(current_account.id, @status.id, params[:id])
+      removed = { removed_reactions: [reaction], reactions_map: { @status.id => false } }
     else
       @status = Status.find(params[:status_id])
       count = @status.reactions_count
       authorize @status, :show?
+      removed = {}
     end
 
-    relationships = StatusRelationshipsPresenter.new([@status], current_account.id, attributes_map: { @status.id => { reactions_count: count } })
+    relationships = StatusRelationshipsPresenter.new([@status], current_account.id, attributes_map: { @status.id => { reactions_count: count } }, **removed)
     render json: @status, serializer: REST::StatusSerializer, relationships: relationships
   rescue ActiveRecord::RecordNotFound, Mastodon::NotPermittedError
     not_found

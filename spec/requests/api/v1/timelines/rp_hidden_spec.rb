@@ -21,39 +21,28 @@ RSpec.describe 'API V1 RP hidden timeline' do
     Setting.soft_hide_deletion = false
   end
 
-  it 'returns hidden statuses with the owner audit marker' do
-    get '/api/v1/timelines/rp_hidden', headers: headers
-
-    expect(response).to have_http_status(200)
-    expect(response.parsed_body).to contain_exactly(include(id: status.id.to_s, rp_hidden: true))
-  end
-
-  it 'skips hidden statuses of suspended authors instead of failing the page' do
+  it 'returns hidden statuses with the owner audit marker and skips those of suspended authors instead of failing the page' do
     suspended_status = Fabricate(:status, account: Fabricate(:account, suspended: true))
     RpHiddenStatus.create!(status: suspended_status)
 
     get '/api/v1/timelines/rp_hidden', headers: headers
 
     expect(response).to have_http_status(200)
-    expect(response.parsed_body.pluck(:id)).to contain_exactly(status.id.to_s)
+    expect(response.parsed_body).to contain_exactly(include(id: status.id.to_s, rp_hidden: true))
   end
 
-  it 'does not return hidden statuses to a non-owner administrator' do
+  it 'requires authentication, the owner role, and soft-hide deletion' do
     admin = Fabricate(:user, role: UserRole.find_by(name: 'Admin'))
     admin_token = Fabricate(:accessible_access_token, resource_owner_id: admin.id, scopes: 'read:statuses')
+
+    get '/api/v1/timelines/rp_hidden'
+
+    expect(response).to have_http_status(401)
 
     get '/api/v1/timelines/rp_hidden', headers: { 'Authorization' => "Bearer #{admin_token.token}" }
 
     expect(response).to have_http_status(404)
-  end
 
-  it 'requires authentication' do
-    get '/api/v1/timelines/rp_hidden'
-
-    expect(response).to have_http_status(401)
-  end
-
-  it 'is unavailable when soft-hide deletion is disabled' do
     Setting.soft_hide_deletion = false
 
     get '/api/v1/timelines/rp_hidden', headers: headers

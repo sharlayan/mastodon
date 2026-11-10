@@ -16,12 +16,9 @@ RSpec.describe I18n do
     value.flat_map { |key, child| flatten_keys(child, prefix + [key]) }.sort
   end
 
-  it 'uses the same key set for English, Korean, and Japanese' do
+  it 'uses the same key set for English, Korean, and Japanese including shared translations referenced by Sharlayan views' do
     expect(locale_keys.fetch('ko')).to eq(locale_keys.fetch('en'))
     expect(locale_keys.fetch('ja')).to eq(locale_keys.fetch('en'))
-  end
-
-  it 'includes shared translations referenced by Sharlayan views' do
     expect(locale_keys.values).to all(include('datetime.distance_in_words.ago', 'exports.json'))
   end
 end

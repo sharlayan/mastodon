@@ -266,6 +266,13 @@ describe('redesign custom compose controls', () => {
     });
   });
 
+  it('pluralizes the selected clip count', () => {
+    state.compose = state.compose.setIn(['clip_ids', 0], 'clip');
+    renderControls(<ComposeCustomControls />);
+
+    expect(screen.getByRole('button', { name: '1 clip' })).toBeTruthy();
+  });
+
   it('honors feature gates and hidden draft or schedule settings', () => {
     context.flags.circlesEnabled = false;
     context.flags.clipsEnabled = false;
@@ -379,15 +386,19 @@ describe('redesign custom compose controls', () => {
     ).toBe(true);
   });
 
-  it.each([
-    ['copy', 'public', 'private'],
-    ['restrict', 'public', 'private'],
-    ['restrict', 'direct', 'direct'],
-    ['none', 'public', 'public'],
-  ] as const)('keeps the %s reply side-arm policy', (mode, base, expected) => {
-    expect(selectComposeSideArm.resultFunc(false, base, mode, 'private')).toBe(
-      expected,
-    );
+  it('keeps the copy, restrict and none reply side-arm policies', () => {
+    const cases = [
+      ['copy', 'public', 'private'],
+      ['restrict', 'public', 'private'],
+      ['restrict', 'direct', 'direct'],
+      ['none', 'public', 'public'],
+    ] as const;
+
+    expect(
+      cases.map(([mode, base]) =>
+        selectComposeSideArm.resultFunc(false, base, mode, 'private'),
+      ),
+    ).toEqual(cases.map(([, , expected]) => expected));
   });
 
   it('submits the configured side-arm visibility and hides it while editing', () => {

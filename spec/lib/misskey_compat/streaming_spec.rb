@@ -41,19 +41,16 @@ RSpec.describe MisskeyCompat::Streaming do
   describe '.broadcast_drive_file' do
     let(:drive_file) { instance_double(DriveFile) }
 
-    it 'does not serialize when compatibility is disabled' do
-      Setting.misskey_compat_enabled = false
-      allow(MisskeyCompat::DriveFileSerializer).to receive(:serialize)
-
-      described_class.broadcast_drive_file(broadcast_redis, account, drive_file, 'fileUpdated')
-
-      expect(MisskeyCompat::DriveFileSerializer).to_not have_received(:serialize)
-    end
-
-    it 'does not serialize before the subscription gate' do
+    it 'does not serialize when compatibility is disabled or before the subscription gate' do
       allow(broadcast_redis).to receive(:exists?).with('subscribed:misskey:drive:7').and_return(false)
       allow(MisskeyCompat::DriveFileSerializer).to receive(:serialize)
 
+      Setting.misskey_compat_enabled = false
+      described_class.broadcast_drive_file(broadcast_redis, account, drive_file, 'fileUpdated')
+
+      expect(broadcast_redis).to_not have_received(:exists?)
+
+      Setting.misskey_compat_enabled = true
       described_class.broadcast_drive_file(broadcast_redis, account, drive_file, 'fileUpdated')
 
       expect(MisskeyCompat::DriveFileSerializer).to_not have_received(:serialize)

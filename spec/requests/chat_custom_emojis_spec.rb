@@ -18,7 +18,7 @@ RSpec.describe 'Custom emoji in chat text' do
   before { Setting.chat_enabled = true }
   after { Setting.chat_enabled = false }
 
-  it 'lists the emoji of the room title and of the last message' do
+  it 'lists the emoji of the room title, of the last message and of each message, and none for a deleted message' do
     room
 
     get '/api/v1/chat/conversations', headers: headers
@@ -26,19 +26,12 @@ RSpec.describe 'Custom emoji in chat text' do
     entry = response.parsed_body.first
     expect(entry['emojis'].pluck('shortcode')).to eq(['blobcat'])
     expect(entry['last_message']['emojis'].pluck('shortcode')).to eq(['blobcat'])
-  end
 
-  it 'lists the emoji of each message' do
     get "/api/v1/chat/conversations/#{room.id}/messages", headers: headers
-
     expect(response.parsed_body.first['emojis'].first).to include('shortcode' => emoji.shortcode, 'url' => a_string_including('http'))
-  end
 
-  it 'lists no emoji for a deleted message' do
     room.last_message.update!(text: nil, deleted_at: Time.current)
-
     get "/api/v1/chat/conversations/#{room.id}/messages", headers: headers
-
     expect(response.parsed_body.first['emojis']).to eq([])
   end
 end

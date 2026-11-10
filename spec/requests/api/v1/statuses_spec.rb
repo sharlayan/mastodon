@@ -81,13 +81,11 @@ RSpec.describe '/api/v1/statuses' do
           expect(response.parsed_body).to include(id: status.id.to_s, rp_hidden: true)
         end
 
-        it 'does not return the hidden status to a non-owner' do
+        it 'does not return the hidden status to a non-owner or without authentication' do
           subject
 
           expect(response).to have_http_status(404)
-        end
 
-        it 'does not return the hidden status without authentication' do
           get "/api/v1/statuses/#{status.id}"
 
           expect(response).to have_http_status(404)
@@ -236,14 +234,12 @@ RSpec.describe '/api/v1/statuses' do
             Setting.mfm_allow_composition = false
           end
 
-          it 'downgrades an explicit MFM content type' do
+          it 'downgrades an explicit MFM content type and does not render detected MFM syntax' do
             post '/api/v1/statuses', headers: headers, params: { status: '$[x2 disabled]', content_type: 'text/x-mfm' }
 
             expect(response).to have_http_status(200)
             expect(Status.last).to have_attributes(content_type: 'text/plain', mfm: false, mfm_text: nil)
-          end
 
-          it 'does not render detected MFM syntax' do
             post '/api/v1/statuses', headers: headers, params: { status: '$[x2 disabled]' }
 
             expect(response).to have_http_status(200)
@@ -298,15 +294,13 @@ RSpec.describe '/api/v1/statuses' do
           expect(circle.statuses).to include(Status.last)
         end
 
-        it 'overrides a public visibility with the selected circle' do
+        it 'overrides a public visibility and accepts the legacy circle visibility' do
           post '/api/v1/statuses', headers: headers, params: params.merge(visibility: 'public')
 
           expect(response).to have_http_status(200)
           expect(Status.last).to have_attributes(visibility: 'limited', limited_scope: 'personal')
           expect(circle.statuses).to include(Status.last)
-        end
 
-        it 'accepts the legacy circle visibility' do
           post '/api/v1/statuses', headers: headers, params: params.merge(visibility: 'circle')
 
           expect(response).to have_http_status(200)
@@ -848,18 +842,14 @@ RSpec.describe '/api/v1/statuses' do
             expect(HideStatusWorker).to_not have_enqueued_sidekiq_job(any_args)
           end
 
-          it 'destroys the status when the job runs', :aggregate_failures, :inline_jobs do
-            subject
-
-            expect(Status.unscoped.find_by(id: status.id)).to be_nil
-            expect(RpHiddenStatus.exists?(status_id: status.id)).to be(false)
-          end
-
-          it 'does not decrement the statuses count a second time', :inline_jobs do
+          it 'destroys the status when the job runs without decrementing the statuses count again', :aggregate_failures, :inline_jobs do
             status.account.update!(statuses_count: 4)
 
             expect { subject }
               .to_not(change { status.account.reload.statuses_count })
+
+            expect(Status.unscoped.find_by(id: status.id)).to be_nil
+            expect(RpHiddenStatus.exists?(status_id: status.id)).to be(false)
           end
 
           context 'when a non-owner administrator targets it' do

@@ -15,14 +15,12 @@ RSpec.describe 'Misskey-compat near-miss endpoints' do
       BoardAnnouncement.create!(title: 'Notice', text: 'Details', published: true, published_at: Time.now.utc)
     end
 
-    it 'returns a visible published announcement' do
+    it 'returns a visible published announcement but not an unpublished one' do
       post '/api/announcements/show', params: { i: read_token, announcementId: MisskeyCompat::MiId.encode(announcement.id) }, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body).to include('id' => MisskeyCompat::MiId.encode(announcement.id), 'title' => 'Notice', 'text' => 'Details', 'isRead' => false)
-    end
 
-    it 'does not expose an unpublished announcement' do
       announcement.update!(published: false)
 
       post '/api/announcements/show', params: { i: read_token, announcementId: MisskeyCompat::MiId.encode(announcement.id) }, as: :json
@@ -49,14 +47,12 @@ RSpec.describe 'Misskey-compat near-miss endpoints' do
       expect(response.parsed_body).to eq(object)
     end
 
-    it 'rejects a non-administrator' do
+    it 'rejects a non-administrator and non-HTTP URI schemes' do
       post '/api/ap/get', params: { i: read_token, uri: uri }, as: :json
 
       expect(response).to have_http_status(403)
       expect(response.parsed_body.dig('error', 'code')).to eq('PERMISSION_DENIED')
-    end
 
-    it 'rejects non-HTTP URI schemes' do
       post '/api/ap/get', params: { i: admin_token, uri: 'file:///etc/passwd' }, as: :json
 
       expect(response).to have_http_status(400)
@@ -74,7 +70,7 @@ RSpec.describe 'Misskey-compat near-miss endpoints' do
       remote_tag.accounts << Fabricate(:account, domain: 'elsewhere.example')
     end
 
-    it 'sorts and filters by attached remote users' do
+    it 'sorts and filters by attached remote users and rejects an unknown sort mode' do
       post '/api/hashtags/list', params: { i: read_token, sort: '+attachedRemoteUsers', attachedToRemoteUserOnly: true, limit: 10 }, as: :json
 
       expect(response).to have_http_status(200)
@@ -86,6 +82,11 @@ RSpec.describe 'Misskey-compat near-miss endpoints' do
         'attachedRemoteUsersCount' => 2
       )
       expect(response.parsed_body.pluck('tag')).to_not include('localtag')
+
+      post '/api/hashtags/list', params: { i: read_token, sort: '+unknown' }, as: :json
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig('error', 'code')).to eq('INVALID_PARAM')
     end
 
     it 'reuses the aggregated list for identical parameters' do
@@ -119,13 +120,6 @@ RSpec.describe 'Misskey-compat near-miss endpoints' do
       expect(queries.grep(/COUNT/).size).to eq(1)
     end
 
-    it 'rejects an unknown sort mode' do
-      post '/api/hashtags/list', params: { i: read_token, sort: '+unknown' }, as: :json
-
-      expect(response).to have_http_status(400)
-      expect(response.parsed_body.dig('error', 'code')).to eq('INVALID_PARAM')
-    end
-
     it 'rate limits repeated authenticated aggregation requests' do
       limiter = RateLimiter.new(user.account, family: :misskey_hashtags)
       RateLimiter::FAMILIES[:misskey_hashtags][:limit].times { limiter.record! }
@@ -140,16 +134,7 @@ RSpec.describe 'Misskey-compat near-miss endpoints' do
   end
 
   describe 'POST /api/hashtags/search' do
-    it 'clamps deep offsets before searching' do
-      allow(Tag).to receive(:search_for).and_call_original
-
-      post '/api/hashtags/search', params: { i: read_token, query: 'tag', offset: 1_000_000 }, as: :json
-
-      expect(response).to have_http_status(200)
-      expect(Tag).to have_received(:search_for).with('tag', 20, 1_000, exclude_unreviewed: false)
-    end
-
-    it 'rejects oversized search terms before querying tags' do
+    it 'rejects oversized search terms before querying tags and clamps deep offsets before searching' do
       allow(Tag).to receive(:search_for).and_call_original
 
       post '/api/hashtags/search', params: { i: read_token, query: 'a' * (StatusLengthValidator.max_chars + 1) }, as: :json
@@ -157,6 +142,11 @@ RSpec.describe 'Misskey-compat near-miss endpoints' do
       expect(response).to have_http_status(200)
       expect(response.parsed_body).to eq([])
       expect(Tag).to_not have_received(:search_for)
+
+      post '/api/hashtags/search', params: { i: read_token, query: 'tag', offset: 1_000_000 }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(Tag).to have_received(:search_for).with('tag', 20, 1_000, exclude_unreviewed: false)
     end
   end
 
@@ -170,7 +160,12 @@ RSpec.describe 'Misskey-compat near-miss endpoints' do
       membership
     end
 
-    it 'stores withReplies and exposes it from get-memberships' do
+    it 'requires a write-scoped token, then stores withReplies and exposes it from get-memberships' do
+      post '/api/users/lists/update-membership', params: { i: read_token, listId: MisskeyCompat::MiId.encode(list.id), userId: MisskeyCompat::MiId.encode(member.id), withReplies: true }, as: :json
+
+      expect(response).to have_http_status(403)
+      expect(membership.reload.with_replies).to be(false)
+
       post '/api/users/lists/update-membership', params: { i: token, listId: MisskeyCompat::MiId.encode(list.id), userId: MisskeyCompat::MiId.encode(member.id), withReplies: true }, as: :json
 
       expect(response).to have_http_status(204)
@@ -179,13 +174,6 @@ RSpec.describe 'Misskey-compat near-miss endpoints' do
       post '/api/users/lists/get-memberships', params: { i: read_token, listId: MisskeyCompat::MiId.encode(list.id) }, as: :json
       expect(response).to have_http_status(200)
       expect(response.parsed_body.first).to include('userId' => MisskeyCompat::MiId.encode(member.id), 'withReplies' => true)
-    end
-
-    it 'requires a write-scoped token' do
-      post '/api/users/lists/update-membership', params: { i: read_token, listId: MisskeyCompat::MiId.encode(list.id), userId: MisskeyCompat::MiId.encode(member.id), withReplies: true }, as: :json
-
-      expect(response).to have_http_status(403)
-      expect(membership.reload.with_replies).to be(false)
     end
 
     it 'allows replies by a member with withReplies enabled' do

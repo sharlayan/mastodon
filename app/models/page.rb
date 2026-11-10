@@ -117,7 +117,7 @@ class Page < ApplicationRecord
   end
 
   def valid_access_password?(value)
-    access_password_digest.present? && value.present? && Devise::Encryptor.compare(User, access_password_digest, value)
+    value.is_a?(String) && value.present? && valid_access_password_digest? && Devise::Encryptor.compare(User, access_password_digest, value)
   end
 
   def public_visibility?
@@ -249,7 +249,22 @@ class Page < ApplicationRecord
   end
 
   def validate_access_password
-    errors.add(:access_password, :blank) if password_visibility? && access_password_digest.blank?
+    return unless password_visibility?
+
+    if access_password_digest.blank?
+      errors.add(:access_password, :blank)
+    elsif !valid_access_password_digest?
+      errors.add(:access_password, :invalid)
+    end
+  end
+
+  def valid_access_password_digest?
+    digest = BCrypt::Password.new(access_password_digest)
+    maximum_cost = [User.stretches, BCrypt::Engine::MIN_COST].max
+
+    %w(2a 2b 2y).include?(digest.version) && digest.cost.between?(BCrypt::Engine::MIN_COST, maximum_cost)
+  rescue BCrypt::Errors::InvalidHash
+    false
   end
 
   def normalize_title

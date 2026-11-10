@@ -43,44 +43,17 @@ RSpec.describe 'Profile images from Drive' do
         expect(File.binread(account.header.path)).to eq(header_bytes)
       end
 
-      it 'preserves the Drive original when the profile copies are removed' do
-        update_profile
-        expect(response).to have_http_status(200)
-
-        account.reload.update!(avatar: nil, header: nil)
-
-        expect(drive_file.reload.file).to exist
-      end
-
-      it 'updates descriptions alongside the selected files' do
+      it 'updates descriptions alongside the selected files and preserves the Drive original when the profile copies are removed' do
         params.merge!(avatar_description: 'Portrait', header_description: 'Landscape')
 
         update_profile
 
         expect(response).to have_http_status(200)
         expect(account.reload).to have_attributes(avatar_description: 'Portrait', header_description: 'Landscape')
-      end
 
-      it 'does not save any profile changes if one selected file is missing' do
-        params.merge!(header_drive_file_id: '0', display_name: 'Changed')
+        account.update!(avatar: nil, header: nil)
 
-        expect { update_profile }.to not_change { account.reload.display_name }
-          .and not_change { account.reload.avatar_file_name }
-          .and(not_change { account.reload.header_file_name })
-
-        expect(response).to have_http_status(404)
-      end
-
-      context 'with another account’s file' do
-        let(:drive_file) { Fabricate(:account).drive_files.create!(file: attachment_fixture('attachment.jpg')) }
-
-        it 'rejects the selection' do
-          update_profile
-
-          expect(response).to have_http_status(404)
-          expect(account.reload.avatar).to_not exist
-          expect(account.header).to_not exist
-        end
+        expect(drive_file.reload.file).to exist
       end
 
       context 'with a non-image file' do
@@ -99,103 +72,129 @@ RSpec.describe 'Profile images from Drive' do
           expect(account.header).to_not exist
         end
       end
+    end
+  end
 
-      context 'with a file exceeding the profile image limit' do
-        let(:drive_file) { account.drive_files.create!(file: fixture_file_upload('attachment.jpg', 'image/jpeg')) }
+  describe 'PATCH /api/v1/profile with invalid Drive selections' do
+    subject(:update_profile) { patch '/api/v1/profile', headers: headers, params: params, as: :json }
 
-        before do
-          File.truncate(drive_file.file.path, Account::Avatar::AVATAR_LIMIT + 1)
-        end
+    let(:params) { { avatar_drive_file_id: drive_file.id.to_s, header_drive_file_id: drive_file.id.to_s } }
 
-        it 'applies the usual profile image size validation' do
+    it 'does not save any profile changes if one selected file is missing' do
+      params.merge!(header_drive_file_id: '0', display_name: 'Changed')
+
+      expect { update_profile }.to not_change { account.reload.display_name }
+        .and not_change { account.reload.avatar_file_name }
+        .and(not_change { account.reload.header_file_name })
+
+      expect(response).to have_http_status(404)
+    end
+
+    context 'with another account’s file' do
+      let(:drive_file) { Fabricate(:account).drive_files.create!(file: attachment_fixture('attachment.jpg')) }
+
+      it 'rejects the selection' do
+        update_profile
+
+        expect(response).to have_http_status(404)
+        expect(account.reload.avatar).to_not exist
+        expect(account.header).to_not exist
+      end
+    end
+
+    context 'with a file exceeding the profile image limit' do
+      let(:drive_file) { account.drive_files.create!(file: fixture_file_upload('attachment.jpg', 'image/jpeg')) }
+
+      before do
+        File.truncate(drive_file.file.path, Account::Avatar::AVATAR_LIMIT + 1)
+      end
+
+      it 'applies the usual profile image size validation' do
+        update_profile
+
+        expect(response).to have_http_status(422)
+        expect(account.reload.avatar).to_not exist
+        expect(account.header).to_not exist
+      end
+    end
+
+    context 'when the stored original is unavailable' do
+      before do
+        File.unlink(drive_file.file.path)
+      end
+
+      it 'returns a validation error without changing the profile' do
+        params[:display_name] = 'Changed'
+
+        expect { update_profile }.to not_change { account.reload.display_name }
+          .and not_change { account.reload.avatar_file_name }
+          .and(not_change { account.reload.header_file_name })
+
+        expect(response).to have_http_status(422)
+        expect(response.parsed_body[:details]).to include(avatar: contain_exactly(include(error: 'ERR_INVALID')))
+        expect(ActivityPub::UpdateDistributionWorker).to_not have_enqueued_sidekiq_job(account.id)
+      end
+    end
+
+    context 'with an empty stored original' do
+      let(:drive_file) { account.drive_files.create!(file: fixture_file_upload('attachment.jpg', 'image/jpeg')) }
+
+      before do
+        File.truncate(drive_file.file.path, 0)
+      end
+
+      it 'rejects the empty copy before changing the profile' do
+        update_profile
+
+        expect(response).to have_http_status(422)
+        expect(response.parsed_body[:details]).to include(avatar: contain_exactly(include(error: 'ERR_INVALID')))
+        expect(account.reload.avatar).to_not exist
+        expect(account.header).to_not exist
+      end
+    end
+
+    context 'when image dimension validation fails', :attachment_processing do
+      before do
+        drive_file
+        allow(FastImage).to receive(:size).and_return([10_000, 10_000])
+      end
+
+      it 'returns a validation error instead of reporting a successful update' do
+        update_profile
+
+        expect(response).to have_http_status(422)
+        expect(account.reload.avatar).to_not exist
+        expect(account.header).to_not exist
+        expect(ActivityPub::UpdateDistributionWorker).to_not have_enqueued_sidekiq_job(account.id)
+      end
+
+      context 'when only a header is selected' do
+        let(:params) { { header_drive_file_id: drive_file.id.to_s } }
+
+        it 'identifies the header as the invalid image' do
           update_profile
 
           expect(response).to have_http_status(422)
-          expect(account.reload.avatar).to_not exist
-          expect(account.header).to_not exist
+          expect(response.parsed_body[:details]).to include(header: contain_exactly(include(error: 'ERR_INVALID')))
+          expect(response.parsed_body[:details]).to_not have_key(:avatar)
         end
       end
+    end
 
-      context 'when the stored original is unavailable' do
-        before do
-          File.unlink(drive_file.file.path)
-        end
-
-        it 'returns a validation error without changing the profile' do
-          params[:display_name] = 'Changed'
-
-          expect { update_profile }.to not_change { account.reload.display_name }
-            .and not_change { account.reload.avatar_file_name }
-            .and(not_change { account.reload.header_file_name })
-
-          expect(response).to have_http_status(422)
-          expect(response.parsed_body[:details]).to include(avatar: contain_exactly(include(error: 'ERR_INVALID')))
-          expect(ActivityPub::UpdateDistributionWorker).to_not have_enqueued_sidekiq_job(account.id)
-        end
+    context 'when Drive is disabled' do
+      before do
+        Setting.drive_enabled = false
       end
 
-      context 'with an empty stored original' do
-        let(:drive_file) { account.drive_files.create!(file: fixture_file_upload('attachment.jpg', 'image/jpeg')) }
+      it 'rejects Drive selections but allows ordinary profile edits' do
+        update_profile
 
-        before do
-          File.truncate(drive_file.file.path, 0)
-        end
+        expect(response).to have_http_status(404)
 
-        it 'rejects the empty copy before changing the profile' do
-          update_profile
+        patch '/api/v1/profile', headers: headers, params: { display_name: 'Updated' }, as: :json
 
-          expect(response).to have_http_status(422)
-          expect(response.parsed_body[:details]).to include(avatar: contain_exactly(include(error: 'ERR_INVALID')))
-          expect(account.reload.avatar).to_not exist
-          expect(account.header).to_not exist
-        end
-      end
-
-      context 'when image dimension validation fails', :attachment_processing do
-        before do
-          drive_file
-          allow(FastImage).to receive(:size).and_return([10_000, 10_000])
-        end
-
-        it 'returns a validation error instead of reporting a successful update' do
-          update_profile
-
-          expect(response).to have_http_status(422)
-          expect(account.reload.avatar).to_not exist
-          expect(account.header).to_not exist
-          expect(ActivityPub::UpdateDistributionWorker).to_not have_enqueued_sidekiq_job(account.id)
-        end
-
-        context 'when only a header is selected' do
-          let(:params) { { header_drive_file_id: drive_file.id.to_s } }
-
-          it 'identifies the header as the invalid image' do
-            update_profile
-
-            expect(response).to have_http_status(422)
-            expect(response.parsed_body[:details]).to include(header: contain_exactly(include(error: 'ERR_INVALID')))
-            expect(response.parsed_body[:details]).to_not have_key(:avatar)
-          end
-        end
-      end
-
-      context 'when Drive is disabled' do
-        before do
-          Setting.drive_enabled = false
-        end
-
-        it 'rejects Drive selections' do
-          update_profile
-
-          expect(response).to have_http_status(404)
-        end
-
-        it 'allows ordinary profile edits' do
-          patch endpoint, headers: headers, params: { display_name: 'Updated' }, as: :json
-
-          expect(response).to have_http_status(200)
-          expect(account.reload.display_name).to eq('Updated')
-        end
+        expect(response).to have_http_status(200)
+        expect(account.reload.display_name).to eq('Updated')
       end
     end
   end

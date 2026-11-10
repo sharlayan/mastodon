@@ -56,13 +56,11 @@ RSpec.describe 'Clips' do
 
       before { clip.account.block!(user.account) }
 
-      it 'returns http not found' do
+      it 'hides the clip and does not list the owner clips' do
         subject
 
         expect(response).to have_http_status(404)
-      end
 
-      it 'does not list the owner clips' do
         get "/api/v1/accounts/#{clip.account_id}/clips", headers: headers
 
         expect(response).to have_http_status(200)
@@ -88,14 +86,12 @@ RSpec.describe 'Clips' do
   describe 'owner-only actions on another account clip' do
     let(:other_clip) { Fabricate(:clip, account: Fabricate(:account), title: 'Original', public: true) }
 
-    it 'does not update the clip' do
+    it 'does not update or delete the clip' do
       put "/api/v1/clips/#{other_clip.id}", params: { title: 'Hijacked', public: false }, headers: headers
 
       expect(response).to have_http_status(404)
       expect(other_clip.reload).to have_attributes(title: 'Original', public: true)
-    end
 
-    it 'does not delete the clip' do
       delete "/api/v1/clips/#{other_clip.id}", headers: headers
 
       expect(response).to have_http_status(404)

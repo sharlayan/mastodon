@@ -26,6 +26,7 @@ import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { TextInputField } from 'flavours/glitch/components/form_fields';
 import { Icon } from 'flavours/glitch/components/icon';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
+import { BundleColumnError } from 'flavours/glitch/features/ui/components/bundle_column_error';
 import type { Circle } from 'flavours/glitch/models/circle';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
@@ -92,27 +93,36 @@ const NewCircle: React.FC<{ circle?: Circle | null }> = ({ circle }) => {
     [setTitle],
   );
 
-  const handleSubmit = useCallback(() => {
-    setSubmitting(true);
+  const handleSubmit = useCallback(
+    (event: React.SyntheticEvent<HTMLFormElement>) => {
+      event.preventDefault();
 
-    if (id) {
-      void dispatch(updateCircle({ id, title })).then(() => {
-        setSubmitting(false);
-        return '';
-      });
-    } else {
-      void dispatch(createCircle({ title })).then((result) => {
-        setSubmitting(false);
+      if (submitting) {
+        return;
+      }
 
-        if (isFulfilled(result)) {
-          history.replace(`/circles/${result.payload.id}/edit`);
-          history.push(`/circles/${result.payload.id}/members`);
-        }
+      setSubmitting(true);
 
-        return '';
-      });
-    }
-  }, [history, dispatch, setSubmitting, id, title]);
+      if (id) {
+        void dispatch(updateCircle({ id, title })).then(() => {
+          setSubmitting(false);
+          return '';
+        });
+      } else {
+        void dispatch(createCircle({ title })).then((result) => {
+          setSubmitting(false);
+
+          if (isFulfilled(result)) {
+            history.replace(`/circles/${result.payload.id}/edit`);
+            history.push(`/circles/${result.payload.id}/members`);
+          }
+
+          return '';
+        });
+      }
+    },
+    [history, dispatch, setSubmitting, submitting, id, title],
+  );
 
   return (
     <form className='simple_form app-form' onSubmit={handleSubmit}>
@@ -139,7 +149,7 @@ const NewCircle: React.FC<{ circle?: Circle | null }> = ({ circle }) => {
       )}
 
       <div className='actions'>
-        <button className='button' type='submit'>
+        <button className='button' type='submit' disabled={submitting}>
           {submitting ? (
             <LoadingIndicator />
           ) : id ? (
@@ -171,6 +181,10 @@ const NewCircleWrapper: React.FC<{
   }, [dispatch, signedIn, id]);
 
   const isLoading = id && !circle;
+
+  if (signedIn && id && circle === null) {
+    return <BundleColumnError multiColumn={multiColumn} errorType='routing' />;
+  }
 
   return (
     <Column

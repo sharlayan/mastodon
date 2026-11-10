@@ -24,7 +24,12 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
     let!(:password_page) { Fabricate(:page, account: account, visibility: 'password', access_password: 'correct-password', likes_count: 20) }
     let!(:authenticated_page) { Fabricate(:page, account: account, visibility: 'authenticated') }
 
-    it 'returns featured published pages in Misskey format' do
+    it 'requires authentication for featured pages and returns featured published pages in Misskey format' do
+      post '/api/pages/featured', params: {}, as: :json
+
+      expect(response).to have_http_status(401)
+      expect(response.parsed_body.dig(:error, :code)).to eq('CREDENTIAL_REQUIRED')
+
       post '/api/pages/featured', params: { i: read_token }, as: :json
 
       expect(response).to have_http_status(200)
@@ -62,13 +67,6 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       expect(queries.count { |sql| sql.include?('FROM "drive_file_names"') }).to be <= 1
     end
 
-    it 'requires authentication for featured pages' do
-      post '/api/pages/featured', params: {}, as: :json
-
-      expect(response).to have_http_status(401)
-      expect(response.parsed_body.dig(:error, :code)).to eq('CREDENTIAL_REQUIRED')
-    end
-
     it 'includes drafts only in their owner i/pages list' do
       post '/api/i/pages', params: { i: read_token }, as: :json
 
@@ -91,15 +89,13 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       expect(response.parsed_body.size).to eq(20)
     end
 
-    it 'returns only published pages from users/pages' do
+    it 'lists only public pages from users/pages, even for signed-in users, while preserving authenticated page show' do
       post '/api/users/pages', params: { userId: MisskeyCompat::MiId.encode(account.id) }, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body.pluck(:id)).to contain_exactly(MisskeyCompat::MiId.encode(published_page.id))
       expect(response.parsed_body.first).to include(content: [], attachedFiles: [])
-    end
 
-    it 'lists only public pages even for signed-in users while preserving authenticated page show' do
       post '/api/users/pages', params: { i: read_token, userId: MisskeyCompat::MiId.encode(account.id) }, as: :json
       expect(response).to have_http_status(200)
       expect(response.parsed_body.pluck(:id)).to contain_exactly(MisskeyCompat::MiId.encode(published_page.id))
@@ -166,31 +162,22 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       expect(response.parsed_body[:error]).to be_present
     end
 
-    it 'hides a draft from anonymous pages/show' do
-      post '/api/pages/show', params: { pageId: MisskeyCompat::MiId.encode(draft_page.id) }, as: :json
+    it 'hides drafts and password pages from anonymous pages/show' do
+      [draft_page, password_page].each do |page|
+        post '/api/pages/show', params: { pageId: MisskeyCompat::MiId.encode(page.id) }, as: :json
 
-      expect(response).to have_http_status(404)
-      expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_PAGE')
+        expect(response).to have_http_status(404), page.name
+        expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_PAGE'), page.name
+      end
     end
 
-    it 'hides a password page from public Misskey endpoints' do
-      post '/api/pages/show', params: { pageId: MisskeyCompat::MiId.encode(password_page.id) }, as: :json
-
-      expect(response).to have_http_status(404)
-      expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_PAGE')
-    end
-
-    it 'does not advertise Pages endpoints while the Pages feature is disabled' do
+    it 'neither advertises nor serves Pages endpoints while the Pages feature is disabled' do
       Setting.pages_enabled = false
 
       post '/api/endpoints', params: {}, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body).to_not include('pages/show', 'i/pages', 'i/page-likes', 'users/pages')
-    end
-
-    it 'rejects direct calls while the Pages feature is disabled' do
-      Setting.pages_enabled = false
 
       post '/api/pages/show', params: { pageId: MisskeyCompat::MiId.encode(published_page.id) }, as: :json
 
@@ -335,7 +322,13 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       expect(created.content.first).to_not have_key('spoiler')
     end
 
-    it 'updates and deletes an owned page with void responses' do
+    it 'updates and deletes an owned page with void responses and rejects updates to another account page' do
+      other_page = Fabricate(:page)
+      post '/api/pages/update', params: { i: write_token, pageId: MisskeyCompat::MiId.encode(other_page.id), title: 'Updated' }, as: :json
+
+      expect(response).to have_http_status(403)
+      expect(response.parsed_body.dig(:error, :code)).to eq('ACCESS_DENIED')
+
       page = Fabricate(:page, account: account)
 
       post '/api/pages/update', params: { i: write_token, pageId: MisskeyCompat::MiId.encode(page.id), title: 'Updated' }, as: :json
@@ -405,15 +398,6 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       Setting.drive_enabled = false
     end
 
-    it 'rejects updates to another account page' do
-      page = Fabricate(:page)
-
-      post '/api/pages/update', params: { i: write_token, pageId: MisskeyCompat::MiId.encode(page.id), title: 'Updated' }, as: :json
-
-      expect(response).to have_http_status(403)
-      expect(response.parsed_body.dig(:error, :code)).to eq('ACCESS_DENIED')
-    end
-
     it 'rejects content deeper than the server traversal budget' do
       root = { type: 'section', children: [] }
       current = root
@@ -464,29 +448,12 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       expect(response.parsed_body.dig(:error, :code)).to eq('YOUR_PAGE')
     end
 
-    it 'does not expose a liked page owned by a suspended account' do
-      PageLike.create!(account: account, page: other_page)
-      other_page.account.suspend!
-
-      post '/api/i/page-likes', params: { i: read_token }, as: :json
-
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body).to be_empty
-    end
-
-    it 'does not expose a liked page after it becomes a draft' do
-      PageLike.create!(account: account, page: other_page)
-      other_page.update!(draft: true)
-
-      post '/api/i/page-likes', params: { i: read_token }, as: :json
-
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body).to be_empty
-    end
-
-    it 'does not expose a liked password-protected page' do
-      PageLike.create!(account: account, page: other_page)
-      other_page.update!(visibility: 'password', access_password: 'correct-password')
+    it 'does not expose liked pages owned by a suspended account, turned into drafts, or password-protected' do
+      suspended_page, draft_page, password_page = Array.new(3) { Fabricate(:page) }
+      [suspended_page, draft_page, password_page].each { |page| PageLike.create!(account: account, page: page) }
+      suspended_page.account.suspend!
+      draft_page.update!(draft: true)
+      password_page.update!(visibility: 'password', access_password: 'correct-password')
 
       post '/api/i/page-likes', params: { i: read_token }, as: :json
 

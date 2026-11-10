@@ -90,30 +90,25 @@ RSpec.describe 'Misskey-compat security hardening' do
   end
 
   describe 'OAuth token enforcement' do
-    it 'accepts a bearer token like Misskey' do
+    it 'accepts a bearer token like Misskey, including a case-insensitive scheme with repeated whitespace' do
       post '/api/i', headers: { 'Authorization' => "Bearer #{token}" }, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body[:id]).to eq(MisskeyCompat::MiId.encode(account.id))
-    end
 
-    it 'accepts a case-insensitive bearer scheme with repeated whitespace' do
       post '/api/i', headers: { 'Authorization' => "bEaReR   #{token}" }, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body[:id]).to eq(MisskeyCompat::MiId.encode(account.id))
     end
 
-    it 'reports an invalid bearer token as an authentication failure' do
+    it 'reports invalid bearer tokens and expired tokens as authentication failures' do
       post '/api/i', headers: { 'Authorization' => 'Bearer invalid' }, as: :json
 
       expect(response).to have_http_status(401)
       expect(response.parsed_body.dig(:error, :code)).to eq('AUTHENTICATION_FAILED')
-    end
 
-    it 'rejects an expired token' do
       expired = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read write', created_at: 2.days.ago, expires_in: 1.hour).token
-
       post '/api/i', params: { i: expired }, as: :json
 
       expect(response).to have_http_status(401)
@@ -161,20 +156,17 @@ RSpec.describe 'Misskey-compat security hardening' do
 
     before { account.block!(excluded) }
 
-    it 'excludes blocked accounts from follower collections' do
-      target = Fabricate(:account)
-      Fabricate(:follow, account: excluded, target_account: target)
+    it 'excludes blocked accounts from follower and following collections' do
+      followed = Fabricate(:account)
+      following = Fabricate(:account)
+      Fabricate(:follow, account: excluded, target_account: followed)
+      Fabricate(:follow, account: following, target_account: excluded)
 
-      post '/api/users/followers', params: { i: token, userId: target.id.to_s }, as: :json
+      post '/api/users/followers', params: { i: token, userId: followed.id.to_s }, as: :json
 
       expect(response.parsed_body).to be_empty
-    end
 
-    it 'excludes blocked accounts from following collections' do
-      target = Fabricate(:account)
-      Fabricate(:follow, account: target, target_account: excluded)
-
-      post '/api/users/following', params: { i: token, userId: target.id.to_s }, as: :json
+      post '/api/users/following', params: { i: token, userId: following.id.to_s }, as: :json
 
       expect(response.parsed_body).to be_empty
     end
@@ -202,22 +194,16 @@ RSpec.describe 'Misskey-compat security hardening' do
     let(:private_note) { Fabricate(:status, account: account, visibility: :direct) }
     let(:public_note) { Fabricate(:status, account: account, visibility: :public) }
 
-    it 'does not allow a write-only token to read a direct note' do
-      access_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write')
+    it 'does not allow a write-only token or a MiAuth token without account read permission to read a direct note' do
+      {
+        'write' => Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write'),
+        'write:notes' => MisskeyCompat::MiAuth.issue_token(user, permissions: ['write:notes']),
+      }.each do |label, access_token|
+        post '/api/notes/show', params: { i: access_token.token, noteId: private_note.id.to_s }, as: :json
 
-      post '/api/notes/show', params: { i: access_token.token, noteId: private_note.id.to_s }, as: :json
-
-      expect(response).to have_http_status(403)
-      expect(response.parsed_body.dig(:error, :code)).to eq('PERMISSION_DENIED')
-    end
-
-    it 'does not allow a MiAuth token without account read permission to read a direct note' do
-      access_token = MisskeyCompat::MiAuth.issue_token(user, permissions: ['write:notes'])
-
-      post '/api/notes/show', params: { i: access_token.token, noteId: private_note.id.to_s }, as: :json
-
-      expect(response).to have_http_status(403)
-      expect(response.parsed_body.dig(:error, :code)).to eq('PERMISSION_DENIED')
+        expect(response).to have_http_status(403), label
+        expect(response.parsed_body.dig(:error, :code)).to eq('PERMISSION_DENIED'), label
+      end
     end
 
     it 'does not allow a disabled user to read a direct note using optional authentication' do
@@ -228,46 +214,37 @@ RSpec.describe 'Misskey-compat security hardening' do
       expect(response).to have_http_status(403)
     end
 
-    it 'allows a read token to read an authorized direct note' do
+    it 'allows a read token or a MiAuth token with account read permission to read an authorized direct note' do
       access_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read')
 
       post '/api/notes/show', params: { i: access_token.token, noteId: private_note.id.to_s }, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body[:id]).to eq(MisskeyCompat::MiId.encode(private_note.id))
-    end
 
-    it 'allows a MiAuth token with account read permission to read an authorized direct note' do
-      access_token = MisskeyCompat::MiAuth.issue_token(user, permissions: ['read:account'])
-
-      post '/api/notes/show', params: { i: access_token.token, noteId: private_note.id.to_s }, as: :json
+      miauth_token = MisskeyCompat::MiAuth.issue_token(user, permissions: ['read:account'])
+      post '/api/notes/show', params: { i: miauth_token.token, noteId: private_note.id.to_s }, as: :json
 
       expect(response).to have_http_status(200)
     end
 
-    it 'preserves anonymous public note reads' do
+    it 'preserves anonymous public note reads without exposing direct notes anonymously' do
       post '/api/notes/show', params: { noteId: public_note.id.to_s }, as: :json
 
       expect(response).to have_http_status(200)
-    end
 
-    it 'does not expose a direct note to anonymous requests' do
       post '/api/notes/show', params: { noteId: private_note.id.to_s }, as: :json
 
       expect(response).to have_http_status(404)
     end
 
-    it 'does not allow a write-only token to retrieve private account settings through users/show' do
+    it 'does not allow a write-only token to retrieve private account settings or notes through users/show and users/notes' do
+      private_note
       access_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write')
 
       post '/api/users/show', params: { i: access_token.token, userId: account.id.to_s }, as: :json
 
       expect(response).to have_http_status(403)
-    end
-
-    it 'does not allow a write-only token to list private notes through users/notes' do
-      private_note
-      access_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write')
 
       post '/api/users/notes', params: { i: access_token.token, userId: account.id.to_s }, as: :json
 
@@ -294,21 +271,17 @@ RSpec.describe 'Misskey-compat security hardening' do
       before { Setting.clips_enabled = true }
       after { Setting.clips_enabled = false }
 
-      it 'requires read access when a token is used to retrieve a private clip' do
+      it 'requires read access for private clips and keeps public clips available anonymously' do
         access_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write')
 
         post '/api/clips/show', params: { i: access_token.token, clipId: private_clip.id.to_s }, as: :json
 
         expect(response).to have_http_status(403)
-      end
 
-      it 'allows an authorized read token to retrieve a private clip' do
         post '/api/clips/show', params: { i: token, clipId: private_clip.id.to_s }, as: :json
 
         expect(response).to have_http_status(200)
-      end
 
-      it 'keeps public clips available anonymously' do
         post '/api/clips/show', params: { clipId: public_clip.id.to_s }, as: :json
 
         expect(response).to have_http_status(200)
@@ -322,28 +295,16 @@ RSpec.describe 'Misskey-compat security hardening' do
       before { Setting.pages_enabled = true }
       after { Setting.pages_enabled = false }
 
-      it 'requires read access when a token is used to retrieve a private page' do
-        access_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write')
+      it 'requires read access or the page-specific MiAuth permission for private pages' do
+        [
+          ['write', Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write'), 403],
+          ['read:account', MisskeyCompat::MiAuth.issue_token(user, permissions: ['read:account']), 403],
+          ['read:pages', MisskeyCompat::MiAuth.issue_token(user, permissions: ['read:pages']), 200],
+        ].each do |label, access_token, status|
+          post '/api/pages/show', params: { i: access_token.token, pageId: private_page.id.to_s }, as: :json
 
-        post '/api/pages/show', params: { i: access_token.token, pageId: private_page.id.to_s }, as: :json
-
-        expect(response).to have_http_status(403)
-      end
-
-      it 'requires the page-specific permission for a MiAuth private page read' do
-        access_token = MisskeyCompat::MiAuth.issue_token(user, permissions: ['read:account'])
-
-        post '/api/pages/show', params: { i: access_token.token, pageId: private_page.id.to_s }, as: :json
-
-        expect(response).to have_http_status(403)
-      end
-
-      it 'allows a MiAuth token with page read permission to retrieve a private page' do
-        access_token = MisskeyCompat::MiAuth.issue_token(user, permissions: ['read:pages'])
-
-        post '/api/pages/show', params: { i: access_token.token, pageId: private_page.id.to_s }, as: :json
-
-        expect(response).to have_http_status(200)
+          expect(response).to have_http_status(status), label
+        end
       end
 
       it 'keeps public pages available anonymously' do

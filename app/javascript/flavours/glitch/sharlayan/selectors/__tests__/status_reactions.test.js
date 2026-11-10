@@ -29,35 +29,19 @@ describe('Sharlayan status reaction selectors', () => {
     expect(selectReblog(state, { id: '1' })).toBeNull();
   });
 
-  it('keeps resolved users stable while unrelated state changes', () => {
-    const state = stateWith({
-      '1': { reactions: [{ name: '👍', users: [{ id: 'a' }] }] },
-    }, {
-      a: { id: 'a', username: 'alice' },
-    });
-    const changedCompose = state.setIn(['compose', 'text'], 'a');
-
-    expect(selectBase(changedCompose, { id: '1' })).toBe(selectBase(state, { id: '1' }));
-  });
-
-  it('keeps resolved users stable when unrelated accounts are imported', () => {
-    const state = stateWith({
-      '1': { reactions: [{ name: '👍', users: [{ id: 'a' }] }] },
-    }, {
-      a: { id: 'a', username: 'alice' },
-    });
-    const imported = state.setIn(['accounts', 'z'], fromJS({ id: 'z', username: 'zed' }));
-
-    expect(selectBase(imported, { id: '1' })).toBe(selectBase(state, { id: '1' }));
-  });
-
-  it('resolves again when a reacting account changes', () => {
+  it('keeps resolved users stable across unrelated state and account changes, and resolves again when a reacting account changes', () => {
     const state = stateWith({
       '1': { reactions: [{ name: '👍', users: [{ id: 'a' }] }] },
     }, {
       a: { id: 'a', username: 'alice' },
     });
     const before = selectBase(state, { id: '1' });
+    const changedCompose = state.setIn(['compose', 'text'], 'a');
+    const imported = state.setIn(['accounts', 'z'], fromJS({ id: 'z', username: 'zed' }));
+
+    expect(selectBase(changedCompose, { id: '1' })).toBe(before);
+    expect(selectBase(imported, { id: '1' })).toBe(before);
+
     const renamed = state.setIn(['accounts', 'a', 'username'], 'alicia');
     const after = selectBase(renamed, { id: '1' });
 

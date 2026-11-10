@@ -3,6 +3,12 @@
 @use 'variables' as *;
 
 html {
+  --radius-xs: var(--radius-2);
+  --radius-sm: var(--radius-3);
+  --radius-md: var(--radius-4);
+  --radius-lg: var(--radius-5);
+  --radius-xl: var(--radius-6);
+
   @include meta.load-css('sharlayan/accounts');
   @include meta.load-css('sharlayan/avatars');
   @include meta.load-css('sharlayan/clips');
@@ -288,7 +294,7 @@ html {
 
       &.active {
         color: var(--color-text-brand);
-        background-color: var(--color-bg-brand-softer);
+        background-color: var(--color-bg-brand-soft);
         border-color: var(--color-text-brand);
         transition: all 100ms ease-in;
         transition-property: background-color, color;
@@ -983,8 +989,8 @@ html.content-font-size__xx_large {
   margin: 0 0 8px;
   padding: 2px 8px;
   border-radius: 4px;
-  background: var(--error-background-color, #df405a);
-  color: #fff;
+  background: var(--color-bg-error-base);
+  color: var(--color-text-on-error-base);
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;

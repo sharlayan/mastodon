@@ -2,6 +2,8 @@ import { useEffect, useCallback, useState } from 'react';
 
 import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
+import { isFulfilled } from '@reduxjs/toolkit';
+
 import { Helmet } from '@unhead/react/helmet';
 
 import HeartBrokenIcon from '@/material-icons/400-24px/heart_broken.svg?react';
@@ -76,12 +78,17 @@ const ReactionMutes: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
       if (!trimmed) {
         return;
       }
-      if (trimmed.startsWith('@') || trimmed.includes('@')) {
-        void dispatch(createReactionMute({ acct: trimmed }));
-      } else {
-        void dispatch(createReactionMute({ domain: trimmed }));
-      }
-      setTarget('');
+      const params =
+        trimmed.includes('@') || !trimmed.includes('.')
+          ? { acct: trimmed }
+          : { domain: trimmed };
+      void dispatch(createReactionMute(params)).then((result) => {
+        if (isFulfilled(result)) {
+          setTarget('');
+        }
+
+        return result;
+      });
     },
     [dispatch, target],
   );

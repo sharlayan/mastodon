@@ -64,7 +64,7 @@ RSpec.describe 'Avatar Decorations' do
     end
 
     context 'with account_id' do
-      it 'creates a mute' do
+      it 'creates a mute idempotently' do
         post api_v1_avatar_decoration_mutes_path,
              params: { account_id: target_account.id },
              headers: headers
@@ -72,14 +72,10 @@ RSpec.describe 'Avatar Decorations' do
         expect(response).to have_http_status(200)
         expect(response.parsed_body[:target_account_id]).to eq(target_account.id.to_s)
         expect(user.account.avatar_decoration_mutes.where(target_account: target_account)).to exist
-      end
 
-      it 'is idempotent' do
-        2.times do
-          post api_v1_avatar_decoration_mutes_path,
-               params: { account_id: target_account.id },
-               headers: headers
-        end
+        post api_v1_avatar_decoration_mutes_path,
+             params: { account_id: target_account.id },
+             headers: headers
 
         expect(response).to have_http_status(200)
         expect(user.account.avatar_decoration_mutes.where(target_account: target_account).count).to eq(1)

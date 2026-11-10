@@ -166,33 +166,20 @@ RSpec.describe 'Chat federation roster ordering' do
       expect(ChatRosterState.where(chat_conversation_id: room.id)).to be_empty
     end
 
-    it 'learns of an unknown account from the owner so a late Add stays ignored' do
-      stranger_uri = 'https://member.test/users/unknown'
-      stub_request(:get, stranger_uri).to_return(status: 404)
-
-      expect { perform({ 'id' => "#{room_uri}#remove/1", 'type' => 'Remove', 'target' => room_uri, 'object' => stranger_uri, 'published' => later }, owner) }.to_not raise_error
-      expect(a_request(:get, stranger_uri)).to have_been_made.at_least_once
-    end
-
-    it 'does not look up an unknown account named by anyone but the owner' do
+    it 'looks up an unknown account only when the owner names it, so a late Add stays ignored' do
       stranger_uri = 'https://member.test/users/unknown'
       stub_request(:get, stranger_uri).to_return(status: 404)
 
       perform({ 'id' => "#{room_uri}#remove/1", 'type' => 'Remove', 'target' => room_uri, 'object' => stranger_uri, 'published' => later }, member)
-
       expect(a_request(:get, stranger_uri)).to_not have_been_made
+
+      expect { perform({ 'id' => "#{room_uri}#remove/2", 'type' => 'Remove', 'target' => room_uri, 'object' => stranger_uri, 'published' => later }, owner) }.to_not raise_error
+      expect(a_request(:get, stranger_uri)).to have_been_made.at_least_once
     end
   end
 
   describe 'Invite and acceptance' do
     before { room }
-
-    it 'raises the order to the Invite so an earlier Remove arriving late cannot undo a re-invitation' do
-      perform(invite(local, published: later), owner)
-      perform(remove(local, published: earlier), owner)
-
-      expect(member?(local)).to be(true)
-    end
 
     it 'keeps a later Remove working after an Invite' do
       perform(invite(local, published: later), owner)
@@ -214,7 +201,7 @@ RSpec.describe 'Chat federation roster ordering' do
       end
     end
 
-    it 'answers an Invite for a mirrored member with Accept and survives the late Remove' do
+    it 'answers an Invite for a mirrored member with Accept and raises the order so an earlier Remove arriving late cannot undo it' do
       Sidekiq::Testing.fake! do
         ActivityPub::DeliveryWorker.clear
         perform(invite(local, published: later), owner)
@@ -289,17 +276,8 @@ RSpec.describe 'Chat federation roster ordering' do
       ChatRosterState.find_by(chat_conversation: conversation, account: account)&.last_roster_at
     end
 
-    it 'records the owner of a new room' do
-      owned = service.create_conversation(local, type: :group, title: 'Room')
-
-      expect(roster_time(owned, local)).to eq(Time.zone.at(0))
-    end
-
-    it 'records the owner when a room is mirrored' do
+    it 'records the owner when a room is mirrored and a local account accepting an invitation to it' do
       expect(roster_time(room, owner)).to eq(Time.zone.at(0))
-    end
-
-    it 'records a local account accepting an invitation to a room owned elsewhere' do
       expect(roster_time(room, local)).to eq(Time.zone.at(0))
     end
 
@@ -311,9 +289,11 @@ RSpec.describe 'Chat federation roster ordering' do
       expect(roster_time(invitation.chat_conversation, local)).to be_within(0.001.seconds).of(invited_at)
     end
 
-    it 'records a local account accepting an invitation to a room owned here' do
+    it 'records the owner of a new room and a local account accepting an invitation to it' do
       invitee = Fabricate(:user).account
       owned = service.create_conversation(local, type: :group, title: 'Room')
+      expect(roster_time(owned, local)).to eq(Time.zone.at(0))
+
       service.accept_invitation(invitee, owned.invitations.create!(inviter_account: local, invitee_account: invitee))
 
       expect(roster_time(owned, invitee)).to eq(Time.zone.at(0))
@@ -449,14 +429,11 @@ RSpec.describe 'Chat federation roster ordering' do
       expect(service.redis.ttl(Sharlayan::ChatService.room_tombstone_key(room_uri))).to be >= 30.days.to_i - 60
     end
 
-    it 'skips a late message without retrying' do
-      expect { perform({ 'id' => "#{message_uri}/activity", 'type' => 'Create', 'object' => note }, member) }.to_not raise_error
-      expect(ChatMessage.exists?(uri: message_uri)).to be(false)
-    end
-
-    it 'skips a late relayed message without retrying' do
+    it 'skips a late message, direct or relayed, without retrying' do
       announce = { 'id' => "#{room_uri}#relay/x", 'type' => 'Announce', 'object' => message_uri, 'context' => room_uri, '_misskey_chatRoom' => room_uri }
 
+      expect { perform({ 'id' => "#{message_uri}/activity", 'type' => 'Create', 'object' => note }, member) }.to_not raise_error
+      expect(ChatMessage.exists?(uri: message_uri)).to be(false)
       expect { perform(announce, owner) }.to_not raise_error
     end
 
@@ -477,15 +454,9 @@ RSpec.describe 'Chat federation roster ordering' do
       let(:reaction) { { 'id' => 'https://member.test/chat-reactions/2', 'type' => 'EmojiReact', 'object' => unseen_uri, 'content' => '👍' } }
       let(:room_fields) { { 'context' => room_uri, '_misskey_chatRoom' => room_uri } }
 
-      it 'skips a reaction that names the room' do
+      it 'skips a reaction that names the room and an Undo that names it on the outside or the inside' do
         expect { perform(reaction.merge(room_fields), member) }.to_not raise_error
-      end
-
-      it 'skips an Undo that names the room on the outside' do
         expect { perform({ 'id' => "#{reaction['id']}/undo", 'type' => 'Undo', 'object' => reaction }.merge(room_fields), member) }.to_not raise_error
-      end
-
-      it 'skips an Undo that names the room on the inside' do
         expect { perform({ 'id' => "#{reaction['id']}/undo", 'type' => 'Undo', 'object' => reaction.merge(room_fields) }, member) }.to_not raise_error
       end
 
@@ -614,16 +585,12 @@ RSpec.describe 'Chat federation roster ordering' do
         list_without_second(later_than_invite)
       end
 
-      it 'restores them with a newer Add' do
-        service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(second), published: later_than_invite + 1.minute)
-
-        expect(member?(second)).to be(true)
-      end
-
-      it 'does not restore them with an older Add' do
+      it 'does not restore them with an older Add but does with a newer one' do
         service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(second), published: later_than_invite - 1.second)
-
         expect(member?(second)).to be(false)
+
+        service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(second), published: later_than_invite + 1.minute)
+        expect(member?(second)).to be(true)
       end
 
       it 'does not put them back from the list itself' do
@@ -654,17 +621,13 @@ RSpec.describe 'Chat federation roster ordering' do
       expect(member?(second)).to be(false)
     end
 
-    it 'does not add a local account that never accepted' do
+    it 'does not add a local account that never accepted or is only invited' do
       stranger = Fabricate(:user).account
-
-      expect { service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(stranger), published: 1.hour.from_now) }.to raise_error(Sharlayan::ChatService::Forbidden)
-      expect(member?(stranger)).to be(false)
-    end
-
-    it 'does not add a local account that is only invited' do
       invited = Fabricate(:user).account
       room.invitations.create!(inviter_account: owner, invitee_account: invited)
 
+      expect { service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(stranger), published: 1.hour.from_now) }.to raise_error(Sharlayan::ChatService::Forbidden)
+      expect(member?(stranger)).to be(false)
       expect { service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(invited), published: 1.hour.from_now) }.to raise_error(Sharlayan::ChatService::Forbidden)
       expect(member?(invited)).to be(false)
     end

@@ -6,13 +6,16 @@ require 'timeout'
 RSpec.describe DriveFolder do
   let(:account) { Fabricate(:account) }
 
-  describe 'parent ownership' do
-    it 'rejects a parent owned by another account' do
+  describe 'ownership' do
+    it 'rejects a parent owned by another account and reports a missing account as a validation error' do
       parent = described_class.create!(account: Fabricate(:account), name: 'Foreign')
       folder = described_class.new(account: account, name: 'Local', parent: parent)
+      orphan = described_class.new(name: 'Root')
 
       expect(folder).to_not be_valid
       expect(folder.errors.of_kind?(:parent_id, :invalid)).to be true
+      expect(orphan).to_not be_valid
+      expect(orphan.errors[:account]).to be_present
     end
   end
 
@@ -53,30 +56,16 @@ RSpec.describe DriveFolder do
     end
   end
 
-  describe 'parent association' do
-    it 'keeps the parent instance assigned by the caller through validation' do
+  describe 'validation of associated instances' do
+    it 'keeps the parent instance assigned by the caller and does not lock unsaved account changes' do
       parent = described_class.create!(account: account, name: 'Parent')
       folder = described_class.new(account: account, name: 'Child')
       folder.parent = parent
-
-      expect(folder).to be_valid
-      expect(folder.parent).to equal(parent)
-    end
-  end
-
-  describe 'validation boundaries' do
-    it 'reports a missing account as a validation error' do
-      folder = described_class.new(name: 'Root')
-
-      expect(folder).to_not be_valid
-      expect(folder.errors[:account]).to be_present
-    end
-
-    it 'does not try to lock the unsaved changes on the associated account instance' do
-      folder = described_class.create!(account: account, name: 'Root')
       account.display_name = 'Unsaved account name'
 
       expect(folder).to be_valid
+      expect(folder.parent).to equal(parent)
+      expect(parent).to be_valid
       expect(account).to be_changed
       expect(Account.find(account.id).display_name).to_not eq('Unsaved account name')
     end
@@ -91,42 +80,27 @@ RSpec.describe DriveFolder do
       other_account.destroy!
     end
 
-    it 'does not wait for the account lock when the parent is unchanged' do
+    it 'does not wait for the account lock when the parent is unchanged or block another account' do
       folder = described_class.create!(account: account, name: 'Root')
-      thread = nil
+      other_folder
+      threads = []
 
       account.with_lock do
-        thread = Thread.new do
-          ApplicationRecord.connection_pool.with_connection do
-            described_class.find(folder.id).update(name: 'Renamed')
+        threads = [folder, other_folder].map do |target|
+          Thread.new do
+            ApplicationRecord.connection_pool.with_connection do
+              described_class.find(target.id).update(name: 'Renamed')
+            end
           end
         end
 
-        expect(Timeout.timeout(2) { thread.value }).to be true
+        expect(Timeout.timeout(2) { threads.map(&:value) }).to eq([true, true])
       end
 
       expect(folder.reload.name).to eq('Renamed')
-    ensure
-      thread&.join
-    end
-
-    it 'does not block another account while the first account is locked' do
-      other_folder
-      thread = nil
-
-      account.with_lock do
-        thread = Thread.new do
-          ApplicationRecord.connection_pool.with_connection do
-            described_class.find(other_folder.id).update(name: 'Renamed')
-          end
-        end
-
-        expect(Timeout.timeout(2) { thread.value }).to be true
-      end
-
       expect(other_folder.reload.name).to eq('Renamed')
     ensure
-      thread&.join
+      threads.each(&:join)
     end
   end
 

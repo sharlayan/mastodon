@@ -191,17 +191,12 @@ RSpec.describe ActivityPub::ProcessAccountService do
       Setting.avatar_decorations_federation_enabled = true
     end
 
-    it 'falls back to default placement for non-numeric values' do
+    it 'falls back to default placement for non-numeric values and drops the stored image when the image URL changes' do
+      decoration = AvatarDecoration.create!(host: 'foo.test', remote_id: 'deco1', name: 'deco1', approved: true, image_remote_url: 'https://foo.test/deco-old.png', image: attachment_fixture('emojo.png'))
+
       account = subject.call(payload)
 
       expect(account.avatar_decorations.first).to include('angle' => 0.0, 'offset_x' => 0.0)
-    end
-
-    it 'drops the stored image when the decoration image URL changes' do
-      decoration = AvatarDecoration.create!(host: 'foo.test', remote_id: 'deco1', name: 'deco1', approved: true, image_remote_url: 'https://foo.test/deco-old.png', image: attachment_fixture('emojo.png'))
-
-      subject.call(payload)
-
       expect(decoration.reload.image_remote_url).to eq('https://foo.test/deco-new.png')
       expect(decoration.image_file_name).to be_blank
     end
