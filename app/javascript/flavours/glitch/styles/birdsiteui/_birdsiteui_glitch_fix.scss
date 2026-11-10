@@ -74,6 +74,11 @@ html {
     width: 100%;
   }
 
+  .media-gallery.full-width,
+  .video-player.full-width {
+    margin-right: 0;
+  }
+
   [class*='_comp_number_fields__item'] button {
     font-size: inherit;
     font-weight: inherit;
