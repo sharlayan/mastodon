@@ -31,6 +31,7 @@
   "chat.voice.error.screen_share_failed": "画面を共有できませんでした。",
   "chat.voice.error.unavailable": "このチャットでは音声通話を利用できません。",
   "chat.voice.error.unreachable": "通話サーバーに接続できません。",
+  "chat.voice.focus_screen": "画面を大きく表示",
   "chat.voice.force_mute": "全員に対してミュート",
   "chat.voice.fullscreen": "全画面",
   "chat.voice.in_call": "{count}人が通話中",

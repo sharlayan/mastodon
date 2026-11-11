@@ -225,13 +225,29 @@ const enterFullscreen = (
   video?.webkitEnterFullscreen?.();
 };
 
-const ScreenStage: FC<{ identity: string; member: CallMember | undefined }> = ({
-  identity,
-  member,
-}) => {
+const ScreenStage: FC<{
+  identity: string;
+  member: CallMember | undefined;
+  focusable: boolean;
+  focused: boolean;
+  compact: boolean;
+  onToggleFocus: (identity: string) => void;
+}> = ({ identity, member, focusable, focused, compact, onToggleFocus }) => {
   const intl = useIntl();
   const video = useRef<HTMLVideoElement | null>(null);
   const frame = useRef<HTMLDivElement | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  useEffect(() => {
+    const handleChange = () => {
+      setFullscreen(
+        frame.current != null && document.fullscreenElement === frame.current,
+      );
+    };
+    document.addEventListener('fullscreenchange', handleChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleChange);
+    };
+  }, []);
   const setVideo = useCallback((element: HTMLVideoElement | null) => {
     video.current = element;
   }, []);
@@ -246,18 +262,38 @@ const ScreenStage: FC<{ identity: string; member: CallMember | undefined }> = ({
   const handleClose = useCallback(() => {
     unwatchScreenShare(identity);
   }, [identity]);
+  const handleToggleFocus = useCallback(() => {
+    onToggleFocus(identity);
+  }, [identity, onToggleFocus]);
   const pictureInPicture =
-    typeof document !== 'undefined' &&
-    document.pictureInPictureEnabled;
+    typeof document !== 'undefined' && document.pictureInPictureEnabled;
 
   return (
-    <div className='chat-voice__screen' ref={frame}>
-      <ScreenVideo identity={identity} videoRef={setVideo} />
+    <div
+      className={classNames('chat-voice__screen', {
+        'chat-voice__screen--focused': focused,
+        'chat-voice__screen--compact': compact,
+      })}
+      ref={frame}
+    >
+      <div className='chat-voice__screen-view'>
+        <ScreenVideo identity={identity} videoRef={setVideo} />
+        {focusable && !fullscreen && (
+          <button
+            type='button'
+            className='chat-voice__screen-focus'
+            title={intl.formatMessage(voiceMessages.focusScreen)}
+            aria-label={intl.formatMessage(voiceMessages.focusScreen)}
+            aria-pressed={focused}
+            onClick={handleToggleFocus}
+          />
+        )}
+      </div>
       <div className='chat-voice__screen-bar'>
         <span className='chat-voice__screen-name'>
           {member && <ChatDisplayName account={member.account} />}
         </span>
-        {pictureInPicture && (
+        {!compact && pictureInPicture && (
           <IconButton
             icon='picture-in-picture'
             iconComponent={PictureInPictureIcon}
@@ -265,18 +301,22 @@ const ScreenStage: FC<{ identity: string; member: CallMember | undefined }> = ({
             onClick={handlePictureInPicture}
           />
         )}
-        <IconButton
-          icon='fullscreen'
-          iconComponent={FullscreenIcon}
-          title={intl.formatMessage(voiceMessages.fullscreen)}
-          onClick={handleFullscreen}
-        />
-        <IconButton
-          icon='close'
-          iconComponent={CloseIcon}
-          title={intl.formatMessage(voiceMessages.stopWatching)}
-          onClick={handleClose}
-        />
+        {!compact && (
+          <>
+            <IconButton
+              icon='fullscreen'
+              iconComponent={FullscreenIcon}
+              title={intl.formatMessage(voiceMessages.fullscreen)}
+              onClick={handleFullscreen}
+            />
+            <IconButton
+              icon='close'
+              iconComponent={CloseIcon}
+              title={intl.formatMessage(voiceMessages.stopWatching)}
+              onClick={handleClose}
+            />
+          </>
+        )}
       </div>
     </div>
   );
@@ -776,9 +816,21 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
     identity: string;
   } | null>(null);
   const [settingsRoomId, setSettingsRoomId] = useState<string | null>(null);
+  const [focus, setFocus] = useState<{
+    roomId: string;
+    identity: string;
+  } | null>(null);
   const selected = selection?.roomId === room.id ? selection.identity : null;
   const settingsOpen = settingsRoomId === room.id;
   const joined = inThisCall(call, room.id);
+  const watching = joined ? call.watchingIdentities : [];
+  const focusedScreen =
+    focus?.roomId === room.id &&
+    watching.length > 1 &&
+    watching.includes(focus.identity)
+      ? focus.identity
+      : null;
+  if (focus != null && focusedScreen == null) setFocus(null);
   const members = useMemo(
     () => membersOf(state, call, room),
     [state, call, room],
@@ -790,6 +842,16 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
   const handleSelect = useCallback(
     (identity: string) => {
       setSelection((current) =>
+        current?.roomId === room.id && current.identity === identity
+          ? null
+          : { roomId: room.id, identity },
+      );
+    },
+    [room.id],
+  );
+  const handleToggleFocus = useCallback(
+    (identity: string) => {
+      setFocus((current) =>
         current?.roomId === room.id && current.identity === identity
           ? null
           : { roomId: room.id, identity },
@@ -812,7 +874,6 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
   if (!joined && !(state?.active && members.length > 0)) return null;
 
   const selectedMember = members.find((member) => member.identity === selected);
-  const watching = joined ? call.watchingIdentities : [];
 
   return (
     <section
@@ -822,12 +883,20 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
       })}
     >
       {joined && watching.length > 0 && (
-        <div className='chat-voice__stage'>
+        <div
+          className={classNames('chat-voice__stage', {
+            'chat-voice__stage--focus': focusedScreen != null,
+          })}
+        >
           {watching.map((identity) => (
             <ScreenStage
               key={identity}
               identity={identity}
               member={members.find((member) => member.identity === identity)}
+              focusable={watching.length > 1}
+              focused={identity === focusedScreen}
+              compact={focusedScreen != null && identity !== focusedScreen}
+              onToggleFocus={handleToggleFocus}
             />
           ))}
         </div>

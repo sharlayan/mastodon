@@ -31,6 +31,7 @@
   "chat.voice.error.screen_share_failed": "화면을 공유하지 못했습니다.",
   "chat.voice.error.unavailable": "이 채팅에서는 음성 통화를 사용할 수 없습니다.",
   "chat.voice.error.unreachable": "통화 서버에 연결할 수 없습니다.",
+  "chat.voice.focus_screen": "화면 크게 보기",
   "chat.voice.force_mute": "모두에게 음소거",
   "chat.voice.fullscreen": "전체 화면",
   "chat.voice.in_call": "{count}명 통화 중",

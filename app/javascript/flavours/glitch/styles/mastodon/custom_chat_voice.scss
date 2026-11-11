@@ -257,6 +257,11 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+
+    &--focus {
+      flex-flow: row wrap;
+      justify-content: center;
+    }
   }
 
   &__screen {
@@ -275,6 +280,42 @@
     &:fullscreen video {
       max-height: none;
       height: 100%;
+    }
+
+    &--focused {
+      order: -1;
+      flex: 0 0 100%;
+    }
+
+    &--compact {
+      flex: 0 0 auto;
+      width: 160px;
+
+      video {
+        aspect-ratio: 16 / 9;
+      }
+    }
+  }
+
+  &__screen-view {
+    position: relative;
+  }
+
+  &__screen-focus {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: zoom-in;
+
+    &[aria-pressed='true'] {
+      cursor: zoom-out;
+    }
+
+    &:focus-visible {
+      outline: var(--outline-focus-default);
+      outline-offset: -2px;
     }
   }
 

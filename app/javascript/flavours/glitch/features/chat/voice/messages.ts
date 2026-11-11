@@ -41,6 +41,10 @@ export const voiceMessages = defineMessages({
     defaultMessage: 'Stop watching',
   },
   fullscreen: { id: 'chat.voice.fullscreen', defaultMessage: 'Full screen' },
+  focusScreen: {
+    id: 'chat.voice.focus_screen',
+    defaultMessage: 'Enlarge screen',
+  },
   pictureInPicture: {
     id: 'chat.voice.picture_in_picture',
     defaultMessage: 'Picture in picture',

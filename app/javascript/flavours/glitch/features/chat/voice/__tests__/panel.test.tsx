@@ -132,6 +132,7 @@ const credentials = {
 };
 
 const selfIdentity = 'https://example.com/users/me';
+const bobIdentity = 'https://example.com/users/bob';
 const inCall = (
   extra: Partial<Call.VoiceCallSnapshot> = {},
 ): Call.VoiceCallSnapshot => ({
@@ -302,6 +303,65 @@ describe('voice call panel', () => {
     Object.assign(video ?? {}, { webkitEnterFullscreen });
     fireEvent.click(screen.getByRole('button', { name: 'Full screen' }));
     expect(webkitEnterFullscreen).toHaveBeenCalled();
+  });
+
+  it('enlarges one of several watched screens without recreating the others', async () => {
+    api.get.mockResolvedValue({ data: [voiceState()] });
+    fakeCall.set(
+      inCall({
+        screenSharing: true,
+        screenShareIdentities: [bobIdentity],
+        watchingIdentities: [bobIdentity],
+      }),
+    );
+    const view = mount();
+    await settle();
+    expect(screen.queryByRole('button', { name: 'Enlarge screen' })).toBeNull();
+
+    act(() => {
+      fakeCall.set(
+        inCall({
+          screenSharing: true,
+          screenShareIdentities: [bobIdentity],
+          watchingIdentities: [bobIdentity, selfIdentity],
+        }),
+      );
+    });
+    const stage = view.container.querySelector('.chat-voice__stage');
+    const videos = [...(stage?.querySelectorAll('video') ?? [])];
+    const [, enlargeSelf] = screen.getAllByRole('button', {
+      name: 'Enlarge screen',
+    });
+    fireEvent.click(enlargeSelf as HTMLElement);
+
+    expect(stage?.classList).toContain('chat-voice__stage--focus');
+    const screens = stage?.querySelectorAll('.chat-voice__screen');
+    expect(screens?.[1]?.className).toContain('chat-voice__screen--focused');
+    expect(screens?.[0]?.className).toContain('chat-voice__screen--compact');
+    expect(screen.getAllByRole('button', { name: 'Full screen' })).toHaveLength(
+      1,
+    );
+    expect([...(stage?.querySelectorAll('video') ?? [])]).toEqual(videos);
+
+    act(() => {
+      fakeCall.set(
+        inCall({
+          screenSharing: true,
+          screenShareIdentities: [bobIdentity],
+          watchingIdentities: [bobIdentity],
+        }),
+      );
+    });
+    act(() => {
+      fakeCall.set(
+        inCall({
+          screenSharing: true,
+          screenShareIdentities: [bobIdentity],
+          watchingIdentities: [bobIdentity, selfIdentity],
+        }),
+      );
+    });
+    expect(stage?.classList).not.toContain('chat-voice__stage--focus');
   });
 
   it('closes the participant options when moving to another room', async () => {
