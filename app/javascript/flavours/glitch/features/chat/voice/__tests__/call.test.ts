@@ -3,6 +3,7 @@ import type { VoiceCredentials } from '../api';
 const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 const dispatch = vi.hoisted(() => vi.fn());
 const rooms = vi.hoisted(() => [] as FakeRoomShape[]);
+const connection = vi.hoisted(() => ({ fails: false }));
 
 interface FakeRoomShape {
   options: unknown;
@@ -25,7 +26,11 @@ vi.mock('livekit-client', () => {
     remoteParticipants = new Map();
     canPlaybackAudio = true;
     engine = { pcManager: undefined, rtcConfig: {} };
-    connect = vi.fn(() => Promise.resolve());
+    connect = vi.fn(() => {
+      if (!connection.fails) return Promise.resolve();
+      this.emit('Disconnected');
+      return Promise.reject(new Error('could not connect'));
+    });
     disconnect = vi.fn(() => Promise.resolve());
     switchActiveDevice = vi.fn(() => Promise.resolve(true));
     localParticipant = {
@@ -98,6 +103,7 @@ describe('voice call engine', () => {
   beforeEach(() => {
     vi.resetModules();
     rooms.length = 0;
+    connection.fails = false;
     api.post.mockReset().mockResolvedValue({ data: { accepted: true } });
     dispatch.mockReset();
     window.localStorage.clear();
@@ -169,6 +175,21 @@ describe('voice call engine', () => {
       { payload: { message: { id: string } } },
     ];
     expect(action.payload.message.id).toBe('chat.voice.ended.removed');
+  });
+
+  it('reports a failed first connection as a connection failure', async () => {
+    const call = await import('../call');
+    connection.fails = true;
+
+    await call.connectVoiceCall({ id: '5', title: 'Room' }, credentials);
+
+    expect(call.voiceCallSnapshot().status).toBe('idle');
+    const [action] = dispatch.mock.calls[0] as [
+      { payload: { message: { id: string } } },
+    ];
+    expect(action.payload.message.id).toBe(
+      'chat.voice.error.connection_failed',
+    );
   });
 
   it('applies changed voice processing settings to the open microphone', async () => {

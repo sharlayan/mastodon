@@ -912,12 +912,18 @@ const bindRoomEvents = (lk: LiveKit, room: LK.Room) => {
 
   room.on(RoomEvent.Disconnected, (reason?: LK.DisconnectReason) => {
     if (!isCurrent()) return;
+    const connecting = state.status === 'connecting';
     current = null;
     joinAttempt++;
     detachAll(room);
     resetState();
     const message = disconnectMessage(lk, reason);
-    if (message != null) notice(message);
+    if (message != null)
+      notice(
+        connecting && message === voiceMessages.disconnected
+          ? voiceMessages.connectionFailed
+          : message,
+      );
   });
 };
 
