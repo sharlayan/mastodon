@@ -76,6 +76,13 @@ class Sharlayan::VoiceCallService
       Sharlayan::VoiceCallFederation.remote_account_permitted?(account)
     end
 
+    def revoke_account_calls(account_id)
+      VoiceCallAllocation.active.where.not(chat_conversation_id: nil)
+        .where('participants @> ?', [{ user_id: account_id.to_s }].to_json)
+        .pluck(:chat_conversation_id)
+        .each { |conversation_id| VoiceCallRevocationWorker.perform_async(conversation_id, account_id) }
+    end
+
     def participant_accounts(records)
       ids = Array(records).flat_map { |record| participants_of(record) }.pluck('user_id').uniq
       Account.where(id: ids).includes(:account_stat, :user).index_by { |account| account.id.to_s }
@@ -236,9 +243,7 @@ class Sharlayan::VoiceCallService
 
       account = Account.find_by(id: account_id)
       member = account && ChatMembership.exists?(chat_conversation_id: conversation_id, account_id: account_id)
-      next if member
-
-      remove_identities(allocation, identities_of(allocation, account_id.to_s, account))
+      remove_identities(allocation, identities_of(allocation, account_id.to_s, account)) unless member && self.class.permitted?(account)
       refresh(allocation)
     end
   end

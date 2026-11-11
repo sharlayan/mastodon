@@ -171,6 +171,30 @@ RSpec.describe Sharlayan::VoiceCallService do
     expect(VoiceCallAllocation.find_by!(chat_conversation: room).participants).to be_empty
   end
 
+  it 'removes participants as soon as their account is suspended, disabled or moved to a role without voice calls' do
+    bystander = Fabricate(:user).account
+    room.memberships.create!(account: bystander, role: :member)
+    service.join(member, room)
+    relay.participants = [relay.participant(member), relay.participant(owner, session_id: 'PA_2')]
+    service.poll_events(provider)
+
+    bystander.user.update!(disabled: true)
+    expect(VoiceCallRevocationWorker.jobs).to be_empty
+
+    member.user.update!(disabled: true)
+    owner.suspend!
+    expect(VoiceCallRevocationWorker).to have_enqueued_sidekiq_job(room.id, member.id)
+    expect(VoiceCallRevocationWorker).to have_enqueued_sidekiq_job(room.id, owner.id)
+
+    owner.unsuspend!
+    owner.user.update!(role: Fabricate(:user_role, extra_permissions: 0))
+    expect(VoiceCallRevocationWorker.jobs.size).to eq 3
+
+    UserRole.everyone.update!(extra_permissions: 0)
+    [member, owner].each { |account| service.revoke(room.id, account.id) }
+    expect(relay.kicked.uniq).to eq([member, owner].map { |account| ActivityPub::TagManager.instance.uri_for(account) })
+  end
+
   it 'ends calls of deleted rooms and disabled features during maintenance and prunes old records' do
     service.join(member, room)
     allocation = VoiceCallAllocation.find_by!(chat_conversation: room)
