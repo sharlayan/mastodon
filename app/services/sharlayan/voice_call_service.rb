@@ -19,6 +19,8 @@ class Sharlayan::VoiceCallService
   POLL_BUDGET = 30.seconds
   ENDED_RETENTION = 7.days
   PROVIDER_COOLDOWN = 10.seconds
+  CAPACITY_TIMEOUT = 2.seconds
+  CAPACITY_SETTLE = 0.1.seconds
   REMOVAL_BLOCK = 10.minutes
   MAX_SESSION_ID_LENGTH = 2048
   GONE_CODES = %w(NOT_FOUND ALLOCATION_CONFLICT ALLOCATION_ENDED).freeze
@@ -416,34 +418,88 @@ class Sharlayan::VoiceCallService
 
   def candidate_providers(slots)
     outcomes = []
+    providers = VoiceRelayProvider.usable.order(:id).reject do |provider|
+      cooling_down?(provider).tap { |cooling| outcomes << :unavailable if cooling }
+    end
 
-    ranked = VoiceRelayProvider.usable.order(:id).filter_map do |provider|
-      if cooling_down?(provider)
-        outcomes << :unavailable
+    ranked = query_capacities(providers, slots).filter_map do |provider, result|
+      raise result if result.is_a?(StandardError) && !result.is_a?(Error)
+
+      if result.is_a?(Error)
+        record_provider_error(provider, result)
+        start_cooldown(provider)
+        outcomes << (result.revoked? ? :disabled : :unavailable)
         next
       end
 
-      capacity = provider.client.capacity
       VoiceRelayProvider.where(id: provider.id, credential_version: provider.credential_version)
-        .update_all(capacity:, validated: capacity['enabled'], last_error: nil, last_checked_at: Time.now.utc, updated_at: Time.now.utc)
+        .update_all(capacity: result, validated: result['enabled'], last_error: nil, last_checked_at: Time.now.utc, updated_at: Time.now.utc)
 
-      unless capacity['enabled']
+      unless result['enabled']
         outcomes << :disabled
         next
       end
 
       outcomes << :measured
-      next unless capacity['accepting'] && capacity['remainingSlots'] >= slots && capacity['remainingRooms'].positive?
+      next unless fits?(result, slots)
 
-      [provider, capacity['reservedSlots'].fdiv(capacity['maxSlots']), rand]
-    rescue Error => e
-      record_provider_error(provider, e)
-      start_cooldown(provider)
-      outcomes << (e.revoked? ? :disabled : :unavailable)
-      nil
+      [provider, result['reservedSlots'].fdiv(result['maxSlots']), rand]
     end
 
     [ranked.sort_by { |_, ratio, tie| [ratio, tie] }.map(&:first), outcomes]
+  end
+
+  def query_capacities(providers, slots)
+    return [] if providers.empty?
+
+    timeout = Sharlayan::VoiceRelay::Client.time_left(CAPACITY_TIMEOUT)
+    queue = Thread::Queue.new
+    threads = providers.map do |provider|
+      Thread.new do
+        Rails.application.executor.wrap do
+          queue << [provider, provider.client.capacity(timeout:)]
+        rescue => e
+          queue << [provider, e]
+        end
+      end
+    end
+
+    collect_capacities(queue, providers, slots, timeout)
+  ensure
+    threads&.each(&:kill)
+  end
+
+  def collect_capacities(queue, providers, slots, timeout)
+    results = {}
+    deadline = monotonic_now + timeout
+    settle_by = nil
+
+    ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
+      while results.size < providers.size
+        wait = [deadline, settle_by].compact.min - monotonic_now
+        break unless wait.positive?
+
+        provider, result = queue.pop(timeout: wait)
+        break if provider.nil?
+
+        results[provider.id] = result
+        settle_by ||= monotonic_now + CAPACITY_SETTLE.to_f if result.is_a?(Hash) && fits?(result, slots)
+      end
+    end
+
+    providers.filter_map do |provider|
+      next [provider, results[provider.id]] if results.key?(provider.id)
+
+      [provider, Error.new('PROVIDER_UNAVAILABLE')] if settle_by.nil?
+    end
+  end
+
+  def fits?(capacity, slots)
+    capacity['enabled'] && capacity['accepting'] && capacity['remainingSlots'] >= slots && capacity['remainingRooms'].positive?
+  end
+
+  def monotonic_now
+    Process.clock_gettime(Process::CLOCK_MONOTONIC)
   end
 
   def reserve(allocation, fresh:)

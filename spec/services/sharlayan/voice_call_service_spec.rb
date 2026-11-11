@@ -329,6 +329,25 @@ RSpec.describe Sharlayan::VoiceCallService do
     expect { service.join(member, room) }.to raise_error(an_object_having_attributes(code: 'CLIENT_DISABLED'))
   end
 
+  it 'asks relays for capacity at the same time and stops waiting for a slow relay after a short while' do
+    stub_const("#{described_class}::CAPACITY_TIMEOUT", 0.5.seconds)
+    slow = FakeVoiceRelay.new('https://slow.example.org').install
+    slow.provider
+    relay.reserved_slots = 50
+    allow(slow).to(receive(:capacity).and_wrap_original { |original| sleep(3) || original.call })
+
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    service.join(member, room)
+    expect(VoiceCallAllocation.find_by!(chat_conversation: room).voice_relay_provider).to eq provider
+
+    relay.full = true
+    expect { service.join(owner, Sharlayan::ChatService.new.create_conversation(owner, type: :group, title: 'Other')) }
+      .to raise_error(an_object_having_attributes(code: 'CAPACITY_EXCEEDED'))
+    expect(Process.clock_gettime(Process::CLOCK_MONOTONIC) - started).to be < 2
+    expect(slow.provider.reload.last_error).to eq 'PROVIDER_UNAVAILABLE'
+    expect(redis.exists?("voice_relay:cooldown:#{slow.provider.id}")).to be true
+  end
+
   it 'skips a failing relay for a short while and validates status reports' do
     relay.fail_with = [503, { code: 'PROVIDER_UNAVAILABLE' }]
     expect { service.join(member, room) }.to raise_error(an_object_having_attributes(code: 'PROVIDER_UNAVAILABLE'))
