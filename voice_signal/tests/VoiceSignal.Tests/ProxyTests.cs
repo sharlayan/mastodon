@@ -188,6 +188,9 @@ public sealed class ProxyTests : IAsyncLifetime
         var validate = await http.GetAsync($"{proxyAddress}/voice-signal/remote/rtc/validate?access_token={token}");
         Assert.Equal(HttpStatusCode.OK, validate.StatusCode);
         Assert.Equal("""{"remote":true}""", await validate.Content.ReadAsStringAsync());
+        Assert.Equal("text/plain", validate.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("nosniff", validate.Headers.GetValues("X-Content-Type-Options").Single());
+        Assert.StartsWith("default-src 'none'", validate.Headers.GetValues("Content-Security-Policy").Single());
         lock (upstreamTargets)
         {
             Assert.Equal($"/livekit/rtc/validate?access_token={token}", upstreamTargets[^1]);
@@ -197,6 +200,53 @@ public sealed class ProxyTests : IAsyncLifetime
         var unknown = TokenHintTests.RemoteToken(new { sub = "https://social.example/users/me", video = new { room = "room-2" } });
         Assert.Equal(HttpStatusCode.Unauthorized, (await http.GetAsync($"{proxyAddress}/voice-signal/remote/rtc?access_token={unknown}")).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await http.GetAsync($"{proxyAddress}/voice-signal/remote/rtc?access_token={Token("alloc-1")}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task LimitsConcurrentConnectionsFromOneAddress()
+    {
+        var options = new SignalOptions
+        {
+            BasePath = "/voice-signal",
+            LocalOrigin = "https://social.example",
+            SecretKeyBase = SecretKeyBase,
+            ConnectionString = string.Empty,
+            AllowInsecureUpstream = true,
+            MaxConnectionsPerAddress = 1,
+        };
+        var limited = SignalApp.Build(options, new FakeResolver(upstreamOrigin), "http://127.0.0.1:0");
+        await limited.StartAsync();
+        try
+        {
+            var address = limited.Urls.First().TrimEnd('/').Replace("http", "ws");
+            using var first = new ClientWebSocket();
+            await first.ConnectAsync(new Uri($"{address}/voice-signal/rtc?access_token={Token("alloc-1")}"), CancellationToken.None);
+
+            using var second = new ClientWebSocket();
+            second.Options.CollectHttpResponseDetails = true;
+            await Assert.ThrowsAsync<WebSocketException>(() => second.ConnectAsync(new Uri($"{address}/voice-signal/rtc?access_token={Token("alloc-1")}"), CancellationToken.None));
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, second.HttpStatusCode);
+
+            await first.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+            for (var attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    using var retry = new ClientWebSocket();
+                    await retry.ConnectAsync(new Uri($"{address}/voice-signal/rtc?access_token={Token("alloc-1")}"), CancellationToken.None);
+                    await retry.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+                    break;
+                }
+                catch (WebSocketException) when (attempt < 20)
+                {
+                    await Task.Delay(100);
+                }
+            }
+        }
+        finally
+        {
+            await limited.StopAsync();
+        }
     }
 
     private sealed class FakeResolver(string origin) : IAllocationResolver

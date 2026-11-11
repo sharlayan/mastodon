@@ -15,6 +15,7 @@ public sealed class SignalOptions
     public string BindAddress { get; init; } = "127.0.0.1";
     public int Port { get; init; } = 4100;
     public int MaxConnections { get; init; } = 1000;
+    public int MaxConnectionsPerAddress { get; init; } = 20;
     public int UpgradesPerMinute { get; init; } = 60;
     public IReadOnlyList<IPNetwork> TrustedProxies { get; init; } = [];
     public bool AllowInsecureUpstream { get; init; }
@@ -44,6 +45,7 @@ public sealed class SignalOptions
             BindAddress = Get("VOICE_SIGNAL_BIND") ?? "127.0.0.1",
             Port = ParseInt("VOICE_SIGNAL_PORT", Get("VOICE_SIGNAL_PORT"), 4100, 1, 65535),
             MaxConnections = ParseInt("VOICE_SIGNAL_MAX_CONNECTIONS", Get("VOICE_SIGNAL_MAX_CONNECTIONS"), 1000, 1, 100_000),
+            MaxConnectionsPerAddress = ParseInt("VOICE_SIGNAL_MAX_CONNECTIONS_PER_ADDRESS", Get("VOICE_SIGNAL_MAX_CONNECTIONS_PER_ADDRESS"), 20, 1, 100_000),
             UpgradesPerMinute = ParseInt("VOICE_SIGNAL_UPGRADES_PER_MINUTE", Get("VOICE_SIGNAL_UPGRADES_PER_MINUTE"), 60, 1, 100_000),
             TrustedProxies = ParseNetworks(Get("VOICE_SIGNAL_TRUSTED_PROXIES")),
             ExitOnStdinEof = Get("VOICE_SIGNAL_EXIT_ON_STDIN_EOF") is "1" or "true",

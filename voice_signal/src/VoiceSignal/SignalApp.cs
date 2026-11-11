@@ -64,6 +64,12 @@ public static class SignalApp
         var app = builder.Build();
 
         app.UseForwardedHeaders();
+        app.Use((context, next) =>
+        {
+            context.Response.Headers.XContentTypeOptions = "nosniff";
+            context.Response.Headers.ContentSecurityPolicy = "default-src 'none'; frame-ancestors 'none'; sandbox";
+            return next(context);
+        });
         app.UseRateLimiter();
         app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(30) });
 

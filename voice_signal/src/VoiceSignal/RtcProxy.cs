@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Data.Common;
 using System.Net;
 using System.Net.WebSockets;
@@ -19,6 +20,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
     private static readonly string[] ForwardedHeaders = ["Accept", "User-Agent"];
 
     private readonly SemaphoreSlim connections = new(options.MaxConnections, options.MaxConnections);
+    private readonly ConcurrentDictionary<string, int> addressConnections = new();
     private readonly HttpMessageInvoker remoteInvoker = new(PublicAddressConnector.CreateHandler(options.AllowInsecureUpstream), disposeHandler: true);
 
     public async Task HandleAsync(HttpContext context)
@@ -72,7 +74,8 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
             return;
         }
 
-        if (!connections.Wait(0))
+        var address = AddressKey(context);
+        if (!TryAcquire(address))
         {
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
             return;
@@ -91,7 +94,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         }
         finally
         {
-            connections.Release();
+            Release(address);
         }
     }
 
@@ -134,7 +137,8 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
             return;
         }
 
-        if (!connections.Wait(0))
+        var address = AddressKey(context);
+        if (!TryAcquire(address))
         {
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
             return;
@@ -153,8 +157,60 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         }
         finally
         {
-            connections.Release();
+            Release(address);
         }
+    }
+
+    private static string AddressKey(HttpContext context)
+    {
+        var address = context.Connection.RemoteIpAddress;
+        if (address is null)
+        {
+            return string.Empty;
+        }
+
+        if (address.IsIPv4MappedToIPv6)
+        {
+            address = address.MapToIPv4();
+        }
+
+        if (address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetworkV6)
+        {
+            return address.ToString();
+        }
+
+        var bytes = address.GetAddressBytes();
+        Array.Clear(bytes, 8, 8);
+        return new IPAddress(bytes).ToString();
+    }
+
+    private bool TryAcquire(string address)
+    {
+        if (!connections.Wait(0))
+        {
+            return false;
+        }
+
+        if (addressConnections.AddOrUpdate(address, 1, (_, count) => count + 1) <= options.MaxConnectionsPerAddress)
+        {
+            return true;
+        }
+
+        Release(address);
+        return false;
+    }
+
+    private void Release(string address)
+    {
+        while (addressConnections.TryGetValue(address, out var count))
+        {
+            if (count <= 1 ? addressConnections.TryRemove(new KeyValuePair<string, int>(address, count)) : addressConnections.TryUpdate(address, count - 1, count))
+            {
+                break;
+            }
+        }
+
+        connections.Release();
     }
 
     private bool TryBuildRemoteTarget(string remoteOrigin, RtcRequest rtc, out Uri target)
@@ -250,7 +306,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
             }
 
             context.Response.StatusCode = (int)response.StatusCode;
-            context.Response.ContentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
+            context.Response.ContentType = "text/plain; charset=utf-8";
             context.Response.Headers.CacheControl = "no-store";
             await context.Response.Body.WriteAsync(body, context.RequestAborted);
         }
