@@ -215,6 +215,30 @@ RSpec.describe Sharlayan::VoiceCallService do
     expect(VoiceCallAllocation.find_by!(chat_conversation: room).participants).to be_empty
   end
 
+  it 'admits members from other servers only while this server provides calls to them' do
+    guest = Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/guest', inbox_url: 'https://remote.test/users/guest/inbox')
+    room.memberships.create!(account: guest, role: :member)
+    Setting.chat_federation_enabled = true
+
+    expect { service.join(guest, room) }.to raise_error(described_class::Unavailable)
+
+    Setting.voice_call_federation_host_enabled = true
+    expect(service.join(guest, room, screen_share: false)).to include(identity: guest.uri, allow_screen_share: false)
+    expect(relay.join_bodies.last).to include('identity' => guest.uri, 'userId' => guest.id.to_s)
+
+    relay.participants = [relay.participant(member), relay.participant(guest, session_id: 'PA_2')]
+    service.poll_events(provider)
+    expect(VoiceCallAllocation.find_by!(chat_conversation: room).participants.pluck('user_id')).to contain_exactly(member.id.to_s, guest.id.to_s)
+
+    Setting.voice_call_federation_host_enabled = false
+    relay.events = [{ 'allocationId' => 'alloc-1', 'generation' => VoiceCallAllocation.find_by!(chat_conversation: room).generation }]
+    service.poll_events(provider)
+    expect(relay.kicked).to eq [guest.uri]
+  ensure
+    Setting.chat_federation_enabled = false
+    Setting.voice_call_federation_host_enabled = false
+  end
+
   it 'skips a failing relay for a short while and validates status reports' do
     relay.fail_with = [503, { code: 'PROVIDER_UNAVAILABLE' }]
     expect { service.join(member, room) }.to raise_error(Sharlayan::VoiceRelay::Error)

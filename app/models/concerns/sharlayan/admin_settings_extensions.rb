@@ -60,6 +60,8 @@ module Sharlayan::AdminSettingsExtensions
     voice_call_enabled
     voice_call_max_participants
     voice_call_screen_share_enabled
+    voice_call_federation_host_enabled
+    voice_call_remote_join_enabled
     status_character_limit
     profile_fields_limit
     remote_media_attachments_limit
@@ -124,6 +126,8 @@ module Sharlayan::AdminSettingsExtensions
     chat_soft_delete_enabled
     voice_call_enabled
     voice_call_screen_share_enabled
+    voice_call_federation_host_enabled
+    voice_call_remote_join_enabled
     user_themes_enabled
   ).freeze
 

@@ -23,7 +23,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
     public async Task HandleAsync(HttpContext context)
     {
         var rawTarget = context.Features.Get<IHttpRequestFeature>()?.RawTarget ?? string.Empty;
-        if (!RtcRequest.TryParse(rawTarget, options.BasePath, out var rtc))
+        if (!RtcRequest.TryParse(rawTarget, options.BasePath, out var rtc) && !RtcRequest.TryParse(rawTarget, options.FederationPath, out rtc))
         {
             context.Response.StatusCode = StatusCodes.Status404NotFound;
             return;

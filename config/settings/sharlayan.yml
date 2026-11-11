@@ -59,6 +59,8 @@ defaults:
   voice_call_enabled: false
   voice_call_max_participants: 10
   voice_call_screen_share_enabled: true
+  voice_call_federation_host_enabled: false
+  voice_call_remote_join_enabled: false
   status_character_limit: 500
   profile_fields_limit: 10
   remote_media_attachments_limit: 16

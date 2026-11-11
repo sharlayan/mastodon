@@ -415,8 +415,12 @@ ja:
         title: チャット
         voice_call_enabled: "チャットルームの音声通話を有効にする"
         voice_call_enabled_hint: "ルームのメンバーが、音声通話リレーに登録したリレーを通じて音声通話と画面共有を行えるようにします。ネイティブチャットと承認済みのリレーが必要です。"
+        voice_call_federation_host_enabled: "他のサーバーのメンバーに通話を提供する"
+        voice_call_federation_host_enabled_hint: "このサーバーが所有するルームの通話に、他のサーバーのメンバーも参加できるようにします。このサーバーの音声リレーの枠を使い、リレーにはその参加者のIPアドレスが見えます。チャットの連合が有効である必要があります。"
         voice_call_max_participants: "通話あたりの最大参加人数"
         voice_call_max_participants_hint: "2～100人です。リレーは通話ごとにこの数のスロットを予約するため、小さくするほど多くのルームが同時に通話できます。1対1のルームは常に2スロットを予約します。"
+        voice_call_remote_join_enabled: "他のサーバーが開く通話への参加を許可する"
+        voice_call_remote_join_enabled_hint: "ローカルのアカウントが、他のサーバーが所有するルームの通話に参加できるようにします。ルームを所有するサーバーの通話サーバーに参加者のIPアドレスが見えます。チャットの連合が有効である必要があります。"
         voice_call_screen_share_enabled: "音声通話で画面共有を許可する"
         voice_call_screen_share_enabled_hint: "リレー側でもこのサーバーの画面共有が許可されている必要があります。"
       community_mode:

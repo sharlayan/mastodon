@@ -123,6 +123,8 @@ public sealed class ProxyTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, denied.HttpStatusCode);
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await http.GetAsync($"{proxyAddress}/voice-signal/rtc?access_token={Token("alloc-unknown")}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await http.GetAsync($"{proxyAddress}/livekit/rtc/validate?access_token={Token("alloc-1")}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await http.GetAsync($"{proxyAddress}/livekit/federation/token?access_token={Token("alloc-1")}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await http.GetAsync($"{proxyAddress}/voice-signal/rtc/%2e%2e/x?access_token={Token("alloc-1")}")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await http.GetAsync($"{proxyAddress}/voice-signal/health")).StatusCode);
         Assert.Equal(HttpStatusCode.ServiceUnavailable, (await http.GetAsync($"{proxyAddress}/voice-signal/rtc?access_token={Token("alloc-db-down")}")).StatusCode);

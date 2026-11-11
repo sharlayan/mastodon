@@ -75,3 +75,19 @@
             label: t('admin.settings.chat.voice_call_screen_share_enabled'),
             hint: t('admin.settings.chat.voice_call_screen_share_enabled_hint'),
             sharlayan_only: true
+
+.fields-group
+  = f.input :voice_call_federation_host_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.chat.voice_call_federation_host_enabled'),
+            hint: t('admin.settings.chat.voice_call_federation_host_enabled_hint'),
+            sharlayan_only: true
+
+.fields-group
+  = f.input :voice_call_remote_join_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.chat.voice_call_remote_join_enabled'),
+            hint: t('admin.settings.chat.voice_call_remote_join_enabled_hint'),
+            sharlayan_only: true

@@ -448,8 +448,12 @@ en:
         title: Chat
         voice_call_enabled: "Enable voice calls in chat rooms"
         voice_call_enabled_hint: "Let room members start voice calls and share their screens through a voice relay registered under Voice call relays. Requires native chat and an approved relay."
+        voice_call_federation_host_enabled: "Provide calls to members on other servers"
+        voice_call_federation_host_enabled_hint: "Let members from other servers join calls in rooms owned on this server. Their calls use this server's voice relay slots, and the relay sees their IP addresses. Requires chat federation."
         voice_call_max_participants: "Maximum participants per voice call"
         voice_call_max_participants_hint: "Between 2 and 100. The relay reserves this many slots for each call, so a smaller number lets more rooms call at the same time. One-on-one rooms always reserve 2."
+        voice_call_remote_join_enabled: "Allow joining calls hosted on other servers"
+        voice_call_remote_join_enabled_hint: "Let local accounts join calls in rooms owned on other servers. The server that owns the room and its call server see the participant's IP address. Requires chat federation."
         voice_call_screen_share_enabled: "Allow screen sharing in voice calls"
         voice_call_screen_share_enabled_hint: "Screen sharing also requires the relay to allow it for this server."
       community_mode:

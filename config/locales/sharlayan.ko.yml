@@ -423,8 +423,12 @@ ko:
         title: 채팅
         voice_call_enabled: "채팅방 음성 통화 사용"
         voice_call_enabled_hint: "방 멤버가 음성 통화 릴레이에 등록한 릴레이를 통해 음성 통화와 화면 공유를 할 수 있습니다. 네이티브 채팅과 승인된 릴레이가 필요합니다."
+        voice_call_federation_host_enabled: "다른 서버 멤버에게 통화 제공"
+        voice_call_federation_host_enabled_hint: "이 서버가 소유한 방의 통화에 다른 서버의 멤버도 참가할 수 있게 합니다. 이 서버의 음성 릴레이 슬롯을 쓰며, 릴레이에 그 참가자의 IP 주소가 보입니다. Chat 연합이 켜져 있어야 합니다."
         voice_call_max_participants: "통화당 최대 참가자 수"
         voice_call_max_participants_hint: "2~100명입니다. 릴레이는 통화마다 이 수만큼 슬롯을 예약하므로, 값이 작을수록 더 많은 방이 동시에 통화할 수 있습니다. 1:1 방은 항상 2개를 예약합니다."
+        voice_call_remote_join_enabled: "다른 서버가 연 통화 참가 허용"
+        voice_call_remote_join_enabled_hint: "로컬 계정이 다른 서버가 소유한 방의 통화에 참가할 수 있게 합니다. 방을 소유한 서버의 통화 서버에 참가자의 IP 주소가 보입니다. Chat 연합이 켜져 있어야 합니다."
         voice_call_screen_share_enabled: "음성 통화 화면 공유 허용"
         voice_call_screen_share_enabled_hint: "릴레이에서도 이 서버의 화면 공유를 허용해야 합니다."
       community_mode:

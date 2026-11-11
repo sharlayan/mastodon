@@ -26,7 +26,7 @@ class Sharlayan::VoiceCallService
     def available?(conversation)
       return false unless enabled? && conversation.local? && !conversation.archived?
 
-      conversation.chat_group? || conversation.accounts.all?(&:local?)
+      conversation.chat_group? || conversation.accounts.all?(&:local?) || Sharlayan::VoiceCallFederation.host_enabled?
     end
 
     def joinable?(conversation)
@@ -50,11 +50,19 @@ class Sharlayan::VoiceCallService
     end
 
     def permitted?(account, privilege = :join_voice_calls)
+      return remote_permitted?(account, privilege) if account.present? && !account.local?
+
       user = account&.local? && account.user
       return false unless user&.functional?
       return false if privilege == :share_screens && !Setting.voice_call_screen_share_enabled
 
       user.role.can_extra?(:join_voice_calls) && user.role.can_extra?(privilege)
+    end
+
+    def remote_permitted?(account, privilege)
+      return false if privilege == :share_screens && !Setting.voice_call_screen_share_enabled
+
+      Sharlayan::VoiceCallFederation.remote_account_permitted?(account)
     end
 
     def participant_accounts(allocations)
@@ -92,7 +100,7 @@ class Sharlayan::VoiceCallService
     end
   end
 
-  def join(account, conversation)
+  def join(account, conversation, screen_share: true)
     raise Unavailable unless self.class.joinable?(conversation) && self.class.permitted?(account)
 
     allocation, credentials = with_redis_lock(conversation_lock_key(conversation.id), autorelease: LOCK_AUTORELEASE) do
@@ -100,13 +108,13 @@ class Sharlayan::VoiceCallService
       allocation = ensure_allocation(conversation)
 
       begin
-        [allocation, request_join(allocation, account)]
+        [allocation, request_join(allocation, account, screen_share:)]
       rescue Error => e
         raise unless gone?(e)
 
         finish(allocation)
         allocation = ensure_allocation(conversation)
-        [allocation, request_join(allocation, account)]
+        [allocation, request_join(allocation, account, screen_share:)]
       end
     end
 
@@ -168,6 +176,10 @@ class Sharlayan::VoiceCallService
 
     VoiceCallAllocation.active.distinct.pluck(:voice_relay_provider_id).each do |provider_id|
       VoiceCallEventsWorker.perform_async(provider_id)
+    end
+
+    VoiceCallAllocation.active.where.not(chat_conversation_id: nil).includes(:chat_conversation).find_each do |allocation|
+      Sharlayan::VoiceCallFederation::Outgoing.schedule(allocation.chat_conversation) if allocation.participants.any?
     end
 
     VoiceCallAllocation.where(state: 'ended', chat_conversation_id: nil, updated_at: ...ENDED_RETENTION.ago).in_batches.delete_all
@@ -418,10 +430,10 @@ class Sharlayan::VoiceCallService
     broadcast(allocation) if had_participants
   end
 
-  def request_join(allocation, account)
+  def request_join(allocation, account, screen_share: true)
     provider = allocation.voice_relay_provider
     identity = self.class.identity_for(account)
-    allow_screen_share = self.class.permitted?(account, :share_screens) && provider.capacity['allowScreenShare'] != false
+    allow_screen_share = screen_share && self.class.permitted?(account, :share_screens) && provider.capacity['allowScreenShare'] != false
 
     body = { identity:, userId: account.id.to_s, allowScreenShare: allow_screen_share }
     credentials = Responses.join(provider.client.request(:post, allocation.remote_path('/join'), body), allocation)
@@ -476,7 +488,7 @@ class Sharlayan::VoiceCallService
   end
 
   def member_permissions(conversation_id)
-    accounts = Account.local.where(id: ChatMembership.where(chat_conversation_id: conversation_id).select(:account_id)).includes(user: :role)
+    accounts = Account.where(id: ChatMembership.where(chat_conversation_id: conversation_id).select(:account_id)).includes(user: :role)
     accounts.each_with_object({}) do |account, permissions|
       next unless self.class.permitted?(account)
 
@@ -536,6 +548,7 @@ class Sharlayan::VoiceCallService
       account_ids.each do |account_id|
         redis.publish("timeline:#{account_id}", JSON.generate(event: 'chat.voice_state', payload:))
       end
+      Sharlayan::VoiceCallFederation::Outgoing.schedule(conversation)
     end
   end
 end
