@@ -214,6 +214,17 @@ const ScreenVideo: FC<{
   );
 };
 
+const enterFullscreen = (
+  player: Partial<Pick<HTMLElement, 'requestFullscreen'>>,
+  video: (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null,
+) => {
+  if (player.requestFullscreen) {
+    void player.requestFullscreen().catch(() => undefined);
+    return;
+  }
+  video?.webkitEnterFullscreen?.();
+};
+
 const ScreenStage: FC<{ identity: string; member: CallMember | undefined }> = ({
   identity,
   member,
@@ -225,7 +236,7 @@ const ScreenStage: FC<{ identity: string; member: CallMember | undefined }> = ({
     video.current = element;
   }, []);
   const handleFullscreen = useCallback(() => {
-    void frame.current?.requestFullscreen().catch(() => undefined);
+    if (frame.current) enterFullscreen(frame.current, video.current);
   }, []);
   const handlePictureInPicture = useCallback(() => {
     const element = video.current;

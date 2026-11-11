@@ -266,7 +266,7 @@ describe('voice call panel', () => {
     );
   });
 
-  it('lets you watch your own screen share like anyone else', async () => {
+  it('lets you watch your own screen share like anyone else, also in full screen on iOS', async () => {
     api.get.mockResolvedValue({ data: [voiceState()] });
     fakeCall.set(inCall({ screenSharing: true }));
     const view = mount();
@@ -284,7 +284,13 @@ describe('voice call panel', () => {
     });
     const stage = view.container.querySelector('.chat-voice__stage');
     expect(stage?.querySelectorAll('video')).toHaveLength(1);
-    expect(stage?.querySelector('video')?.muted).toBe(true);
+    const video = stage?.querySelector('video');
+    expect(video?.muted).toBe(true);
+
+    const webkitEnterFullscreen = vi.fn();
+    Object.assign(video ?? {}, { webkitEnterFullscreen });
+    fireEvent.click(screen.getByRole('button', { name: 'Full screen' }));
+    expect(webkitEnterFullscreen).toHaveBeenCalled();
   });
 
   it('closes the participant options when moving to another room', async () => {
