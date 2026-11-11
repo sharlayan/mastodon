@@ -128,6 +128,19 @@ RSpec.describe Sharlayan::VoiceCallService do
     expect(state[:participants].first[:account]).to include(id: member.id.to_s, username: member.username)
   end
 
+  it 'lets the owner mute and leave through moderation and treats moderation without a call as a no-op' do
+    service.join(owner, room)
+
+    expect(service.mute(owner, room, owner)).to be true
+    expect(service.kick(owner, room, owner)).to be true
+    expect(relay.kicked).to eq [ActivityPub::TagManager.instance.uri_for(owner)]
+    expect { service.join(owner, room) }.to_not raise_error
+
+    service.end_call(VoiceCallAllocation.find_by!(chat_conversation: room))
+    expect([service.kick(owner, room, member), service.mute(owner, room, member)]).to eq [false, false]
+    expect { service.mute(member, room, owner) }.to raise_error(described_class::Forbidden)
+  end
+
   it 'tells members when a relay stops answering for a call and when it answers again' do
     service.join(member, room)
     VoiceCallAllocation.where(chat_conversation: room).update_all(updated_at: 1.minute.ago)

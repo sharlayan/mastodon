@@ -222,8 +222,8 @@ class Sharlayan::VoiceCallService
   end
 
   def kick(actor, conversation, target)
-    moderate(actor, conversation, target) do |allocation|
-      redis.set(removal_key(conversation.id, target.id), allocation.generation, ex: REMOVAL_BLOCK.to_i)
+    moderate(actor, conversation) do |allocation|
+      redis.set(removal_key(conversation.id, target.id), allocation.generation, ex: REMOVAL_BLOCK.to_i) unless actor.id == target.id
       kicked = remove_identities(allocation, identities_of(allocation, target.id.to_s, target))
       refresh(allocation)
       kicked
@@ -231,7 +231,7 @@ class Sharlayan::VoiceCallService
   end
 
   def mute(actor, conversation, target)
-    moderate(actor, conversation, target) do |allocation|
+    moderate(actor, conversation) do |allocation|
       Responses.accepted(participant_request(allocation, 'mute', identity: self.class.identity_for(target)))
     end
   end
@@ -355,11 +355,12 @@ class Sharlayan::VoiceCallService
     raise Forbidden unless ChatMembership.exists?(chat_conversation_id: conversation.id, account_id: account.id, role: :owner)
   end
 
-  def moderate(actor, conversation, target)
-    raise Forbidden if actor.id == target.id
-
-    with_active_allocation(conversation) do |allocation|
+  def moderate(actor, conversation)
+    with_room_lock(conversation_lock_key(conversation.id)) do
       require_owner!(conversation, actor)
+      allocation = VoiceCallAllocation.active.find_by(chat_conversation_id: conversation.id)
+      next false if allocation.nil?
+
       yield allocation
     end
   end

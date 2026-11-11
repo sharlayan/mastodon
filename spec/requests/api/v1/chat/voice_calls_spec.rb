@@ -114,7 +114,11 @@ RSpec.describe 'API V1 Chat voice calls' do
 
     relay.fail_with = nil
     post "/api/v1/chat/conversations/#{room.id}/voice/kick", params: { account_id: owner.id }, headers: headers
-    expect(response).to have_http_status(409)
+    expect(response).to have_http_status(403)
+
+    own_room = Sharlayan::ChatService.new.create_conversation(user.account, type: :group, title: 'Own')
+    post "/api/v1/chat/conversations/#{own_room.id}/voice/mute", params: { account_id: owner.id }, headers: headers
+    expect([response.status, response.parsed_body]).to eq [200, { 'accepted' => false }]
 
     room.update!(archived_at: Time.now.utc)
     post "/api/v1/chat/conversations/#{room.id}/voice/join", headers: headers
