@@ -3,6 +3,8 @@
 module Sharlayan
   module VoiceRelay
     class Client
+      class DeadlineExceeded < Mastodon::RaceConditionError; end
+
       BASE_PATH = '/voice-relay/v1'
       TOKEN_TYPE = 'voice-relay-client+jwt'
       TOKEN_TTL = 60
@@ -16,6 +18,20 @@ module Sharlayan
         IOError,
         Addressable::URI::InvalidURIError,
       ].freeze
+
+      def self.with_deadline(budget)
+        previous = ActiveSupport::IsolatedExecutionState[:voice_relay_deadline]
+        deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + budget.to_f
+        ActiveSupport::IsolatedExecutionState[:voice_relay_deadline] = previous ? [previous, deadline].min : deadline
+        yield
+      ensure
+        ActiveSupport::IsolatedExecutionState[:voice_relay_deadline] = previous
+      end
+
+      def self.check_deadline!
+        deadline = ActiveSupport::IsolatedExecutionState[:voice_relay_deadline]
+        raise DeadlineExceeded, 'Voice relay requests ran out of time, try again later' if deadline && Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+      end
 
       def initialize(provider)
         @provider = provider
@@ -38,6 +54,8 @@ module Sharlayan
       end
 
       def request(verb, path, body = nil)
+        self.class.check_deadline!
+
         options = { follow: false }
         options[:body] = JSON.generate(body) unless body.nil?
 
@@ -47,7 +65,7 @@ module Sharlayan
         Request.new(verb, "#{Origin.normalize(@provider.origin)}#{BASE_PATH}#{path}", **options).add_headers(headers).perform do |response|
           parse_response(response)
         end
-      rescue Error
+      rescue Error, DeadlineExceeded
         raise
       rescue *NETWORK_ERRORS
         raise Error, 'PROVIDER_UNAVAILABLE'

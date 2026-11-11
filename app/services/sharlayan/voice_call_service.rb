@@ -14,7 +14,8 @@ class Sharlayan::VoiceCallService
 
   LEASE_RENEW_AFTER = 25.seconds
   SNAPSHOT_REFRESH_AFTER = 60.seconds
-  LOCK_AUTORELEASE = 1.minute
+  LOCK_AUTORELEASE = 2.minutes
+  RELAY_BUDGET = 45.seconds
   ENDED_RETENTION = 7.days
   PROVIDER_COOLDOWN = 10.seconds
   REMOVAL_BLOCK = 10.minutes
@@ -156,7 +157,7 @@ class Sharlayan::VoiceCallService
 
     raise Unavailable unless self.class.joinable?(conversation) && self.class.permitted?(account)
 
-    allocation, credentials = with_redis_lock(conversation_lock_key(conversation.id), autorelease: LOCK_AUTORELEASE) do
+    allocation, credentials = with_room_lock(conversation_lock_key(conversation.id)) do
       require_member!(conversation, account)
       raise Removed if removed_from_call?(conversation, account)
 
@@ -221,7 +222,7 @@ class Sharlayan::VoiceCallService
   end
 
   def revoke(conversation_id, account_id)
-    with_redis_lock(conversation_lock_key(conversation_id), autorelease: LOCK_AUTORELEASE) do
+    with_room_lock(conversation_lock_key(conversation_id)) do
       allocation = VoiceCallAllocation.active.find_by(chat_conversation_id: conversation_id)
       next if allocation.nil?
 
@@ -235,7 +236,7 @@ class Sharlayan::VoiceCallService
   end
 
   def end_call(allocation)
-    with_redis_lock(allocation.lock_key, autorelease: LOCK_AUTORELEASE) do
+    with_room_lock(allocation.lock_key) do
       allocation.reload
       finish(allocation) unless allocation.ended?
     end
@@ -269,7 +270,7 @@ class Sharlayan::VoiceCallService
     allocations.each do |allocation|
       next unless feed[:gap] || refresh_due?(allocation) || feed[:touched].include?([allocation.remote_id, allocation.generation])
 
-      with_redis_lock(allocation.lock_key, autorelease: LOCK_AUTORELEASE) do
+      with_room_lock(allocation.lock_key) do
         allocation.reload
         refresh(allocation) if allocation.active?
       end
@@ -294,6 +295,12 @@ class Sharlayan::VoiceCallService
     record_provider_error(provider, e)
     VoiceCallAllocation.where(id: allocations.map(&:id)).update_all(unavailable: true)
     nil
+  end
+
+  def with_room_lock(lock_name, raise_on_failure: true, &)
+    with_redis_lock(lock_name, autorelease: LOCK_AUTORELEASE, raise_on_failure:) do
+      Sharlayan::VoiceRelay::Client.with_deadline(RELAY_BUDGET, &)
+    end
   end
 
   def conversation_lock_key(conversation_id)
@@ -327,7 +334,7 @@ class Sharlayan::VoiceCallService
   end
 
   def with_active_allocation(conversation)
-    with_redis_lock(conversation_lock_key(conversation.id), autorelease: LOCK_AUTORELEASE) do
+    with_room_lock(conversation_lock_key(conversation.id)) do
       allocation = VoiceCallAllocation.active.find_by(chat_conversation_id: conversation.id)
       raise Error.new('ALLOCATION_CONFLICT', 409) if allocation.nil?
 
@@ -619,7 +626,7 @@ class Sharlayan::VoiceCallService
   end
 
   def maintain_allocation(allocation)
-    with_redis_lock(allocation.lock_key, autorelease: LOCK_AUTORELEASE, raise_on_failure: false) do
+    with_room_lock(allocation.lock_key, raise_on_failure: false) do
       allocation.reload
       next if allocation.ended?
 
@@ -632,6 +639,8 @@ class Sharlayan::VoiceCallService
         renew_or_close(allocation)
       end
     end
+  rescue Sharlayan::VoiceRelay::Client::DeadlineExceeded
+    nil
   rescue Error => e
     allocation.update_columns(unavailable: true)
     record_provider_error(allocation.voice_relay_provider, e)

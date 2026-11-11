@@ -293,4 +293,13 @@ RSpec.describe Sharlayan::VoiceCallService do
 
     expect { service.report_status(member, room, session_id: ['x'], mic_muted: true, deafened: false) }.to raise_error(Mastodon::InvalidParameterError)
   end
+
+  it 'stops calling the relay before the room lock can expire' do
+    stub_const("#{described_class}::RELAY_BUDGET", 0.seconds)
+
+    expect { service.join(member, room) }.to raise_error(Sharlayan::VoiceRelay::Client::DeadlineExceeded)
+    expect { service.maintain }.to_not raise_error
+    expect(relay.calls).to be_empty
+    expect(provider.client.capacity).to include('enabled' => true)
+  end
 end
