@@ -3,7 +3,7 @@
   "license": "AGPL-3.0-or-later",
   "packageManager": "yarn@4.18.1",
   "engines": {
-    "node": ">=24.19"
+    "node": ">=26.13"
   },
   "workspaces": [
     ".",

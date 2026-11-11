@@ -17,8 +17,7 @@
 설치 도우미는 검증되지 않은 외부 설치 프로그램으로 Ruby 또는 Node.js를 내려받지 않습니다.
 먼저 `.ruby-version`과 `.nvmrc`에 고정된 버전을 설치한 다음 아래 명령을 사용합니다.
 Node.js는 `package.json`의 `engines.node` 이상이어야 하며, 빌드에는 Corepack으로 활성화한 Yarn 4가 필요합니다.
-Node.js 25부터는 Corepack이 포함되지 않으므로 `npm install -g corepack`을 먼저 실행하고, Node.js 24에서는
-`corepack enable`을 실행합니다.
+Node.js 26에는 Corepack이 포함되지 않으므로 `npm install -g corepack`을 실행한 뒤 `corepack enable`을 실행합니다.
 
 ```sh
 sudo util/source-install/install-debian.sh packages # Alpine은 install-alpine.sh
