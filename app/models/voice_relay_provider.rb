@@ -12,6 +12,7 @@
 #  last_checked_at    :datetime
 #  last_error         :string
 #  origin             :string           not null
+#  revoked_at         :datetime
 #  secret_ciphertext  :text             not null
 #  validated          :boolean          default(FALSE), not null
 #  created_at         :datetime         not null
@@ -61,13 +62,21 @@ class VoiceRelayProvider < ApplicationRecord
     version = credential_version
     capacity = client.capacity
 
-    record_check(version, validated: capacity['enabled'], capacity:, last_error: nil)
+    record_check(version, validated: capacity['enabled'], capacity:, last_error: nil, revoked_at: nil)
     capacity
   rescue Sharlayan::VoiceRelay::Error => e
-    attributes = { last_error: e.code.to_s.first(64) }
-    attributes[:validated] = false if e.revoked?
-    record_check(version, **attributes)
+    record_check(version, **self.class.error_attributes(e, revoked_at:))
     raise
+  end
+
+  def self.error_attributes(error, revoked_at: nil)
+    return { last_error: error.code.to_s.first(64) } unless error.revoked?
+
+    { last_error: error.code.to_s.first(64), validated: false, revoked_at: revoked_at || Time.now.utc }
+  end
+
+  def revoked?
+    revoked_at.present?
   end
 
   def to_log_human_identifier
@@ -93,6 +102,7 @@ class VoiceRelayProvider < ApplicationRecord
     self.capacity = {}
     self.last_error = nil
     self.last_checked_at = nil
+    self.revoked_at = nil
   end
 
   def validate_origin

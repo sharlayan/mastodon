@@ -94,6 +94,7 @@ ko:
         disable_voice_relay_provider_html: "%{name} 님이 음성 릴레이 %{target}의 사용을 중지했습니다"
         enable_voice_relay_provider_html: "%{name} 님이 음성 릴레이 %{target}을(를) 사용하도록 설정했습니다"
         update_voice_relay_provider_html: "%{name} 님이 음성 릴레이 %{target}을(를) 수정했습니다"
+        end_voice_call_allocation_html: "%{name} 님이 음성 통화 %{target}을(를) 종료했습니다"
     avatar_decoration_domain_blocks:
       added_at: 추가됨
       block: 도메인 차단
@@ -532,9 +533,33 @@ ko:
       no_username_block_selected: 아무 것도 선택 되지 않아 어떤 사용자명 규칙도 변경 되지 않았습니다
       not_permitted: 허용하지 않음
       updated_msg: 사용자명 규칙을 변경했습니다
+    system_checks:
+      voice_relay_revoked_check:
+        action: "음성 릴레이 관리"
+        message_html: "음성 릴레이 %{value}이(가) 더 이상 이 서버를 받아들이지 않습니다. 릴레이 운영자가 접근을 복구하거나 시크릿을 갱신할 때까지 그 릴레이에서는 통화를 시작할 수 없습니다."
+      voice_relay_unavailable_check:
+        action: "음성 릴레이 관리"
+        message_html: "음성 통화가 켜져 있지만 승인된 음성 릴레이가 없습니다."
     voice_relay_providers:
       add_new: "릴레이 추가"
       approved: "승인됨"
+      call_end_failed_msg: "통화를 종료하지 못했습니다 (%{code})."
+      call_ended_msg: "통화를 종료했습니다."
+      call_participant_count: "%{participants} / %{slots}"
+      call_participants: "참가자"
+      call_relay: "릴레이"
+      call_room: "방"
+      call_room_deleted: "삭제된 방"
+      call_room_direct: "1:1 채팅 #%{id}"
+      call_room_group: "그룹 #%{id}"
+      call_state:
+        active: "진행 중"
+        ending: "종료 중"
+        pending: "시작 중"
+      call_unavailable: "마지막 확인 때 릴레이에 연결하지 못했습니다"
+      call_updated_at: "마지막 갱신"
+      calls_hint: "릴레이에 자리를 예약하고 있는 통화입니다. 통화를 종료하면 참가자 모두의 연결이 끊기며, 멤버는 새 통화를 시작할 수 있습니다."
+      calls_title: "진행 중인 통화"
       capacity: "수용량"
       check: "연결·승인 확인"
       check_disabled_msg: "릴레이가 응답했지만 이 서버는 릴레이에서 비활성화되어 있습니다."
@@ -548,12 +573,17 @@ ko:
       disabled: "사용 중지됨"
       edit: "릴레이 수정"
       enable: "사용"
+      end_call: "통화 종료"
+      end_call_confirm: "이 통화의 참가자 모두의 연결을 끊을까요?"
       last_checked: "마지막 확인"
       last_error: "마지막 오류: %{code}"
       never_checked: "아직 확인하지 않음"
+      no_calls: "진행 중인 통화가 없습니다."
       not_approved: "승인되지 않음"
       origin: "릴레이 주소"
       origin_unavailable: "음성 릴레이에 연결하려면 이 서버가 HTTPS를 사용해야 합니다."
+      revoked: "승인 철회됨"
+      revoked_hint: "릴레이가 %{time}에 이 서버를 거부했습니다. 릴레이 운영자에게 문의하거나 시크릿을 갱신한 뒤 다시 확인하세요."
       screen_share_allowed: "화면 공유 허용"
       screen_share_not_allowed: "화면 공유 허용 안 됨"
       slots: "슬롯 %{max}개 중 %{reserved}개 예약됨, 방 %{rooms}개 추가 가능"

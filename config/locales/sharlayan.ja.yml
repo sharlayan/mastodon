@@ -94,6 +94,7 @@ ja:
         disable_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を無効にしました"
         enable_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を有効にしました"
         update_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を更新しました"
+        end_voice_call_allocation_html: "%{name}さんが音声通話%{target}を終了しました"
     avatar_decoration_domain_blocks:
       added_at: 追加日
       block: ドメインをブロック
@@ -513,9 +514,33 @@ ja:
       no_username_block_selected: 何も選択されていなかったため、ユーザー名ルールは変更されませんでした
       not_permitted: 権限がありません
       updated_msg: ユーザー名ルールを更新しました
+    system_checks:
+      voice_relay_revoked_check:
+        action: "音声リレーの管理"
+        message_html: "音声リレー%{value}はこのサーバーを受け付けなくなりました。リレーの運営者がアクセスを戻すかシークレットを更新するまで、そのリレーでは通話を開始できません。"
+      voice_relay_unavailable_check:
+        action: "音声リレーの管理"
+        message_html: "音声通話が有効ですが、承認された音声リレーがありません。"
     voice_relay_providers:
       add_new: "リレーを追加"
       approved: "承認済み"
+      call_end_failed_msg: "通話を終了できませんでした (%{code})。"
+      call_ended_msg: "通話を終了しました。"
+      call_participant_count: "%{participants} / %{slots}"
+      call_participants: "参加者"
+      call_relay: "リレー"
+      call_room: "ルーム"
+      call_room_deleted: "削除されたルーム"
+      call_room_direct: "1対1チャット #%{id}"
+      call_room_group: "グループ #%{id}"
+      call_state:
+        active: "進行中"
+        ending: "終了処理中"
+        pending: "開始処理中"
+      call_unavailable: "最後の確認でリレーに接続できませんでした"
+      call_updated_at: "最終更新"
+      calls_hint: "リレーに枠を予約している通話です。通話を終了すると参加者全員の接続が切れ、メンバーは新しい通話を開始できます。"
+      calls_title: "進行中の通話"
       capacity: "収容量"
       check: "接続・承認を確認"
       check_disabled_msg: "リレーは応答しましたが、このサーバーはリレー側で無効になっています。"
@@ -529,12 +554,17 @@ ja:
       disabled: "無効"
       edit: "リレーを編集"
       enable: "有効にする"
+      end_call: "通話を終了"
+      end_call_confirm: "この通話の参加者全員の接続を切りますか？"
       last_checked: "最終確認"
       last_error: "最後のエラー: %{code}"
       never_checked: "未確認"
+      no_calls: "進行中の通話はありません。"
       not_approved: "未承認"
       origin: "リレーのアドレス"
       origin_unavailable: "音声リレーに接続するには、このサーバーがHTTPSを使用している必要があります。"
+      revoked: "承認取り消し"
+      revoked_hint: "リレーが%{time}にこのサーバーを拒否しました。リレーの運営者に問い合わせるか、シークレットを更新してからもう一度確認してください。"
       screen_share_allowed: "画面共有可"
       screen_share_not_allowed: "画面共有不可"
       slots: "%{max}スロット中%{reserved}スロット予約済み、あと%{rooms}ルーム作成可能"

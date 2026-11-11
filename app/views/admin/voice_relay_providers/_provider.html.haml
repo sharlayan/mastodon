@@ -6,6 +6,12 @@
       %span.negative-hint
         = material_symbol('close')
         = t('admin.voice_relay_providers.disabled')
+    - elsif provider.revoked?
+      %span.negative-hint
+        = material_symbol('block')
+        = t('admin.voice_relay_providers.revoked')
+      %br/
+      %small= t('admin.voice_relay_providers.revoked_hint', time: l(provider.revoked_at))
     - elsif provider.validated?
       %span.positive-hint
         = material_symbol('check')

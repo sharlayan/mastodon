@@ -522,9 +522,7 @@ class Sharlayan::VoiceCallService
   end
 
   def record_provider_error(provider, error)
-    attributes = { last_error: error.code.to_s.first(64) }
-    attributes[:validated] = false if error.revoked?
-    provider.update_columns(attributes)
+    provider.update_columns(VoiceRelayProvider.error_attributes(error, revoked_at: provider.revoked_at))
   end
 
   def broadcast(allocation)

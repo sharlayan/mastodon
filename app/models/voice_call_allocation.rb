@@ -43,6 +43,10 @@ class VoiceCallAllocation < ApplicationRecord
     "/allocations/#{remote_id}#{suffix}"
   end
 
+  def to_log_human_identifier
+    chat_conversation_id ? "chat ##{chat_conversation_id}" : "##{id}"
+  end
+
   def lock_key
     chat_conversation_id ? "voice_call:#{chat_conversation_id}" : "voice_call_allocation:#{id}"
   end

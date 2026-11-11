@@ -22,3 +22,23 @@
           %th
       %tbody
         = render partial: 'provider', collection: @providers
+
+%hr.spacer
+
+%h3= t('admin.voice_relay_providers.calls_title')
+
+- if @calls.empty?
+  %p.muted-hint= t('admin.voice_relay_providers.no_calls')
+- else
+  %p.hint= t('admin.voice_relay_providers.calls_hint')
+  .table-wrapper
+    %table.table
+      %thead
+        %tr
+          %th= t('admin.voice_relay_providers.call_room')
+          %th= t('admin.voice_relay_providers.call_participants')
+          %th= t('admin.voice_relay_providers.call_relay')
+          %th= t('admin.voice_relay_providers.status')
+          %th
+      %tbody
+        = render partial: 'call', collection: @calls

@@ -48,16 +48,14 @@ RSpec.describe VoiceRelayProvider do
 
     stub_request(:get, capacity_url).to_return(status: 503, body: { code: 'PROVIDER_UNAVAILABLE' }.to_json)
     expect { provider.check! }.to raise_error(Sharlayan::VoiceRelay::Error)
-    expect(provider.reload).to have_attributes(validated: true, last_error: 'PROVIDER_UNAVAILABLE')
+    expect(provider.reload).to have_attributes(validated: true, last_error: 'PROVIDER_UNAVAILABLE', revoked_at: nil)
 
     stub_request(:get, capacity_url).to_return(status: 401, body: { code: 'UNAUTHORIZED' }.to_json)
     expect { provider.check! }.to raise_error(Sharlayan::VoiceRelay::Error)
-    expect(provider.reload).to have_attributes(validated: false, last_error: 'UNAUTHORIZED')
+    expect(provider.reload).to have_attributes(validated: false, last_error: 'UNAUTHORIZED', revoked?: true)
 
-    stub_request(:get, capacity_url).to_return(status: 200, body: capacity.to_json)
-    provider.check!
     provider.update!(secret: 'n' * 40)
-    expect(provider.reload).to have_attributes(validated: false, capacity: {})
+    expect(provider.reload).to have_attributes(validated: false, capacity: {}, revoked_at: nil)
   end
 
   it 'keeps a relay with open calls from being deleted or moved, but allows it once the calls ended' do

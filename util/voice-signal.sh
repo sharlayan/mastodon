@@ -301,7 +301,7 @@ check() {
   fi
 
   if [ -d /etc/nginx ]; then
-    if grep -rqs -- "location ${path}" /etc/nginx; then
+    if grep -Erqs -- "location[[:space:]]+(\^~[[:space:]]+|=[[:space:]]+)?${path}" /etc/nginx; then
       ok "nginx has a location for ${path}"
     else
       warn "no nginx location for ${path} found (or not readable); browsers cannot reach the service without one"

@@ -166,7 +166,7 @@ RSpec.describe Sharlayan::VoiceCallService do
     allocation.update_columns(renewed_at: 1.minute.ago)
     relay.fail_with = [403, { code: 'CLIENT_DISABLED' }]
     service.maintain
-    expect(provider.reload).to have_attributes(validated: false, last_error: 'CLIENT_DISABLED')
+    expect(provider.reload).to have_attributes(validated: false, last_error: 'CLIENT_DISABLED', revoked?: true)
     expect(allocation.reload.state).to eq 'ending'
 
     relay.fail_with = nil

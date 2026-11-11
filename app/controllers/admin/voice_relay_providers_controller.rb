@@ -1,12 +1,15 @@
 # frozen_string_literal: true
 
 class Admin::VoiceRelayProvidersController < Admin::BaseController
+  CALLS_LIMIT = 100
+
   before_action :set_provider, except: [:index, :new, :create]
 
   def index
     authorize :voice_relay_provider, :index?
 
     @providers = VoiceRelayProvider.order(:id)
+    @calls = VoiceCallAllocation.unfinished.includes(:voice_relay_provider, :chat_conversation).order(updated_at: :desc).limit(CALLS_LIMIT)
     @local_origin = local_origin
   end
 

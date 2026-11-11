@@ -95,6 +95,7 @@ en:
         disable_voice_relay_provider_html: "%{name} disabled voice relay %{target}"
         enable_voice_relay_provider_html: "%{name} enabled voice relay %{target}"
         update_voice_relay_provider_html: "%{name} updated voice relay %{target}"
+        end_voice_call_allocation_html: "%{name} ended voice call %{target}"
     avatar_decoration_domain_blocks:
       added_at: Added
       block: Block domain
@@ -576,9 +577,33 @@ en:
       no_username_block_selected: No username rules were changed as none were selected
       not_permitted: Not permitted
       updated_msg: Successfully updated username rule
+    system_checks:
+      voice_relay_revoked_check:
+        action: "Manage voice relays"
+        message_html: "Voice relay %{value} no longer accepts this server. Voice calls on it cannot start until the relay operator restores access or the secret is updated."
+      voice_relay_unavailable_check:
+        action: "Manage voice relays"
+        message_html: "Voice calls are enabled, but no approved voice relay is available."
     voice_relay_providers:
       add_new: "Add relay"
       approved: "Approved"
+      call_end_failed_msg: "Could not end the call (%{code})."
+      call_ended_msg: "The call ended."
+      call_participant_count: "%{participants} / %{slots}"
+      call_participants: "Participants"
+      call_relay: "Relay"
+      call_room: "Room"
+      call_room_deleted: "Deleted room"
+      call_room_direct: "Direct chat #%{id}"
+      call_room_group: "Group #%{id}"
+      call_state:
+        active: "In progress"
+        ending: "Ending"
+        pending: "Starting"
+      call_unavailable: "The relay could not be reached at the last check"
+      call_updated_at: "Last updated"
+      calls_hint: "Calls that hold a reservation on a relay. Ending a call disconnects everyone in it; members can start a new one."
+      calls_title: "Calls in progress"
       capacity: "Capacity"
       check: "Check connection and approval"
       check_disabled_msg: "The relay responded, but this server is disabled there."
@@ -592,12 +617,17 @@ en:
       disabled: "Disabled"
       edit: "Edit relay"
       enable: "Enable"
+      end_call: "End call"
+      end_call_confirm: "Disconnect everyone in this call?"
       last_checked: "Last checked"
       last_error: "Last error: %{code}"
       never_checked: "Not checked yet"
+      no_calls: "No calls are in progress."
       not_approved: "Not approved"
       origin: "Relay address"
       origin_unavailable: "This server must use HTTPS to connect to a voice relay."
+      revoked: "Approval revoked"
+      revoked_hint: "The relay rejected this server at %{time}. Ask the relay operator, or update the secret and check again."
       screen_share_allowed: "Screen sharing allowed"
       screen_share_not_allowed: "Screen sharing not allowed"
       slots: "%{reserved} of %{max} slots reserved, %{rooms} more rooms available"

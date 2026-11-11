@@ -34,6 +34,7 @@ end
 
 resources :avatar_decoration_domain_blocks, only: [:index, :create, :destroy]
 
+resources :voice_calls, only: [:destroy]
 resources :voice_relay_providers, except: [:show] do
   member do
     post :check
