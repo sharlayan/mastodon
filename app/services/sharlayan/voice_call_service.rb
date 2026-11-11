@@ -419,13 +419,13 @@ class Sharlayan::VoiceCallService
       VoiceRelayProvider.where(id: provider.id, credential_version: provider.credential_version)
         .update_all(capacity:, validated: capacity['enabled'], last_error: nil, last_checked_at: Time.now.utc, updated_at: Time.now.utc)
 
-      unless capacity['enabled'] && capacity['accepting']
-        outcomes << (capacity['enabled'] ? :unavailable : :disabled)
+      unless capacity['enabled']
+        outcomes << :disabled
         next
       end
 
       outcomes << :measured
-      next unless capacity['remainingSlots'] >= slots && capacity['remainingRooms'].positive?
+      next unless capacity['accepting'] && capacity['remainingSlots'] >= slots && capacity['remainingRooms'].positive?
 
       [provider, capacity['reservedSlots'].fdiv(capacity['maxSlots']), rand]
     rescue Error => e

@@ -295,9 +295,9 @@ RSpec.describe Sharlayan::VoiceCallService do
     Setting.voice_call_federation_host_enabled = false
   end
 
-  it 'reports a relay as revoked only when it disabled this server' do
-    allow(relay).to(receive(:capacity).and_wrap_original { |original| original.call.merge('accepting' => false) })
-    expect { service.join(member, room) }.to raise_error(an_object_having_attributes(code: 'PROVIDER_UNAVAILABLE'))
+  it 'reports a relay as revoked only when it disabled this server and as full when it stopped accepting rooms' do
+    allow(relay).to(receive(:capacity).and_wrap_original { |original| original.call.merge('accepting' => false, 'remainingSlots' => 0) })
+    expect { service.join(member, room) }.to raise_error(an_object_having_attributes(code: 'CAPACITY_EXCEEDED'))
 
     allow(relay).to(receive(:capacity).and_wrap_original { |original| original.call.merge('enabled' => false, 'accepting' => false) })
     expect { service.join(member, room) }.to raise_error(an_object_having_attributes(code: 'CLIENT_DISABLED'))
