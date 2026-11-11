@@ -125,6 +125,26 @@ RSpec.describe Sharlayan::VoiceCallService do
     expect(state[:participants].first[:account]).to include(id: member.id.to_s, username: member.username)
   end
 
+  it 'tells members when a relay stops answering for a call and when it answers again' do
+    service.join(member, room)
+    VoiceCallAllocation.where(chat_conversation: room).update_all(updated_at: 1.minute.ago)
+    states = []
+    allow(redis).to(receive(:publish).and_wrap_original do |original, channel, message|
+      states << JSON.parse(JSON.parse(message)['payload']).slice('unavailable', 'updated_at') if channel == "timeline:#{owner.id}"
+      original.call(channel, message)
+    end)
+
+    relay.fail_with = [503, { code: 'PROVIDER_UNAVAILABLE' }]
+    2.times { service.poll_events(provider) }
+    expect(states.pluck('unavailable')).to eq [true]
+    expect(states.last['updated_at']).to be > 5.seconds.ago.to_i * 1000
+
+    relay.fail_with = nil
+    service.poll_events(provider)
+    expect(states.pluck('unavailable')).to eq [true, false]
+    expect(states.last['updated_at']).to be >= states.first['updated_at']
+  end
+
   it 'removes a participant whose membership ends and lets only the owner moderate' do
     service.join(member, room)
     relay.participants = [relay.participant(member)]

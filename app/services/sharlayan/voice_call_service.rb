@@ -296,7 +296,7 @@ class Sharlayan::VoiceCallService
       failed = true
     rescue Error => e
       failed = true
-      allocation.update_columns(unavailable: true)
+      flag_unavailable(allocation)
       record_provider_error(provider, e)
     end
 
@@ -314,7 +314,7 @@ class Sharlayan::VoiceCallService
       provider.update_columns(events_cursor: nil)
     else
       record_provider_error(provider, e)
-      VoiceCallAllocation.where(id: allocations.map(&:id)).update_all(unavailable: true)
+      allocations.each { |allocation| flag_unavailable(allocation) }
     end
     nil
   end
@@ -548,7 +548,9 @@ class Sharlayan::VoiceCallService
 
     case result['state']
     when 'active'
+      was_unavailable = allocation.unavailable?
       allocation.update!(renewed_at: Time.now.utc, unavailable: false)
+      broadcast(allocation) if was_unavailable
       true
     when 'ended'
       mark_ended(allocation)
@@ -598,9 +600,16 @@ class Sharlayan::VoiceCallService
   end
 
   def mark_ended(allocation)
-    had_participants = allocation.participants.any?
+    shown = allocation.participants.any? || allocation.unavailable?
     allocation.update!(state: 'ended', participants: [], unavailable: false)
-    broadcast(allocation) if had_participants
+    broadcast(allocation) if shown
+  end
+
+  def flag_unavailable(allocation)
+    return unless VoiceCallAllocation.where(id: allocation.id, unavailable: false).update_all(unavailable: true, updated_at: Time.now.utc).positive?
+
+    allocation.reload
+    broadcast(allocation) if allocation.active?
   end
 
   def request_join(allocation, account, screen_share: true)
@@ -644,7 +653,7 @@ class Sharlayan::VoiceCallService
     return mark_ended(allocation) if snapshot[:state] == 'ended'
 
     participants = admitted_participants(allocation, snapshot[:participants])
-    changed = participants != allocation.participants
+    changed = participants != allocation.participants || allocation.unavailable?
 
     allocation.update!(participants:, revision: snapshot[:revision], refreshed_at: Time.now.utc, unavailable: false)
     broadcast(allocation) if changed
@@ -718,7 +727,7 @@ class Sharlayan::VoiceCallService
   rescue Sharlayan::VoiceRelay::Client::DeadlineExceeded
     nil
   rescue Error => e
-    allocation.update_columns(unavailable: true)
+    flag_unavailable(allocation)
     record_provider_error(allocation.voice_relay_provider, e)
   end
 
