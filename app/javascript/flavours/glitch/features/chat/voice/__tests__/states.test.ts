@@ -104,6 +104,61 @@ describe('voice call states', () => {
     restart();
   });
 
+  it('reads rooms with a call again every 30 seconds, when the page is shown again and when watched again', async () => {
+    vi.useFakeTimers();
+    const setVisibility = (value: DocumentVisibilityState) => {
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        value,
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+    };
+    try {
+      api.get.mockImplementation(
+        (
+          _url: string,
+          { params }: { params: { conversation_ids: string[] } },
+        ) =>
+          Promise.resolve({
+            data: params.conversation_ids.map((id) =>
+              state(id, Date.now(), id === 'live' ? 1 : 0),
+            ),
+          }),
+      );
+      const quiet = watchVoiceStates(['quiet']);
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(api.get).toHaveBeenCalledTimes(1);
+
+      const live = watchVoiceStates(['live']);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(api.get).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(api.get).toHaveBeenCalledTimes(3);
+
+      setVisibility('hidden');
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(api.get).toHaveBeenCalledTimes(3);
+
+      setVisibility('visible');
+      await vi.advanceTimersByTimeAsync(0);
+      expect(api.get).toHaveBeenCalledTimes(4);
+
+      live();
+      quiet();
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(api.get).toHaveBeenCalledTimes(4);
+
+      const again = watchVoiceStates(['live']);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(api.get).toHaveBeenCalledTimes(5);
+      again();
+    } finally {
+      setVisibility('visible');
+      vi.useRealTimers();
+    }
+  });
+
   it('retries a failed read while the room is still watched', async () => {
     vi.useFakeTimers();
     try {

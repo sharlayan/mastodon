@@ -14,6 +14,7 @@ export const VOICE_STATE_EVENT = 'chat.voice_state';
 const EMPTY = new Map<string, VoiceState>();
 const RETRY_MIN_MS = 5_000;
 const RETRY_MAX_MS = 120_000;
+const REFRESH_INTERVAL_MS = 30_000;
 
 let states: ReadonlyMap<string, VoiceState> = EMPTY;
 const listeners = new Set<() => void>();
@@ -22,11 +23,36 @@ const fetched = new Set<string>();
 let flushScheduled = false;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
 let retryDelay = RETRY_MIN_MS;
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+const pageVisible = () =>
+  typeof document === 'undefined' || document.visibilityState === 'visible';
+
+const hasLiveCall = () =>
+  [...watchers.keys()].some((id) => {
+    const state = states.get(id);
+    return (
+      state != null && (state.participants.length > 0 || state.unavailable)
+    );
+  });
+
+const updatePolling = () => {
+  const polling = pageVisible() && hasLiveCall();
+  if (!polling && pollTimer != null) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  } else if (polling && pollTimer == null) {
+    pollTimer = setInterval(() => {
+      refreshVoiceStates();
+    }, REFRESH_INTERVAL_MS);
+  }
+};
 
 const notify = () => {
   listeners.forEach((listener) => {
     listener();
   });
+  updatePolling();
 };
 
 const isVoiceState = (value: unknown): value is VoiceState =>
@@ -96,16 +122,22 @@ const scheduleFlush = () => {
 export const watchVoiceStates = (ids: readonly string[]) => {
   ids.forEach((id) => watchers.set(id, (watchers.get(id) ?? 0) + 1));
   scheduleFlush();
+  updatePolling();
   return () => {
     ids.forEach((id) => {
       const count = (watchers.get(id) ?? 1) - 1;
       if (count > 0) watchers.set(id, count);
-      else watchers.delete(id);
+      else {
+        watchers.delete(id);
+        fetched.delete(id);
+      }
     });
+    updatePolling();
   };
 };
 
 export const refreshVoiceStates = () => {
+  if (!pageVisible()) return;
   fetched.clear();
   scheduleFlush();
 };
@@ -125,6 +157,12 @@ subscribeChatStream(({ event, payload }) => {
     refreshVoiceStates();
 });
 
+if (typeof document !== 'undefined')
+  document.addEventListener('visibilitychange', () => {
+    updatePolling();
+    if (watchers.size > 0) refreshVoiceStates();
+  });
+
 export const useVoiceStates = (ids: readonly string[], enabled = true) => {
   const key = enabled ? [...new Set(ids)].sort().join(',') : '';
   useEffect(() => {
@@ -140,6 +178,8 @@ export const useVoiceState = (id: string | undefined, enabled = true) =>
 export const resetVoiceStatesForTests = () => {
   if (retryTimer != null) clearTimeout(retryTimer);
   retryTimer = null;
+  if (pollTimer != null) clearInterval(pollTimer);
+  pollTimer = null;
   retryDelay = RETRY_MIN_MS;
   states = EMPTY;
   watchers.clear();
