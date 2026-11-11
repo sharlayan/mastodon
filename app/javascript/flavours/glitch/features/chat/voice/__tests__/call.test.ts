@@ -21,6 +21,13 @@ vi.mock('flavours/glitch/api', () => ({ default: () => api }));
 vi.mock('flavours/glitch/store', () => ({ store: { dispatch } }));
 vi.mock('livekit-client', () => {
   class Room {
+    static getLocalDevices = vi.fn(() =>
+      Promise.resolve([
+        { deviceId: '', kind: 'audioinput', label: '' },
+        { deviceId: 'mic-1', kind: 'audioinput', label: 'Desk microphone' },
+      ]),
+    );
+
     options: unknown;
     handlers = new Map<string, ((...args: unknown[]) => void)[]>();
     remoteParticipants = new Map();
@@ -190,6 +197,14 @@ describe('voice call engine', () => {
     expect(action.payload.message.id).toBe(
       'chat.voice.error.connection_failed',
     );
+  });
+
+  it('leaves out devices the browser has not identified yet', async () => {
+    const call = await import('../call');
+
+    await expect(call.listAudioDevices('audioinput')).resolves.toEqual([
+      { deviceId: 'mic-1', kind: 'audioinput', label: 'Desk microphone' },
+    ]);
   });
 
   it('applies changed voice processing settings to the open microphone', async () => {

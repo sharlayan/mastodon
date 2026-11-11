@@ -1101,7 +1101,8 @@ export const selectAudioDevice = async (
 
 export const listAudioDevices = async (kind: 'audioinput' | 'audiooutput') => {
   const lk = await loadLiveKit();
-  return lk.Room.getLocalDevices(kind, false);
+  const devices = await lk.Room.getLocalDevices(kind, false);
+  return devices.filter((device) => device.deviceId !== '');
 };
 
 export const canShareScreen = () => {
