@@ -155,7 +155,7 @@ RSpec.describe Sharlayan::VoiceCallService do
     expect(VoiceCallEndWorker).to have_enqueued_sidekiq_job(allocation.id)
     expect(allocation.reload.chat_conversation_id).to be_nil
 
-    service.maintain
+    service.maintain_provider(provider)
     expect(allocation.reload.state).to eq 'ended'
     expect(relay.allocations['alloc-1']['state']).to eq 'ended'
 
@@ -190,13 +190,39 @@ RSpec.describe Sharlayan::VoiceCallService do
 
     allocation.update_columns(renewed_at: 1.minute.ago)
     relay.fail_with = [403, { code: 'CLIENT_DISABLED' }]
-    service.maintain
+    service.maintain_provider(provider)
     expect(provider.reload).to have_attributes(validated: false, last_error: 'CLIENT_DISABLED', revoked?: true)
     expect(allocation.reload.state).to eq 'ending'
 
     relay.fail_with = nil
-    service.maintain
+    service.maintain_provider(provider)
     expect(allocation.reload.state).to eq 'ended'
+  end
+
+  it 'maintains each relay in its own job with bounded requests so a stalled relay does not hold up renewals on another' do
+    other = FakeVoiceRelay.new('https://other.example.org', reserved_slots: 50).install
+    other.provider
+    other_room = Sharlayan::ChatService.new.create_conversation(owner, type: :group, title: 'Other')
+    service.join(member, room)
+    relay.reserved_slots = 90
+    service.join(owner, other_room)
+    stalled, healthy = [room, other_room].map { |conversation| VoiceCallAllocation.find_by!(chat_conversation: conversation) }
+    expect(healthy.voice_relay_provider).to eq other.provider
+    VoiceCallAllocation.update_all(renewed_at: 1.minute.ago)
+    relay.calls.clear
+
+    service.maintain
+    expect(relay.calls).to be_empty
+    [provider, other.provider].each { |enqueued| expect(VoiceCallMaintenanceWorker).to have_enqueued_sidekiq_job(enqueued.id) }
+
+    stub_request(:post, %r{\Ahttps://voice\.example\.org/voice-relay/v1/allocations/[^/]+/lease\z}).to_timeout
+    allow(Sharlayan::VoiceRelay::TimedRequest).to receive(:new).and_call_original
+    VoiceCallMaintenanceWorker.new.perform(provider.id)
+    expect(stalled.reload).to have_attributes(state: 'active', unavailable: true)
+    expect(Sharlayan::VoiceRelay::TimedRequest).to have_received(:new).with(:post, a_string_ending_with("/allocations/#{stalled.remote_id}/lease"), hash_including(timeout: 10))
+
+    VoiceCallMaintenanceWorker.new.perform(other.provider.id)
+    expect(healthy.reload.renewed_at).to be > 5.seconds.ago
   end
 
   it 'follows role permissions when issuing credentials' do
@@ -316,7 +342,7 @@ RSpec.describe Sharlayan::VoiceCallService do
     stub_const("#{described_class}::RELAY_BUDGET", 0.seconds)
 
     expect { service.join(member, room) }.to raise_error(Sharlayan::VoiceRelay::Client::DeadlineExceeded)
-    expect { service.maintain }.to_not raise_error
+    expect { service.maintain_provider(provider) }.to_not raise_error
     expect(relay.calls).to be_empty
     expect(provider.client.capacity).to include('enabled' => true)
   end

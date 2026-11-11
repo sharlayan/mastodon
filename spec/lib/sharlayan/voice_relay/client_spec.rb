@@ -21,7 +21,7 @@ RSpec.describe Sharlayan::VoiceRelay::Client do
     { status:, body: body.to_json, headers: { 'Content-Type' => 'application/json' } }
   end
 
-  it 'signs requests with a short-lived relay client JWT and returns the validated capacity' do
+  it 'signs requests with a short-lived relay client JWT, bounds them by the remaining relay budget and returns the validated capacity' do
     stub_request(:get, capacity_url).to_return(json_response(capacity.merge(unknown: 'ignored')))
 
     expect(client.capacity).to include(
@@ -38,6 +38,10 @@ RSpec.describe Sharlayan::VoiceRelay::Client do
         payload.keys.sort == %w(aud exp iat iss) &&
         payload['exp'] - payload['iat'] == 60
     end).to have_been_made
+
+    allow(Sharlayan::VoiceRelay::TimedRequest).to receive(:new).and_call_original
+    described_class.with_deadline(3.seconds) { client.capacity }
+    expect(Sharlayan::VoiceRelay::TimedRequest).to have_received(:new).with(:get, capacity_url, hash_including(timeout: a_value_between(0.1, 3)))
   end
 
   it 'keeps relay error codes, treats other error pages as an unreachable relay and does not follow redirects' do

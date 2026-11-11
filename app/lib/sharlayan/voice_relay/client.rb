@@ -10,6 +10,7 @@ module Sharlayan
       TOKEN_TTL = 60
       SECRET_MIN_LENGTH = 32
       RESPONSE_LIMIT = 64.kilobytes
+      REQUEST_TIMEOUT = 10
       NETWORK_ERRORS = [
         HTTP::Error,
         OpenSSL::SSL::SSLError,
@@ -28,9 +29,14 @@ module Sharlayan
         ActiveSupport::IsolatedExecutionState[:voice_relay_deadline] = previous
       end
 
-      def self.check_deadline!
+      def self.time_left(timeout)
         deadline = ActiveSupport::IsolatedExecutionState[:voice_relay_deadline]
-        raise DeadlineExceeded, 'Voice relay requests ran out of time, try again later' if deadline && Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+        return timeout.to_f if deadline.nil?
+
+        remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        raise DeadlineExceeded, 'Voice relay requests ran out of time, try again later' unless remaining.positive?
+
+        [timeout.to_f, remaining].min
       end
 
       def initialize(provider)
@@ -49,12 +55,12 @@ module Sharlayan
         )
       end
 
-      def capacity
-        Capacity.parse(request(:get, '/capacity'))
+      def capacity(timeout: REQUEST_TIMEOUT)
+        Capacity.parse(request(:get, '/capacity', timeout:))
       end
 
-      def request(verb, path, body = nil)
-        self.class.check_deadline!
+      def request(verb, path, body = nil, timeout: REQUEST_TIMEOUT)
+        seconds = self.class.time_left(timeout)
 
         options = { follow: false }
         options[:body] = JSON.generate(body) unless body.nil?
@@ -62,7 +68,7 @@ module Sharlayan
         headers = { 'Authorization' => "Bearer #{bearer_token}", 'Accept' => 'application/json' }
         headers['Content-Type'] = 'application/json' unless body.nil?
 
-        Request.new(verb, "#{Origin.normalize(@provider.origin)}#{BASE_PATH}#{path}", **options).add_headers(headers).perform do |response|
+        TimedRequest.new(verb, "#{Origin.normalize(@provider.origin)}#{BASE_PATH}#{path}", timeout: seconds, **options).add_headers(headers).perform do |response|
           parse_response(response)
         end
       rescue Error, DeadlineExceeded

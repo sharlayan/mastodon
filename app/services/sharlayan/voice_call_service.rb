@@ -245,8 +245,8 @@ class Sharlayan::VoiceCallService
   end
 
   def maintain
-    VoiceCallAllocation.unfinished.includes(:voice_relay_provider, :chat_conversation).find_each do |allocation|
-      maintain_allocation(allocation)
+    VoiceCallAllocation.unfinished.distinct.pluck(:voice_relay_provider_id).each do |provider_id|
+      VoiceCallMaintenanceWorker.perform_async(provider_id)
     end
 
     VoiceCallAllocation.active.distinct.pluck(:voice_relay_provider_id).each do |provider_id|
@@ -259,6 +259,14 @@ class Sharlayan::VoiceCallService
 
     VoiceCallAllocation.where(state: 'ended', chat_conversation_id: nil, updated_at: ...ENDED_RETENTION.ago).in_batches.delete_all
     VoiceCallRemoteSession.expired.in_batches.delete_all
+  end
+
+  def maintain_provider(provider)
+    with_redis_lock("voice_call_maintenance:#{provider.id}", autorelease: LOCK_AUTORELEASE, raise_on_failure: false) do
+      provider.voice_call_allocations.unfinished.includes(:voice_relay_provider, :chat_conversation).find_each do |allocation|
+        maintain_allocation(allocation)
+      end
+    end
   end
 
   def poll_events(provider)
