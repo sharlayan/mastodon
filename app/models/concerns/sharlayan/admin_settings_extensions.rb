@@ -131,7 +131,18 @@ module Sharlayan::AdminSettingsExtensions
     user_themes_enabled
   ).freeze
 
+  module VoiceCallSettingsHook
+    def save
+      remote_join_was_enabled = Sharlayan::VoiceCallFederation.remote_join_enabled?
+      super.tap do |saved|
+        VoiceCallMirrorClearWorker.perform_async if saved && remote_join_was_enabled && !Sharlayan::VoiceCallFederation.remote_join_enabled?
+      end
+    end
+  end
+
   included do
+    prepend VoiceCallSettingsHook
+
     validates :local_account_statuses_access, inclusion: { in: Form::AdminSettings::FEED_ACCESS_MODES }, if: -> { defined?(@local_account_statuses_access) }
     validates :local_status_page_access, inclusion: { in: Form::AdminSettings::FEED_ACCESS_MODES }, if: -> { defined?(@local_status_page_access) }
     validates :drive_quota, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, if: -> { defined?(@drive_quota) }

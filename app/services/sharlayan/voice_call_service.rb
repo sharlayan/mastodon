@@ -117,12 +117,13 @@ class Sharlayan::VoiceCallService
 
     def remote_state_for(conversation, remote_state, accounts:)
       remote_state = VoiceCallRemoteState.find_by(chat_conversation_id: conversation.id) if remote_state == :unset
-      participants = participants_of(remote_state)
-      accounts ||= participant_accounts(remote_state)
+      available = remote_available?(conversation)
+      participants = available ? participants_of(remote_state) : []
+      accounts = participants.empty? ? {} : accounts || participant_accounts(remote_state)
 
       {
         conversation_id: conversation.id.to_s,
-        available: remote_available?(conversation),
+        available:,
         active: participants.any?,
         unavailable: false,
         max_participants: slots_for(conversation),

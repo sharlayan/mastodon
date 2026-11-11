@@ -25,6 +25,15 @@ module Sharlayan
           :stored
         end
 
+        def clear
+          return if Sharlayan::VoiceCallFederation.remote_join_enabled?
+
+          VoiceCallRemoteState.where("participants <> '[]'::jsonb").includes(:chat_conversation).find_each do |state|
+            cleared = VoiceCallRemoteState.where(id: state.id).where("participants <> '[]'::jsonb").update_all(participants: [], updated_at: Time.now.utc)
+            Sharlayan::VoiceCallService.publish_state(state.chat_conversation) if cleared.positive?
+          end
+        end
+
         def parse_participants(value, identity_key:)
           return unless value.is_a?(Array) && value.size <= MAX_PARTICIPANTS && value.all? { |participant| valid_participant?(participant, identity_key) }
 

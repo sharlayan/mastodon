@@ -85,6 +85,34 @@ RSpec.describe Sharlayan::VoiceCallFederation do
     end
   end
 
+  describe 'mirror call states' do
+    def cleared_state_pushed?(message)
+      payload = JSON.parse(JSON.parse(message)['payload'])
+      payload['conversation_id'] == mirror.id.to_s && payload['active'] == false && payload['participants'] == []
+    end
+
+    it 'hides participants while the owner server is suspended and clears them when an admin turns remote calls off' do
+      ActivityPub::Activity::Update.new(voice_state_update(participants: [{ 'id' => host.uri, 'screenSharing' => false }]), host).perform
+      expect(Sharlayan::VoiceCallService.state_for(mirror)).to include(active: true)
+
+      block = DomainBlock.create!(domain: 'remote.test', severity: :suspend)
+      expect(Sharlayan::VoiceCallService.state_for(mirror)).to include(available: false, active: false, participants: [])
+      block.destroy!
+
+      expect(Form::AdminSettings.new(voice_call_remote_join_enabled: '1').save).to be_truthy
+      expect(VoiceCallMirrorClearWorker.jobs).to be_empty
+
+      allow(redis).to receive(:publish).and_call_original
+      Form::AdminSettings.new(voice_call_remote_join_enabled: '0').save
+      VoiceCallMirrorClearWorker.drain
+      expect(redis).to have_received(:publish).with("timeline:#{member.id}", satisfy { |message| cleared_state_pushed?(message) })
+
+      Setting.voice_call_remote_join_enabled = true
+      expect(Sharlayan::VoiceCallService.state_for(mirror)).to include(available: true, active: false)
+      expect(VoiceCallRemoteState.sole).to have_attributes(participants: [], remote_updated_at: be_positive)
+    end
+  end
+
   describe 'joining' do
     let(:service) { Sharlayan::VoiceCallService.new }
 
