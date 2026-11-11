@@ -23,13 +23,13 @@ module Sharlayan
         end
 
         def schedule(conversation)
-          return unless conversation&.local? && Sharlayan::VoiceCallFederation.host_enabled? && remote_members?(conversation)
+          return unless Sharlayan::VoiceCallFederation.hosted_room?(conversation) && Sharlayan::VoiceCallFederation.host_enabled? && remote_members?(conversation)
 
           VoiceCallFederationWorker.perform_async(conversation.id)
         end
 
         def publish(conversation)
-          return unless conversation.local? && Sharlayan::VoiceCallFederation.host_enabled?
+          return unless Sharlayan::VoiceCallFederation.hosted_room?(conversation) && Sharlayan::VoiceCallFederation.host_enabled?
 
           allocation = VoiceCallAllocation.find_by(chat_conversation_id: conversation.id)
           participants = allocation&.active? ? allocation.participants : []

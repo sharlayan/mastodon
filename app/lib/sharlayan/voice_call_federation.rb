@@ -33,6 +33,10 @@ module Sharlayan
       federation_ready? && Setting.voice_call_remote_join_enabled
     end
 
+    def hosted_room?(conversation)
+      conversation.present? && conversation.chat_group? && conversation.owner_account&.local? == true
+    end
+
     def remote_account_permitted?(account)
       host_enabled? && account.present? && !account.local? && !account.unavailable? && !DomainBlock.blocked?(account.domain)
     end

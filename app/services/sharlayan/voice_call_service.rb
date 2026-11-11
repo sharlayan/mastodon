@@ -27,7 +27,7 @@ class Sharlayan::VoiceCallService
     def available?(conversation)
       return false unless enabled? && conversation.local? && !conversation.archived?
 
-      conversation.chat_group? || conversation.accounts.all?(&:local?) || Sharlayan::VoiceCallFederation.host_enabled?
+      conversation.chat_group? || conversation.accounts.all?(&:local?)
     end
 
     def joinable?(conversation)

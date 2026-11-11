@@ -239,6 +239,21 @@ RSpec.describe Sharlayan::VoiceCallService do
     Setting.voice_call_federation_host_enabled = false
   end
 
+  it 'keeps direct chats with members from other servers out of calls' do
+    guest = Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/guest', inbox_url: 'https://remote.test/users/guest/inbox')
+    direct = ChatConversation.create!(conversation_type: :direct, direct_key: [owner.id, guest.id].sort.join(':'))
+    direct.memberships.create!([{ account: owner }, { account: guest }])
+    Setting.chat_federation_enabled = true
+    Setting.voice_call_federation_host_enabled = true
+
+    expect(described_class.available?(direct)).to be false
+    expect(Sharlayan::VoiceCallFederation.hosted_room?(direct)).to be false
+    expect(Sharlayan::VoiceCallFederation.hosted_room?(room)).to be true
+  ensure
+    Setting.chat_federation_enabled = false
+    Setting.voice_call_federation_host_enabled = false
+  end
+
   it 'skips a failing relay for a short while and validates status reports' do
     relay.fail_with = [503, { code: 'PROVIDER_UNAVAILABLE' }]
     expect { service.join(member, room) }.to raise_error(Sharlayan::VoiceRelay::Error)

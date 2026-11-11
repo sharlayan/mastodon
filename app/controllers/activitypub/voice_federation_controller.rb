@@ -96,7 +96,7 @@ class ActivityPub::VoiceFederationController < ActivityPub::BaseController
 
     id = Sharlayan::VoiceCallFederation.local_room_id(room)
     conversation = id && ChatConversation.find_by(id:)
-    conversation if conversation&.local?
+    conversation if Sharlayan::VoiceCallFederation.hosted_room?(conversation)
   end
 
   def member?(conversation)
