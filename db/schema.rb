@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_11_085800) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2208,6 +2208,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true, opclass: :text_pattern_ops, where: "(reset_password_token IS NOT NULL)"
     t.index ["role_id"], name: "index_users_on_role_id", where: "(role_id IS NOT NULL)"
     t.index ["unconfirmed_email"], name: "index_users_on_unconfirmed_email", where: "(unconfirmed_email IS NOT NULL)"
+  end
+
+  create_table "voice_relay_providers", force: :cascade do |t|
+    t.string "origin", null: false
+    t.text "secret_ciphertext", null: false
+    t.string "credential_version", null: false
+    t.boolean "enabled", default: true, null: false
+    t.boolean "validated", default: false, null: false
+    t.datetime "last_checked_at"
+    t.string "last_error"
+    t.jsonb "capacity", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["origin"], name: "index_voice_relay_providers_on_origin", unique: true
   end
 
   create_table "web_push_subscriptions", force: :cascade do |t|

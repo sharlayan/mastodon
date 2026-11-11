@@ -1,0 +1,115 @@
+# frozen_string_literal: true
+
+# == Schema Information
+#
+# Table name: voice_relay_providers
+#
+#  id                 :bigint(8)        not null, primary key
+#  capacity           :jsonb            not null
+#  credential_version :string           not null
+#  enabled            :boolean          default(TRUE), not null
+#  last_checked_at    :datetime
+#  last_error         :string
+#  origin             :string           not null
+#  secret_ciphertext  :text             not null
+#  validated          :boolean          default(FALSE), not null
+#  created_at         :datetime         not null
+#  updated_at         :datetime         not null
+#
+class VoiceRelayProvider < ApplicationRecord
+  MAX_PROVIDERS = 8
+  SECRET_MIN_LENGTH = Sharlayan::VoiceRelay::Client::SECRET_MIN_LENGTH
+  SECRET_MAX_LENGTH = 1024
+
+  attr_reader :secret_input
+
+  scope :usable, -> { where(enabled: true, validated: true) }
+
+  before_validation :normalize_origin
+  before_validation :reset_validation, if: -> { new_record? || origin_changed? || secret_ciphertext_changed? }
+
+  validates :origin, presence: true, uniqueness: true
+  validate :validate_origin
+  validate :validate_secret_presence
+  validate :validate_secret_input
+  validate :validate_provider_limit, on: :create
+
+  def secret=(value)
+    @secret_input = value.to_s.strip
+    return if @secret_input.empty?
+
+    self.secret_ciphertext = Sharlayan::VoiceRelay::SecretBox.encrypt(@secret_input)
+  end
+
+  def secret
+    return if secret_ciphertext.blank?
+
+    Sharlayan::VoiceRelay::SecretBox.decrypt(secret_ciphertext)
+  end
+
+  def client
+    Sharlayan::VoiceRelay::Client.new(self)
+  end
+
+  def check!
+    version = credential_version
+    capacity = client.capacity
+
+    record_check(version, validated: capacity['enabled'], capacity:, last_error: nil)
+    capacity
+  rescue Sharlayan::VoiceRelay::Error => e
+    attributes = { last_error: e.code.to_s.first(64) }
+    attributes[:validated] = false if e.revoked?
+    record_check(version, **attributes)
+    raise
+  end
+
+  def to_log_human_identifier
+    origin
+  end
+
+  private
+
+  def record_check(version, **attributes)
+    self.class.where(id:, credential_version: version).update_all(attributes.merge(last_checked_at: Time.now.utc, updated_at: Time.now.utc))
+    reload
+  end
+
+  def normalize_origin
+    self.origin = Sharlayan::VoiceRelay::Origin.normalize(origin)
+  rescue Sharlayan::VoiceRelay::Error
+    nil
+  end
+
+  def reset_validation
+    self.credential_version = SecureRandom.uuid
+    self.validated = false
+    self.capacity = {}
+    self.last_error = nil
+    self.last_checked_at = nil
+  end
+
+  def validate_origin
+    return if origin.blank?
+
+    normalized = Sharlayan::VoiceRelay::Origin.normalize(origin)
+    errors.add(:origin, :own_origin) if Sharlayan::VoiceRelay::Origin.local?(normalized)
+  rescue Sharlayan::VoiceRelay::Error
+    errors.add(:origin, :invalid)
+  end
+
+  def validate_secret_presence
+    errors.add(:secret, :blank) if secret_ciphertext.blank?
+  end
+
+  def validate_secret_input
+    return if secret_input.blank?
+
+    errors.add(:secret, :too_short, count: SECRET_MIN_LENGTH) if secret_input.length < SECRET_MIN_LENGTH
+    errors.add(:secret, :too_long, count: SECRET_MAX_LENGTH) if secret_input.length > SECRET_MAX_LENGTH
+  end
+
+  def validate_provider_limit
+    errors.add(:base, :provider_limit, count: MAX_PROVIDERS) if self.class.count >= MAX_PROVIDERS
+  end
+end

@@ -58,6 +58,11 @@ en:
           attributes:
             drive_quota:
               own_role: cannot be changed with your current role
+        voice_relay_provider:
+          attributes:
+            origin:
+              own_origin: "cannot be this server's own address"
+          provider_limit: "You can register up to %{count} voice relays"
   admin:
     accounts:
       block_avatar_decorations: Block avatar decorations
@@ -83,6 +88,11 @@ en:
         update_board_announcement_html: "%{name} updated board announcement %{target}"
         destroy_chat_conversation_html: "%{name} deleted chat conversation %{target}"
         update_collection_html: "%{name} updated collection by %{target}"
+        create_voice_relay_provider_html: "%{name} added voice relay %{target}"
+        destroy_voice_relay_provider_html: "%{name} deleted voice relay %{target}"
+        disable_voice_relay_provider_html: "%{name} disabled voice relay %{target}"
+        enable_voice_relay_provider_html: "%{name} enabled voice relay %{target}"
+        update_voice_relay_provider_html: "%{name} updated voice relay %{target}"
     avatar_decoration_domain_blocks:
       added_at: Added
       block: Block domain
@@ -553,6 +563,34 @@ en:
       no_username_block_selected: No username rules were changed as none were selected
       not_permitted: Not permitted
       updated_msg: Successfully updated username rule
+    voice_relay_providers:
+      add_new: "Add relay"
+      approved: "Approved"
+      capacity: "Capacity"
+      check: "Check connection and approval"
+      check_disabled_msg: "The relay responded, but this server is disabled there."
+      check_failed_msg: "Connection check failed (%{code})."
+      check_succeeded_msg: "The relay approved this server."
+      created_msg: "Voice relay added. Check the connection to confirm approval."
+      delete: "Delete"
+      description_html: "Voice calls and screen sharing in chat rooms run on an external <a href=\"https://github.com/chalkpe/fediverse-voice-relay\" target=\"_blank\" rel=\"noopener\">voice relay</a>. Ask a relay operator to register this server, then enter the relay address and the issued secret here. This server's origin is <code>%{origin}</code>."
+      destroyed_msg: "Voice relay deleted."
+      disable: "Disable"
+      disabled: "Disabled"
+      edit: "Edit relay"
+      enable: "Enable"
+      last_checked: "Last checked"
+      last_error: "Last error: %{code}"
+      never_checked: "Not checked yet"
+      not_approved: "Not approved"
+      origin: "Relay address"
+      origin_unavailable: "This server must use HTTPS to connect to a voice relay."
+      screen_share_allowed: "Screen sharing allowed"
+      screen_share_not_allowed: "Screen sharing not allowed"
+      slots: "%{reserved} of %{max} slots reserved, %{rooms} more rooms available"
+      status: "Status"
+      title: "Voice call relays"
+      updated_msg: "Voice relay updated."
   antennas:
     errors:
       limit: You have reached the maximum number of antennas
@@ -749,6 +787,9 @@ en:
           Leave blank to use the server default. Set to 0 for unlimited.
         extra_permissions_as_keys: Additional Custodon-specific permissions granted
           to this role
+      voice_relay_provider:
+        origin: "The relay's public HTTPS address, for example https://voice.example.org"
+        secret: "The secret the relay operator issued for this server, at least 32 characters. Leave blank to keep the current secret."
     labels:
       defaults:
         custom_css_text: Custom CSS
@@ -810,6 +851,9 @@ en:
       user_role:
         drive_quota: Drive quota per user (MB)
         extra_permissions_as_keys: Additional permissions
+      voice_relay_provider:
+        origin: "Relay address"
+        secret: "Secret"
   statuses_cleanup:
     ignore_reactions: Ignore reactions
     interaction_exceptions_explanation: Posts which temporarily exceed the favorite

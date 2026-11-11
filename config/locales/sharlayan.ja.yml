@@ -58,6 +58,11 @@ ja:
           attributes:
             drive_quota:
               own_role: 現在のロールでは変更できません
+        voice_relay_provider:
+          attributes:
+            origin:
+              own_origin: "このサーバー自身のアドレスは使用できません"
+          provider_limit: "音声リレーは最大%{count}件まで登録できます"
   admin:
     accounts:
       block_avatar_decorations: アバターデコレーションをブロック
@@ -82,6 +87,11 @@ ja:
         update_board_announcement_html: "%{name} さんが掲示板型お知らせ %{target} を更新しました"
         destroy_chat_conversation_html: "%{name} さんがチャットの会話 %{target} を削除しました"
         update_collection_html: "%{name} さんが %{target} によるコレクションを更新しました"
+        create_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を追加しました"
+        destroy_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を削除しました"
+        disable_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を無効にしました"
+        enable_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を有効にしました"
+        update_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を更新しました"
     avatar_decoration_domain_blocks:
       added_at: 追加日
       block: ドメインをブロック
@@ -490,6 +500,34 @@ ja:
       no_username_block_selected: 何も選択されていなかったため、ユーザー名ルールは変更されませんでした
       not_permitted: 権限がありません
       updated_msg: ユーザー名ルールを更新しました
+    voice_relay_providers:
+      add_new: "リレーを追加"
+      approved: "承認済み"
+      capacity: "収容量"
+      check: "接続・承認を確認"
+      check_disabled_msg: "リレーは応答しましたが、このサーバーはリレー側で無効になっています。"
+      check_failed_msg: "接続の確認に失敗しました (%{code})。"
+      check_succeeded_msg: "リレーがこのサーバーを承認しました。"
+      created_msg: "音声リレーを追加しました。接続・承認を確認して承認状態を確かめてください。"
+      delete: "削除"
+      description_html: "チャットルームの音声通話と画面共有は外部の<a href=\"https://github.com/chalkpe/fediverse-voice-relay\" target=\"_blank\" rel=\"noopener\">音声リレー</a>で動作します。リレー運営者にこのサーバーの登録を依頼し、リレーのアドレスと発行されたシークレットをここに入力してください。このサーバーのoriginは<code>%{origin}</code>です。"
+      destroyed_msg: "音声リレーを削除しました。"
+      disable: "無効にする"
+      disabled: "無効"
+      edit: "リレーを編集"
+      enable: "有効にする"
+      last_checked: "最終確認"
+      last_error: "最後のエラー: %{code}"
+      never_checked: "未確認"
+      not_approved: "未承認"
+      origin: "リレーのアドレス"
+      origin_unavailable: "音声リレーに接続するには、このサーバーがHTTPSを使用している必要があります。"
+      screen_share_allowed: "画面共有可"
+      screen_share_not_allowed: "画面共有不可"
+      slots: "%{max}スロット中%{reserved}スロット予約済み、あと%{rooms}ルーム作成可能"
+      status: "状態"
+      title: "音声通話リレー"
+      updated_msg: "音声リレーを更新しました。"
   antennas:
     errors:
       limit: アンテナの上限数に達しています
@@ -644,6 +682,9 @@ ja:
       user_role:
         drive_quota: このロールを持つユーザーごとのドライブライブラリ最大容量をMB単位で指定します。空欄の場合はサーバーの既定値、0の場合は無制限です。
         extra_permissions_as_keys: このロールに付与されるCustodon独自の追加権限
+      voice_relay_provider:
+        origin: "リレーの公開HTTPSアドレスです。例: https://voice.example.org"
+        secret: "リレー運営者がこのサーバー用に発行したシークレットです。32文字以上必要です。空欄のままにすると現在のシークレットを維持します。"
     labels:
       defaults:
         custom_css_text: カスタムCSS
@@ -698,6 +739,9 @@ ja:
       user_role:
         drive_quota: ユーザーごとのドライブ容量 (MB)
         extra_permissions_as_keys: 追加権限
+      voice_relay_provider:
+        origin: "リレーのアドレス"
+        secret: "シークレット"
   statuses_cleanup:
     ignore_reactions: リアクションを無視
     interaction_exceptions_explanation: お気に入りやブーストの数が一度でも基準値に逹っした投稿は、その後数が減っても削除されません。

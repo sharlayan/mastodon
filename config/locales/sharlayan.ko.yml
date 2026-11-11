@@ -58,6 +58,11 @@ ko:
           attributes:
             drive_quota:
               own_role: 당신의 현재 역할에서는 변경할 수 없습니다
+        voice_relay_provider:
+          attributes:
+            origin:
+              own_origin: "이 서버 자신의 주소는 사용할 수 없습니다"
+          provider_limit: "음성 릴레이는 최대 %{count}개까지 등록할 수 있습니다"
   admin:
     accounts:
       block_avatar_decorations: 장식 표시 끄기
@@ -82,6 +87,11 @@ ko:
         update_board_announcement_html: "%{name} 님이 게시판형 공지사항 %{target}을(를) 수정했습니다"
         destroy_chat_conversation_html: "%{name} 님이 채팅 대화 %{target}을(를) 삭제했습니다"
         update_collection_html: "%{name} 님이 %{target}의 컬렉션을 수정했습니다"
+        create_voice_relay_provider_html: "%{name} 님이 음성 릴레이 %{target}을(를) 추가했습니다"
+        destroy_voice_relay_provider_html: "%{name} 님이 음성 릴레이 %{target}을(를) 삭제했습니다"
+        disable_voice_relay_provider_html: "%{name} 님이 음성 릴레이 %{target}의 사용을 중지했습니다"
+        enable_voice_relay_provider_html: "%{name} 님이 음성 릴레이 %{target}을(를) 사용하도록 설정했습니다"
+        update_voice_relay_provider_html: "%{name} 님이 음성 릴레이 %{target}을(를) 수정했습니다"
     avatar_decoration_domain_blocks:
       added_at: 추가됨
       block: 도메인 차단
@@ -509,6 +519,34 @@ ko:
       no_username_block_selected: 아무 것도 선택 되지 않아 어떤 사용자명 규칙도 변경 되지 않았습니다
       not_permitted: 허용하지 않음
       updated_msg: 사용자명 규칙을 변경했습니다
+    voice_relay_providers:
+      add_new: "릴레이 추가"
+      approved: "승인됨"
+      capacity: "수용량"
+      check: "연결·승인 확인"
+      check_disabled_msg: "릴레이가 응답했지만 이 서버는 릴레이에서 비활성화되어 있습니다."
+      check_failed_msg: "연결 확인에 실패했습니다 (%{code})."
+      check_succeeded_msg: "릴레이가 이 서버를 승인했습니다."
+      created_msg: "음성 릴레이를 추가했습니다. 연결·승인 확인으로 승인 여부를 확인하세요."
+      delete: "삭제"
+      description_html: "채팅방의 음성 통화와 화면 공유는 외부 <a href=\"https://github.com/chalkpe/fediverse-voice-relay\" target=\"_blank\" rel=\"noopener\">음성 릴레이</a>에서 동작합니다. 릴레이 운영자에게 이 서버의 등록을 요청한 뒤, 릴레이 주소와 발급받은 시크릿을 여기에 입력하세요. 이 서버의 origin은 <code>%{origin}</code>입니다."
+      destroyed_msg: "음성 릴레이를 삭제했습니다."
+      disable: "사용 중지"
+      disabled: "사용 중지됨"
+      edit: "릴레이 수정"
+      enable: "사용"
+      last_checked: "마지막 확인"
+      last_error: "마지막 오류: %{code}"
+      never_checked: "아직 확인하지 않음"
+      not_approved: "승인되지 않음"
+      origin: "릴레이 주소"
+      origin_unavailable: "음성 릴레이에 연결하려면 이 서버가 HTTPS를 사용해야 합니다."
+      screen_share_allowed: "화면 공유 허용"
+      screen_share_not_allowed: "화면 공유 허용 안 됨"
+      slots: "슬롯 %{max}개 중 %{reserved}개 예약됨, 방 %{rooms}개 추가 가능"
+      status: "상태"
+      title: "음성 통화 릴레이"
+      updated_msg: "음성 릴레이를 수정했습니다."
   antennas:
     errors:
       limit: 안테나 최대 개수를 초과합니다
@@ -677,6 +715,9 @@ ko:
         drive_quota: 이 역할을 가진 사용자별 드라이브 라이브러리의 최대 용량을 MB 단위로 지정합니다. 비워 두면 서버 기본값을
           사용하고, 0이면 무제한입니다.
         extra_permissions_as_keys: 이 역할에 부여되는 커스토돈 전용 추가 권한입니다
+      voice_relay_provider:
+        origin: "릴레이의 공개 HTTPS 주소입니다. 예: https://voice.example.org"
+        secret: "릴레이 운영자가 이 서버에 발급한 시크릿입니다. 32자 이상이어야 합니다. 비워 두면 기존 시크릿을 유지합니다."
     labels:
       defaults:
         custom_css_text: 커스텀 CSS
@@ -733,6 +774,9 @@ ko:
       user_role:
         drive_quota: 사용자당 드라이브 용량 (MB)
         extra_permissions_as_keys: 추가 권한
+      voice_relay_provider:
+        origin: "릴레이 주소"
+        secret: "시크릿"
   statuses_cleanup:
     ignore_reactions: 반응 무시
     interaction_exceptions_explanation: 즐겨찾기 또는 부스트 기준을 일시적으로 초과한 게시물은 나중에 기준 이하로
