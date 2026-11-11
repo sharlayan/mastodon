@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Data.Common;
 using System.Net;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
@@ -13,6 +14,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
 
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan KeepAliveInterval = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan KeepAliveTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(5);
     private static readonly string[] ForwardedHeaders = ["Accept", "User-Agent"];
 
@@ -39,7 +41,18 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
             return;
         }
 
-        var upstream = await resolver.ResolveAsync(hint, context.RequestAborted);
+        Upstream? upstream;
+        try
+        {
+            upstream = await resolver.ResolveAsync(hint, context.RequestAborted);
+        }
+        catch (DbException exception)
+        {
+            logger.LogError(exception, "Could not look up the voice call allocation");
+            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            return;
+        }
+
         if (upstream is null || !TryBuildTarget(upstream, rtc, out var target))
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -191,6 +204,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         upstream.Options.SetRequestHeader("Authorization", $"Bearer {bearer}");
         upstream.Options.CollectHttpResponseDetails = true;
         upstream.Options.KeepAliveInterval = KeepAliveInterval;
+        upstream.Options.KeepAliveTimeout = KeepAliveTimeout;
         if (context.Request.Headers.UserAgent.Count > 0)
         {
             upstream.Options.SetRequestHeader("User-Agent", context.Request.Headers.UserAgent.ToString());
@@ -213,7 +227,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
             }
         }
 
-        using var downstream = await context.WebSockets.AcceptWebSocketAsync(new WebSocketAcceptContext { KeepAliveInterval = KeepAliveInterval });
+        using var downstream = await context.WebSockets.AcceptWebSocketAsync(new WebSocketAcceptContext { KeepAliveInterval = KeepAliveInterval, KeepAliveTimeout = KeepAliveTimeout });
         using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
 
         var toUpstream = PumpAsync(downstream, upstream, lifetime.Token);

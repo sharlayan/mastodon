@@ -72,7 +72,7 @@ public sealed class SignalOptions
 
         var uri = new Uri(url);
         var credentials = uri.UserInfo.Split(':', 2);
-        builder.Host = uri.Host;
+        builder.Host = uri.Host.Length > 0 ? uri.Host : builder.Host;
         builder.Port = uri.Port > 0 ? uri.Port : 5432;
         builder.Database = Uri.UnescapeDataString(uri.AbsolutePath.TrimStart('/'));
         builder.Username = credentials.Length > 0 && credentials[0].Length > 0 ? Uri.UnescapeDataString(credentials[0]) : builder.Username;
@@ -81,9 +81,20 @@ public sealed class SignalOptions
         foreach (var pair in uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
         {
             var parts = pair.Split('=', 2);
-            if (parts.Length == 2 && parts[0] == "sslmode")
+            if (parts.Length != 2)
             {
-                builder.SslMode = ParseSslMode(Uri.UnescapeDataString(parts[1]));
+                continue;
+            }
+
+            var value = Uri.UnescapeDataString(parts[1]);
+            switch (parts[0])
+            {
+                case "sslmode":
+                    builder.SslMode = ParseSslMode(value);
+                    break;
+                case "host":
+                    builder.Host = value;
+                    break;
             }
         }
 

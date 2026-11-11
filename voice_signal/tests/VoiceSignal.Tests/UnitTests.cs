@@ -132,6 +132,9 @@ public class SignalOptionsTests
 
         Assert.Equal(("db.internal", 6543, "mastodon", "user", "p@ss", SslMode.Require), (connection.Host, connection.Port, connection.Database, connection.Username, connection.Password, connection.SslMode));
         Assert.Equal("/voice", options.BasePath);
+
+        var socket = new NpgsqlConnectionStringBuilder(SignalOptions.FromEnvironment(Environment(("DATABASE_URL", "postgres:///mastodon?host=%2Fvar%2Frun%2Fpostgresql"))).ConnectionString);
+        Assert.Equal(("/var/run/postgresql", "mastodon"), (socket.Host, socket.Database));
         Assert.Equal("https://social.example", options.LocalOrigin);
         Assert.Throws<InvalidOperationException>(() => SignalOptions.FromEnvironment(Environment(("VOICE_SIGNAL_PATH", "/a/../b"))));
         Assert.Throws<InvalidOperationException>(() => SignalOptions.FromEnvironment(Environment(("VOICE_SIGNAL_PORT", "0"))));

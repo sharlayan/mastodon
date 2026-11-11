@@ -125,6 +125,7 @@ public sealed class ProxyTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Unauthorized, (await http.GetAsync($"{proxyAddress}/voice-signal/rtc?access_token={Token("alloc-unknown")}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await http.GetAsync($"{proxyAddress}/voice-signal/rtc/%2e%2e/x?access_token={Token("alloc-1")}")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await http.GetAsync($"{proxyAddress}/voice-signal/health")).StatusCode);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, (await http.GetAsync($"{proxyAddress}/voice-signal/rtc?access_token={Token("alloc-db-down")}")).StatusCode);
         Assert.DoesNotContain(upstreamTargets, target => target.Contains("alloc-unknown") || target.Contains("%2e"));
     }
 
@@ -167,7 +168,16 @@ public sealed class ProxyTests : IAsyncLifetime
 
     private sealed class FakeResolver(string origin) : IAllocationResolver
     {
-        public Task<Upstream?> ResolveAsync(TokenHint hint, CancellationToken cancellationToken) =>
-            Task.FromResult(hint.AllocationId is "alloc-1" or "alloc-denied" && hint.Generation == "g-1" ? new Upstream(origin, hint.AllocationId, RubyCiphertext) : null);
+        public Task<Upstream?> ResolveAsync(TokenHint hint, CancellationToken cancellationToken)
+        {
+            if (hint.AllocationId == "alloc-db-down")
+            {
+                throw new FakeDbException();
+            }
+
+            return Task.FromResult(hint.AllocationId is "alloc-1" or "alloc-denied" && hint.Generation == "g-1" ? new Upstream(origin, hint.AllocationId, RubyCiphertext) : null);
+        }
     }
+
+    private sealed class FakeDbException : System.Data.Common.DbException;
 }
