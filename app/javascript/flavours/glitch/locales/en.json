@@ -37,6 +37,7 @@
   "chat.voice.in_call": "{count, plural, one {# person} other {# people}} in call",
   "chat.voice.input_device": "Microphone",
   "chat.voice.join": "Join call",
+  "chat.voice.join_muted": "Join with microphone off",
   "chat.voice.leave": "Leave call",
   "chat.voice.media_notice.confirm": "Join call",
   "chat.voice.media_notice.message": "Calls on this server are carried by {host}. Your IP address will be visible to that server while you are in a call.",

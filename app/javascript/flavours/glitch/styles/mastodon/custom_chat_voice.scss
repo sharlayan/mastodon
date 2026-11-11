@@ -41,6 +41,36 @@
     }
   }
 
+  &__join {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__join-mic {
+    display: inline-flex;
+    padding: 6px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+
+    .icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    &.active {
+      background: var(--color-bg-brand-softest);
+      color: var(--color-text-error);
+    }
+
+    &:focus-visible {
+      outline: var(--outline-focus-default);
+    }
+  }
+
   &__status {
     display: flex;
     flex-direction: column;

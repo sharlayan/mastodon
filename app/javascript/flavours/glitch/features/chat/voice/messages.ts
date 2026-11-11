@@ -3,6 +3,10 @@ import { defineMessages } from 'react-intl';
 export const voiceMessages = defineMessages({
   join: { id: 'chat.voice.join', defaultMessage: 'Join call' },
   startCall: { id: 'chat.voice.start', defaultMessage: 'Start a call' },
+  joinMuted: {
+    id: 'chat.voice.join_muted',
+    defaultMessage: 'Join with microphone off',
+  },
   leave: { id: 'chat.voice.leave', defaultMessage: 'Leave call' },
   muteMic: { id: 'chat.voice.mute_mic', defaultMessage: 'Mute microphone' },
   unmuteMic: {

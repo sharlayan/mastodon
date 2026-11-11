@@ -37,6 +37,7 @@
   "chat.voice.in_call": "{count}명 통화 중",
   "chat.voice.input_device": "마이크",
   "chat.voice.join": "통화 참가",
+  "chat.voice.join_muted": "마이크를 끄고 참가",
   "chat.voice.leave": "통화 나가기",
   "chat.voice.media_notice.confirm": "통화 참가",
   "chat.voice.media_notice.message": "이 서버의 통화는 {host}에서 중계합니다. 통화하는 동안 그 서버에 내 IP 주소가 보입니다.",

@@ -193,6 +193,14 @@ describe('voice call panel', () => {
     expect(screen.getAllByLabelText('Microphone muted')).toHaveLength(1);
     expect(screen.queryByLabelText('Sound turned off')).toBeNull();
 
+    const [micChoice, ...moreMicChoices] = screen.getAllByRole('button', {
+      name: 'Join with microphone off',
+    });
+    expect(moreMicChoices).toHaveLength(0);
+    expect(micChoice?.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(micChoice as HTMLElement);
+    expect(micChoice?.getAttribute('aria-pressed')).toBe('true');
+
     const [headerJoin, bannerJoin] = screen.getAllByRole('button', {
       name: 'Join call',
     });
@@ -214,7 +222,7 @@ describe('voice call panel', () => {
     expect(engine.connectVoiceCall).toHaveBeenCalledWith(
       { id: 'room', title: 'Hikers' },
       credentials,
-      { micEnabled: undefined },
+      { micEnabled: false },
     );
 
     dispatch.mockReset();
@@ -243,6 +251,22 @@ describe('voice call panel', () => {
     await settle();
 
     expect(screen.getByRole('button', { name: 'Start a call' })).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Join with microphone off' }),
+    ).toBeTruthy();
+  });
+
+  it('keeps the microphone and sound buttons usable while connecting', async () => {
+    api.get.mockResolvedValue({ data: [voiceState()] });
+    fakeCall.set(inCall({ status: 'connecting' }));
+    mount();
+    await settle();
+
+    expect(screen.getByText('Connecting…')).toBeTruthy();
+    for (const name of ['Mute microphone', 'Turn off sound'])
+      expect(
+        screen.getByRole('button', { name }).hasAttribute('disabled'),
+      ).toBe(false);
   });
 
   it('asks the owner before removing someone from the call', async () => {

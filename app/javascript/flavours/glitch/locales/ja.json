@@ -37,6 +37,7 @@
   "chat.voice.in_call": "{count}人が通話中",
   "chat.voice.input_device": "マイク",
   "chat.voice.join": "通話に参加",
+  "chat.voice.join_muted": "マイクをオフにして参加",
   "chat.voice.leave": "通話から退出",
   "chat.voice.media_notice.confirm": "通話に参加",
   "chat.voice.media_notice.message": "このサーバーの通話は{host}が中継します。通話中はそのサーバーにあなたのIPアドレスが見えます。",

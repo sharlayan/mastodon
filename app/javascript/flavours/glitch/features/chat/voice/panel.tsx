@@ -66,6 +66,7 @@ import {
   participantVolume,
   updateVoicePreferences,
   useVoicePreferences,
+  voicePreferences,
 } from './preferences';
 import type { ScreenShareQuality } from './preferences';
 import { hostOf, useStartVoiceCall } from './start';
@@ -155,6 +156,30 @@ export const VoiceCallBadge: FC<{ state: VoiceState | undefined }> = ({
   );
 };
 
+const JoinMicToggle: FC<{ className: string }> = ({ className }) => {
+  const intl = useIntl();
+  const { micEnabled } = useVoicePreferences();
+  const handleClick = useCallback(() => {
+    updateVoicePreferences({ micEnabled: !voicePreferences().micEnabled });
+  }, []);
+  const label = intl.formatMessage(voiceMessages.joinMuted);
+  return (
+    <button
+      type='button'
+      className={classNames(className, { active: !micEnabled })}
+      title={label}
+      aria-label={label}
+      aria-pressed={!micEnabled}
+      onClick={handleClick}
+    >
+      <Icon
+        id={micEnabled ? 'mic' : 'mic-off'}
+        icon={micEnabled ? MicIcon : MicOffIcon}
+      />
+    </button>
+  );
+};
+
 export const VoiceCallHeaderButton: FC<{
   room: VoiceRoom;
   enabled: boolean;
@@ -164,23 +189,27 @@ export const VoiceCallHeaderButton: FC<{
   const call = useVoiceCall();
   const start = useStartVoiceCall();
   const handleClick = useCallback(() => {
-    start({ id: room.id, title: room.title });
+    start({ id: room.id, title: room.title }, voicePreferences().micEnabled);
   }, [room.id, room.title, start]);
 
   if (!enabled || !state?.available || inThisCall(call, room.id)) return null;
   const label = intl.formatMessage(
     state.active ? voiceMessages.join : voiceMessages.startCall,
   );
+  const panelOffersJoin = state.active && state.participants.length > 0;
   return (
-    <button
-      type='button'
-      className='column-header__button'
-      title={label}
-      aria-label={label}
-      onClick={handleClick}
-    >
-      <Icon id='call' icon={CallIcon} />
-    </button>
+    <>
+      {!panelOffersJoin && <JoinMicToggle className='column-header__button' />}
+      <button
+        type='button'
+        className='column-header__button'
+        title={label}
+        aria-label={label}
+        onClick={handleClick}
+      >
+        <Icon id='call' icon={CallIcon} />
+      </button>
+    </>
   );
 };
 
@@ -712,7 +741,7 @@ export const VoiceCallControls: FC<{
   const handleLeave = useCallback(() => {
     void leaveVoiceCall();
   }, []);
-  const busy = call.status === 'connecting';
+  const connecting = call.status === 'connecting';
   const screenShare = call.allowScreenShare && canShareScreen();
 
   return (
@@ -724,7 +753,6 @@ export const VoiceCallControls: FC<{
           call.micEnabled ? voiceMessages.muteMic : voiceMessages.unmuteMic,
         )}
         active={!call.micEnabled}
-        disabled={busy}
         onClick={handleMic}
       />
       <IconButton
@@ -734,7 +762,6 @@ export const VoiceCallControls: FC<{
           call.deafened ? voiceMessages.undeafen : voiceMessages.deafen,
         )}
         active={call.deafened}
-        disabled={busy}
         onClick={handleDeafen}
       />
       {!compact && screenShare && (
@@ -749,7 +776,7 @@ export const VoiceCallControls: FC<{
               : voiceMessages.shareScreen,
           )}
           active={call.screenSharing}
-          disabled={busy}
+          disabled={connecting}
           onClick={handleScreen}
         />
       )}
@@ -851,7 +878,7 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
   );
 
   const handleJoin = useCallback(() => {
-    start({ id: room.id, title: room.title });
+    start({ id: room.id, title: room.title }, voicePreferences().micEnabled);
   }, [room.id, room.title, start]);
   const handleSelect = useCallback(
     (identity: string) => {
@@ -937,10 +964,13 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
           )}
         </span>
         {!joined && state?.available && (
-          <Button compact onClick={handleJoin}>
-            <Icon id='call' icon={CallIcon} />
-            {intl.formatMessage(voiceMessages.join)}
-          </Button>
+          <div className='chat-voice__join'>
+            <JoinMicToggle className='chat-voice__join-mic' />
+            <Button compact onClick={handleJoin}>
+              <Icon id='call' icon={CallIcon} />
+              {intl.formatMessage(voiceMessages.join)}
+            </Button>
+          </div>
         )}
       </div>
 
