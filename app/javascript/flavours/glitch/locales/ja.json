@@ -44,6 +44,8 @@
   "chat.voice.media_notice.title": "通話サーバーに接続しますか？",
   "chat.voice.media_provider": "通話サーバー: {host}",
   "chat.voice.mic_muted": "マイクオフ",
+  "chat.voice.mic_on": "マイクオン",
+  "chat.voice.mic_speaking": "マイク入力を検出中",
   "chat.voice.mute_mic": "マイクをオフ",
   "chat.voice.noise_suppression": "ノイズ抑制",
   "chat.voice.output_device": "スピーカー",

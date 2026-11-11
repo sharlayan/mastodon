@@ -44,6 +44,8 @@
   "chat.voice.media_notice.title": "통화 서버에 연결할까요?",
   "chat.voice.media_provider": "통화 서버: {host}",
   "chat.voice.mic_muted": "마이크 꺼짐",
+  "chat.voice.mic_on": "마이크 켜짐",
+  "chat.voice.mic_speaking": "마이크 입력 감지됨",
   "chat.voice.mute_mic": "마이크 끄기",
   "chat.voice.noise_suppression": "잡음 억제",
   "chat.voice.output_device": "스피커",

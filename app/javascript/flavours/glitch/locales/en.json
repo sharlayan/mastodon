@@ -44,6 +44,8 @@
   "chat.voice.media_notice.title": "Connect to the call server?",
   "chat.voice.media_provider": "Call server: {host}",
   "chat.voice.mic_muted": "Microphone muted",
+  "chat.voice.mic_on": "Microphone on",
+  "chat.voice.mic_speaking": "Microphone input detected",
   "chat.voice.mute_mic": "Mute microphone",
   "chat.voice.noise_suppression": "Noise suppression",
   "chat.voice.output_device": "Speaker",

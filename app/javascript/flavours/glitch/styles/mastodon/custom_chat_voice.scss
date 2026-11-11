@@ -379,6 +379,7 @@
   bottom: 16px;
   z-index: 100;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   max-width: calc(100vw - 32px);
@@ -413,6 +414,58 @@
   &__status {
     color: var(--color-text-success);
     font-size: 12px;
+  }
+
+  &__line {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  &__mic {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    color: var(--color-text-secondary);
+
+    &--speaking {
+      color: var(--color-text-success);
+    }
+
+    &--muted {
+      color: var(--color-text-error);
+    }
+  }
+
+  &__audio {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+
+    .icon {
+      flex: 0 0 auto;
+      width: 18px;
+      height: 18px;
+    }
+
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  &__settings {
+    position: absolute;
+    inset-inline-end: 0;
+    bottom: calc(100% + 8px);
+    width: min(320px, calc(100vw - 32px));
+    max-height: 60vh;
+    overflow-y: auto;
+    border-radius: 8px;
+    box-shadow: var(--dropdown-shadow);
   }
 
   .chat-voice__controls .icon-button {

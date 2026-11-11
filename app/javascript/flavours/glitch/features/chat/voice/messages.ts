@@ -83,6 +83,11 @@ export const voiceMessages = defineMessages({
   },
   you: { id: 'chat.voice.you', defaultMessage: 'You' },
   micMuted: { id: 'chat.voice.mic_muted', defaultMessage: 'Microphone muted' },
+  micOn: { id: 'chat.voice.mic_on', defaultMessage: 'Microphone on' },
+  micSpeaking: {
+    id: 'chat.voice.mic_speaking',
+    defaultMessage: 'Microphone input detected',
+  },
   deafened: { id: 'chat.voice.deafened', defaultMessage: 'Sound turned off' },
   sharingScreen: {
     id: 'chat.voice.sharing_screen',

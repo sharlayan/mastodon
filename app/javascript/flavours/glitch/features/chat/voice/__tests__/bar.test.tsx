@@ -24,7 +24,29 @@ const dispatch = vi.hoisted(() => vi.fn());
 const engine = vi.hoisted(() => ({
   connectVoiceCall: vi.fn(() => Promise.resolve()),
   prepareVoiceCall: vi.fn(() => Promise.resolve()),
+  resumeAudio: vi.fn(() => Promise.resolve()),
+  startScreenShare: vi.fn(() => Promise.resolve()),
+  listAudioDevices: vi.fn(() => Promise.resolve([])),
 }));
+const fakeCall = vi.hoisted(() => {
+  let snapshot: Call.VoiceCallSnapshot | null = null;
+  const listeners = new Set<() => void>();
+  return {
+    get: () => snapshot,
+    set: (value: Call.VoiceCallSnapshot | null) => {
+      snapshot = value;
+      listeners.forEach((listener) => {
+        listener();
+      });
+    },
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+});
 
 vi.mock('flavours/glitch/api', () => ({ default: () => api }));
 vi.mock('flavours/glitch/store', async (importOriginal) => ({
@@ -33,10 +55,18 @@ vi.mock('flavours/glitch/store', async (importOriginal) => ({
   useAppDispatch: () => dispatch,
   useAppSelector: () => false,
 }));
-vi.mock('../call', async (importOriginal) => ({
-  ...(await importOriginal<typeof Call>()),
-  ...engine,
-}));
+vi.mock('../call', async (importOriginal) => {
+  const actual = await importOriginal<typeof Call>();
+  const { useSyncExternalStore } = await import('react');
+  return {
+    ...actual,
+    ...engine,
+    useVoiceCall: () => {
+      const real = actual.useVoiceCall();
+      return useSyncExternalStore(fakeCall.subscribe, fakeCall.get) ?? real;
+    },
+  };
+});
 
 const credentials = {
   url: 'wss://example.com/voice-signal',
@@ -70,12 +100,66 @@ const settle = () =>
 describe('voice call bar', () => {
   beforeEach(() => {
     dispatch.mockReset();
+    fakeCall.set(null);
     engine.connectVoiceCall.mockClear();
+    engine.resumeAudio.mockClear();
+    engine.startScreenShare.mockClear();
     api.post.mockReset();
   });
 
   afterEach(() => {
     cleanup();
+  });
+
+  it('offers the audio, screen share and settings controls and shows when your microphone picks up sound', () => {
+    Object.defineProperty(window.navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        getDisplayMedia: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      },
+    });
+    onTestFinished(() => {
+      Reflect.deleteProperty(window.navigator, 'mediaDevices');
+    });
+    const identity = 'https://example.com/users/me';
+    const connected: Call.VoiceCallSnapshot = {
+      status: 'connected',
+      conversation: { id: 'room', title: 'Hikers' },
+      identity,
+      mediaProvider: null,
+      allowScreenShare: true,
+      micEnabled: true,
+      deafened: false,
+      audioBlocked: true,
+      speakingIdentities: [identity],
+      screenSharing: false,
+      screenShareIdentities: [],
+      watchingIdentities: [],
+    };
+    fakeCall.set(connected);
+    mount();
+
+    expect(
+      screen.getByRole('img', { name: 'Microphone input detected' }),
+    ).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Click to play call audio' }),
+    );
+    expect(engine.resumeAudio).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Share screen' }));
+    expect(engine.startScreenShare).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Call settings' }));
+    expect(screen.getByLabelText('Echo cancellation')).toBeTruthy();
+
+    act(() => {
+      fakeCall.set({ ...connected, micEnabled: false, audioBlocked: false });
+    });
+    expect(screen.getByRole('img', { name: 'Microphone muted' })).toBeTruthy();
+    expect(
+      screen.queryByRole('button', { name: 'Click to play call audio' }),
+    ).toBeNull();
   });
 
   it('shows a call that is still being joined and lets you cancel it', async () => {

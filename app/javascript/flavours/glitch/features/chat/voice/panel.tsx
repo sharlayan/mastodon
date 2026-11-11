@@ -658,7 +658,9 @@ const ProcessingToggle: FC<{ name: ProcessingKey; label: string }> = ({
   );
 };
 
-const VoiceSettings: FC<{ screenShare: boolean }> = ({ screenShare }) => {
+export const VoiceSettings: FC<{ screenShare: boolean }> = ({
+  screenShare,
+}) => {
   const intl = useIntl();
   const preferences = useVoicePreferences();
   const handleQuality = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
@@ -728,10 +730,9 @@ const VoiceSettings: FC<{ screenShare: boolean }> = ({ screenShare }) => {
 
 export const VoiceCallControls: FC<{
   call: VoiceCallSnapshot;
-  compact?: boolean;
   settingsOpen?: boolean;
   onToggleSettings?: () => void;
-}> = ({ call, compact = false, settingsOpen = false, onToggleSettings }) => {
+}> = ({ call, settingsOpen = false, onToggleSettings }) => {
   const intl = useIntl();
   const handleMic = useCallback(() => {
     void setMicEnabled(!call.micEnabled);
@@ -768,7 +769,7 @@ export const VoiceCallControls: FC<{
         active={call.deafened}
         onClick={handleDeafen}
       />
-      {!compact && screenShare && (
+      {screenShare && (
         <IconButton
           icon={call.screenSharing ? 'stop-screen-share' : 'screen-share'}
           iconComponent={
@@ -784,7 +785,7 @@ export const VoiceCallControls: FC<{
           onClick={handleScreen}
         />
       )}
-      {!compact && onToggleSettings && (
+      {onToggleSettings && (
         <IconButton
           icon='settings'
           iconComponent={SettingsIcon}
