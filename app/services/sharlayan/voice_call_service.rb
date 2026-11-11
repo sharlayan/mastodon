@@ -746,7 +746,11 @@ class Sharlayan::VoiceCallService
   end
 
   def record_provider_error(provider, error)
-    provider.update_columns(VoiceRelayProvider.error_attributes(error, revoked_at: provider.revoked_at))
+    attributes = VoiceRelayProvider.error_attributes(error, revoked_at: provider.revoked_at)
+    return if VoiceRelayProvider.where(id: provider.id, credential_version: provider.credential_version).update_all(attributes).zero?
+
+    provider.assign_attributes(attributes)
+    provider.clear_attribute_changes(attributes.keys)
   end
 
   def broadcast(allocation)

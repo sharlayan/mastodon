@@ -222,6 +222,20 @@ RSpec.describe Sharlayan::VoiceCallService do
     expect(allocation.reload.state).to eq 'ended'
   end
 
+  it 'does not record a revocation answered for credentials that were replaced since' do
+    service.join(member, room)
+    stale = VoiceRelayProvider.find(provider.id)
+    provider.update!(secret: 'n' * 40)
+    provider.update_columns(validated: true)
+
+    relay.fail_with = [401, { code: 'CLIENT_DISABLED' }]
+    service.poll_events(stale)
+    expect(provider.reload).to have_attributes(validated: true, revoked?: false, last_error: nil)
+
+    service.poll_events(provider)
+    expect(provider.reload).to have_attributes(validated: false, revoked?: true, last_error: 'CLIENT_DISABLED')
+  end
+
   it 'maintains each relay in its own job with bounded requests so a stalled relay does not hold up renewals on another' do
     other = FakeVoiceRelay.new('https://other.example.org', reserved_slots: 50).install
     other.provider
