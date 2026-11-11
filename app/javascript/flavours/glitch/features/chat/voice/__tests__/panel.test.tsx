@@ -11,6 +11,7 @@ import {
 import type * as InitialState from 'flavours/glitch/initial_state';
 
 import type { VoiceState } from '../api';
+import type * as Call from '../call';
 import { VoiceCallHeaderButton, VoiceCallPanel } from '../panel';
 import type { VoiceRoom } from '../panel';
 import { resetVoiceStatesForTests } from '../states';
@@ -22,7 +23,28 @@ const dispatch = vi.hoisted(() => vi.fn());
 const engine = vi.hoisted(() => ({
   connectVoiceCall: vi.fn(() => Promise.resolve()),
   prepareVoiceCall: vi.fn(() => Promise.resolve()),
+  toggleScreenShareWatch: vi.fn(),
+  unwatchScreenShare: vi.fn(),
 }));
+const fakeCall = vi.hoisted(() => {
+  let snapshot: Call.VoiceCallSnapshot | null = null;
+  const listeners = new Set<() => void>();
+  return {
+    get: () => snapshot,
+    set: (value: Call.VoiceCallSnapshot | null) => {
+      snapshot = value;
+      listeners.forEach((listener) => {
+        listener();
+      });
+    },
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+});
 
 vi.mock('flavours/glitch/api', () => ({ default: () => api }));
 vi.mock('flavours/glitch/initial_state', async (importOriginal) => ({
@@ -35,10 +57,18 @@ vi.mock('flavours/glitch/store', async (importOriginal) => ({
   useAppDispatch: () => dispatch,
   useAppSelector: () => false,
 }));
-vi.mock('../call', async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  ...engine,
-}));
+vi.mock('../call', async (importOriginal) => {
+  const actual = await importOriginal<typeof Call>();
+  const { useSyncExternalStore } = await import('react');
+  return {
+    ...actual,
+    ...engine,
+    useVoiceCall: () => {
+      const real = actual.useVoiceCall();
+      return useSyncExternalStore(fakeCall.subscribe, fakeCall.get) ?? real;
+    },
+  };
+});
 
 const bob = {
   id: 'bob',
@@ -101,6 +131,25 @@ const credentials = {
   max_participants: 10,
 };
 
+const selfIdentity = 'https://example.com/users/me';
+const inCall = (
+  extra: Partial<Call.VoiceCallSnapshot> = {},
+): Call.VoiceCallSnapshot => ({
+  status: 'connected',
+  conversation: { id: 'room', title: 'Hikers' },
+  identity: selfIdentity,
+  mediaProvider: 'https://voice.example.org',
+  allowScreenShare: true,
+  micEnabled: true,
+  deafened: false,
+  audioBlocked: false,
+  speakingIdentities: [],
+  screenSharing: false,
+  screenShareIdentities: [],
+  watchingIdentities: [],
+  ...extra,
+});
+
 const mount = () =>
   render(
     <IntlProvider locale='en'>
@@ -123,7 +172,10 @@ describe('voice call panel', () => {
     resetVoiceStatesForTests();
     window.localStorage.clear();
     dispatch.mockReset();
+    fakeCall.set(null);
     engine.connectVoiceCall.mockClear();
+    engine.toggleScreenShareWatch.mockClear();
+    engine.unwatchScreenShare.mockClear();
     api.post.mockReset().mockResolvedValue({ data: credentials });
   });
 
@@ -212,6 +264,27 @@ describe('voice call panel', () => {
       '/api/v1/chat/conversations/room/voice/kick',
       { account_id: 'bob' },
     );
+  });
+
+  it('lets you watch your own screen share like anyone else', async () => {
+    api.get.mockResolvedValue({ data: [voiceState()] });
+    fakeCall.set(inCall({ screenSharing: true }));
+    const view = mount();
+    await settle();
+
+    const previews = screen.getAllByRole('button', { name: 'Watch screen' });
+    expect(previews).toHaveLength(1);
+    fireEvent.click(previews[0] as HTMLElement);
+    expect(engine.toggleScreenShareWatch).toHaveBeenCalledWith(selfIdentity);
+
+    act(() => {
+      fakeCall.set(
+        inCall({ screenSharing: true, watchingIdentities: [selfIdentity] }),
+      );
+    });
+    const stage = view.container.querySelector('.chat-voice__stage');
+    expect(stage?.querySelectorAll('video')).toHaveLength(1);
+    expect(stage?.querySelector('video')?.muted).toBe(true);
   });
 
   it('closes the participant options when moving to another room', async () => {

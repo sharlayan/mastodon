@@ -847,7 +847,7 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
           <MemberTile
             key={member.identity}
             member={member}
-            canWatch={joined && !member.self}
+            canWatch={joined}
             menu={joined || room.owned}
             watching={watching.includes(member.identity)}
             selected={selected === member.identity}
