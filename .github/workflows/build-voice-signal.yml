@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   build-image-voice-signal:
-    if: github.repository == 'sharlayan/mastodon'
+    if: github.repository == 'sharlayan/mastodon' && github.ref == 'refs/heads/main'
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
