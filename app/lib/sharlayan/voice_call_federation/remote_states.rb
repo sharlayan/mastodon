@@ -67,7 +67,7 @@ module Sharlayan
         def admitted_entry(participant, member_ids)
           account = begin
             ActivityPub::TagManager.instance.uri_to_resource(participant[:identity], ::Account)
-          rescue Addressable::URI::InvalidURIError
+          rescue Addressable::URI::InvalidURIError, URI::InvalidURIError, ActionController::RoutingError
             nil
           end
           return if account.nil? || account.unavailable?

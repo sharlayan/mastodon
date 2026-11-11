@@ -52,7 +52,8 @@ RSpec.describe Sharlayan::VoiceCallFederation do
     it 'stores the newest state from the room owner, keeping only known participants' do
       allow(redis).to receive(:publish).and_call_original
       update = voice_state_update(participants: [{ 'id' => host.uri, 'screenSharing' => false, 'micMuted' => true }, { 'id' => member_uri, 'screenSharing' => false }, { 'id' => 'https://unknown.test/users/x', 'screenSharing' => false },
-                                                 { 'id' => 'http://example.com:abc/u', 'screenSharing' => false }])
+                                                 { 'id' => 'http://example.com:abc/u', 'screenSharing' => false },
+                                                 { 'id' => "https://#{Rails.configuration.x.local_domain}/users/a b", 'screenSharing' => false }])
 
       ActivityPub::Activity::Update.new(update, host).perform
 
@@ -115,6 +116,16 @@ RSpec.describe Sharlayan::VoiceCallFederation do
       expect { service.join(member, mirror) }.to raise_error(Sharlayan::VoiceRelay::Error) { |error| expect(error.code).to eq 'REMOTE_HOST_UNSUPPORTED' }
       expect { service.join(member, mirror) }.to raise_error(Sharlayan::VoiceRelay::Error) { |error| expect(error.code).to eq 'REMOTE_HOST_UNSUPPORTED' }
       expect(a_request(:post, 'https://remote.test/livekit/federation/token')).to have_been_made.times(3)
+    end
+
+    it 'joins rooms owned by servers on a non-default port' do
+      port_host = Fabricate(:account, domain: 'remote.test:8443', uri: 'https://remote.test:8443/users/host', inbox_url: 'https://remote.test:8443/users/host/inbox')
+      mirror.update!(owner_account: port_host)
+      stub_request(:post, 'https://remote.test:8443/livekit/federation/token')
+        .to_return(status: 200, body: token_response.merge(url: 'https://remote.test:8443/livekit').to_json, headers: { 'Content-Type' => 'application/json' })
+
+      expect(service.join(member, mirror)).to include(token:)
+      expect(VoiceCallRemoteSession.sole.origin).to eq 'https://remote.test:8443'
     end
 
     it 'lets only members join and only while remote calls are allowed' do

@@ -62,13 +62,13 @@ module Sharlayan
             'id' => "#{Sharlayan::VoiceCallFederation.state_id(room_uri)}#update/#{updated_at}",
             'type' => 'Update',
             'actor' => ActivityPub::TagManager.instance.uri_for(conversation.owner_account),
-            'published' => Time.at(updated_at / 1000.0).utc.iso8601(3),
+            'published' => Time.at(Rational(updated_at, 1000)).utc.iso8601(3),
             'object' => {
               'id' => Sharlayan::VoiceCallFederation.state_id(room_uri),
               'type' => Sharlayan::VoiceCallFederation::STATE_TYPE,
               'room' => room_uri,
               'participants' => entries,
-              'updated' => Time.at(updated_at / 1000.0).utc.iso8601(3),
+              'updated' => Time.at(Rational(updated_at, 1000)).utc.iso8601(3),
             },
           }
         end

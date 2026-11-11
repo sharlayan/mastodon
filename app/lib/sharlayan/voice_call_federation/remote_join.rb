@@ -43,9 +43,14 @@ module Sharlayan
         raise Sharlayan::VoiceCallService::Unavailable unless Sharlayan::VoiceCallService.remote_available?(@conversation)
 
         origin = Sharlayan::VoiceCallFederation.origin_of(@owner.uri)
-        raise Sharlayan::VoiceCallService::Unavailable unless origin&.start_with?('https://') && Addressable::URI.parse(origin).host == @owner.domain
+        raise Sharlayan::VoiceCallService::Unavailable unless origin&.start_with?('https://') && authority_of(origin) == @owner.domain
 
         origin
+      end
+
+      def authority_of(origin)
+        uri = Addressable::URI.parse(origin)
+        uri.port.nil? || uri.port == uri.default_port ? uri.host : "#{uri.host}:#{uri.port}"
       end
 
       def room_uri

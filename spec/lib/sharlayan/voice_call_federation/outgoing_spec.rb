@@ -87,6 +87,10 @@ RSpec.describe Sharlayan::VoiceCallFederation::Outgoing do
     expect(VoiceCallFederationWorker.jobs).to be_empty
   end
 
+  it 'writes the exact millisecond of a stamp' do
+    expect(described_class.payload(room, [], 1_762_850_000_001)['object']['updated']).to eq '2025-11-11T08:33:20.001Z'
+  end
+
   it 'publishes only for local rooms with members on other servers' do
     lonely = Sharlayan::ChatService.new.create_conversation(owner, type: :group, title: 'Lonely')
 
