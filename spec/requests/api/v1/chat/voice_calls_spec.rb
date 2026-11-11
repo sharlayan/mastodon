@@ -134,14 +134,17 @@ RSpec.describe 'API V1 Chat voice calls' do
     expect(response).to have_http_status(404)
   end
 
-  it 'rate limits voice call requests per account' do
+  it 'rate limits voice call requests per account, counting status reports separately' do
     relay.provider
     post "/api/v1/chat/conversations/#{room.id}/voice/join", headers: headers
 
-    29.times { post "/api/v1/chat/conversations/#{room.id}/voice/status", params: { session_id: 'PA_1', mic_muted: true, deafened: false }, headers: headers }
+    40.times { post "/api/v1/chat/conversations/#{room.id}/voice/status", params: { session_id: 'PA_1', mic_muted: true, deafened: false }, headers: headers }
     expect(response).to have_http_status(200)
 
-    post "/api/v1/chat/conversations/#{room.id}/voice/status", params: { session_id: 'PA_1', mic_muted: true, deafened: false }, headers: headers
+    29.times { post "/api/v1/chat/conversations/#{room.id}/voice/join", headers: headers }
+    expect(response).to have_http_status(200)
+
+    post "/api/v1/chat/conversations/#{room.id}/voice/join", headers: headers
     expect(response).to have_http_status(429)
   end
 end

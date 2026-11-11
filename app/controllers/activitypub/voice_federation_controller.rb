@@ -65,7 +65,7 @@ class ActivityPub::VoiceFederationController < ActivityPub::BaseController
   end
 
   def enforce_voice_call_rate_limit!
-    RateLimiter.new(signed_request_account, family: :voice_calls).record!
+    RateLimiter.new(signed_request_account, family: action_name == 'status' ? :voice_call_statuses : :voice_calls).record!
   end
 
   def disable_caching

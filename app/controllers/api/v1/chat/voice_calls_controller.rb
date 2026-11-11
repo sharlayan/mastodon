@@ -66,7 +66,7 @@ class Api::V1::Chat::VoiceCallsController < Api::V1::Chat::BaseController
   def enforce_voice_call_rate_limit!
     return if Setting.rate_limit_bypass_enabled && current_user.can_extra?(:bypass_rate_limit)
 
-    RateLimiter.new(current_account, family: :voice_calls).record!
+    RateLimiter.new(current_account, family: action_name == 'status' ? :voice_call_statuses : :voice_calls).record!
   end
 
   def voice_call_service

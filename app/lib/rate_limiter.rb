@@ -135,6 +135,11 @@ class RateLimiter
       period: 1.minute.freeze,
     }.freeze,
 
+    voice_call_statuses: {
+      limit: 120,
+      period: 1.minute.freeze,
+    }.freeze,
+
     misskey_hashtags: {
       limit: 120,
       period: 5.minutes.freeze,
