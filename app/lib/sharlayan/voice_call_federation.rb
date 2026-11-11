@@ -12,7 +12,7 @@ module Sharlayan
         'cherrypick' => NAMESPACE,
         'ChatRoomVoiceState' => 'cherrypick:ChatRoomVoiceState',
         'room' => { '@id' => 'cherrypick:room', '@type' => '@id' },
-        'participants' => { '@id' => 'cherrypick:participants', '@container' => '@list' },
+        'participants' => { '@id' => 'cherrypick:participants', '@container' => '@set' },
         'screenSharing' => 'cherrypick:screenSharing',
         'micMuted' => 'cherrypick:micMuted',
         'deafened' => 'cherrypick:deafened',

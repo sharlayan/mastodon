@@ -57,7 +57,7 @@ RSpec.describe Sharlayan::VoiceCallFederation::Outgoing do
       { 'id' => ActivityPub::TagManager.instance.uri_for(owner), 'screenSharing' => true, 'micMuted' => false, 'deafened' => false },
       { 'id' => guest.uri, 'screenSharing' => false, 'micMuted' => true, 'deafened' => false }
     )
-    expect(payload['@context'].last).to include('cherrypick' => 'https://kokonect.link/ns#')
+    expect(payload['@context'].last).to include('cherrypick' => 'https://kokonect.link/ns#', 'participants' => { '@id' => 'cherrypick:participants', '@container' => '@set' })
 
     described_class.publish(room)
     expect(ActivityPub::DeliveryWorker.jobs.size).to eq 1
