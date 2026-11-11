@@ -7,7 +7,7 @@ import { Link, useLocation } from 'react-router-dom';
 
 import { useVoiceCall } from './call';
 import { voiceMessages } from './messages';
-import { statusMessage, VoiceCallControls } from './panel';
+import { statusMessage, useVoicePanelShown, VoiceCallControls } from './panel';
 
 const roomPath = (id: string) => `/chat/${id}`;
 
@@ -15,8 +15,9 @@ export const VoiceCallBar: FC = () => {
   const intl = useIntl();
   const call = useVoiceCall();
   const location = useLocation();
+  const panelShown = useVoicePanelShown(call.conversation?.id);
 
-  if (call.status === 'idle' || !call.conversation) return null;
+  if (call.status === 'idle' || !call.conversation || panelShown) return null;
   const path = location.pathname.replace(/^\/deck(?=\/)/, '');
   if (path === roomPath(call.conversation.id)) return null;
 

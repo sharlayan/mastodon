@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import type { ChangeEvent, FC } from 'react';
 
 import { useIntl } from 'react-intl';
@@ -134,7 +141,12 @@ export const VoiceCallBadge: FC<{ state: VoiceState | undefined }> = ({
   if (!state?.active || count === 0) return null;
   const label = intl.formatMessage(voiceMessages.inCall, { count });
   return (
-    <span className='chat-voice__badge' title={label} aria-label={label}>
+    <span
+      className='chat-voice__badge'
+      title={label}
+      role='img'
+      aria-label={label}
+    >
       <Icon id='headphones' icon={HeadphonesIcon} />
       {count}
     </span>
@@ -688,6 +700,42 @@ export const statusMessage = (call: VoiceCallSnapshot) =>
       ? voiceMessages.reconnecting
       : voiceMessages.connected;
 
+const shownPanels = new Map<string, number>();
+const panelListeners = new Set<() => void>();
+
+const notifyPanels = () => {
+  panelListeners.forEach((listener) => {
+    listener();
+  });
+};
+
+const subscribePanels = (listener: () => void) => {
+  panelListeners.add(listener);
+  return () => {
+    panelListeners.delete(listener);
+  };
+};
+
+const usePanelPresence = (conversationId: string | null) => {
+  useEffect(() => {
+    if (conversationId == null) return undefined;
+    shownPanels.set(conversationId, (shownPanels.get(conversationId) ?? 0) + 1);
+    notifyPanels();
+    return () => {
+      const count = (shownPanels.get(conversationId) ?? 1) - 1;
+      if (count > 0) shownPanels.set(conversationId, count);
+      else shownPanels.delete(conversationId);
+      notifyPanels();
+    };
+  }, [conversationId]);
+};
+
+export const useVoicePanelShown = (conversationId: string | undefined) =>
+  useSyncExternalStore(
+    subscribePanels,
+    () => conversationId != null && shownPanels.has(conversationId),
+  );
+
 export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
   room,
   enabled,
@@ -719,6 +767,7 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
   const handleResumeAudio = useCallback(() => {
     void resumeAudio().catch(() => undefined);
   }, []);
+  usePanelPresence(enabled && joined ? room.id : null);
 
   if (!enabled) return null;
   if (!joined && !(state?.active && members.length > 0)) return null;

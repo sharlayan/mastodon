@@ -103,4 +103,22 @@ describe('voice call states', () => {
     expect(voiceStatesSnapshot().get('7')?.updated_at).toBe(5);
     restart();
   });
+
+  it('retries a failed read while the room is still watched', async () => {
+    vi.useFakeTimers();
+    try {
+      api.get.mockRejectedValueOnce(new Error('down'));
+      api.get.mockResolvedValueOnce({ data: [state('8', 6)] });
+      const stop = watchVoiceStates(['8']);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(voiceStatesSnapshot().has('8')).toBe(false);
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(api.get).toHaveBeenCalledTimes(2);
+      expect(voiceStatesSnapshot().get('8')?.updated_at).toBe(6);
+      stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

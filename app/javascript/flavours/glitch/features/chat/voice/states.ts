@@ -12,12 +12,16 @@ import type { VoiceState } from './api';
 export const VOICE_STATE_EVENT = 'chat.voice_state';
 
 const EMPTY = new Map<string, VoiceState>();
+const RETRY_MIN_MS = 5_000;
+const RETRY_MAX_MS = 120_000;
 
 let states: ReadonlyMap<string, VoiceState> = EMPTY;
 const listeners = new Set<() => void>();
 const watchers = new Map<string, number>();
 const fetched = new Set<string>();
 let flushScheduled = false;
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+let retryDelay = RETRY_MIN_MS;
 
 const notify = () => {
   listeners.forEach((listener) => {
@@ -58,10 +62,21 @@ const loadVoiceStates = async (ids: string[]) => {
     try {
       const received = await fetchVoiceStates(page);
       received.forEach((state) => applyVoiceState(state));
+      retryDelay = RETRY_MIN_MS;
     } catch {
       page.forEach((id) => fetched.delete(id));
+      scheduleRetry();
     }
   }
+};
+
+const scheduleRetry = () => {
+  if (retryTimer != null) return;
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    scheduleFlush();
+  }, retryDelay);
+  retryDelay = Math.min(retryDelay * 2, RETRY_MAX_MS);
 };
 
 const flush = () => {
@@ -123,6 +138,9 @@ export const useVoiceState = (id: string | undefined, enabled = true) =>
   useVoiceStates(id ? [id] : [], enabled).get(id ?? '');
 
 export const resetVoiceStatesForTests = () => {
+  if (retryTimer != null) clearTimeout(retryTimer);
+  retryTimer = null;
+  retryDelay = RETRY_MIN_MS;
   states = EMPTY;
   watchers.clear();
   fetched.clear();
