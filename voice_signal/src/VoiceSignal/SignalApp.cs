@@ -20,6 +20,11 @@ public static class SignalApp
         builder.Services.AddSingleton<RtcProxy>();
         builder.Services.AddMemoryCache(cache => cache.SizeLimit = 10_000);
 
+        if (options.ExitOnStdinEof)
+        {
+            builder.Services.AddHostedService<ParentWatcher>();
+        }
+
         if (resolver is null)
         {
             builder.Services.AddSingleton(_ => NpgsqlDataSource.Create(options.ConnectionString));

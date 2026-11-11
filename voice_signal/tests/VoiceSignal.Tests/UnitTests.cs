@@ -122,6 +122,8 @@ public class SignalOptionsTests
         Assert.Equal("/voice-signal", options.BasePath);
         Assert.Equal(("localhost", 5432, "mastodon_production", "mastodon"), (connection.Host, connection.Port, connection.Database, connection.Username));
         Assert.Equal(("127.0.0.1", 4100), (options.BindAddress, options.Port));
+        Assert.False(options.ExitOnStdinEof);
+        Assert.True(SignalOptions.FromEnvironment(Environment(("VOICE_SIGNAL_EXIT_ON_STDIN_EOF", "1"))).ExitOnStdinEof);
     }
 
     [Fact]

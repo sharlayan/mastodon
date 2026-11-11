@@ -16,6 +16,7 @@ public sealed class SignalOptions
     public int UpgradesPerMinute { get; init; } = 60;
     public IReadOnlyList<IPNetwork> TrustedProxies { get; init; } = [];
     public bool AllowInsecureUpstream { get; init; }
+    public bool ExitOnStdinEof { get; init; }
 
     public static SignalOptions FromEnvironment(IDictionary environment)
     {
@@ -35,6 +36,7 @@ public sealed class SignalOptions
             MaxConnections = ParseInt(Get("VOICE_SIGNAL_MAX_CONNECTIONS"), 1000, 1, 100_000),
             UpgradesPerMinute = ParseInt(Get("VOICE_SIGNAL_UPGRADES_PER_MINUTE"), 60, 1, 100_000),
             TrustedProxies = ParseNetworks(Get("VOICE_SIGNAL_TRUSTED_PROXIES")),
+            ExitOnStdinEof = Get("VOICE_SIGNAL_EXIT_ON_STDIN_EOF") is "1" or "true",
         };
     }
 
