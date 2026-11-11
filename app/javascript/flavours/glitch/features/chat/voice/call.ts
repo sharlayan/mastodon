@@ -629,9 +629,13 @@ const forgetScreenShare = (identity: string) => {
   syncScreenShareSubscription(identity);
 };
 
-const releaseScreenShare = (identity: string) => {
-  if (state.status === 'reconnecting') screenShareTracks.delete(identity);
-  else forgetScreenShare(identity);
+const releaseScreenShare = (room: LK.Room, identity: string) => {
+  screenShareTracks.delete(identity);
+  if (state.status === 'reconnecting') return;
+  queueMicrotask(() => {
+    if (current === room && state.status !== 'reconnecting')
+      forgetScreenShare(identity);
+  });
 };
 
 const pruneScreenShares = (room: LK.Room) => {
@@ -785,14 +789,14 @@ const bindRoomEvents = (lk: LiveKit, room: LK.Room) => {
       participant: LK.RemoteParticipant,
     ) => {
       if (isCurrent() && publication.source === Track.Source.ScreenShare)
-        releaseScreenShare(participant.identity);
+        releaseScreenShare(room, participant.identity);
     },
   );
 
   room.on(
     RoomEvent.ParticipantDisconnected,
     (participant: LK.RemoteParticipant) => {
-      if (isCurrent()) releaseScreenShare(participant.identity);
+      if (isCurrent()) releaseScreenShare(room, participant.identity);
     },
   );
 
