@@ -80,6 +80,28 @@ RSpec.describe Sharlayan::VoiceCallFederation::Outgoing do
     expect(Time.zone.parse(delivered_payloads.last['object']['updated'])).to be > Time.zone.parse(payload['object']['updated'])
   end
 
+  it 'sends microphone and sound changes at most once per status interval while joins and leaves keep their pace' do
+    described_class.publish(room)
+    redis.del("voice_call:federation:gate:#{room.id}")
+
+    allocation.update!(participants: [participants.first, participants.last.merge('mic_muted' => false)])
+    described_class.publish(room)
+    expect(ActivityPub::DeliveryWorker.jobs.size).to eq 1
+    expect(VoiceCallFederationWorker.jobs.last).to include('args' => [room.id, 'status'], 'at' => be_within(1).of((Time.now.utc + described_class::STATUS_INTERVAL).to_f))
+
+    allocation.update!(participants: [participants.first, participants.last.merge('mic_muted' => false, 'deafened' => true)])
+    travel_to(Time.now.utc + described_class::STATUS_INTERVAL + 1.second) do
+      described_class.publish(room)
+      expect(delivered_payloads.last['object']['participants']).to include({ 'id' => guest.uri, 'screenSharing' => false, 'micMuted' => false, 'deafened' => true })
+
+      redis.del("voice_call:federation:gate:#{room.id}")
+      allocation.update!(participants: participants.first(1))
+      described_class.publish(room)
+      expect(delivered_payloads.last['object']['participants'].pluck('id')).to eq [ActivityPub::TagManager.instance.uri_for(owner)]
+    end
+    expect(ActivityPub::DeliveryWorker.jobs.size).to eq 3
+  end
+
   it 'resends an unchanged call after the resend interval and stays quiet when disabled' do
     described_class.publish(room)
     redis.del("voice_call:federation:gate:#{room.id}")
