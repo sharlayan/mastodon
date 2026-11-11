@@ -29,7 +29,7 @@ class ActivityPub::VoiceFederationController < ActivityPub::BaseController
     render json: token_response(conversation, credentials, include_ice_servers: body['includeIceServers'] != false)
   rescue Sharlayan::VoiceCallService::Unavailable, Sharlayan::VoiceCallService::Forbidden
     head 403
-  rescue Sharlayan::VoiceRelay::Error
+  rescue Sharlayan::VoiceRelay::Error, Mastodon::RaceConditionError
     head 503
   end
 
@@ -104,13 +104,12 @@ class ActivityPub::VoiceFederationController < ActivityPub::BaseController
   end
 
   def token_response(conversation, credentials, include_ice_servers:)
-    allocation = VoiceCallAllocation.find_by(chat_conversation_id: conversation.id)
-    stamp = Sharlayan::VoiceCallFederation::Outgoing.stamp(conversation.id)
+    participants, stamp = Sharlayan::VoiceCallFederation::Outgoing.snapshot(conversation, key: 'identity')
     response = {
       url: Sharlayan::VoiceCallFederation.signal_url_for(conversation.owner_account),
       token: credentials[:token],
       iceServers: include_ice_servers ? credentials[:ice_servers] : nil,
-      participants: Sharlayan::VoiceCallFederation.participant_entries(allocation&.active? ? allocation.participants : [], key: 'identity'),
+      participants:,
       updatedAt: stamp,
       mediaProvider: credentials[:media_provider],
     }

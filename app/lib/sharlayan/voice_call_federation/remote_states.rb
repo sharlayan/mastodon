@@ -57,20 +57,30 @@ module Sharlayan
 
         def admitted(conversation, participants)
           member_ids = conversation.memberships.pluck(:account_id).to_set
-          participants.uniq { |participant| participant[:identity] }.first(MAX_PARTICIPANTS).filter_map do |participant|
-            account = ActivityPub::TagManager.instance.uri_to_resource(participant[:identity], ::Account)
-            next if account.nil? || account.unavailable?
-            next if account.local? && !member_ids.include?(account.id)
-            next if !account.local? && DomainBlock.blocked?(account.domain)
-
-            {
-              'identity' => participant[:identity],
-              'user_id' => account.id.to_s,
-              'screen_sharing' => participant[:screen_sharing],
-              'mic_muted' => participant[:mic_muted],
-              'deafened' => participant[:deafened],
-            }
+          ActiveRecord::Base.cache do
+            participants.uniq { |participant| participant[:identity] }.first(MAX_PARTICIPANTS).filter_map do |participant|
+              admitted_entry(participant, member_ids)
+            end
           end
+        end
+
+        def admitted_entry(participant, member_ids)
+          account = begin
+            ActivityPub::TagManager.instance.uri_to_resource(participant[:identity], ::Account)
+          rescue Addressable::URI::InvalidURIError
+            nil
+          end
+          return if account.nil? || account.unavailable?
+          return if account.local? && !member_ids.include?(account.id)
+          return if !account.local? && DomainBlock.blocked?(account.domain)
+
+          {
+            'identity' => participant[:identity],
+            'user_id' => account.id.to_s,
+            'screen_sharing' => participant[:screen_sharing],
+            'mic_muted' => participant[:mic_muted],
+            'deafened' => participant[:deafened],
+          }
         end
       end
     end

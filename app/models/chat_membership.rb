@@ -28,7 +28,7 @@ class ChatMembership < ApplicationRecord
   end
 
   def revoke_voice_call
-    return unless VoiceCallAllocation.active.exists?(chat_conversation_id:)
+    return unless VoiceCallAllocation.unfinished.exists?(chat_conversation_id:)
 
     VoiceCallRevocationWorker.perform_async(chat_conversation_id, account_id)
   end

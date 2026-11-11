@@ -4,10 +4,12 @@ module Sharlayan
   module VoiceCallFederation
     class Outgoing
       extend Redisable
+      extend Lockable
 
       MIN_INTERVAL = 10.seconds
       RESEND_INTERVAL = 240.seconds
       STAMP_TTL = 1.hour
+      LOCK_AUTORELEASE = 30.seconds
 
       STAMP_SCRIPT = <<~LUA
         local last = tonumber(redis.call('GET', KEYS[1]) or '0')
@@ -28,19 +30,29 @@ module Sharlayan
           VoiceCallFederationWorker.perform_async(conversation.id)
         end
 
+        def snapshot(conversation, key: 'id')
+          with_redis_lock(lock_key(conversation.id), autorelease: LOCK_AUTORELEASE) do
+            allocation = VoiceCallAllocation.find_by(chat_conversation_id: conversation.id)
+            participants = allocation&.active? ? allocation.participants : []
+            [Sharlayan::VoiceCallFederation.participant_entries(participants, key:), stamp(conversation.id)]
+          end
+        end
+
         def publish(conversation)
           return unless Sharlayan::VoiceCallFederation.hosted_room?(conversation) && Sharlayan::VoiceCallFederation.host_enabled?
 
-          allocation = VoiceCallAllocation.find_by(chat_conversation_id: conversation.id)
-          participants = allocation&.active? ? allocation.participants : []
-          entries = Sharlayan::VoiceCallFederation.participant_entries(participants).sort_by { |entry| entry['id'] }
-          digest = Digest::SHA256.hexdigest(entries.to_json)
-          last = last_record(conversation.id)
-          return if last && last['digest'] == digest && (entries.empty? || Time.now.to_i - last['at'].to_i < RESEND_INTERVAL)
-          return if entries.any? && !open_gate(conversation.id)
+          with_redis_lock(lock_key(conversation.id), autorelease: LOCK_AUTORELEASE) do
+            allocation = VoiceCallAllocation.find_by(chat_conversation_id: conversation.id)
+            participants = allocation&.active? ? allocation.participants : []
+            entries = Sharlayan::VoiceCallFederation.participant_entries(participants).sort_by { |entry| entry['id'] }
+            digest = Digest::SHA256.hexdigest(entries.to_json)
+            last = last_record(conversation.id)
+            next if last && last['digest'] == digest && (entries.empty? || Time.now.to_i - last['at'].to_i < RESEND_INTERVAL)
+            next if entries.any? && !open_gate(conversation.id)
 
-          deliver(conversation, entries, stamp(conversation.id))
-          redis.set(record_key(conversation.id), { digest:, at: Time.now.to_i }.to_json, ex: (RESEND_INTERVAL * 2).to_i)
+            deliver(conversation, entries, stamp(conversation.id))
+            redis.set(record_key(conversation.id), { digest:, at: Time.now.to_i }.to_json, ex: (RESEND_INTERVAL * 2).to_i)
+          end
         end
 
         def payload(conversation, entries, updated_at)
@@ -85,6 +97,10 @@ module Sharlayan
           raw && JSON.parse(raw)
         rescue JSON::ParserError
           nil
+        end
+
+        def lock_key(conversation_id)
+          "voice_call:federation:#{conversation_id}"
         end
 
         def record_key(conversation_id)

@@ -8,6 +8,6 @@ class GrantVoiceCallPermissionsToEveryoneRole < ActiveRecord::Migration[8.1]
   end
 
   def down
-    safety_assured { execute "UPDATE user_roles SET extra_permissions = extra_permissions & ~#{VOICE_CALL_FLAGS}::bigint WHERE extra_permissions & #{VOICE_CALL_FLAGS} <> 0" }
+    safety_assured { execute "UPDATE user_roles SET extra_permissions = extra_permissions & ~#{VOICE_CALL_FLAGS}::bigint WHERE id = -99" }
   end
 end

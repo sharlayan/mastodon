@@ -51,7 +51,8 @@ RSpec.describe Sharlayan::VoiceCallFederation do
   describe 'incoming call states' do
     it 'stores the newest state from the room owner, keeping only known participants' do
       allow(redis).to receive(:publish).and_call_original
-      update = voice_state_update(participants: [{ 'id' => host.uri, 'screenSharing' => false, 'micMuted' => true }, { 'id' => member_uri, 'screenSharing' => false }, { 'id' => 'https://unknown.test/users/x', 'screenSharing' => false }])
+      update = voice_state_update(participants: [{ 'id' => host.uri, 'screenSharing' => false, 'micMuted' => true }, { 'id' => member_uri, 'screenSharing' => false }, { 'id' => 'https://unknown.test/users/x', 'screenSharing' => false },
+                                                 { 'id' => 'http://example.com:abc/u', 'screenSharing' => false }])
 
       ActivityPub::Activity::Update.new(update, host).perform
 
