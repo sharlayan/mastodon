@@ -197,4 +197,27 @@ describe('voice call panel', () => {
       { account_id: 'bob' },
     );
   });
+
+  it('closes the participant options when moving to another room', async () => {
+    api.get.mockResolvedValue({
+      data: [voiceState(), voiceState({ conversation_id: 'other' })],
+    });
+    const view = mount();
+    await settle();
+    fireEvent.click(screen.getByRole('button', { name: 'Options for Bob' }));
+    expect(
+      screen.getByRole('button', { name: 'Mute for everyone' }),
+    ).toBeTruthy();
+
+    view.rerender(
+      <IntlProvider locale='en'>
+        <VoiceCallHeaderButton room={{ ...room, id: 'other' }} enabled />
+        <VoiceCallPanel room={{ ...room, id: 'other' }} enabled />
+      </IntlProvider>,
+    );
+    await settle();
+    expect(
+      screen.queryByRole('button', { name: 'Mute for everyone' }),
+    ).toBeNull();
+  });
 });

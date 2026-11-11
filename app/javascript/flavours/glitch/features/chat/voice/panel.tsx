@@ -759,8 +759,13 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
   const state = useVoiceState(room.id, enabled);
   const call = useVoiceCall();
   const start = useStartVoiceCall();
-  const [selected, setSelected] = useState<string | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selection, setSelection] = useState<{
+    roomId: string;
+    identity: string;
+  } | null>(null);
+  const [settingsRoomId, setSettingsRoomId] = useState<string | null>(null);
+  const selected = selection?.roomId === room.id ? selection.identity : null;
+  const settingsOpen = settingsRoomId === room.id;
   const joined = inThisCall(call, room.id);
   const members = useMemo(
     () => membersOf(state, call, room),
@@ -770,15 +775,22 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
   const handleJoin = useCallback(() => {
     start({ id: room.id, title: room.title });
   }, [room.id, room.title, start]);
-  const handleSelect = useCallback((identity: string) => {
-    setSelected((current) => (current === identity ? null : identity));
-  }, []);
+  const handleSelect = useCallback(
+    (identity: string) => {
+      setSelection((current) =>
+        current?.roomId === room.id && current.identity === identity
+          ? null
+          : { roomId: room.id, identity },
+      );
+    },
+    [room.id],
+  );
   const handleCloseOptions = useCallback(() => {
-    setSelected(null);
+    setSelection(null);
   }, []);
   const handleToggleSettings = useCallback(() => {
-    setSettingsOpen((open) => !open);
-  }, []);
+    setSettingsRoomId((open) => (open === room.id ? null : room.id));
+  }, [room.id]);
   const handleResumeAudio = useCallback(() => {
     void resumeAudio().catch(() => undefined);
   }, []);
