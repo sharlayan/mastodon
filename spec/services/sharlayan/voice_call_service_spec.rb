@@ -9,8 +9,8 @@ RSpec.describe Sharlayan::VoiceCallService do
 
   let(:relay) { FakeVoiceRelay.new.install }
   let!(:provider) { relay.provider }
-  let(:owner) { Fabricate(:account) }
-  let(:member) { Fabricate(:account) }
+  let(:owner) { Fabricate(:user).account }
+  let(:member) { Fabricate(:user).account }
   let(:room) do
     Sharlayan::ChatService.new.create_conversation(owner, type: :group, title: 'Room').tap do |conversation|
       conversation.memberships.create!(account: member, role: :member)
@@ -99,7 +99,12 @@ RSpec.describe Sharlayan::VoiceCallService do
     expect(relay.kicked).to eq [ActivityPub::TagManager.instance.uri_for(stranger)]
     expect(provider.reload.events_cursor).to be_present
     expect(redis).to have_received(:publish).with("timeline:#{owner.id}", a_string_including('chat.voice_state'))
-    expect(described_class.state_for(room)).to include(active: true, available: true, participants: [{ account_id: member.id.to_s, screen_sharing: false, mic_muted: true, deafened: false }])
+    state = described_class.state_for(room)
+    expect(state).to include(active: true, available: true, updated_at: (allocation.updated_at.to_r * 1000).to_i)
+    expect(state[:participants]).to contain_exactly(
+      a_hash_including(identity: ActivityPub::TagManager.instance.uri_for(member), account_id: member.id.to_s, screen_sharing: false, mic_muted: true, deafened: false)
+    )
+    expect(state[:participants].first[:account]).to include(id: member.id.to_s, username: member.username)
   end
 
   it 'removes a participant whose membership ends and lets only the owner moderate' do
@@ -167,6 +172,47 @@ RSpec.describe Sharlayan::VoiceCallService do
     relay.fail_with = nil
     service.maintain
     expect(allocation.reload.state).to eq 'ended'
+  end
+
+  it 'follows role permissions when issuing credentials' do
+    role = Fabricate(:user_role, extra_permissions: UserRole::EXTRA_FLAGS[:join_voice_calls])
+    UserRole.everyone.update!(extra_permissions: 0)
+
+    expect { service.join(member, room) }.to raise_error(described_class::Unavailable)
+
+    member.user.update!(role:)
+    expect(service.join(member, room)).to include(allow_screen_share: false)
+    expect(relay.join_bodies.last).to include('allowScreenShare' => false)
+
+    owner.user.update!(role: Fabricate(:user_role, extra_permissions: UserRole::ExtraFlags::DEFAULT))
+    expect(service.join(owner, room)).to include(allow_screen_share: true)
+
+    Setting.voice_call_screen_share_enabled = false
+    expect(service.join(owner, room)).to include(allow_screen_share: false)
+  ensure
+    Setting.voice_call_screen_share_enabled = true
+  end
+
+  it 'removes participants that lost the voice call or screen share permission' do
+    role = Fabricate(:user_role, extra_permissions: UserRole::EXTRA_FLAGS[:join_voice_calls])
+    service.join(member, room)
+    UserRole.everyone.update!(extra_permissions: 0)
+    member.user.update!(role:)
+    owner.user.update!(role: Fabricate(:user_role, extra_permissions: UserRole::ExtraFlags::DEFAULT))
+
+    relay.participants = [relay.participant(member, allowScreenShare: false), relay.participant(owner, session_id: 'PA_2', screenSharing: true)]
+    service.poll_events(provider)
+    expect(VoiceCallAllocation.find_by!(chat_conversation: room).participants.pluck('user_id')).to contain_exactly(member.id.to_s, owner.id.to_s)
+
+    owner.user.update!(role:)
+    relay.events = [{ 'allocationId' => 'alloc-1', 'generation' => VoiceCallAllocation.find_by!(chat_conversation: room).generation }]
+    service.poll_events(provider)
+    expect(relay.kicked).to eq [ActivityPub::TagManager.instance.uri_for(owner)]
+
+    member.user.update!(disabled: true)
+    service.poll_events(provider)
+    expect(relay.kicked).to include(ActivityPub::TagManager.instance.uri_for(member))
+    expect(VoiceCallAllocation.find_by!(chat_conversation: room).participants).to be_empty
   end
 
   it 'skips a failing relay for a short while and validates status reports' do

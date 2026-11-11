@@ -3,6 +3,19 @@
 require 'rails_helper'
 
 RSpec.describe UserRole do
+  describe 'voice call permissions' do
+    it 'grants them to everyone by default and edits only voice call permissions on everyone' do
+      everyone = described_class.everyone
+      expect(everyone.can_extra?(:join_voice_calls, :share_screens)).to be true
+      expect(described_class::ExtraFlags.categories_for(everyone)).to eq(voice_calls: %i(join_voice_calls share_screens))
+
+      everyone.update!(extra_permissions: described_class::EXTRA_FLAGS[:bypass_rate_limit] | described_class::ExtraFlags::DEFAULT)
+      everyone.extra_permissions_as_keys = %w(join_voice_calls view_admin_timeline)
+      expect(everyone.extra_permissions_as_keys).to contain_exactly('bypass_rate_limit', 'join_voice_calls')
+      expect(described_class::ExtraFlags.categories_for(Fabricate.build(:user_role))).to eq described_class::ExtraFlags::CATEGORIES
+    end
+  end
+
   describe '#rate_limit_for' do
     it 'uses the role override when present and the default when blank' do
       expect(Fabricate.build(:user_role, api_rate_limit: nil).rate_limit_for(:api)).to eq(1_500)

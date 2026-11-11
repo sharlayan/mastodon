@@ -173,5 +173,16 @@ RSpec.describe 'Admin Roles' do
           .to have_http_status(400)
       end
     end
+
+    describe 'PUT /admin/roles/:id for everyone' do
+      it 'shows and updates only the voice call permissions' do
+        get edit_admin_role_path(UserRole.everyone)
+        expect(response.body).to include(I18n.t('admin.roles.extra_privileges.share_screens')).and(not_include(I18n.t('admin.roles.extra_privileges.view_admin_timeline')))
+
+        put admin_role_path(UserRole.everyone), params: { user_role: { permissions_as_keys: %w(invite_users), extra_permissions_as_keys: %w(join_voice_calls) } }
+
+        expect(UserRole.everyone.extra_permissions).to eq UserRole::EXTRA_FLAGS[:join_voice_calls]
+      end
+    end
   end
 end

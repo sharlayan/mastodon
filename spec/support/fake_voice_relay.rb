@@ -5,7 +5,7 @@ class FakeVoiceRelay
 
   BASE = '/voice-relay/v1'
 
-  attr_reader :origin, :allocations, :calls, :kicked
+  attr_reader :origin, :allocations, :calls, :kicked, :join_bodies
   attr_accessor :reserved_slots, :max_slots, :full, :participants, :events, :lease_state, :fail_with, :join_error
 
   def initialize(origin = 'https://voice.example.org', max_slots: 100, reserved_slots: 0)
@@ -15,6 +15,7 @@ class FakeVoiceRelay
     @allocations = {}
     @calls = []
     @kicked = []
+    @join_bodies = []
     @participants = []
     @events = []
     @full = false
@@ -29,7 +30,7 @@ class FakeVoiceRelay
   end
 
   def provider
-    Fabricate(:voice_relay_provider, origin:).tap { |provider| provider.update_columns(validated: true, capacity:) }
+    @provider ||= Fabricate(:voice_relay_provider, origin:).tap { |provider| provider.update_columns(validated: true, capacity:) }
   end
 
   def capacity
@@ -115,6 +116,7 @@ class FakeVoiceRelay
   end
 
   def join(allocation, body)
+    join_bodies << body
     if join_error
       status, code = join_error
       self.join_error = nil

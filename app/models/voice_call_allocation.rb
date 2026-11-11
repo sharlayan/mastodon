@@ -43,10 +43,6 @@ class VoiceCallAllocation < ApplicationRecord
     "/allocations/#{remote_id}#{suffix}"
   end
 
-  def participant_account_ids
-    participants.filter_map { |participant| participant['account_id'] }
-  end
-
   def lock_key
     chat_conversation_id ? "voice_call:#{chat_conversation_id}" : "voice_call_allocation:#{id}"
   end

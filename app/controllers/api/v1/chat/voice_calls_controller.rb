@@ -24,8 +24,9 @@ class Api::V1::Chat::VoiceCallsController < Api::V1::Chat::BaseController
     conversations = ChatConversation.for_account(current_account).where(id: ids).preload(:owner_account, :accounts).to_a
     allocations = VoiceCallAllocation.where(chat_conversation_id: conversations.map(&:id)).index_by(&:chat_conversation_id)
     relay_usable = VoiceRelayProvider.usable.exists?
+    accounts = Sharlayan::VoiceCallService.participant_accounts(allocations.values)
 
-    render json: conversations.map { |conversation| Sharlayan::VoiceCallService.state_for(conversation, allocations[conversation.id], relay_usable:) }
+    render json: conversations.map { |conversation| Sharlayan::VoiceCallService.state_for(conversation, allocations[conversation.id], relay_usable:, accounts:) }
   end
 
   def show

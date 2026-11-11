@@ -49,10 +49,24 @@ class Sharlayan::VoiceCallService
       ENV.fetch('VOICE_SIGNAL_URL') { "wss://#{Rails.configuration.x.web_domain}/voice-signal" }
     end
 
-    def state_for(conversation, allocation = :unset, relay_usable: nil)
+    def permitted?(account, privilege = :join_voice_calls)
+      user = account&.local? && account.user
+      return false unless user&.functional?
+      return false if privilege == :share_screens && !Setting.voice_call_screen_share_enabled
+
+      user.role.can_extra?(:join_voice_calls) && user.role.can_extra?(privilege)
+    end
+
+    def participant_accounts(allocations)
+      ids = Array(allocations).select { |allocation| allocation&.active? }.flat_map { |allocation| allocation.participants.pluck('user_id') }.uniq
+      Account.where(id: ids).index_by { |account| account.id.to_s }
+    end
+
+    def state_for(conversation, allocation = :unset, relay_usable: nil, accounts: nil)
       allocation = VoiceCallAllocation.find_by(chat_conversation_id: conversation.id) if allocation == :unset
       relay_usable = VoiceRelayProvider.usable.exists? if relay_usable.nil?
       participants = allocation&.active? ? allocation.participants : []
+      accounts ||= participant_accounts(allocation)
 
       {
         conversation_id: conversation.id.to_s,
@@ -60,9 +74,15 @@ class Sharlayan::VoiceCallService
         active: participants.any?,
         unavailable: allocation&.active? ? allocation.unavailable? : false,
         max_participants: allocation&.active? ? allocation.slots : slots_for(conversation),
-        participants: participants.map do |participant|
+        updated_at: allocation ? (allocation.updated_at.to_r * 1000).to_i : 0,
+        participants: participants.filter_map do |participant|
+          account = accounts[participant['user_id']]
+          next if account.nil?
+
           {
+            identity: participant['identity'],
             account_id: participant['user_id'],
+            account: REST::AccountSerializer.new(account).as_json,
             screen_sharing: participant['screen_sharing'],
             mic_muted: participant['mic_muted'],
             deafened: participant['deafened'],
@@ -73,7 +93,7 @@ class Sharlayan::VoiceCallService
   end
 
   def join(account, conversation)
-    raise Unavailable unless self.class.joinable?(conversation)
+    raise Unavailable unless self.class.joinable?(conversation) && self.class.permitted?(account)
 
     allocation, credentials = with_redis_lock(conversation_lock_key(conversation.id), autorelease: LOCK_AUTORELEASE) do
       require_member!(conversation, account)
@@ -401,7 +421,7 @@ class Sharlayan::VoiceCallService
   def request_join(allocation, account)
     provider = allocation.voice_relay_provider
     identity = self.class.identity_for(account)
-    allow_screen_share = Setting.voice_call_screen_share_enabled && provider.capacity['allowScreenShare'] != false
+    allow_screen_share = self.class.permitted?(account, :share_screens) && provider.capacity['allowScreenShare'] != false
 
     body = { identity:, userId: account.id.to_s, allowScreenShare: allow_screen_share }
     credentials = Responses.join(provider.client.request(:post, allocation.remote_path('/join'), body), allocation)
@@ -446,14 +466,22 @@ class Sharlayan::VoiceCallService
   end
 
   def admitted_participants(allocation, participants)
-    member_ids = allocation.chat_conversation_id ? admitted_account_ids(allocation.chat_conversation_id) : Set.new
-    admitted, refused = participants.partition { |participant| member_ids.include?(participant['user_id']) }
+    permissions = allocation.chat_conversation_id ? member_permissions(allocation.chat_conversation_id) : {}
+    admitted, refused = participants.partition do |participant|
+      permission = permissions[participant['user_id']]
+      permission && (permission == :share_screens || !(participant['screen_sharing'] || participant['allow_screen_share']))
+    end
     remove_identities(allocation, refused.pluck('identity').uniq) if refused.any?
     admitted
   end
 
-  def admitted_account_ids(conversation_id)
-    ChatMembership.where(chat_conversation_id: conversation_id).joins(:account).merge(Account.without_suspended).pluck(:account_id).to_set(&:to_s)
+  def member_permissions(conversation_id)
+    accounts = Account.local.where(id: ChatMembership.where(chat_conversation_id: conversation_id).select(:account_id)).includes(user: :role)
+    accounts.each_with_object({}) do |account, permissions|
+      next unless self.class.permitted?(account)
+
+      permissions[account.id.to_s] = self.class.permitted?(account, :share_screens) ? :share_screens : :join_voice_calls
+    end
   end
 
   def cooling_down?(provider)

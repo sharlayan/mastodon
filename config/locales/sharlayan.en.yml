@@ -318,12 +318,17 @@ en:
       extra_categories:
         api: API
         moderation: Moderation
+        voice_calls: Voice calls
       extra_privileges:
         bypass_rate_limit: Bypass API rate limits
         bypass_rate_limit_description: When API rate limit bypass is enabled in server
           settings, users with this permission are not subject to API rate limits
         view_admin_timeline: View the management timeline
         view_admin_timeline_description: In OC roleplay mode, allows access to local user conversations and other management-timeline content for moderation
+        join_voice_calls: Join voice calls
+        join_voice_calls_description: Allows users to join voice calls in chat rooms they belong to
+        share_screens: Share screens in voice calls
+        share_screens_description: Allows users to share their screen while in a voice call. Screen sharing also has to be enabled in the server settings
       privileges:
         invite_bypass_approval_description: Allows people invited to the server by
           these users to bypass moderation approval

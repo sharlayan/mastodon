@@ -303,12 +303,17 @@ ko:
       extra_categories:
         api: API
         moderation: 관리
+        voice_calls: 음성 통화
       extra_privileges:
         bypass_rate_limit: API 제한 우회
         bypass_rate_limit_description: 서버 설정에서 API 제한 우회가 활성화된 경우, 이 권한을 가진 사용자는 API
           요청 제한을 받지 않습니다
         view_admin_timeline: 관리 타임라인 열람
         view_admin_timeline_description: 자캐 커뮤니티 모드에서 로컬 사용자간 채팅과 관리 타임라인 콘텐츠를 열람할 수 있습니다
+        join_voice_calls: 음성 통화 참가
+        join_voice_calls_description: 사용자가 속한 채팅방의 음성 통화에 참가할 수 있습니다
+        share_screens: 음성 통화 화면 공유
+        share_screens_description: 음성 통화 중 화면을 공유할 수 있습니다. 서버 설정에서 화면 공유도 켜져 있어야 합니다
       privileges:
         invite_bypass_approval_description: 이 사용자들이 초대한 사람들이 관리자 승인을 거치지 않도록 허용합니다
     settings:

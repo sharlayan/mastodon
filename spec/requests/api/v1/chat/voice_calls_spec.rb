@@ -34,6 +34,9 @@ RSpec.describe 'API V1 Chat voice calls' do
     expect(response.parsed_body).to include('available' => false, 'active' => false)
 
     relay.provider
+    get '/api/v1/chat/settings', headers: headers
+    expect(response.parsed_body).to include('voice_calls' => true, 'voice_call_screen_share' => true)
+
     post "/api/v1/chat/conversations/#{room.id}/voice/join", headers: headers
     expect(response).to have_http_status(200)
     expect(response.parsed_body).to include('url' => 'wss://cb6e6126.ngrok.io/voice-signal', 'token' => "lk-token-#{user.account.id}", 'max_participants' => 10)
@@ -46,6 +49,31 @@ RSpec.describe 'API V1 Chat voice calls' do
 
     post "/api/v1/chat/conversations/#{room.id}/voice/status", params: { session_id: 'PA_1', mic_muted: true, deafened: false }, headers: headers
     expect(response.parsed_body).to eq('accepted' => true)
+  end
+
+  it 'lists call participants with their accounts' do
+    relay.provider
+    post "/api/v1/chat/conversations/#{room.id}/voice/join", headers: headers
+    relay.participants = [relay.participant(user.account)]
+    Sharlayan::VoiceCallService.new.poll_events(relay.provider)
+    get '/api/v1/chat/voice_states', params: { conversation_ids: [room.id] }, headers: headers
+    expect(response.parsed_body.first['participants']).to contain_exactly(a_hash_including('account_id' => user.account.id.to_s, 'account' => a_hash_including('id' => user.account.id.to_s)))
+  end
+
+  it 'refuses accounts whose role does not allow voice calls' do
+    relay.provider
+    UserRole.everyone.update!(extra_permissions: UserRole::EXTRA_FLAGS[:join_voice_calls])
+
+    get '/api/v1/chat/settings', headers: headers
+    expect(response.parsed_body).to include('voice_calls' => true, 'voice_call_screen_share' => false)
+
+    UserRole.everyone.update!(extra_permissions: 0)
+    get '/api/v1/chat/settings', headers: headers
+    expect(response.parsed_body).to include('voice_calls' => false, 'voice_call_screen_share' => false)
+
+    post "/api/v1/chat/conversations/#{room.id}/voice/join", headers: headers
+    expect(response).to have_http_status(422)
+    expect(response.parsed_body).to eq('error' => 'VOICE_CALL_UNAVAILABLE')
   end
 
   it 'maps relay failures and rejects moderation by members' do

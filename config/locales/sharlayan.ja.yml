@@ -301,11 +301,16 @@ ja:
       extra_categories:
         api: API
         moderation: モデレーション
+        voice_calls: 音声通話
       extra_privileges:
         bypass_rate_limit: APIレート制限のバイパス
         bypass_rate_limit_description: サーバー設定でAPIレート制限のバイパスが有効な場合、この権限を持つユーザーはAPIレート制限を受けません
         view_admin_timeline: 管理タイムラインの閲覧
         view_admin_timeline_description: OCロールプレイモードで、ローカル利用者間のチャットと管理タイムラインのコンテンツをモデレーションのため閲覧できます
+        join_voice_calls: 音声通話への参加
+        join_voice_calls_description: 所属するチャットルームの音声通話に参加できます
+        share_screens: 音声通話での画面共有
+        share_screens_description: 音声通話中に画面を共有できます。サーバー設定で画面共有が有効になっている必要もあります
       privileges:
         invite_bypass_approval_description: これらの利用者が招待した人が、モデレーターの承認を経ずに登録できるようにします
     settings:

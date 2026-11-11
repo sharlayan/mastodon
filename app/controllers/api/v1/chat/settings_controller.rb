@@ -38,8 +38,15 @@ class Api::V1::Chat::SettingsController < Api::V1::Chat::BaseController
       delete_window_hours: Setting.chat_delete_window_hours,
       soft_delete: RoleplayModeHelper.roleplay_mode? || Setting.chat_soft_delete_enabled,
       room_deletion: Sharlayan::ChatService.room_deletion_enabled?,
-      voice_calls: Sharlayan::VoiceCallService.enabled? && VoiceRelayProvider.usable.exists?,
+      voice_calls: voice_calls_permitted?,
+      voice_call_screen_share: voice_calls_permitted? && Sharlayan::VoiceCallService.permitted?(current_account, :share_screens),
     }
+  end
+
+  def voice_calls_permitted?
+    return @voice_calls_permitted if defined?(@voice_calls_permitted)
+
+    @voice_calls_permitted = Sharlayan::VoiceCallService.enabled? && Sharlayan::VoiceCallService.permitted?(current_account) && VoiceRelayProvider.usable.exists?
   end
 
   def boolean_param(key)
