@@ -12,7 +12,7 @@ class VoiceCallEventsWorker
     provider = VoiceRelayProvider.find_by(id: provider_id)
     return if provider.nil?
 
-    active = with_redis_lock("voice_call_events:#{provider_id}", autorelease: 1.minute, raise_on_failure: false) do
+    active = with_redis_lock("voice_call_events:#{provider_id}", autorelease: 2.minutes, raise_on_failure: false) do
       Sharlayan::VoiceCallService.new.poll_events(provider)
     end
 

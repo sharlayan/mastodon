@@ -5,7 +5,7 @@ class FakeVoiceRelay
 
   BASE = '/voice-relay/v1'
 
-  attr_reader :origin, :allocations, :calls, :kicked, :restricted, :join_bodies
+  attr_reader :origin, :allocations, :calls, :kicked, :restricted, :join_bodies, :cancelled
   attr_accessor :reserved_slots, :max_slots, :full, :participants, :events, :lease_state, :fail_with, :join_error
 
   def initialize(origin = 'https://voice.example.org', max_slots: 100, reserved_slots: 0)
@@ -17,6 +17,7 @@ class FakeVoiceRelay
     @kicked = []
     @restricted = []
     @join_bodies = []
+    @cancelled = []
     @participants = []
     @events = []
     @full = false
@@ -108,6 +109,7 @@ class FakeVoiceRelay
 
   def allocate(body)
     return json({ code: 'CAPACITY_EXCEEDED' }, status: 429) if full
+    return json({ code: 'ALLOCATION_CONFLICT' }, status: 409) if cancelled.include?(body['generation'])
 
     existing = allocations.values.find { |value| value['roomKey'] == body['roomKey'] && value['generation'] == body['generation'] }
     return json(existing) if existing

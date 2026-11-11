@@ -16,6 +16,7 @@ class Sharlayan::VoiceCallService
   SNAPSHOT_REFRESH_AFTER = 60.seconds
   LOCK_AUTORELEASE = 2.minutes
   RELAY_BUDGET = 45.seconds
+  POLL_BUDGET = 30.seconds
   ENDED_RETENTION = 7.days
   PROVIDER_COOLDOWN = 10.seconds
   REMOVAL_BLOCK = 10.minutes
@@ -159,6 +160,7 @@ class Sharlayan::VoiceCallService
 
     allocation, credentials = with_room_lock(conversation_lock_key(conversation.id)) do
       require_member!(conversation, account)
+      raise Unavailable unless self.class.available?(conversation.reload)
       raise Removed if removed_from_call?(conversation, account)
 
       allocation = ensure_allocation(conversation)
@@ -267,8 +269,14 @@ class Sharlayan::VoiceCallService
     return true if feed.nil?
 
     failed = false
+    deadline = POLL_BUDGET.from_now
     allocations.each do |allocation|
       next unless feed[:gap] || refresh_due?(allocation) || feed[:touched].include?([allocation.remote_id, allocation.generation])
+
+      if Time.now.utc >= deadline
+        failed = true
+        break
+      end
 
       with_room_lock(allocation.lock_key) do
         allocation.reload
@@ -292,8 +300,12 @@ class Sharlayan::VoiceCallService
     cursor = provider.events_cursor.presence
     Responses.events(provider.client.request(:get, cursor ? "/events?#{URI.encode_www_form(cursor:)}" : '/events'))
   rescue Error => e
-    record_provider_error(provider, e)
-    VoiceCallAllocation.where(id: allocations.map(&:id)).update_all(unavailable: true)
+    if cursor && e.code == 'FORBIDDEN'
+      provider.update_columns(events_cursor: nil)
+    else
+      record_provider_error(provider, e)
+      VoiceCallAllocation.where(id: allocations.map(&:id)).update_all(unavailable: true)
+    end
     nil
   end
 
@@ -383,7 +395,7 @@ class Sharlayan::VoiceCallService
       begin
         reserve(allocation, fresh: false)
       rescue Error => e
-        raise unless %w(CAPACITY_EXCEEDED ALLOCATION_ENDED).include?(e.code)
+        raise unless %w(CAPACITY_EXCEEDED ALLOCATION_ENDED ALLOCATION_CONFLICT CLIENT_DISABLED).include?(e.code)
 
         terminate_pending(allocation) unless allocation.ended?
       end

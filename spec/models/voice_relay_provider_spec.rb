@@ -54,8 +54,9 @@ RSpec.describe VoiceRelayProvider do
     expect { provider.check! }.to raise_error(Sharlayan::VoiceRelay::Error)
     expect(provider.reload).to have_attributes(validated: false, last_error: 'UNAUTHORIZED', revoked?: true)
 
+    provider.update_columns(events_cursor: 'client:5')
     provider.update!(secret: 'n' * 40)
-    expect(provider.reload).to have_attributes(validated: false, capacity: {}, revoked_at: nil)
+    expect(provider.reload).to have_attributes(validated: false, capacity: {}, revoked_at: nil, events_cursor: nil)
   end
 
   it 'keeps a relay with open calls from being deleted or moved, but allows it once the calls ended' do

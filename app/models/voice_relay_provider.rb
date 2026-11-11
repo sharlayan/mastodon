@@ -103,6 +103,7 @@ class VoiceRelayProvider < ApplicationRecord
     self.last_error = nil
     self.last_checked_at = nil
     self.revoked_at = nil
+    self.events_cursor = nil
   end
 
   def validate_origin

@@ -60,6 +60,9 @@ RSpec.describe Sharlayan::VoiceCallService do
     room.update!(archived_at: Time.now.utc)
     expect { service.join(member, room) }.to raise_error(described_class::Unavailable)
     room.update!(archived_at: nil)
+    ChatConversation.where(id: room.id).update_all(archived_at: Time.now.utc)
+    expect { service.join(member, room) }.to raise_error(described_class::Unavailable)
+    room.reload.update!(archived_at: nil)
 
     relay.full = true
     expect { service.join(member, room) }.to raise_error(Sharlayan::VoiceRelay::Error) { |error| expect(error.code).to eq 'CAPACITY_EXCEEDED' }
@@ -84,6 +87,21 @@ RSpec.describe Sharlayan::VoiceCallService do
     service.join(member, room)
     expect(allocation.reload).to have_attributes(state: 'active', remote_id: 'alloc-9')
     expect(relay.called?(:get, '/allocations')).to be true
+  end
+
+  it 'replaces a pending reservation the relay already cancelled and restarts an event feed the relay no longer knows' do
+    service.join(member, room)
+    allocation = VoiceCallAllocation.find_by!(chat_conversation: room)
+    allocation.update!(state: 'pending', generation: 'cancelled-generation', remote_id: nil)
+    relay.cancelled << 'cancelled-generation'
+    service.join(member, room)
+    expect(allocation.reload.state).to eq 'active'
+    expect(allocation.generation).to_not eq 'cancelled-generation'
+
+    provider.update_columns(events_cursor: 'old-client:5')
+    relay.fail_with = [403, { code: 'FORBIDDEN' }]
+    service.poll_events(provider)
+    expect(provider.reload).to have_attributes(events_cursor: nil, validated: true, revoked?: false)
   end
 
   it 'refreshes participants from the event feed, removes non-members and broadcasts the state' do
