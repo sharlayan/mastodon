@@ -174,6 +174,11 @@ interface PeerTransport {
   _pc?: RTCPeerConnection;
 }
 
+interface ResumableEngine {
+  token: string;
+  handleDisconnect: (connection: string) => void;
+}
+
 const refreshIceServers = async (refresh: IceRefresh) => {
   if (iceRefresh !== refresh || current !== refresh.room || refresh.inFlight)
     return;
@@ -203,13 +208,15 @@ const refreshIceServers = async (refresh: IceRefresh) => {
       }
       engine.rtcConfig.iceServers = iceServers;
     }
+    const resumable = engine as unknown as ResumableEngine;
     if (changed || state.status === 'reconnecting')
-      (engine as unknown as { token: string }).token = credentials.token;
+      resumable.token = credentials.token;
     if (changed) {
       const manager = engine.pcManager;
       if (state.status === 'reconnecting' && manager)
         await manager.triggerIceRestart();
-      else if (state.status === 'connected') engine.reconnect();
+      else if (state.status === 'connected')
+        resumable.handleDisconnect('ice-refresh');
       refresh.iceServers = iceServers;
     }
     refresh.lastSuccess = Date.now();

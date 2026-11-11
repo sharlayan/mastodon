@@ -192,6 +192,43 @@ describe('voice call engine', () => {
     );
   });
 
+  it('resumes the session instead of rejoining when TURN credentials change', async () => {
+    vi.useFakeTimers();
+    try {
+      const call = await import('../call');
+      await call.connectVoiceCall({ id: '5', title: 'Room' }, credentials);
+      const room = rooms[0] as unknown as FakeRoomShape & {
+        engine: Record<string, unknown>;
+      };
+      const handleDisconnect = vi.fn();
+      const reconnect = vi.fn();
+      Object.assign(room.engine, { handleDisconnect, reconnect });
+      const refreshed = {
+        ...credentials,
+        token: 'lk-token-2',
+        ice_servers: [
+          {
+            urls: ['turn:turn.example.org:3478'],
+            username: 'u2',
+            credential: 'c2',
+          },
+        ],
+      };
+      api.post.mockResolvedValue({ data: refreshed });
+
+      await vi.advanceTimersByTimeAsync(6 * 60 * 60 * 1000);
+
+      expect(handleDisconnect).toHaveBeenCalledTimes(1);
+      expect(reconnect).not.toHaveBeenCalled();
+      expect(room.engine).toMatchObject({
+        token: 'lk-token-2',
+        rtcConfig: { iceServers: refreshed.ice_servers },
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('keeps watching a screen share across a reconnection', async () => {
     const call = await import('../call');
     await call.connectVoiceCall({ id: '5', title: 'Room' }, credentials);
