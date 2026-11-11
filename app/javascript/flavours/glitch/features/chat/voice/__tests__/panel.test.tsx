@@ -266,8 +266,15 @@ describe('voice call panel', () => {
     );
   });
 
-  it('lets you watch your own screen share like anyone else, also in full screen on iOS', async () => {
+  it('lets you watch your own screen share, in full screen also on iOS and in picture in picture only when enabled', async () => {
     api.get.mockResolvedValue({ data: [voiceState()] });
+    Object.defineProperty(document, 'pictureInPictureEnabled', {
+      configurable: true,
+      value: false,
+    });
+    onTestFinished(() => {
+      Reflect.deleteProperty(document, 'pictureInPictureEnabled');
+    });
     fakeCall.set(inCall({ screenSharing: true }));
     const view = mount();
     await settle();
@@ -286,6 +293,10 @@ describe('voice call panel', () => {
     expect(stage?.querySelectorAll('video')).toHaveLength(1);
     const video = stage?.querySelector('video');
     expect(video?.muted).toBe(true);
+
+    expect(
+      screen.queryByRole('button', { name: 'Picture in picture' }),
+    ).toBeNull();
 
     const webkitEnterFullscreen = vi.fn();
     Object.assign(video ?? {}, { webkitEnterFullscreen });

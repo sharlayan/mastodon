@@ -247,7 +247,8 @@ const ScreenStage: FC<{ identity: string; member: CallMember | undefined }> = ({
     unwatchScreenShare(identity);
   }, [identity]);
   const pictureInPicture =
-    typeof document !== 'undefined' && 'pictureInPictureEnabled' in document;
+    typeof document !== 'undefined' &&
+    document.pictureInPictureEnabled;
 
   return (
     <div className='chat-voice__screen' ref={frame}>
