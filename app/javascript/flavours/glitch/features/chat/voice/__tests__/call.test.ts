@@ -171,6 +171,34 @@ describe('voice call engine', () => {
     expect(action.payload.message.id).toBe('chat.voice.ended.removed');
   });
 
+  it('follows screen share permission changes from the server', async () => {
+    const call = await import('../call');
+    await call.connectVoiceCall({ id: '5', title: 'Room' }, credentials);
+    await flush();
+    const room = rooms[0];
+    if (room == null) throw new Error('no room');
+
+    Object.assign(room.localParticipant, {
+      permissions: { canPublishSources: [2] },
+    });
+    room.emit(
+      'ParticipantPermissionsChanged',
+      undefined,
+      room.localParticipant,
+    );
+    expect(call.voiceCallSnapshot().allowScreenShare).toBe(false);
+
+    Object.assign(room.localParticipant, {
+      permissions: { canPublishSources: [2, 3, 4] },
+    });
+    room.emit(
+      'ParticipantPermissionsChanged',
+      undefined,
+      room.localParticipant,
+    );
+    expect(call.voiceCallSnapshot().allowScreenShare).toBe(true);
+  });
+
   it('leaves without a notice and ignores a failed connection after leaving', async () => {
     const call = await import('../call');
     await call.connectVoiceCall({ id: '5', title: 'Room' }, credentials);

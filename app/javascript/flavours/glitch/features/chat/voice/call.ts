@@ -459,6 +459,7 @@ const SCREEN_SHARE_PREVIEW_LAYER = {
 } as const;
 
 const SCREEN_SHARE_PICKER_MIN_MS = 250;
+const SCREEN_SHARE_SOURCE = 3;
 
 const captureOptions = (): LK.AudioCaptureOptions => {
   const preferences = voicePreferences();
@@ -788,6 +789,24 @@ const bindRoomEvents = (lk: LiveKit, room: LK.Room) => {
         stopLocalMeter?.();
         reportStatus(room);
       }
+    },
+  );
+
+  room.on(
+    RoomEvent.ParticipantPermissionsChanged,
+    (_previous: unknown, participant: LK.Participant) => {
+      if (!isCurrent() || participant !== room.localParticipant) return;
+      const sources: readonly number[] =
+        participant.permissions?.canPublishSources ?? [];
+      const allowed =
+        sources.length === 0 || sources.includes(SCREEN_SHARE_SOURCE);
+      if (allowed === state.allowScreenShare) return;
+      setState({ allowScreenShare: allowed });
+      if (
+        !allowed &&
+        (state.screenSharing || pendingScreenShare?.room === room)
+      )
+        void stopScreenShare().catch(() => undefined);
     },
   );
 

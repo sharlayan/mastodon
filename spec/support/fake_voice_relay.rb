@@ -5,7 +5,7 @@ class FakeVoiceRelay
 
   BASE = '/voice-relay/v1'
 
-  attr_reader :origin, :allocations, :calls, :kicked, :join_bodies
+  attr_reader :origin, :allocations, :calls, :kicked, :restricted, :join_bodies
   attr_accessor :reserved_slots, :max_slots, :full, :participants, :events, :lease_state, :fail_with, :join_error
 
   def initialize(origin = 'https://voice.example.org', max_slots: 100, reserved_slots: 0)
@@ -15,6 +15,7 @@ class FakeVoiceRelay
     @allocations = {}
     @calls = []
     @kicked = []
+    @restricted = []
     @join_bodies = []
     @participants = []
     @events = []
@@ -91,7 +92,11 @@ class FakeVoiceRelay
       kicked << body['identity']
       participants.reject! { |participant| participant['identity'] == body['identity'] }
       json({ accepted: true })
-    in [:post, '/participants/mute' | '/participants/status' | '/participants/permissions'] then json({ accepted: true })
+    in [:post, '/participants/permissions']
+      restricted << body['identity'] unless body['allowScreenShare']
+      participants.each { |participant| participant.merge!('allowScreenShare' => false, 'screenSharing' => false) if participant['identity'] == body['identity'] && !body['allowScreenShare'] }
+      json({ accepted: true })
+    in [:post, '/participants/mute' | '/participants/status'] then json({ accepted: true })
     else json({ code: 'NOT_FOUND' }, status: 404)
     end
   end

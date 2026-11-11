@@ -193,7 +193,7 @@ RSpec.describe Sharlayan::VoiceCallService do
     Setting.voice_call_screen_share_enabled = true
   end
 
-  it 'removes participants that lost the voice call or screen share permission' do
+  it 'removes participants that lost the voice call permission and stops screen sharing for those that lost that permission' do
     role = Fabricate(:user_role, extra_permissions: UserRole::EXTRA_FLAGS[:join_voice_calls])
     service.join(member, room)
     UserRole.everyone.update!(extra_permissions: 0)
@@ -207,12 +207,15 @@ RSpec.describe Sharlayan::VoiceCallService do
     owner.user.update!(role:)
     relay.events = [{ 'allocationId' => 'alloc-1', 'generation' => VoiceCallAllocation.find_by!(chat_conversation: room).generation }]
     service.poll_events(provider)
-    expect(relay.kicked).to eq [ActivityPub::TagManager.instance.uri_for(owner)]
+    expect(relay.kicked).to be_empty
+    expect(relay.restricted).to eq [ActivityPub::TagManager.instance.uri_for(owner)]
+    expect(VoiceCallAllocation.find_by!(chat_conversation: room).participants.find { |participant| participant['user_id'] == owner.id.to_s })
+      .to include('screen_sharing' => false, 'allow_screen_share' => false)
 
     member.user.update!(disabled: true)
     service.poll_events(provider)
-    expect(relay.kicked).to include(ActivityPub::TagManager.instance.uri_for(member))
-    expect(VoiceCallAllocation.find_by!(chat_conversation: room).participants).to be_empty
+    expect(relay.kicked).to eq [ActivityPub::TagManager.instance.uri_for(member)]
+    expect(VoiceCallAllocation.find_by!(chat_conversation: room).participants.pluck('user_id')).to eq [owner.id.to_s]
   end
 
   it 'admits members from other servers only while this server provides calls to them' do

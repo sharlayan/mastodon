@@ -509,7 +509,7 @@ class Sharlayan::VoiceCallService
   def request_join(allocation, account, screen_share: true)
     provider = allocation.voice_relay_provider
     identity = self.class.identity_for(account)
-    allow_screen_share = screen_share && self.class.permitted?(account, :share_screens) && provider.capacity['allowScreenShare'] != false
+    allow_screen_share = screen_share && self.class.permitted?(account, :share_screens) && provider.capacity['allowScreenShare'] == true
 
     body = { identity:, userId: account.id.to_s, allowScreenShare: allow_screen_share }
     credentials = Responses.join(provider.client.request(:post, allocation.remote_path('/join'), body), allocation)
@@ -555,12 +555,34 @@ class Sharlayan::VoiceCallService
 
   def admitted_participants(allocation, participants)
     permissions = allocation.chat_conversation_id ? member_permissions(allocation.chat_conversation_id) : {}
-    admitted, refused = participants.partition do |participant|
+    refused = []
+    restricted = {}
+
+    admitted = participants.filter_map do |participant|
       permission = permissions[participant['user_id']]
-      permission && (permission == :share_screens || !(participant['screen_sharing'] || participant['allow_screen_share']))
+      if permission.nil?
+        refused << participant['identity']
+        nil
+      elsif permission == :share_screens || !(participant['screen_sharing'] || participant['allow_screen_share'])
+        participant
+      else
+        identity = participant['identity']
+        restricted[identity] = restrict_screen_share(allocation, identity) unless restricted.key?(identity)
+        participant.merge('screen_sharing' => false, 'allow_screen_share' => false) if restricted[identity]
+      end
     end
-    remove_identities(allocation, refused.pluck('identity').uniq) if refused.any?
+
+    remove_identities(allocation, refused.uniq) if refused.any?
     admitted
+  end
+
+  def restrict_screen_share(allocation, identity)
+    Responses.accepted(participant_request(allocation, 'permissions', identity:, allowScreenShare: false))
+  rescue Error => e
+    raise unless e.code == 'NOT_FOUND'
+
+    remove_identities(allocation, [identity])
+    false
   end
 
   def member_permissions(conversation_id)
