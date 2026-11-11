@@ -7,6 +7,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 import type { ChangeEvent, FC } from 'react';
+import { flushSync } from 'react-dom';
 
 import { useIntl } from 'react-intl';
 
@@ -260,7 +261,19 @@ const ScreenStage: FC<{
     void element.requestPictureInPicture().catch(() => undefined);
   }, []);
   const handleClose = useCallback(() => {
-    unwatchScreenShare(identity);
+    const root = frame.current;
+    const panel = root?.closest<HTMLElement>('.chat-voice');
+    const neighbour =
+      root?.nextElementSibling ?? root?.previousElementSibling ?? null;
+    flushSync(() => {
+      unwatchScreenShare(identity);
+    });
+    const toggle = [
+      ...(panel?.querySelectorAll<HTMLElement>('[data-voice-watch-toggle]') ??
+        []),
+    ].find((element) => element.dataset.voiceWatchToggle === identity);
+    const target = toggle ?? neighbour?.querySelector<HTMLElement>('button');
+    target?.focus({ preventScroll: true });
   }, [identity]);
   const handleToggleFocus = useCallback(() => {
     onToggleFocus(identity);
@@ -356,6 +369,7 @@ const MemberTile: FC<{
             watching ? voiceMessages.stopWatching : voiceMessages.watch,
           )}
           aria-pressed={watching}
+          data-voice-watch-toggle={member.identity}
           onClick={handleWatch}
         >
           <ScreenVideo identity={member.identity} preview />

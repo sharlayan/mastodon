@@ -176,7 +176,7 @@ describe('voice call panel', () => {
     fakeCall.set(null);
     engine.connectVoiceCall.mockClear();
     engine.toggleScreenShareWatch.mockClear();
-    engine.unwatchScreenShare.mockClear();
+    engine.unwatchScreenShare.mockReset();
     api.post.mockReset().mockResolvedValue({ data: credentials });
   });
 
@@ -362,6 +362,42 @@ describe('voice call panel', () => {
       );
     });
     expect(stage?.classList).not.toContain('chat-voice__stage--focus');
+  });
+
+  it('moves the focus to the next screen or back to the sharer after closing a screen', async () => {
+    api.get.mockResolvedValue({ data: [voiceState()] });
+    const watchingBoth = inCall({
+      screenSharing: true,
+      watchingIdentities: [bobIdentity, selfIdentity],
+    });
+    fakeCall.set(watchingBoth);
+    engine.unwatchScreenShare.mockImplementation((identity: string) => {
+      fakeCall.set({
+        ...watchingBoth,
+        watchingIdentities: watchingBoth.watchingIdentities.filter(
+          (item) => item !== identity,
+        ),
+      });
+    });
+    const view = mount();
+    await settle();
+    const closeButtons = () => [
+      ...view.container.querySelectorAll<HTMLButtonElement>(
+        '.chat-voice__stage button[title="Stop watching"]',
+      ),
+    ];
+
+    fireEvent.click(closeButtons()[0] as HTMLElement);
+    expect(document.activeElement?.getAttribute('title')).toBe('Full screen');
+    expect(document.activeElement?.closest('.chat-voice__screen')).toBeTruthy();
+
+    act(() => {
+      fakeCall.set(watchingBoth);
+    });
+    fireEvent.click(closeButtons()[1] as HTMLElement);
+    expect(
+      document.activeElement?.getAttribute('data-voice-watch-toggle'),
+    ).toBe(selfIdentity);
   });
 
   it('closes the participant options when moving to another room', async () => {
