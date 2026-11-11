@@ -10,6 +10,8 @@ on:
   pull_request:
     paths:
       - voice_signal/**
+      - .dockerignore
+      - .github/workflows/build-container-image.yml
       - .github/workflows/test-voice-signal.yml
 
 permissions:
@@ -28,3 +30,14 @@ jobs:
 
       - name: Test
         run: dotnet test voice_signal/VoiceSignal.slnx --no-build
+
+  build-image:
+    if: github.event_name == 'pull_request'
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-image
+      cancel-in-progress: true
+
+    uses: ./.github/workflows/build-container-image.yml
+    with:
+      file_to_build: voice_signal/Dockerfile
+      cache: true
