@@ -267,7 +267,7 @@ describe('voice call panel', () => {
     );
   });
 
-  it('lets you watch your own screen share, in full screen also on iOS and in picture in picture only when enabled', async () => {
+  it('shows the call server and lets you watch your own screen share, in full screen also on iOS and in picture in picture only when enabled', async () => {
     api.get.mockResolvedValue({ data: [voiceState()] });
     Object.defineProperty(document, 'pictureInPictureEnabled', {
       configurable: true,
@@ -279,6 +279,8 @@ describe('voice call panel', () => {
     fakeCall.set(inCall({ screenSharing: true }));
     const view = mount();
     await settle();
+
+    expect(screen.getByText('Call server: voice.example.org')).toBeTruthy();
 
     const previews = screen.getAllByRole('button', { name: 'Watch screen' });
     expect(previews).toHaveLength(1);

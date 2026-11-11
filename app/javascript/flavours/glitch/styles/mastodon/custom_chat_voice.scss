@@ -54,6 +54,12 @@
     font-weight: 400;
   }
 
+  &__provider {
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 400;
+  }
+
   &__members {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));

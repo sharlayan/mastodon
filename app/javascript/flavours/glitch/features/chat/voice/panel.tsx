@@ -68,7 +68,7 @@ import {
   useVoicePreferences,
 } from './preferences';
 import type { ScreenShareQuality } from './preferences';
-import { useStartVoiceCall } from './start';
+import { hostOf, useStartVoiceCall } from './start';
 import { useVoiceState } from './states';
 
 export interface VoiceRoom {
@@ -923,6 +923,13 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
             : intl.formatMessage(voiceMessages.inCall, {
                 count: members.length,
               })}
+          {joined && call.mediaProvider && (
+            <span className='chat-voice__provider'>
+              {intl.formatMessage(voiceMessages.mediaProvider, {
+                host: hostOf(call.mediaProvider),
+              })}
+            </span>
+          )}
           {state?.unavailable && (
             <span className='chat-voice__warning'>
               {intl.formatMessage(voiceMessages.callUnavailableNow)}

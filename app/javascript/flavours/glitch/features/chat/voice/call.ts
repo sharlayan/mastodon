@@ -939,6 +939,15 @@ const disconnectCurrentRoom = async () => {
 
 export const prepareVoiceCall = () => loadLiveKit();
 
+const mediaProviderOf = (credentials: VoiceCredentials) => {
+  if (credentials.media_provider) return credentials.media_provider;
+  try {
+    return new URL(credentials.url).origin;
+  } catch {
+    return null;
+  }
+};
+
 export const connectVoiceCall = async (
   conversation: VoiceCallConversation,
   credentials: VoiceCredentials,
@@ -955,7 +964,7 @@ export const connectVoiceCall = async (
     status: 'connecting',
     conversation,
     identity: credentials.identity,
-    mediaProvider: credentials.media_provider,
+    mediaProvider: mediaProviderOf(credentials),
     allowScreenShare: credentials.allow_screen_share,
   });
 

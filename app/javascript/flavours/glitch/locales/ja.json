@@ -41,6 +41,7 @@
   "chat.voice.media_notice.confirm": "通話に参加",
   "chat.voice.media_notice.message": "このサーバーの通話は{host}が中継します。通話中はそのサーバーにあなたのIPアドレスが見えます。",
   "chat.voice.media_notice.title": "通話サーバーに接続しますか？",
+  "chat.voice.media_provider": "通話サーバー: {host}",
   "chat.voice.mic_muted": "マイクオフ",
   "chat.voice.mute_mic": "マイクをオフ",
   "chat.voice.noise_suppression": "ノイズ抑制",

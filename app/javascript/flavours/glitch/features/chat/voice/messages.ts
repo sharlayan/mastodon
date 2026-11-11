@@ -127,6 +127,10 @@ export const voiceMessages = defineMessages({
     defaultMessage: 'Share audio with the screen',
   },
   close: { id: 'chat.voice.close', defaultMessage: 'Close' },
+  mediaProvider: {
+    id: 'chat.voice.media_provider',
+    defaultMessage: 'Call server: {host}',
+  },
   mediaNoticeTitle: {
     id: 'chat.voice.media_notice.title',
     defaultMessage: 'Connect to the call server?',

@@ -116,7 +116,7 @@ describe('voice call engine', () => {
     window.localStorage.clear();
   });
 
-  it('connects with the relay ICE servers, opens the microphone and reports the status', async () => {
+  it('connects with the relay ICE servers, opens the microphone, reports the status and names the call server', async () => {
     const call = await import('../call');
 
     await call.connectVoiceCall({ id: '5', title: 'Room' }, credentials);
@@ -134,6 +134,7 @@ describe('voice call engine', () => {
     expect(call.voiceCallSnapshot()).toMatchObject({
       status: 'connected',
       conversation: { id: '5', title: 'Room' },
+      mediaProvider: 'https://voice.example.org',
       micEnabled: true,
       allowScreenShare: true,
     });
@@ -141,6 +142,15 @@ describe('voice call engine', () => {
       '/api/v1/chat/conversations/5/voice/status',
       { session_id: 'PA_local', mic_muted: false, deafened: false },
     );
+
+    await call.connectVoiceCall(
+      { id: '6', title: 'Other' },
+      {
+        ...credentials,
+        media_provider: '',
+      },
+    );
+    expect(call.voiceCallSnapshot().mediaProvider).toBe('wss://example.com');
   });
 
   it('turns the microphone off with the sound and remembers the choice', async () => {

@@ -41,6 +41,7 @@
   "chat.voice.media_notice.confirm": "Join call",
   "chat.voice.media_notice.message": "Calls on this server are carried by {host}. Your IP address will be visible to that server while you are in a call.",
   "chat.voice.media_notice.title": "Connect to the call server?",
+  "chat.voice.media_provider": "Call server: {host}",
   "chat.voice.mic_muted": "Microphone muted",
   "chat.voice.mute_mic": "Mute microphone",
   "chat.voice.noise_suppression": "Noise suppression",

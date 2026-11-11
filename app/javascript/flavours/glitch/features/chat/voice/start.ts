@@ -30,7 +30,7 @@ const needsMediaNotice = (credentials: VoiceCredentials) => {
   );
 };
 
-const hostOf = (origin: string) => {
+export const hostOf = (origin: string) => {
   try {
     return new URL(origin).host;
   } catch {
