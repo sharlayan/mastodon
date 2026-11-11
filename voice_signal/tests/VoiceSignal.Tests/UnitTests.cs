@@ -104,7 +104,11 @@ public class TokenHintTests
     public void ReadsTheAllocationFromLiveKitMetadata()
     {
         Assert.True(TokenHint.TryParse(LiveKitToken(new { clientId = "c", allocationId = "alloc-1", generation = "g-1", userId = "1" }), out var hint));
-        Assert.Equal(new TokenHint("alloc-1", "g-1"), hint);
+        Assert.Equal(new TokenHint("alloc-1", "g-1", 1), hint);
+
+        Assert.False(TokenHint.TryParse(LiveKitToken(new { allocationId = "alloc-1", generation = "g-1" }), out _));
+        Assert.False(TokenHint.TryParse(LiveKitToken(new { allocationId = "alloc-1", generation = "g-1", userId = "01" }), out _));
+        Assert.False(TokenHint.TryParse(LiveKitToken(new { allocationId = "alloc-1", generation = "g-1", userId = 1 }), out _));
 
         Assert.False(TokenHint.TryParse(LiveKitToken(new { allocationId = "../x", generation = "g" }), out _));
         Assert.False(TokenHint.TryParse(LiveKitToken(new { allocationId = "a" }), out _));

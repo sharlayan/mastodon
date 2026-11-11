@@ -52,9 +52,11 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         }
 
         Upstream? upstream;
+        bool admitted;
         try
         {
             upstream = await resolver.ResolveAsync(hint, context.RequestAborted);
+            admitted = upstream is not null && await resolver.IsAdmittedAsync(hint, context.RequestAborted);
         }
         catch (DbException exception)
         {
@@ -66,6 +68,12 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         if (upstream is null || !TryBuildTarget(upstream, rtc, out var target))
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
+        if (!admitted)
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
             return;
         }
 
