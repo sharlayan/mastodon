@@ -171,6 +171,27 @@ describe('voice call engine', () => {
     expect(action.payload.message.id).toBe('chat.voice.ended.removed');
   });
 
+  it('applies changed voice processing settings to the open microphone', async () => {
+    const call = await import('../call');
+    const preferences = await import('../preferences');
+    await call.connectVoiceCall({ id: '5', title: 'Room' }, credentials);
+    await flush();
+    const room = rooms[0];
+    if (room == null) throw new Error('no room');
+
+    const restartTrack = vi.fn(() => Promise.resolve());
+    const track = { kind: 'audio', restartTrack, on: vi.fn(), off: vi.fn() };
+    Object.assign(room.localParticipant, {
+      getTrackPublication: () => ({ track }),
+    });
+    preferences.updateVoicePreferences({ noiseSuppression: false });
+    await call.restartMicrophone();
+
+    expect(restartTrack).toHaveBeenCalledWith(
+      expect.objectContaining({ noiseSuppression: false }),
+    );
+  });
+
   it('follows screen share permission changes from the server', async () => {
     const call = await import('../call');
     await call.connectVoiceCall({ id: '5', title: 'Room' }, credentials);

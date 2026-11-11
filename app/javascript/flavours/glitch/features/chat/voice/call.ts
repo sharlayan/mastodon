@@ -471,6 +471,25 @@ const captureOptions = (): LK.AudioCaptureOptions => {
   };
 };
 
+const processingOf = (options: LK.AudioCaptureOptions) =>
+  JSON.stringify([
+    options.echoCancellation,
+    options.noiseSuppression,
+    options.autoGainControl,
+  ]);
+
+let microphoneProcessing: string | null = null;
+
+const microphoneTrackOf = (room: LK.Room) => {
+  if (livekit == null) return undefined;
+  const track = room.localParticipant.getTrackPublication(
+    livekit.Track.Source.Microphone,
+  )?.track;
+  return track?.kind === livekit.Track.Kind.Audio
+    ? (track as LK.LocalAudioTrack)
+    : undefined;
+};
+
 const volumeOf = (identity: string, audio: ParticipantAudio) =>
   state.deafened ? 0 : participantVolume(identity, audio);
 
@@ -505,7 +524,13 @@ const enableMicrophone = async (
   undeafenAt: number | null = null,
 ) => {
   try {
-    await room.localParticipant.setMicrophoneEnabled(true, captureOptions());
+    const options = captureOptions();
+    const existing = microphoneTrackOf(room);
+    await room.localParticipant.setMicrophoneEnabled(true, options);
+    if (current !== room) return;
+    if (existing != null && microphoneProcessing !== processingOf(options))
+      await existing.restartTrack(options);
+    microphoneProcessing = processingOf(options);
     if (current !== room) return;
     setState({ micEnabled: true });
     if (undeafenAt != null && undeafenAt === deafenRevision && state.deafened) {
@@ -968,8 +993,11 @@ export const setMicEnabled = async (enabled: boolean) => {
 export const restartMicrophone = async () => {
   const room = current;
   if (room == null || !state.micEnabled) return;
-  await disableMicrophone(room);
-  if (current === room && !state.deafened) await enableMicrophone(room);
+  const track = microphoneTrackOf(room);
+  if (track == null) return;
+  const options = captureOptions();
+  await track.restartTrack(options);
+  microphoneProcessing = processingOf(options);
 };
 
 export const setDeafened = (deafened: boolean) => {
