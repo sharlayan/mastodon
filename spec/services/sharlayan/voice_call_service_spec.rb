@@ -218,6 +218,19 @@ RSpec.describe Sharlayan::VoiceCallService do
     expect(VoiceCallAllocation.find_by!(chat_conversation: room).participants.pluck('user_id')).to eq [owner.id.to_s]
   end
 
+  it 'looks up the default role and domain blocks once per room when checking participants' do
+    others = Array.new(5) { Fabricate(:user).account }
+    guests = Array.new(3) { |index| Fabricate(:account, domain: 'remote.test', username: "guest#{index}") }
+    (others + guests).each { |account| room.memberships.create!(account:, role: :member) }
+    queries = []
+    callback = ->(*, payload) { queries << payload[:sql] unless payload[:cached] }
+
+    ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') { service.send(:member_permissions, room.id) }
+
+    expect(queries.grep(/FROM "user_roles"/).size).to be <= 1
+    expect(queries.grep(/FROM "domain_blocks"/).size).to be <= 1
+  end
+
   it 'admits members from other servers only while this server provides calls to them' do
     guest = Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/guest', inbox_url: 'https://remote.test/users/guest/inbox')
     room.memberships.create!(account: guest, role: :member)

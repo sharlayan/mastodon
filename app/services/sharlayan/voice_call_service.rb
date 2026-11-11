@@ -68,7 +68,7 @@ class Sharlayan::VoiceCallService
 
     def participant_accounts(records)
       ids = Array(records).flat_map { |record| participants_of(record) }.pluck('user_id').uniq
-      Account.where(id: ids).index_by { |account| account.id.to_s }
+      Account.where(id: ids).includes(:account_stat, :user).index_by { |account| account.id.to_s }
     end
 
     def participants_of(record)
@@ -586,11 +586,13 @@ class Sharlayan::VoiceCallService
   end
 
   def member_permissions(conversation_id)
-    accounts = Account.where(id: ChatMembership.where(chat_conversation_id: conversation_id).select(:account_id)).includes(user: :role)
-    accounts.each_with_object({}) do |account, permissions|
-      next unless self.class.permitted?(account)
+    ActiveRecord::Base.cache do
+      accounts = Account.where(id: ChatMembership.where(chat_conversation_id: conversation_id).select(:account_id)).includes(user: :role)
+      accounts.each_with_object({}) do |account, permissions|
+        next unless self.class.permitted?(account)
 
-      permissions[account.id.to_s] = self.class.permitted?(account, :share_screens) ? :share_screens : :join_voice_calls
+        permissions[account.id.to_s] = self.class.permitted?(account, :share_screens) ? :share_screens : :join_voice_calls
+      end
     end
   end
 
