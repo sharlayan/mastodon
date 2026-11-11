@@ -1,0 +1,48 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+ENV['BUNDLE_GEMFILE'] ||= File.expand_path('../Gemfile', __dir__)
+require 'bundler/setup'
+require 'optparse'
+require_relative '../lib/voice_signal/launcher'
+require_relative '../lib/voice_signal/build'
+
+root = File.expand_path('..', __dir__)
+mode = 'auto'
+force = false
+
+parser = OptionParser.new do |options|
+  options.banner = <<~BANNER
+    Usage: bin/voice-signal COMMAND [options]
+
+    Commands:
+      build      Build voice_signal/publish/VoiceSignal (uses dotnet, or the .NET SDK container when dotnet is missing)
+      command    Print the command that would run the voice signal service
+      run        Run the voice signal service in the foreground (for a dedicated systemd service)
+
+    Options:
+  BANNER
+  options.on('--mode MODE', VoiceSignal::Launcher::MODES, "auto, binary or docker (default: #{mode})") { |value| mode = value }
+  options.on('--force', 'Run even though VOICE_SIGNAL_SPAWN asks Puma to run the service') { force = true }
+end
+
+action = ARGV.shift
+parser.parse!(ARGV)
+
+begin
+  case action
+  when 'build'
+    puts VoiceSignal::Build.new(root:).run!
+  when 'command', 'run'
+    environment = VoiceSignal::Launcher.environment_for(root)
+    abort 'VOICE_SIGNAL_SPAWN is set, so Puma starts the voice signal service. Unset it before running the service separately, or pass --force.' if action == 'run' && !force && VoiceSignal::Launcher.spawn_mode(environment)
+
+    launcher = VoiceSignal::Launcher.new(root:, environment:, mode:, supervised: false)
+    action == 'run' ? launcher.exec! : puts(launcher.command.join(' '))
+  else
+    warn parser.help
+    exit 64
+  end
+rescue VoiceSignal::Launcher::ConfigurationError, VoiceSignal::Build::Error => e
+  abort "voice-signal: #{e.message}"
+end

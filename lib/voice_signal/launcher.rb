@@ -33,24 +33,28 @@ module VoiceSignal
       merged.merge(env.to_h)
     end
 
+    def self.spawn_mode(environment)
+      mode = environment['VOICE_SIGNAL_SPAWN'].to_s.strip.downcase
+      mode.empty? || %w(false 0 off no).include?(mode) ? nil : mode
+    end
+
     def self.from_environment(root:, env: ENV, log: ->(message) { warn(message) })
       environment = environment_for(root, env)
-      mode = environment['VOICE_SIGNAL_SPAWN'].to_s.strip.downcase
-      return if mode.empty? || %w(false 0 off no).include?(mode)
+      mode = spawn_mode(environment)
+      return if mode.nil?
 
       new(root:, environment:, mode:, log:)
     end
 
-    def initialize(root:, environment:, mode:, log: ->(message) { warn(message) })
-      raise ConfigurationError, "VOICE_SIGNAL_SPAWN must be one of #{MODES.join(', ')}" unless MODES.include?(mode)
+    def initialize(root:, environment:, mode:, supervised: true, log: ->(message) { warn(message) })
+      raise ConfigurationError, "The voice signal mode must be one of #{MODES.join(', ')}" unless MODES.include?(mode)
 
       @root = root
       @mode = mode
+      @supervised = supervised
       @log = log
-      @environment = environment.merge(
-        'VOICE_SIGNAL_EXIT_ON_STDIN_EOF' => '1',
-        'VOICE_SIGNAL_BIND' => environment['VOICE_SIGNAL_BIND'].to_s.empty? ? '127.0.0.1' : environment['VOICE_SIGNAL_BIND']
-      )
+      @environment = environment.merge('VOICE_SIGNAL_BIND' => environment['VOICE_SIGNAL_BIND'].to_s.empty? ? '127.0.0.1' : environment['VOICE_SIGNAL_BIND'])
+      @environment['VOICE_SIGNAL_EXIT_ON_STDIN_EOF'] = supervised ? '1' : nil
       @mutex = Mutex.new
       @wakeup = ConditionVariable.new
       @stopping = false
@@ -60,10 +64,15 @@ module VoiceSignal
 
     def command
       @command ||= case mode
-                   when 'binary' then binary_command || raise(ConfigurationError, 'No voice signal build found; run `bin/rails voice_signal:publish` or set VOICE_SIGNAL_BINARY')
+                   when 'binary' then binary_command || raise(ConfigurationError, 'No voice signal build found; run `bin/voice-signal build` or set VOICE_SIGNAL_BINARY')
                    when 'docker' then docker_command || raise(ConfigurationError, 'The docker command is not available')
                    else binary_command || docker_command || raise(ConfigurationError, 'Neither a voice signal build nor docker is available')
                    end
+    end
+
+    def exec!
+      remove_stale_container if docker?
+      Kernel.exec(@environment, *command, chdir: @root)
     end
 
     def start
@@ -191,10 +200,10 @@ module VoiceSignal
       image = @environment['VOICE_SIGNAL_IMAGE'].to_s.empty? ? DEFAULT_IMAGE : @environment['VOICE_SIGNAL_IMAGE']
 
       [
-        docker_executable, 'run', '--rm', '--interactive', '--name', container_name, "--pull=#{pull}",
+        docker_executable, 'run', '--rm', *('--interactive' if @supervised), '--name', container_name, "--pull=#{pull}",
         '--network', 'host', '--user', "#{Process.uid}:#{Process.gid}",
         *socket_volumes.flat_map { |path| ['--volume', "#{path}:#{path}"] },
-        *FORWARDED_VARIABLES.select { |name| @environment.key?(name) }.flat_map { |name| ['--env', name] },
+        *FORWARDED_VARIABLES.select { |name| @environment[name] }.flat_map { |name| ['--env', name] },
         image
       ]
     end

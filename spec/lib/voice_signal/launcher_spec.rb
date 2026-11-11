@@ -73,6 +73,18 @@ RSpec.describe VoiceSignal::Launcher do
     expect(launcher('binary', VOICE_SIGNAL_BINARY: dll).command).to eq [dotnet, dll]
   end
 
+  it 'runs as a dedicated service without the parent watch' do
+    executable(File.join(bin, 'docker'))
+
+    service = described_class.new(root:, environment: { 'PATH' => bin, 'VOICE_SIGNAL_EXIT_ON_STDIN_EOF' => '1' }, mode: 'docker', supervised: false, log: quiet)
+    expect(service.environment['VOICE_SIGNAL_EXIT_ON_STDIN_EOF']).to be_nil
+    expect(service.command).to_not include('--interactive', 'VOICE_SIGNAL_EXIT_ON_STDIN_EOF')
+    expect(launcher('docker').command).to include('--interactive', 'VOICE_SIGNAL_EXIT_ON_STDIN_EOF')
+
+    expect(described_class.spawn_mode('VOICE_SIGNAL_SPAWN' => ' Auto ')).to eq 'auto'
+    expect(described_class.spawn_mode('VOICE_SIGNAL_SPAWN' => 'off')).to be_nil
+  end
+
   it 'refuses modes whose runtime is missing' do
     expect { launcher('binary').command }.to raise_error(described_class::ConfigurationError)
     expect { launcher('docker').command }.to raise_error(described_class::ConfigurationError)
