@@ -31,7 +31,7 @@ RSpec.describe Sharlayan::VoiceCallService do
     Setting.voice_call_max_participants = 10
   end
 
-  it 'reserves the room on the least loaded relay and issues credentials for members' do
+  it 'reserves the room on the least loaded relay and issues credentials for members without unsafe ICE servers' do
     busy = FakeVoiceRelay.new('https://busy.example.org', reserved_slots: 90).install
     busy.provider
 
@@ -49,9 +49,12 @@ RSpec.describe Sharlayan::VoiceCallService do
     expect(allocation).to have_attributes(voice_relay_provider: provider, state: 'active', slots: 6, room_key: "https://cb6e6126.ngrok.io/chat/rooms/#{room.id}", remote_id: 'alloc-1')
     expect(VoiceCallEventsWorker).to have_enqueued_sidekiq_job(provider.id)
 
-    service.join(owner, room)
+    relay.ice_servers = [{ urls: ['turn:10.0.0.1:3478'], username: 'u', credential: 'c' }]
+    expect(service.join(owner, room)).to include(token: "lk-token-#{owner.id}", ice_servers: [])
     expect(relay.allocations.size).to eq 1
     expect(relay.called?(:post, '/allocations/alloc-1/lease')).to be true
+    relay.ice_servers = nil
+    expect(service.join(owner, room)).to include(ice_servers: nil)
   end
 
   it 'refuses non-members, unavailable rooms and full relays' do

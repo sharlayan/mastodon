@@ -8,9 +8,6 @@ module Sharlayan
       MAX_TOKEN_LENGTH = 16_384
       MAX_EVENTS = 100
       MAX_CURSOR_LENGTH = 256
-      MAX_ICE_SERVERS = 16
-      MAX_ICE_URLS = 16
-      ICE_CREDENTIAL_KEYS = %w(username credential).freeze
       PARTICIPANT_TEXT_KEYS = %w(identity userId sessionId).freeze
 
       module_function
@@ -42,28 +39,13 @@ module Sharlayan
         {
           token: value['token'],
           media_provider: value['mediaProvider'],
-          ice_servers: ice_servers(value['iceServers']),
+          ice_servers: value.key?('iceServers') && value['iceServers'].nil? ? nil : ice_servers(value['iceServers']) || [],
           screen_share_limits: limits,
         }
       end
 
       def ice_servers(value)
-        return nil if value.nil?
-        raise invalid unless value.is_a?(Array) && value.size <= MAX_ICE_SERVERS
-
-        value.map do |server|
-          raise invalid unless server.is_a?(Hash) && server['urls'].is_a?(Array) && server['urls'].size.between?(1, MAX_ICE_URLS)
-          raise invalid unless server['urls'].all? { |url| url.is_a?(String) && url.length <= 2048 && /\A(stuns?|turns?):/i.match?(url) }
-
-          entry = { urls: server['urls'] }
-          ICE_CREDENTIAL_KEYS.each do |key|
-            next if server[key].nil?
-            raise invalid unless server[key].is_a?(String) && server[key].length <= 2048
-
-            entry[key.to_sym] = server[key]
-          end
-          entry
-        end
+        IceServers.parse(value)
       end
 
       def snapshot(value, allocation)
