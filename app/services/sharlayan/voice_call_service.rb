@@ -37,7 +37,11 @@ class Sharlayan::VoiceCallService
     end
 
     def joinable?(conversation)
-      available?(conversation) && VoiceRelayProvider.usable.exists?
+      available?(conversation) && (VoiceRelayProvider.usable.exists? || VoiceCallAllocation.active.exists?(chat_conversation_id: conversation.id))
+    end
+
+    def relay_enabled?
+      VoiceRelayProvider.usable.exists? || VoiceCallAllocation.active.where.not(chat_conversation_id: nil).exists?
     end
 
     def slots_for(conversation)
@@ -95,7 +99,7 @@ class Sharlayan::VoiceCallService
 
       {
         conversation_id: conversation.id.to_s,
-        available: relay_usable && available?(conversation),
+        available: (relay_usable || allocation&.active? || false) && available?(conversation),
         active: participants.any?,
         unavailable: allocation&.active? ? allocation.unavailable? : false,
         max_participants: allocation&.active? ? allocation.slots : slots_for(conversation),
