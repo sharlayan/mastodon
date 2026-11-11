@@ -252,6 +252,28 @@ public sealed class ProxyTests : IAsyncLifetime
         }
     }
 
+    [Fact]
+    public async Task ClosesOpenCallsWhenStopping()
+    {
+        var options = new SignalOptions
+        {
+            BasePath = "/voice-signal",
+            LocalOrigin = "https://social.example",
+            SecretKeyBase = SecretKeyBase,
+            ConnectionString = string.Empty,
+            AllowInsecureUpstream = true,
+        };
+        var stopping = SignalApp.Build(options, new FakeResolver(upstreamOrigin), "http://127.0.0.1:0");
+        await stopping.StartAsync();
+
+        using var socket = new ClientWebSocket();
+        await socket.ConnectAsync(new Uri($"{stopping.Urls.First().TrimEnd('/').Replace("http", "ws")}/voice-signal/rtc?access_token={Token("alloc-1")}"), CancellationToken.None);
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        await stopping.StopAsync();
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(10), $"stopping took {watch.Elapsed}");
+    }
+
     private sealed class FakeResolver(string origin) : IAllocationResolver
     {
         public Task<string?> ResolveRemoteOriginAsync(long sessionId, TokenClaims claims, CancellationToken cancellationToken) =>

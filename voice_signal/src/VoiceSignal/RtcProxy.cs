@@ -8,9 +8,10 @@ using Microsoft.AspNetCore.Http.Features;
 
 namespace VoiceSignal;
 
-public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver, IHttpClientFactory httpClientFactory, ILogger<RtcProxy> logger)
+public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver, IHttpClientFactory httpClientFactory, IHostApplicationLifetime lifetime, ILogger<RtcProxy> logger)
 {
     public const string HttpClientName = "relay";
+    public const string RemoteSignalPath = "/livekit";
     public const int MaxMessageBytes = 1024 * 1024;
 
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(10);
@@ -242,7 +243,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         target = null!;
 
         if (!TryParseOrigin(remoteOrigin, out var origin)
-            || !Uri.TryCreate($"{origin.GetLeftPart(UriPartial.Authority)}{options.FederationPath}{rtc.Suffix}", UriKind.Absolute, out var built)
+            || !Uri.TryCreate($"{origin.GetLeftPart(UriPartial.Authority)}{RemoteSignalPath}{rtc.Suffix}", UriKind.Absolute, out var built)
             || built.GetLeftPart(UriPartial.Authority) != origin.GetLeftPart(UriPartial.Authority))
         {
             return false;
@@ -408,18 +409,18 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         }
 
         using var downstream = await context.WebSockets.AcceptWebSocketAsync(new WebSocketAcceptContext { KeepAliveInterval = KeepAliveInterval, KeepAliveTimeout = KeepAliveTimeout });
-        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
+        using var session = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, lifetime.ApplicationStopping);
 
-        var toUpstream = PumpAsync(downstream, upstream, lifetime.Token);
-        var toDownstream = PumpAsync(upstream, downstream, lifetime.Token);
+        var toUpstream = PumpAsync(downstream, upstream, session.Token);
+        var toDownstream = PumpAsync(upstream, downstream, session.Token);
 
         var finished = await Task.WhenAny(toUpstream, toDownstream);
-        if (finished.IsCompletedSuccessfully)
+        if (finished.IsCompletedSuccessfully && !session.IsCancellationRequested)
         {
             await Task.WhenAny(finished == toUpstream ? toDownstream : toUpstream, Task.Delay(CloseTimeout));
         }
 
-        await lifetime.CancelAsync();
+        await session.CancelAsync();
 
         Abort(upstream);
         Abort(downstream);
