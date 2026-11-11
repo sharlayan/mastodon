@@ -134,8 +134,7 @@ public class SignalOptionsTests
 
         Assert.Equal("https://web.example", options.LocalOrigin);
         Assert.Equal("/voice-signal", options.BasePath);
-        Assert.Equal("/livekit", options.FederationPath);
-        Assert.Throws<InvalidOperationException>(() => SignalOptions.FromEnvironment(Environment(("WEB_DOMAIN", "web.example"), ("VOICE_SIGNAL_FEDERATION_PATH", "/voice-signal"))));
+        Assert.Throws<InvalidOperationException>(() => SignalOptions.FromEnvironment(Environment(("WEB_DOMAIN", "web.example"), ("VOICE_SIGNAL_PATH", "/livekit"))));
         Assert.Equal(("localhost", 5432, "mastodon_production", "mastodon"), (connection.Host, connection.Port, connection.Database, connection.Username));
         Assert.Equal(("127.0.0.1", 4100), (options.BindAddress, options.Port));
         Assert.False(options.ExitOnStdinEof);

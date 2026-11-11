@@ -230,6 +230,13 @@ public sealed class ProxyTests : IAsyncLifetime
             await Assert.ThrowsAsync<WebSocketException>(() => second.ConnectAsync(new Uri($"{address}/voice-signal/rtc?access_token={Token("alloc-1")}"), CancellationToken.None));
             Assert.Equal(HttpStatusCode.ServiceUnavailable, second.HttpStatusCode);
 
+            using var federated = new ClientWebSocket();
+            await federated.ConnectAsync(new Uri($"{address}/livekit/rtc?access_token={Token("alloc-1")}"), CancellationToken.None);
+            using var federatedAgain = new ClientWebSocket();
+            await federatedAgain.ConnectAsync(new Uri($"{address}/livekit/rtc?access_token={Token("alloc-1")}"), CancellationToken.None);
+            await federated.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+            await federatedAgain.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+
             await first.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
             for (var attempt = 0; ; attempt++)
             {
@@ -245,6 +252,41 @@ public sealed class ProxyTests : IAsyncLifetime
                     await Task.Delay(100);
                 }
             }
+        }
+        finally
+        {
+            await limited.StopAsync();
+        }
+    }
+
+    [Fact]
+    public async Task RateLimitsClientsBehindTrustedProxiesByNetwork()
+    {
+        var options = new SignalOptions
+        {
+            BasePath = "/voice-signal",
+            LocalOrigin = "https://social.example",
+            SecretKeyBase = SecretKeyBase,
+            ConnectionString = string.Empty,
+            AllowInsecureUpstream = true,
+            UpgradesPerMinute = 1,
+            TrustedProxies = [IPNetwork.Parse("10.0.0.0/8")],
+        };
+        var limited = SignalApp.Build(options, new FakeResolver(upstreamOrigin), "http://127.0.0.1:0");
+        await limited.StartAsync();
+        try
+        {
+            using var client = new HttpClient();
+            async Task<HttpStatusCode> From(string forwardedFor)
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, $"{limited.Urls.First().TrimEnd('/')}/voice-signal/rtc?access_token=invalid");
+                request.Headers.Add("X-Forwarded-For", forwardedFor);
+                return (await client.SendAsync(request)).StatusCode;
+            }
+
+            Assert.Equal(HttpStatusCode.Unauthorized, await From("2001:db8::1, 10.0.0.1"));
+            Assert.Equal(HttpStatusCode.TooManyRequests, await From("2001:db8::2, 10.0.0.1"));
+            Assert.Equal(HttpStatusCode.Unauthorized, await From("2001:db8:1::1, 10.0.0.1"));
         }
         finally
         {

@@ -27,10 +27,16 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
     public async Task HandleAsync(HttpContext context)
     {
         var rawTarget = context.Features.Get<IHttpRequestFeature>()?.RawTarget ?? string.Empty;
-        if (!RtcRequest.TryParse(rawTarget, options.BasePath, out var rtc) && !RtcRequest.TryParse(rawTarget, options.FederationPath, out rtc))
+        var federation = false;
+        if (!RtcRequest.TryParse(rawTarget, options.BasePath, out var rtc))
         {
-            context.Response.StatusCode = StatusCodes.Status404NotFound;
-            return;
+            if (!RtcRequest.TryParse(rawTarget, SignalOptions.FederationPath, out rtc))
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                return;
+            }
+
+            federation = true;
         }
 
         if (!HttpMethods.IsGet(context.Request.Method))
@@ -75,8 +81,8 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
             return;
         }
 
-        var address = AddressKey(context);
-        if (!TryAcquire(address))
+        var address = AddressKey(context, federation);
+        if (!TryAcquire(address, federation ? SignalOptions.FederationConnectionsPerAddress : options.MaxConnectionsPerAddress))
         {
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
             return;
@@ -138,8 +144,8 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
             return;
         }
 
-        var address = AddressKey(context);
-        if (!TryAcquire(address))
+        var address = AddressKey(context, false);
+        if (!TryAcquire(address, options.MaxConnectionsPerAddress))
         {
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
             return;
@@ -186,9 +192,17 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         return true;
     }
 
-    private static string AddressKey(HttpContext context)
+    public static bool IsFederationPath(PathString path) =>
+        path.StartsWithSegments(SignalOptions.FederationPath);
+
+    public static string AddressKey(HttpContext context, bool federation)
     {
-        var address = context.Connection.RemoteIpAddress;
+        var key = AddressKey(context.Connection.RemoteIpAddress);
+        return federation ? $"federation:{key}" : key;
+    }
+
+    private static string AddressKey(IPAddress? address)
+    {
         if (address is null)
         {
             return string.Empty;
@@ -209,14 +223,14 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         return new IPAddress(bytes).ToString();
     }
 
-    private bool TryAcquire(string address)
+    private bool TryAcquire(string address, int perAddress)
     {
         if (!connections.Wait(0))
         {
             return false;
         }
 
-        if (addressConnections.AddOrUpdate(address, 1, (_, count) => count + 1) <= options.MaxConnectionsPerAddress)
+        if (addressConnections.AddOrUpdate(address, 1, (_, count) => count + 1) <= perAddress)
         {
             return true;
         }

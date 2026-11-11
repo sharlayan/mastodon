@@ -7,7 +7,9 @@ namespace VoiceSignal;
 public sealed class SignalOptions
 {
     public required string BasePath { get; init; }
-    public string FederationPath { get; init; } = "/livekit";
+    public const string FederationPath = "/livekit";
+    public const int FederationConnectionsPerAddress = 100;
+    public const int FederationUpgradesPerMinute = 600;
     public string RemotePath => $"{BasePath}/remote";
     public required string LocalOrigin { get; init; }
     public required string SecretKeyBase { get; init; }
@@ -29,16 +31,14 @@ public sealed class SignalOptions
         var secretKeyBase = Get("SECRET_KEY_BASE") ?? throw new InvalidOperationException("SECRET_KEY_BASE is required");
 
         var basePath = NormalizeBasePath(Get("VOICE_SIGNAL_PATH") ?? "/voice-signal");
-        var federationPath = NormalizeBasePath(Get("VOICE_SIGNAL_FEDERATION_PATH") ?? "/livekit");
-        if (federationPath == basePath)
+        if (basePath == FederationPath)
         {
-            throw new InvalidOperationException("VOICE_SIGNAL_FEDERATION_PATH must differ from VOICE_SIGNAL_PATH");
+            throw new InvalidOperationException($"VOICE_SIGNAL_PATH must differ from {FederationPath}");
         }
 
         return new SignalOptions
         {
             BasePath = basePath,
-            FederationPath = federationPath,
             LocalOrigin = $"https://{domain.ToLowerInvariant().TrimEnd('.')}",
             SecretKeyBase = secretKeyBase,
             ConnectionString = BuildConnectionString(Get),

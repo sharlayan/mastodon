@@ -42,6 +42,7 @@ public static class SignalApp
         builder.Services.Configure<ForwardedHeadersOptions>(forwarded =>
         {
             forwarded.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            forwarded.ForwardLimit = null;
             foreach (var network in options.TrustedProxies)
             {
                 forwarded.KnownIPNetworks.Add(network);
@@ -54,11 +55,18 @@ public static class SignalApp
         {
             limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             limiter.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-                context.Request.Path == healthPath
-                    ? RateLimitPartition.GetNoLimiter(string.Empty)
-                    : RateLimitPartition.GetFixedWindowLimiter(
-                        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                        _ => new FixedWindowRateLimiterOptions { PermitLimit = options.UpgradesPerMinute, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+            {
+                if (context.Request.Path == healthPath)
+                {
+                    return RateLimitPartition.GetNoLimiter(string.Empty);
+                }
+
+                var federation = RtcProxy.IsFederationPath(context.Request.Path);
+                var permits = federation ? SignalOptions.FederationUpgradesPerMinute : options.UpgradesPerMinute;
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    RtcProxy.AddressKey(context, federation),
+                    _ => new FixedWindowRateLimiterOptions { PermitLimit = permits, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 });
+            });
         });
 
         var app = builder.Build();
@@ -78,8 +86,8 @@ public static class SignalApp
         app.Map($"{options.BasePath}/rtc/{{**rest}}", (HttpContext context, RtcProxy proxy) => proxy.HandleAsync(context));
         app.Map($"{options.RemotePath}/{{session}}/rtc", (HttpContext context, RtcProxy proxy) => proxy.HandleRemoteAsync(context));
         app.Map($"{options.RemotePath}/{{session}}/rtc/{{**rest}}", (HttpContext context, RtcProxy proxy) => proxy.HandleRemoteAsync(context));
-        app.Map($"{options.FederationPath}/rtc", (HttpContext context, RtcProxy proxy) => proxy.HandleAsync(context));
-        app.Map($"{options.FederationPath}/rtc/{{**rest}}", (HttpContext context, RtcProxy proxy) => proxy.HandleAsync(context));
+        app.Map($"{SignalOptions.FederationPath}/rtc", (HttpContext context, RtcProxy proxy) => proxy.HandleAsync(context));
+        app.Map($"{SignalOptions.FederationPath}/rtc/{{**rest}}", (HttpContext context, RtcProxy proxy) => proxy.HandleAsync(context));
 
         return app;
     }
