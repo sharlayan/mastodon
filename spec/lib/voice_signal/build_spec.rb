@@ -21,7 +21,7 @@ RSpec.describe VoiceSignal::Build do
   end
 
   it 'publishes a self-contained executable with dotnet, or inside the official SDK container without it' do
-    publish = ['--configuration', 'Release', '--runtime', 'linux-x64', '--self-contained', '--output', 'voice_signal/publish', '-p:PublishSingleFile=true', '-p:DebugType=none']
+    publish = ['--configuration', 'Release', '--runtime', 'linux-x64', '--self-contained', '--output', 'voice_signal/publish.new', '-p:PublishSingleFile=true', '-p:DebugType=none']
 
     docker = executable('docker')
     expect(build.command).to eq [
@@ -40,5 +40,22 @@ RSpec.describe VoiceSignal::Build do
     expect(build(cpu: 'x86_64', musl: true).runtime).to eq 'linux-musl-x64'
     expect { build(cpu: 'riscv64').runtime }.to raise_error(described_class::Error)
     expect { build.command }.to raise_error(described_class::Error)
+  end
+
+  it 'keeps the previous executable when a build fails and replaces it only after a successful build' do
+    publish = File.join(root, 'voice_signal', 'publish').tap { |path| FileUtils.mkdir_p(path) }
+    File.write(File.join(publish, 'VoiceSignal'), 'previous')
+    dotnet = File.join(bin, 'dotnet')
+
+    File.write(dotnet, "#!/bin/sh\nexit 1\n")
+    File.chmod(0o755, dotnet)
+    expect { build.run! }.to raise_error(described_class::Error)
+    expect(File.read(File.join(publish, 'VoiceSignal'))).to eq 'previous'
+
+    File.write(dotnet, "#!/bin/sh\nmkdir -p voice_signal/publish.new\nprintf new > voice_signal/publish.new/VoiceSignal\nchmod 755 voice_signal/publish.new/VoiceSignal\ntouch voice_signal/publish.new/VoiceSignal.staticwebassets.endpoints.json\n")
+    expect(build.run!).to eq File.join(publish, 'VoiceSignal')
+    expect(File.read(File.join(publish, 'VoiceSignal'))).to eq 'new'
+    expect(Dir.children(File.join(root, 'voice_signal'))).to contain_exactly('publish')
+    expect(Dir.children(publish)).to eq ['VoiceSignal']
   end
 end

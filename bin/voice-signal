@@ -27,7 +27,11 @@ parser = OptionParser.new do |options|
 end
 
 action = ARGV.shift
-parser.parse!(ARGV)
+begin
+  parser.parse!(ARGV)
+rescue OptionParser::ParseError => e
+  abort "voice-signal: #{e.message}"
+end
 
 begin
   case action

@@ -26,6 +26,10 @@ module VoiceSignal
       File.join(@root, 'voice_signal', 'publish')
     end
 
+    def staging
+      "#{output}.new"
+    end
+
     def command
       dotnet = find_executable('dotnet')
       return [dotnet, *publish_arguments('voice_signal')] if dotnet
@@ -43,20 +47,33 @@ module VoiceSignal
 
     def run!
       build_command = command
-      FileUtils.rm_rf(output)
+      FileUtils.rm_rf(staging)
       Dir.chdir(@root) { system(*build_command, exception: true) }
-      FileUtils.rm_f(Dir[File.join(output, '*.json')])
+      FileUtils.rm_f(Dir[File.join(staging, '*.json')])
+      raise Error, 'The build did not produce an executable' unless File.executable?(File.join(staging, 'VoiceSignal'))
+
+      replace_output
       File.join(output, 'VoiceSignal')
     rescue RuntimeError, SystemCallError => e
       raise Error, e.message
+    ensure
+      FileUtils.rm_rf(staging)
     end
 
     private
 
+    def replace_output
+      previous = "#{output}.old"
+      FileUtils.rm_rf(previous)
+      File.rename(output, previous) if File.exist?(output)
+      File.rename(staging, output)
+      FileUtils.rm_rf(previous)
+    end
+
     def publish_arguments(base)
       [
         'publish', File.join(base, 'src', 'VoiceSignal', 'VoiceSignal.csproj'),
-        '--configuration', 'Release', '--runtime', runtime, '--self-contained', '--output', File.join(base, 'publish'),
+        '--configuration', 'Release', '--runtime', runtime, '--self-contained', '--output', File.join(base, 'publish.new'),
         '-p:PublishSingleFile=true', '-p:DebugType=none'
       ]
     end

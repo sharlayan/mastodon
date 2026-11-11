@@ -67,6 +67,7 @@ sudo util/source-install/configure-1cpu-1gb.sh database-check
 
 Chat 음성 통화에서 브라우저의 LiveKit 시그널링 연결을 외부 음성 릴레이로 중계하는 .NET 10
 서비스(`voice_signal/`)를 빌드하고, 실행 방식을 등록·점검합니다.
+`source-install/` 도우미와 같이 POSIX `sh`(Debian dash, Alpine BusyBox ash)로 실행되며 bash가 필요하지 않습니다.
 
 ### 실행 방식
 
@@ -101,6 +102,8 @@ RAILS_ENV=production bin/voice-signal build   # 결과: voice_signal/publish/Voi
   빌드합니다.
 - 호스트 CPU에 맞춰 `linux-x64`·`linux-arm64`(Alpine은 `linux-musl-*`)로 빌드합니다.
 - 코드를 갱신하면 다시 빌드해야 합니다. `voice_signal/publish/`는 git에서 제외됩니다.
+- `voice_signal/publish.new/`에 빌드한 뒤 성공했을 때만 기존 실행 파일과 바꾸므로, 빌드가 실패해도 실행 중인
+  서비스의 실행 파일은 그대로 남습니다.
 
 컨테이너 이미지는 Microsoft 공식 이미지(`sdk:10.0`에서 빌드, `aspnet:10.0`에서 실행)를 기반으로 합니다.
 

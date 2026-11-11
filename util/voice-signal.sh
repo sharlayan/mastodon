@@ -1,10 +1,10 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 PROGRAM="${0##*/}"
 COMMAND="${1:-help}"
 
-APP_DIR="${APP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+APP_DIR="${APP_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 APP_USER="${APP_USER:-$(stat -c %U "$APP_DIR")}"
 APP_GROUP="${APP_GROUP:-$(id -gn "$APP_USER")}"
 ENV_SOURCE="${ENV_SOURCE:-${APP_DIR}/.env.production}"
@@ -96,10 +96,16 @@ run() {
 }
 
 as_app_user() {
-  if [ "$(id -u)" -eq 0 ] && [ "$APP_USER" != root ]; then
-    runuser -u "$APP_USER" -- "$@"
-  else
+  local home
+  if [ "$(id -u)" -ne 0 ] || [ "$APP_USER" = root ]; then
     "$@"
+    return
+  fi
+  home="$(getent passwd "$APP_USER" | cut -d: -f6)"
+  if command -v runuser >/dev/null 2>&1; then
+    runuser -u "$APP_USER" -- env HOME="$home" "$@"
+  else
+    su "$APP_USER" -s /bin/sh -c "HOME=\"\$0\" exec \"\$@\"" "$home" "$@"
   fi
 }
 
@@ -116,7 +122,7 @@ bundle_bin() {
 
 env_value() {
   [ -r "$ENV_SOURCE" ] || return 0
-  sed -n "s/^[[:space:]]*\(export[[:space:]]\+\)\?$1=//p" "$ENV_SOURCE" | tail -n 1 | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/"
+  sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?$1=//p" "$ENV_SOURCE" | tail -n 1 | sed -E -e 's/^"(.*)"$/\1/' -e "s/^'(.*)'$/\1/"
 }
 
 spawn_mode() {
@@ -311,8 +317,8 @@ check() {
 
 edit_env() {
   local key="$1" value="${2:-}" backup tmp pattern
-  pattern="^[[:space:]]*\(export[[:space:]]\+\)\?${key}="
-  if [ -z "$value" ] && ! grep -q "$pattern" "$ENV_SOURCE" 2>/dev/null; then
+  pattern="^[[:space:]]*(export[[:space:]]+)?${key}="
+  if [ -z "$value" ] && ! grep -qE "$pattern" "$ENV_SOURCE" 2>/dev/null; then
     return
   fi
   if [ -n "$value" ] && [ "$(env_value "$key")" = "$value" ]; then
@@ -329,7 +335,7 @@ edit_env() {
   while [ -e "$backup" ]; do backup="${backup%.bak}-1.bak"; done
   cp -p "$ENV_SOURCE" "$backup"
   tmp="$(mktemp)"
-  grep -v "$pattern" "$ENV_SOURCE" >"$tmp" || true
+  grep -vE "$pattern" "$ENV_SOURCE" >"$tmp" || true
   if [ -n "$value" ]; then printf '%s=%s\n' "$key" "$value" >>"$tmp"; fi
   cat "$tmp" >"$ENV_SOURCE"
   rm -f "$tmp"
@@ -479,7 +485,8 @@ install_service() {
         systemd-analyze verify "$SYSTEMD_UNIT" || true
       fi
       run systemctl daemon-reload
-      if [ "$START_SERVICE" = true ]; then run systemctl enable --now "${SERVICE}.service"; else run systemctl enable "${SERVICE}.service"; fi
+      run systemctl enable "${SERVICE}.service"
+      if [ "$START_SERVICE" = true ]; then run systemctl restart "${SERVICE}.service"; fi
       ;;
     openrc)
       write_file "$OPENRC_SCRIPT" 755 "$(openrc_script_content "$mode")"
@@ -545,6 +552,7 @@ remove() {
 
 verify() {
   local attempt=0 url
+  command -v curl >/dev/null 2>&1 || fail 'verify needs curl'
   url="http://127.0.0.1:$(signal_port)$(signal_path)/health"
   while [ "$attempt" -lt 15 ]; do
     attempt=$((attempt + 1))
@@ -560,7 +568,10 @@ verify() {
 case "$COMMAND" in
   -h|--help|help) usage ;;
   check) check ;;
-  build) as_app_user env RAILS_ENV=production "${APP_DIR}/bin/voice-signal" build ;;
+  build)
+    cd "$APP_DIR"
+    as_app_user env RAILS_ENV=production "$(bundle_bin)" exec bin/voice-signal build
+    ;;
   build-image)
     command -v docker >/dev/null 2>&1 || fail 'docker is not installed'
     docker build --file "${APP_DIR}/voice_signal/Dockerfile" --tag "$LOCAL_IMAGE" "$APP_DIR"
