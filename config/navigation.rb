@@ -85,6 +85,7 @@ SimpleNavigation::Configuration.run do |navigation|
       s.item :webhooks, safe_join([material_symbol('inbox'), t('admin.webhooks.title')]), admin_webhooks_path, highlights_on: %r{/admin/webhooks}, if: -> { current_user.can?(:manage_webhooks) }
       s.item :fasp, safe_join([material_symbol('extension'), t('admin.fasp.title')]), admin_fasp_providers_path, highlights_on: %r{/admin/fasp}, if: -> { current_user.can?(:manage_federation) } if Mastodon::Feature.fasp_enabled?
       s.item :relays, safe_join([material_symbol('captive_portal'), t('admin.relays.title')]), admin_relays_path, highlights_on: %r{/admin/relays}, if: -> { !limited_federation_mode? && !RoleplayModeHelper.roleplay_mode? && current_user.can?(:manage_federation) }
+      s.item :voice_relay_providers, safe_join([material_symbol('headphones'), t('admin.voice_relay_providers.title')]), admin_voice_relay_providers_path, highlights_on: %r{/admin/voice_relay_providers}, if: -> { current_user.can?(:manage_settings) }
       s.item :drive_files, safe_join([material_symbol('cloud'), t('admin.drive_files.title')]), admin_drive_files_path, highlights_on: %r{/admin/drive/files}, if: -> { Setting.drive_enabled && current_user.can?(:manage_users) }
       s.item :chat_conversations, safe_join([material_symbol('chat'), t('admin.chat.title')]), admin_chat_conversations_path, highlights_on: %r{/admin/chat}, if: -> { current_user.can?(:manage_users) || (RoleplayModeHelper.roleplay_mode? && current_user.can_extra?(:view_admin_timeline)) }
     end

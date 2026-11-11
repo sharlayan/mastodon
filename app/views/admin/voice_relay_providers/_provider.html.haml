@@ -1,0 +1,46 @@
+%tr
+  %td
+    %samp= provider.origin
+  %td
+    - if !provider.enabled?
+      %span.negative-hint
+        = material_symbol('close')
+        = t('admin.voice_relay_providers.disabled')
+    - elsif provider.revoked?
+      %span.negative-hint
+        = material_symbol('block')
+        = t('admin.voice_relay_providers.revoked')
+      %br/
+      %small= t('admin.voice_relay_providers.revoked_hint', time: l(provider.revoked_at))
+    - elsif provider.validated?
+      %span.positive-hint
+        = material_symbol('check')
+        = t('admin.voice_relay_providers.approved')
+    - else
+      %span.warning-hint
+        = material_symbol('hourglass')
+        = t('admin.voice_relay_providers.not_approved')
+    %br/
+    %small
+      = t('admin.voice_relay_providers.last_checked')
+      \:
+      - if provider.last_checked_at
+        = l(provider.last_checked_at)
+      - else
+        = t('admin.voice_relay_providers.never_checked')
+    - if provider.last_error.present?
+      %br/
+      %small.negative-hint= t('admin.voice_relay_providers.last_error', code: provider.last_error)
+  %td
+    - if provider.capacity.present?
+      = t('admin.voice_relay_providers.slots', reserved: provider.capacity['reservedSlots'], max: provider.capacity['maxSlots'], rooms: provider.capacity['remainingRooms'])
+      %br/
+      %small= provider.capacity['allowScreenShare'] ? t('admin.voice_relay_providers.screen_share_allowed') : t('admin.voice_relay_providers.screen_share_not_allowed')
+  %td
+    = table_link_to 'refresh', t('admin.voice_relay_providers.check'), check_admin_voice_relay_provider_path(provider), method: :post
+    = table_link_to 'edit', t('admin.voice_relay_providers.edit'), edit_admin_voice_relay_provider_path(provider)
+    - if provider.enabled?
+      = table_link_to 'power_off', t('admin.voice_relay_providers.disable'), disable_admin_voice_relay_provider_path(provider), method: :post, data: { confirm: t('admin.accounts.are_you_sure') }
+    - else
+      = table_link_to 'play_arrow', t('admin.voice_relay_providers.enable'), enable_admin_voice_relay_provider_path(provider), method: :post
+    = table_link_to 'close', t('admin.voice_relay_providers.delete'), admin_voice_relay_provider_path(provider), method: :delete, data: { confirm: t('admin.accounts.are_you_sure') }

@@ -57,6 +57,11 @@ module Sharlayan::AdminSettingsExtensions
     chat_delete_window_hours
     chat_max_group_members
     chat_max_attachments
+    voice_call_enabled
+    voice_call_max_participants
+    voice_call_screen_share_enabled
+    voice_call_federation_host_enabled
+    voice_call_remote_join_enabled
     status_character_limit
     profile_fields_limit
     remote_media_attachments_limit
@@ -76,6 +81,7 @@ module Sharlayan::AdminSettingsExtensions
     chat_delete_window_hours
     chat_max_group_members
     chat_max_attachments
+    voice_call_max_participants
   ).freeze
 
   BOOLEAN_KEYS = %i(
@@ -118,6 +124,10 @@ module Sharlayan::AdminSettingsExtensions
     chat_enabled
     chat_federation_enabled
     chat_soft_delete_enabled
+    voice_call_enabled
+    voice_call_screen_share_enabled
+    voice_call_federation_host_enabled
+    voice_call_remote_join_enabled
     user_themes_enabled
   ).freeze
 
@@ -128,6 +138,7 @@ module Sharlayan::AdminSettingsExtensions
     validates :drive_max_file_size, numericality: { only_integer: true, greater_than: 0 }, if: -> { defined?(@drive_max_file_size) }
     validates :chat_max_group_members, numericality: { only_integer: true, in: 2..200 }, if: -> { defined?(@chat_max_group_members) }
     validates :chat_max_attachments, numericality: { only_integer: true, in: 0..4 }, if: -> { defined?(@chat_max_attachments) }
+    validates :voice_call_max_participants, numericality: { only_integer: true, in: 2..100 }, if: -> { defined?(@voice_call_max_participants) }
     validates :chat_delete_window_hours, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, if: -> { defined?(@chat_delete_window_hours) }
     validates :status_character_limit, numericality: { only_integer: true, greater_than_or_equal_to: Sharlayan::SettingExtensions::MIN_STATUS_CHARACTER_LIMIT }, if: -> { defined?(@status_character_limit) }
     validates :profile_fields_limit, numericality: { only_integer: true, in: 0..ActivityPub::ProcessAccountService::MAX_PROFILE_FIELDS }, if: -> { defined?(@profile_fields_limit) }

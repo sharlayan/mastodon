@@ -100,6 +100,13 @@ import {
   usesTouchKeyboard,
 } from './use_chat_scroll';
 import { useLongPressOpensToolbar } from './use_message_toolbar';
+import {
+  VoiceCallBadge,
+  VoiceCallHeaderButton,
+  VoiceCallPanel,
+} from './voice/panel';
+import type { VoiceRoom } from './voice/panel';
+import { useVoiceStates } from './voice/states';
 
 type RoomEnding = 'deleted' | 'removed';
 
@@ -175,6 +182,8 @@ interface ChatSettings {
   federation_enabled: boolean;
   delete_window_hours: number;
   soft_delete: boolean;
+  voice_calls?: boolean;
+  voice_call_screen_share?: boolean;
 }
 
 interface PickedEmoji {
@@ -2595,6 +2604,23 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const isManagingRoom =
     (roomView === 'members' && conversation?.type === 'group') ||
     (roomView === 'settings' && isGroupOwner);
+  const voiceEnabled = chatSettings?.voice_calls === true;
+  const voiceRoom = useMemo<VoiceRoom | null>(
+    () =>
+      conversation
+        ? {
+            id: conversation.id,
+            title: conversationName(conversation),
+            owned: conversation.current_role === 'owner',
+            accounts: conversation.accounts,
+          }
+        : null,
+    [conversation],
+  );
+  const listVoiceStates = useVoiceStates(
+    visibleConversations.map((item) => item.id),
+    voiceEnabled && !conversationId,
+  );
   const jumpTargetLoaded = Boolean(
     jumpTargetId && messagesById.has(jumpTargetId),
   );
@@ -3961,20 +3987,28 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               </Link>
             </>
           ) : conversation && !isManagingRoom ? (
-            <Dropdown
-              scrollKey='chat-room'
-              items={roomMenu}
-              title={intl.formatMessage(messages.more)}
-            >
-              <button
-                type='button'
-                className='column-header__button'
+            <>
+              {voiceRoom && (
+                <VoiceCallHeaderButton
+                  room={voiceRoom}
+                  enabled={voiceEnabled}
+                />
+              )}
+              <Dropdown
+                scrollKey='chat-room'
+                items={roomMenu}
                 title={intl.formatMessage(messages.more)}
-                aria-label={intl.formatMessage(messages.more)}
               >
-                <Icon id='ellipsis-h' icon={MoreHorizIcon} />
-              </button>
-            </Dropdown>
+                <button
+                  type='button'
+                  className='column-header__button'
+                  title={intl.formatMessage(messages.more)}
+                  aria-label={intl.formatMessage(messages.more)}
+                >
+                  <Icon id='ellipsis-h' icon={MoreHorizIcon} />
+                </button>
+              </Dropdown>
+            </>
           ) : undefined
         }
       >
@@ -4055,6 +4089,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           </div>
         )}
       </ColumnHeader>
+
+      {voiceRoom && !isManagingRoom && !conversationMissing && (
+        <VoiceCallPanel room={voiceRoom} enabled={voiceEnabled} />
+      )}
 
       <div className='scrollable chat-native' onPaste={pastePlainText}>
         {conversationId && conversationMissing ? (
@@ -4861,6 +4899,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     <span className='conversation__content'>
                       <span className='conversation__content__info'>
                         <span className='conversation__content__relative-time'>
+                          <VoiceCallBadge
+                            state={listVoiceStates.get(item.id)}
+                          />
                           {item.unread && (
                             <span
                               className='conversation__unread'

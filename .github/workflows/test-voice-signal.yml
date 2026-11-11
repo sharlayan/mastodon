@@ -1,0 +1,43 @@
+name: Voice signal tests
+on:
+  push:
+    branches:
+      - 'develop'
+      - 'main'
+    paths:
+      - voice_signal/**
+      - .github/workflows/test-voice-signal.yml
+  pull_request:
+    paths:
+      - voice_signal/**
+      - .dockerignore
+      - .github/workflows/build-container-image.yml
+      - .github/workflows/test-voice-signal.yml
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/dotnet/sdk:10.0
+
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Build
+        run: dotnet build voice_signal/VoiceSignal.slnx --warnaserror
+
+      - name: Test
+        run: dotnet test voice_signal/VoiceSignal.slnx --no-build
+
+  build-image:
+    if: github.event_name == 'pull_request'
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-image
+      cancel-in-progress: true
+
+    uses: ./.github/workflows/build-container-image.yml
+    with:
+      file_to_build: voice_signal/Dockerfile
+      cache: true

@@ -58,6 +58,13 @@ en:
           attributes:
             drive_quota:
               own_role: cannot be changed with your current role
+        voice_relay_provider:
+          attributes:
+            origin:
+              own_origin: "cannot be this server's own address"
+              unfinished_calls: "cannot be changed while calls on this relay are still open"
+          provider_limit: "You can register up to %{count} voice relays"
+          unfinished_calls: "This relay still has open calls. Disable it and wait for the calls to end before deleting it."
   admin:
     accounts:
       block_avatar_decorations: Block avatar decorations
@@ -83,6 +90,12 @@ en:
         update_board_announcement_html: "%{name} updated board announcement %{target}"
         destroy_chat_conversation_html: "%{name} deleted chat conversation %{target}"
         update_collection_html: "%{name} updated collection by %{target}"
+        create_voice_relay_provider_html: "%{name} added voice relay %{target}"
+        destroy_voice_relay_provider_html: "%{name} deleted voice relay %{target}"
+        disable_voice_relay_provider_html: "%{name} disabled voice relay %{target}"
+        enable_voice_relay_provider_html: "%{name} enabled voice relay %{target}"
+        update_voice_relay_provider_html: "%{name} updated voice relay %{target}"
+        end_voice_call_allocation_html: "%{name} ended voice call %{target}"
     avatar_decoration_domain_blocks:
       added_at: Added
       block: Block domain
@@ -306,12 +319,17 @@ en:
       extra_categories:
         api: API
         moderation: Moderation
+        voice_calls: Voice calls
       extra_privileges:
         bypass_rate_limit: Bypass API rate limits
         bypass_rate_limit_description: When API rate limit bypass is enabled in server
           settings, users with this permission are not subject to API rate limits
         view_admin_timeline: View the management timeline
         view_admin_timeline_description: In OC roleplay mode, allows access to local user conversations and other management-timeline content for moderation
+        join_voice_calls: Join voice calls
+        join_voice_calls_description: Allows users to join voice calls in chat rooms they belong to
+        share_screens: Share screens in voice calls
+        share_screens_description: Allows users to share their screen while in a voice call. Screen sharing also has to be enabled in the server settings
       privileges:
         invite_bypass_approval_description: Allows people invited to the server by
           these users to bypass moderation approval
@@ -428,6 +446,16 @@ en:
         soft_delete_enabled_hint: Never delete messages for other participants. A deletion only hides the message from its sender while retaining it for participants and authorized moderation.
         soft_delete_roleplay_hint: Always enabled in OC roleplay mode so authorized owners can audit local chat messages.
         title: Chat
+        voice_call_enabled: "Enable voice calls in chat rooms"
+        voice_call_enabled_hint: "Let room members start voice calls and share their screens through a voice relay registered under Voice call relays. Requires native chat and an approved relay."
+        voice_call_federation_host_enabled: "Provide calls to members on other servers"
+        voice_call_federation_host_enabled_hint: "Let members from other servers join calls in rooms owned on this server. Their calls use this server's voice relay slots, and the relay sees their IP addresses. Requires chat federation."
+        voice_call_max_participants: "Maximum participants per voice call"
+        voice_call_max_participants_hint: "Between 2 and 100. The relay reserves this many slots for each call, so a smaller number lets more rooms call at the same time. One-on-one rooms always reserve 2."
+        voice_call_remote_join_enabled: "Allow joining calls hosted on other servers"
+        voice_call_remote_join_enabled_hint: "Let local accounts join calls in rooms owned on other servers. The server that owns the room and its call server see the participant's IP address. Requires chat federation."
+        voice_call_screen_share_enabled: "Allow screen sharing in voice calls"
+        voice_call_screen_share_enabled_hint: "Screen sharing also requires the relay to allow it for this server."
       community_mode:
         soft_hide_deletion: Keep deleted posts for the owner
         soft_hide_deletion_hint: When a post is deleted, hide it instead of destroying
@@ -553,6 +581,63 @@ en:
       no_username_block_selected: No username rules were changed as none were selected
       not_permitted: Not permitted
       updated_msg: Successfully updated username rule
+    system_checks:
+      voice_relay_revoked_check:
+        action: "Manage voice relays"
+        message_html: "Voice relay %{value} no longer accepts this server. Voice calls on it cannot start until the relay operator restores access or the secret is updated."
+      voice_relay_unavailable_check:
+        action: "Manage voice relays"
+        message_html: "Voice calls are enabled, but no approved voice relay is available."
+    voice_relay_providers:
+      add_new: "Add relay"
+      approved: "Approved"
+      call_end_failed_msg: "Could not end the call (%{code})."
+      call_ended_msg: "The call ended."
+      call_participant_count: "%{participants} / %{slots}"
+      call_participants: "Participants"
+      call_relay: "Relay"
+      call_room: "Room"
+      call_room_deleted: "Deleted room"
+      call_room_direct: "Direct chat #%{id}"
+      call_room_group: "Group #%{id}"
+      call_state:
+        active: "In progress"
+        ending: "Ending"
+        pending: "Starting"
+      call_unavailable: "The relay could not be reached at the last check"
+      call_updated_at: "Last updated"
+      calls_hint: "Calls that hold a reservation on a relay. Ending a call disconnects everyone in it; members can start a new one."
+      calls_title: "Calls in progress"
+      capacity: "Capacity"
+      check: "Check connection and approval"
+      check_disabled_msg: "The relay responded, but this server is disabled there."
+      check_failed_msg: "Connection check failed (%{code})."
+      check_succeeded_msg: "The relay approved this server."
+      created_msg: "Voice relay added. Check the connection to confirm approval."
+      delete: "Delete"
+      description_html: "Voice calls and screen sharing in chat rooms run on an external <a href=\"https://github.com/chalkpe/fediverse-voice-relay\" target=\"_blank\" rel=\"noopener\">voice relay</a>. Ask a relay operator to register this server, then enter the relay address and the issued secret here. This server's origin is <code>%{origin}</code>."
+      destroyed_msg: "Voice relay deleted."
+      disable: "Disable"
+      disabled: "Disabled"
+      edit: "Edit relay"
+      enable: "Enable"
+      end_call: "End call"
+      end_call_confirm: "Disconnect everyone in this call?"
+      last_checked: "Last checked"
+      last_error: "Last error: %{code}"
+      never_checked: "Not checked yet"
+      no_calls: "No calls are in progress."
+      not_approved: "Not approved"
+      origin: "Relay address"
+      origin_unavailable: "This server must use HTTPS to connect to a voice relay."
+      revoked: "Approval revoked"
+      revoked_hint: "The relay rejected this server at %{time}. Ask the relay operator, or update the secret and check again."
+      screen_share_allowed: "Screen sharing allowed"
+      screen_share_not_allowed: "Screen sharing not allowed"
+      slots: "%{reserved} of %{max} slots reserved, %{rooms} more rooms available"
+      status: "Status"
+      title: "Voice call relays"
+      updated_msg: "Voice relay updated."
   antennas:
     errors:
       limit: You have reached the maximum number of antennas
@@ -749,6 +834,9 @@ en:
           Leave blank to use the server default. Set to 0 for unlimited.
         extra_permissions_as_keys: Additional Custodon-specific permissions granted
           to this role
+      voice_relay_provider:
+        origin: "The relay's public HTTPS address, for example https://voice.example.org"
+        secret: "The secret the relay operator issued for this server, at least 32 characters. Leave blank to keep the current secret."
     labels:
       defaults:
         custom_css_text: Custom CSS
@@ -810,6 +898,9 @@ en:
       user_role:
         drive_quota: Drive quota per user (MB)
         extra_permissions_as_keys: Additional permissions
+      voice_relay_provider:
+        origin: "Relay address"
+        secret: "Secret"
   statuses_cleanup:
     ignore_reactions: Ignore reactions
     interaction_exceptions_explanation: Posts which temporarily exceed the favorite

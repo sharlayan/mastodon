@@ -50,3 +50,44 @@
             hint: t('admin.settings.chat.max_attachments_hint'),
             input_html: { min: 0, max: 4 },
             sharlayan_only: true
+
+.fields-group
+  = f.input :voice_call_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.chat.voice_call_enabled'),
+            hint: t('admin.settings.chat.voice_call_enabled_hint'),
+            sharlayan_only: true
+
+.fields-group
+  = f.input :voice_call_max_participants,
+            as: :integer,
+            wrapper: :with_label,
+            label: t('admin.settings.chat.voice_call_max_participants'),
+            hint: t('admin.settings.chat.voice_call_max_participants_hint'),
+            input_html: { min: 2, max: 100 },
+            sharlayan_only: true
+
+.fields-group
+  = f.input :voice_call_screen_share_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.chat.voice_call_screen_share_enabled'),
+            hint: t('admin.settings.chat.voice_call_screen_share_enabled_hint'),
+            sharlayan_only: true
+
+.fields-group
+  = f.input :voice_call_federation_host_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.chat.voice_call_federation_host_enabled'),
+            hint: t('admin.settings.chat.voice_call_federation_host_enabled_hint'),
+            sharlayan_only: true
+
+.fields-group
+  = f.input :voice_call_remote_join_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.chat.voice_call_remote_join_enabled'),
+            hint: t('admin.settings.chat.voice_call_remote_join_enabled_hint'),
+            sharlayan_only: true

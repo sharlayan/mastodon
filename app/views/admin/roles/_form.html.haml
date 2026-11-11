@@ -88,13 +88,14 @@
 
   %hr.spacer/
 
-  - unless form.object.everyone?
+  - extra_categories = UserRole::ExtraFlags.categories_for(form.object)
+  - if extra_categories.any?
     .field-group
       .input.with_block_label
         %label= t('simple_form.labels.user_role.extra_permissions_as_keys')
         %span.hint= t('simple_form.hints.user_role.extra_permissions_as_keys')
 
-      - UserRole::ExtraFlags::CATEGORIES.each do |category, permissions|
+      - extra_categories.each do |category, permissions|
         %h2= t(category, scope: 'admin.roles.extra_categories')
 
         = form.input :extra_permissions_as_keys,

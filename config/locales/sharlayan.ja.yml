@@ -58,6 +58,13 @@ ja:
           attributes:
             drive_quota:
               own_role: 現在のロールでは変更できません
+        voice_relay_provider:
+          attributes:
+            origin:
+              own_origin: "このサーバー自身のアドレスは使用できません"
+              unfinished_calls: "このリレーの通話がまだ開いているため変更できません"
+          provider_limit: "音声リレーは最大%{count}件まで登録できます"
+          unfinished_calls: "このリレーにはまだ開いている通話があります。無効にして通話が終わってから削除してください。"
   admin:
     accounts:
       block_avatar_decorations: アバターデコレーションをブロック
@@ -82,6 +89,12 @@ ja:
         update_board_announcement_html: "%{name} さんが掲示板型お知らせ %{target} を更新しました"
         destroy_chat_conversation_html: "%{name} さんがチャットの会話 %{target} を削除しました"
         update_collection_html: "%{name} さんが %{target} によるコレクションを更新しました"
+        create_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を追加しました"
+        destroy_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を削除しました"
+        disable_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を無効にしました"
+        enable_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を有効にしました"
+        update_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を更新しました"
+        end_voice_call_allocation_html: "%{name}さんが音声通話%{target}を終了しました"
     avatar_decoration_domain_blocks:
       added_at: 追加日
       block: ドメインをブロック
@@ -289,11 +302,16 @@ ja:
       extra_categories:
         api: API
         moderation: モデレーション
+        voice_calls: 音声通話
       extra_privileges:
         bypass_rate_limit: APIレート制限のバイパス
         bypass_rate_limit_description: サーバー設定でAPIレート制限のバイパスが有効な場合、この権限を持つユーザーはAPIレート制限を受けません
         view_admin_timeline: 管理タイムラインの閲覧
         view_admin_timeline_description: OCロールプレイモードで、ローカル利用者間のチャットと管理タイムラインのコンテンツをモデレーションのため閲覧できます
+        join_voice_calls: 音声通話への参加
+        join_voice_calls_description: 所属するチャットルームの音声通話に参加できます
+        share_screens: 音声通話での画面共有
+        share_screens_description: 音声通話中に画面を共有できます。サーバー設定で画面共有が有効になっている必要もあります
       privileges:
         invite_bypass_approval_description: これらの利用者が招待した人が、モデレーターの承認を経ずに登録できるようにします
     settings:
@@ -395,6 +413,16 @@ ja:
         soft_delete_enabled_hint: 他の参加者からメッセージを削除しません。削除操作は送信者本人からのみ非表示にし、参加者と権限を持つ管理者のために保持します。
         soft_delete_roleplay_hint: OCロールプレイモードでは、権限を持つオーナーがローカルチャットを監査できるよう常に有効になります。
         title: チャット
+        voice_call_enabled: "チャットルームの音声通話を有効にする"
+        voice_call_enabled_hint: "ルームのメンバーが、音声通話リレーに登録したリレーを通じて音声通話と画面共有を行えるようにします。ネイティブチャットと承認済みのリレーが必要です。"
+        voice_call_federation_host_enabled: "他のサーバーのメンバーに通話を提供する"
+        voice_call_federation_host_enabled_hint: "このサーバーが所有するルームの通話に、他のサーバーのメンバーも参加できるようにします。このサーバーの音声リレーの枠を使い、リレーにはその参加者のIPアドレスが見えます。チャットの連合が有効である必要があります。"
+        voice_call_max_participants: "通話あたりの最大参加人数"
+        voice_call_max_participants_hint: "2～100人です。リレーは通話ごとにこの数のスロットを予約するため、小さくするほど多くのルームが同時に通話できます。1対1のルームは常に2スロットを予約します。"
+        voice_call_remote_join_enabled: "他のサーバーが開く通話への参加を許可する"
+        voice_call_remote_join_enabled_hint: "ローカルのアカウントが、他のサーバーが所有するルームの通話に参加できるようにします。ルームを所有するサーバーの通話サーバーに参加者のIPアドレスが見えます。チャットの連合が有効である必要があります。"
+        voice_call_screen_share_enabled: "音声通話で画面共有を許可する"
+        voice_call_screen_share_enabled_hint: "リレー側でもこのサーバーの画面共有が許可されている必要があります。"
       community_mode:
         soft_hide_deletion: 削除された投稿をオーナーのために保存する
         soft_hide_deletion_hint: 投稿を削除するとき、実際には破棄せず非表示にします。非表示になった投稿と添付メディアはすべてのタイムライン・検索インデックス・公開ページから消え、オーナーだけが管理タイムラインで閲覧できます。非表示の投稿をもう一度削除すると、復元できないように完全に削除されます。
@@ -490,6 +518,63 @@ ja:
       no_username_block_selected: 何も選択されていなかったため、ユーザー名ルールは変更されませんでした
       not_permitted: 権限がありません
       updated_msg: ユーザー名ルールを更新しました
+    system_checks:
+      voice_relay_revoked_check:
+        action: "音声リレーの管理"
+        message_html: "音声リレー%{value}はこのサーバーを受け付けなくなりました。リレーの運営者がアクセスを戻すかシークレットを更新するまで、そのリレーでは通話を開始できません。"
+      voice_relay_unavailable_check:
+        action: "音声リレーの管理"
+        message_html: "音声通話が有効ですが、承認された音声リレーがありません。"
+    voice_relay_providers:
+      add_new: "リレーを追加"
+      approved: "承認済み"
+      call_end_failed_msg: "通話を終了できませんでした (%{code})。"
+      call_ended_msg: "通話を終了しました。"
+      call_participant_count: "%{participants} / %{slots}"
+      call_participants: "参加者"
+      call_relay: "リレー"
+      call_room: "ルーム"
+      call_room_deleted: "削除されたルーム"
+      call_room_direct: "1対1チャット #%{id}"
+      call_room_group: "グループ #%{id}"
+      call_state:
+        active: "進行中"
+        ending: "終了処理中"
+        pending: "開始処理中"
+      call_unavailable: "最後の確認でリレーに接続できませんでした"
+      call_updated_at: "最終更新"
+      calls_hint: "リレーに枠を予約している通話です。通話を終了すると参加者全員の接続が切れ、メンバーは新しい通話を開始できます。"
+      calls_title: "進行中の通話"
+      capacity: "収容量"
+      check: "接続・承認を確認"
+      check_disabled_msg: "リレーは応答しましたが、このサーバーはリレー側で無効になっています。"
+      check_failed_msg: "接続の確認に失敗しました (%{code})。"
+      check_succeeded_msg: "リレーがこのサーバーを承認しました。"
+      created_msg: "音声リレーを追加しました。接続・承認を確認して承認状態を確かめてください。"
+      delete: "削除"
+      description_html: "チャットルームの音声通話と画面共有は外部の<a href=\"https://github.com/chalkpe/fediverse-voice-relay\" target=\"_blank\" rel=\"noopener\">音声リレー</a>で動作します。リレー運営者にこのサーバーの登録を依頼し、リレーのアドレスと発行されたシークレットをここに入力してください。このサーバーのoriginは<code>%{origin}</code>です。"
+      destroyed_msg: "音声リレーを削除しました。"
+      disable: "無効にする"
+      disabled: "無効"
+      edit: "リレーを編集"
+      enable: "有効にする"
+      end_call: "通話を終了"
+      end_call_confirm: "この通話の参加者全員の接続を切りますか？"
+      last_checked: "最終確認"
+      last_error: "最後のエラー: %{code}"
+      never_checked: "未確認"
+      no_calls: "進行中の通話はありません。"
+      not_approved: "未承認"
+      origin: "リレーのアドレス"
+      origin_unavailable: "音声リレーに接続するには、このサーバーがHTTPSを使用している必要があります。"
+      revoked: "承認取り消し"
+      revoked_hint: "リレーが%{time}にこのサーバーを拒否しました。リレーの運営者に問い合わせるか、シークレットを更新してからもう一度確認してください。"
+      screen_share_allowed: "画面共有可"
+      screen_share_not_allowed: "画面共有不可"
+      slots: "%{max}スロット中%{reserved}スロット予約済み、あと%{rooms}ルーム作成可能"
+      status: "状態"
+      title: "音声通話リレー"
+      updated_msg: "音声リレーを更新しました。"
   antennas:
     errors:
       limit: アンテナの上限数に達しています
@@ -644,6 +729,9 @@ ja:
       user_role:
         drive_quota: このロールを持つユーザーごとのドライブライブラリ最大容量をMB単位で指定します。空欄の場合はサーバーの既定値、0の場合は無制限です。
         extra_permissions_as_keys: このロールに付与されるCustodon独自の追加権限
+      voice_relay_provider:
+        origin: "リレーの公開HTTPSアドレスです。例: https://voice.example.org"
+        secret: "リレー運営者がこのサーバー用に発行したシークレットです。32文字以上必要です。空欄のままにすると現在のシークレットを維持します。"
     labels:
       defaults:
         custom_css_text: カスタムCSS
@@ -698,6 +786,9 @@ ja:
       user_role:
         drive_quota: ユーザーごとのドライブ容量 (MB)
         extra_permissions_as_keys: 追加権限
+      voice_relay_provider:
+        origin: "リレーのアドレス"
+        secret: "シークレット"
   statuses_cleanup:
     ignore_reactions: リアクションを無視
     interaction_exceptions_explanation: お気に入りやブーストの数が一度でも基準値に逹っした投稿は、その後数が減っても削除されません。

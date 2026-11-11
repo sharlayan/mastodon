@@ -45,4 +45,7 @@ end
 
 plugin :tmp_restart
 
+require_relative '../lib/puma/plugin/voice_signal'
+plugin :voice_signal
+
 set_remote_address(proxy_protocol: :v1) if ENV['PROXY_PROTO_V1'] == 'true'

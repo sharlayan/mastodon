@@ -138,4 +138,18 @@ RSpec.describe ContentSecurityPolicy do
       end
     end
   end
+
+  describe '#voice_signal_hosts' do
+    it 'allows a voice signal service on another host and ignores invalid values' do
+      expect(subject.voice_signal_hosts).to eq []
+
+      ClimateControl.modify VOICE_SIGNAL_URL: 'wss://voice.example:8443/voice-signal' do
+        expect(subject.voice_signal_hosts).to eq ['wss://voice.example:8443', 'https://voice.example:8443']
+      end
+
+      ClimateControl.modify VOICE_SIGNAL_URL: 'https://voice.example/voice-signal' do
+        expect(subject.voice_signal_hosts).to eq []
+      end
+    end
+  end
 end

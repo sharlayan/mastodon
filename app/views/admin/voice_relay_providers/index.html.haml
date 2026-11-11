@@ -1,0 +1,44 @@
+- content_for :page_title do
+  = t('admin.voice_relay_providers.title')
+
+.simple_form
+  - if @local_origin
+    %p.hint= t('admin.voice_relay_providers.description_html', origin: @local_origin)
+  - else
+    %p.hint.warning-hint= t('admin.voice_relay_providers.origin_unavailable')
+  - if @providers.size < VoiceRelayProvider::MAX_PROVIDERS
+    = link_to t('admin.voice_relay_providers.add_new'), new_admin_voice_relay_provider_path, class: 'button button--block'
+
+- unless @providers.empty?
+  %hr.spacer
+
+  .table-wrapper
+    %table.table
+      %thead
+        %tr
+          %th= t('admin.voice_relay_providers.origin')
+          %th= t('admin.voice_relay_providers.status')
+          %th= t('admin.voice_relay_providers.capacity')
+          %th
+      %tbody
+        = render partial: 'provider', collection: @providers
+
+%hr.spacer
+
+%h3= t('admin.voice_relay_providers.calls_title')
+
+- if @calls.empty?
+  %p.muted-hint= t('admin.voice_relay_providers.no_calls')
+- else
+  %p.hint= t('admin.voice_relay_providers.calls_hint')
+  .table-wrapper
+    %table.table
+      %thead
+        %tr
+          %th= t('admin.voice_relay_providers.call_room')
+          %th= t('admin.voice_relay_providers.call_participants')
+          %th= t('admin.voice_relay_providers.call_relay')
+          %th= t('admin.voice_relay_providers.status')
+          %th
+      %tbody
+        = render partial: 'call', collection: @calls

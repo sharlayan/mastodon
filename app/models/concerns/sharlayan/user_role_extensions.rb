@@ -15,11 +15,16 @@ module Sharlayan::UserRoleExtensions
   EXTRA_FLAGS = {
     bypass_rate_limit: (1 << 0),
     view_admin_timeline: (1 << 1),
+    join_voice_calls: (1 << 2),
+    share_screens: (1 << 3),
   }.freeze
 
   module ExtraFlags
     NONE = 0
     ALL  = EXTRA_FLAGS.values.reduce(0, &:|)
+
+    DEFAULT = EXTRA_FLAGS[:join_voice_calls] | EXTRA_FLAGS[:share_screens]
+    EVERYONE = DEFAULT
 
     CATEGORIES = {
       api: %i(
@@ -28,7 +33,17 @@ module Sharlayan::UserRoleExtensions
       moderation: %i(
         view_admin_timeline
       ).freeze,
+      voice_calls: %i(
+        join_voice_calls
+        share_screens
+      ).freeze,
     }.freeze
+
+    def self.categories_for(role)
+      return CATEGORIES unless role.everyone?
+
+      CATEGORIES.transform_values { |privileges| privileges.select { |privilege| EVERYONE.anybits?(EXTRA_FLAGS[privilege]) } }.reject { |_, privileges| privileges.empty? }
+    end
   end
 
   included do
@@ -48,7 +63,8 @@ module Sharlayan::UserRoleExtensions
   end
 
   def extra_permissions_as_keys=(value)
-    self.extra_permissions = value.filter_map(&:presence).reduce(ExtraFlags::NONE) { |bitmask, privilege| EXTRA_FLAGS.key?(privilege.to_sym) ? (bitmask | EXTRA_FLAGS[privilege.to_sym]) : bitmask }
+    selected = value.filter_map(&:presence).reduce(ExtraFlags::NONE) { |bitmask, privilege| EXTRA_FLAGS.key?(privilege.to_sym) ? (bitmask | EXTRA_FLAGS[privilege.to_sym]) : bitmask }
+    self.extra_permissions = everyone? ? (extra_permissions & ~ExtraFlags::EVERYONE) | (selected & ExtraFlags::EVERYONE) : selected
   end
 
   def can_extra?(*any_of_privileges)
