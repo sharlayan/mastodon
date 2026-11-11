@@ -268,10 +268,12 @@ class Sharlayan::VoiceCallService
         allocation.reload
         refresh(allocation) if allocation.active?
       end
-    rescue Error, Mastodon::RaceConditionError => e
+    rescue Mastodon::RaceConditionError
+      failed = true
+    rescue Error => e
       failed = true
       allocation.update_columns(unavailable: true)
-      record_provider_error(provider, e) if e.is_a?(Error)
+      record_provider_error(provider, e)
     end
 
     provider.update_columns(events_cursor: feed[:cursor]) unless failed
@@ -328,7 +330,7 @@ class Sharlayan::VoiceCallService
     return allocation if allocation && resume(allocation)
 
     slots = self.class.slots_for(conversation)
-    providers, failures, measured = candidate_providers(slots)
+    providers, outcomes = candidate_providers(slots)
 
     providers.each do |provider|
       allocation ||= VoiceCallAllocation.new(chat_conversation: conversation)
@@ -347,8 +349,8 @@ class Sharlayan::VoiceCallService
       end
     end
 
-    raise Error.new('CAPACITY_EXCEEDED', 429) if measured
-    raise Error.new('CLIENT_DISABLED', 403) if failures.empty? || failures.all?(&:revoked?)
+    raise Error.new('CAPACITY_EXCEEDED', 429) if outcomes.include?(:measured)
+    raise Error.new('CLIENT_DISABLED', 403) if outcomes.any? && outcomes.all?(:disabled)
 
     raise Error, 'PROVIDER_UNAVAILABLE'
   end
@@ -372,29 +374,35 @@ class Sharlayan::VoiceCallService
   end
 
   def candidate_providers(slots)
-    failures = []
-    measured = false
+    outcomes = []
 
     ranked = VoiceRelayProvider.usable.order(:id).filter_map do |provider|
-      next if cooling_down?(provider)
+      if cooling_down?(provider)
+        outcomes << :unavailable
+        next
+      end
 
       capacity = provider.client.capacity
       VoiceRelayProvider.where(id: provider.id, credential_version: provider.credential_version)
         .update_all(capacity:, validated: capacity['enabled'], last_error: nil, last_checked_at: Time.now.utc, updated_at: Time.now.utc)
-      next unless capacity['enabled'] && capacity['accepting']
 
-      measured = true
+      unless capacity['enabled'] && capacity['accepting']
+        outcomes << (capacity['enabled'] ? :unavailable : :disabled)
+        next
+      end
+
+      outcomes << :measured
       next unless capacity['remainingSlots'] >= slots && capacity['remainingRooms'].positive?
 
       [provider, capacity['reservedSlots'].fdiv(capacity['maxSlots']), rand]
     rescue Error => e
       record_provider_error(provider, e)
       start_cooldown(provider)
-      failures << e
+      outcomes << (e.revoked? ? :disabled : :unavailable)
       nil
     end
 
-    [ranked.sort_by { |_, ratio, tie| [ratio, tie] }.map(&:first), failures, measured]
+    [ranked.sort_by { |_, ratio, tie| [ratio, tie] }.map(&:first), outcomes]
   end
 
   def reserve(allocation, fresh:)
