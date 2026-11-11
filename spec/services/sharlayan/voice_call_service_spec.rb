@@ -133,4 +133,48 @@ RSpec.describe Sharlayan::VoiceCallService do
     service.maintain
     expect(VoiceCallAllocation).to_not exist(allocation.id)
   end
+
+  it 'confirms the end of a call the relay no longer accepts before opening a new one' do
+    service.join(member, room)
+
+    relay.join_error = [404, 'NOT_FOUND']
+    service.join(member, room)
+    expect(relay.called?(:delete, '/allocations/alloc-1')).to be true
+    expect(VoiceCallAllocation.find_by!(chat_conversation: room).remote_id).to eq 'alloc-2'
+
+    relay.lease_state = 'ending'
+    service.join(member, room)
+    expect(relay.called?(:delete, '/allocations/alloc-2')).to be true
+    expect(VoiceCallAllocation.find_by!(chat_conversation: room)).to have_attributes(state: 'active', remote_id: 'alloc-3')
+  end
+
+  it 'closes calls on a relay that revoked this server and removes suspended members' do
+    service.join(member, room)
+    allocation = VoiceCallAllocation.find_by!(chat_conversation: room)
+
+    relay.participants = [relay.participant(member)]
+    member.suspend!
+    service.poll_events(provider)
+    expect(relay.kicked).to include(ActivityPub::TagManager.instance.uri_for(member))
+    expect(allocation.reload.participants).to be_empty
+
+    allocation.update_columns(renewed_at: 1.minute.ago)
+    relay.fail_with = [403, { code: 'CLIENT_DISABLED' }]
+    service.maintain
+    expect(provider.reload).to have_attributes(validated: false, last_error: 'CLIENT_DISABLED')
+    expect(allocation.reload.state).to eq 'ending'
+
+    relay.fail_with = nil
+    service.maintain
+    expect(allocation.reload.state).to eq 'ended'
+  end
+
+  it 'skips a failing relay for a short while and validates status reports' do
+    relay.fail_with = [503, { code: 'PROVIDER_UNAVAILABLE' }]
+    expect { service.join(member, room) }.to raise_error(Sharlayan::VoiceRelay::Error)
+    expect { service.join(member, room) }.to raise_error(Sharlayan::VoiceRelay::Error)
+    expect(relay.calls.count([:get, '/capacity'])).to eq 1
+
+    expect { service.report_status(member, room, session_id: ['x'], mic_muted: true, deafened: false) }.to raise_error(Mastodon::InvalidParameterError)
+  end
 end

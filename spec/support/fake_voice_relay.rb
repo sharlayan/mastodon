@@ -6,7 +6,7 @@ class FakeVoiceRelay
   BASE = '/voice-relay/v1'
 
   attr_reader :origin, :allocations, :calls, :kicked
-  attr_accessor :reserved_slots, :max_slots, :full, :participants, :events, :lease_state, :fail_with
+  attr_accessor :reserved_slots, :max_slots, :full, :participants, :events, :lease_state, :fail_with, :join_error
 
   def initialize(origin = 'https://voice.example.org', max_slots: 100, reserved_slots: 0)
     @origin = origin
@@ -20,6 +20,7 @@ class FakeVoiceRelay
     @full = false
     @lease_state = 'active'
     @fail_with = nil
+    @join_error = nil
   end
 
   def install
@@ -114,6 +115,12 @@ class FakeVoiceRelay
   end
 
   def join(allocation, body)
+    if join_error
+      status, code = join_error
+      self.join_error = nil
+      return json({ code: }, status:)
+    end
+
     json({
       token: "lk-token-#{body['userId']}", allocationId: allocation['id'], generation: allocation['generation'], mediaProvider: origin,
       iceServers: [{ urls: ['turn:turn.example.org:3478'], username: 'u', credential: 'c' }],

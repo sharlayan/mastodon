@@ -34,6 +34,19 @@ class ContentSecurityPolicy
     end
   end
 
+  def voice_signal_hosts
+    url = ENV.fetch('VOICE_SIGNAL_URL', nil)
+    return [] if url.blank?
+
+    uri = Addressable::URI.parse(url)
+    return [] unless %w(ws wss).include?(uri.scheme) && uri.host.present?
+
+    authority = uri.port ? "#{uri.host}:#{uri.port}" : uri.host
+    ["#{uri.scheme}://#{authority}", "#{uri.scheme == 'wss' ? 'https' : 'http'}://#{authority}"]
+  rescue Addressable::URI::InvalidURIError
+    []
+  end
+
   private
 
   # TODO: remove after 4.4.0

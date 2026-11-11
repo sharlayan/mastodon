@@ -10,7 +10,7 @@ class Api::V1::Chat::VoiceCallsController < Api::V1::Chat::BaseController
 
   before_action :authorize_chat_read!, only: [:index, :show]
   before_action :authorize_chat_write!, except: [:index, :show]
-  before_action :enforce_chat_write_rate_limit!, only: [:join, :kick, :mute]
+  before_action :enforce_voice_call_rate_limit!, except: [:index, :show]
   before_action :set_conversation, except: :index
 
   rescue_from Sharlayan::VoiceCallService::Unavailable, with: :render_voice_unavailable
@@ -40,7 +40,7 @@ class Api::V1::Chat::VoiceCallsController < Api::V1::Chat::BaseController
     accepted = voice_call_service.report_status(
       current_account,
       @conversation,
-      session_id: params.require(:session_id),
+      session_id: params[:session_id],
       mic_muted: boolean_param(:mic_muted),
       deafened: boolean_param(:deafened)
     )
@@ -57,6 +57,12 @@ class Api::V1::Chat::VoiceCallsController < Api::V1::Chat::BaseController
   end
 
   private
+
+  def enforce_voice_call_rate_limit!
+    return if Setting.rate_limit_bypass_enabled && current_user.can_extra?(:bypass_rate_limit)
+
+    RateLimiter.new(current_account, family: :voice_calls).record!
+  end
 
   def voice_call_service
     @voice_call_service ||= Sharlayan::VoiceCallService.new
