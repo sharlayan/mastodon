@@ -18,6 +18,7 @@ module Sharlayan
         'deafened' => 'cherrypick:deafened',
       },
     ].freeze
+    STATUS_KEYS = { 'mic_muted' => 'micMuted', 'deafened' => 'deafened' }.freeze
 
     module_function
 
@@ -79,8 +80,18 @@ module Sharlayan
 
     def participant_entries(participants, key: 'id')
       participants.map do |participant|
-        { key => participant['identity'], 'screenSharing' => participant['screen_sharing'] == true, 'micMuted' => participant['mic_muted'] == true, 'deafened' => participant['deafened'] == true }
+        STATUS_KEYS.each_with_object({ key => participant['identity'], 'screenSharing' => participant['screen_sharing'] == true }) do |(stored, federated), entry|
+          entry[federated] = participant[stored] if reported_status?(participant[stored])
+        end
       end
+    end
+
+    def reported_status(value)
+      value if reported_status?(value)
+    end
+
+    def reported_status?(value)
+      [true, false].include?(value)
     end
   end
 end

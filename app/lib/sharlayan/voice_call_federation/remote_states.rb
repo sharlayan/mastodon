@@ -29,7 +29,7 @@ module Sharlayan
           return unless value.is_a?(Array) && value.size <= MAX_PARTICIPANTS && value.all? { |participant| valid_participant?(participant, identity_key) }
 
           value.map do |participant|
-            { identity: participant[identity_key], screen_sharing: participant['screenSharing'], mic_muted: participant['micMuted'] == true, deafened: participant['deafened'] == true }
+            { identity: participant[identity_key], screen_sharing: participant['screenSharing'], mic_muted: Sharlayan::VoiceCallFederation.reported_status(participant['micMuted']), deafened: Sharlayan::VoiceCallFederation.reported_status(participant['deafened']) }
           end
         end
 

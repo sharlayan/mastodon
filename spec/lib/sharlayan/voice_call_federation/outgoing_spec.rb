@@ -15,7 +15,7 @@ RSpec.describe Sharlayan::VoiceCallFederation::Outgoing do
   end
   let(:participants) do
     [
-      { 'identity' => ActivityPub::TagManager.instance.uri_for(owner), 'user_id' => owner.id.to_s, 'screen_sharing' => true, 'mic_muted' => false, 'deafened' => false },
+      { 'identity' => ActivityPub::TagManager.instance.uri_for(owner), 'user_id' => owner.id.to_s, 'screen_sharing' => true },
       { 'identity' => guest.uri, 'user_id' => guest.id.to_s, 'screen_sharing' => false, 'mic_muted' => true, 'deafened' => false },
     ]
   end
@@ -44,20 +44,27 @@ RSpec.describe Sharlayan::VoiceCallFederation::Outgoing do
     ActivityPub::DeliveryWorker.jobs.map { |job| JSON.parse(job['args'].first) }
   end
 
-  it 'sends the call participants to remote members once per change and stamps them in order' do
+  it 'sends the call participants to remote members once per change, leaving out unknown statuses, and stamps them in order' do
     described_class.publish(room)
 
     payload = delivered_payloads.last
     expect(ActivityPub::DeliveryWorker.jobs.last['args'].drop(1)).to eq [owner.id, guest.inbox_url]
-    expect(payload).to include('type' => 'Update', 'actor' => ActivityPub::TagManager.instance.uri_for(owner))
+    expect(payload).to include(
+      'type' => 'Update', 'actor' => ActivityPub::TagManager.instance.uri_for(owner),
+      '@context' => end_with(a_hash_including('cherrypick' => 'https://kokonect.link/ns#', 'participants' => { '@id' => 'cherrypick:participants', '@container' => '@set' }))
+    )
     expect(payload['object']).to include(
       'id' => "https://cb6e6126.ngrok.io/chat/rooms/#{room.id}/voice", 'type' => 'ChatRoomVoiceState', 'room' => "https://cb6e6126.ngrok.io/chat/rooms/#{room.id}"
     )
     expect(payload['object']['participants']).to contain_exactly(
-      { 'id' => ActivityPub::TagManager.instance.uri_for(owner), 'screenSharing' => true, 'micMuted' => false, 'deafened' => false },
+      { 'id' => ActivityPub::TagManager.instance.uri_for(owner), 'screenSharing' => true },
       { 'id' => guest.uri, 'screenSharing' => false, 'micMuted' => true, 'deafened' => false }
     )
-    expect(payload['@context'].last).to include('cherrypick' => 'https://kokonect.link/ns#', 'participants' => { '@id' => 'cherrypick:participants', '@container' => '@set' })
+
+    expect(described_class.snapshot(room, key: 'identity').first).to contain_exactly(
+      { 'identity' => ActivityPub::TagManager.instance.uri_for(owner), 'screenSharing' => true },
+      { 'identity' => guest.uri, 'screenSharing' => false, 'micMuted' => true, 'deafened' => false }
+    )
 
     described_class.publish(room)
     expect(ActivityPub::DeliveryWorker.jobs.size).to eq 1

@@ -59,7 +59,7 @@ RSpec.describe Sharlayan::VoiceCallFederation do
 
       state = Sharlayan::VoiceCallService.state_for(mirror)
       expect(state).to include(available: true, active: true)
-      expect(state[:participants].map { |participant| [participant[:account_id], participant[:mic_muted]] }).to contain_exactly([host.id.to_s, true], [member.id.to_s, false])
+      expect(state[:participants].map { |participant| [participant[:account_id], participant[:mic_muted]] }).to contain_exactly([host.id.to_s, true], [member.id.to_s, nil])
       expect(redis).to have_received(:publish).with("timeline:#{member.id}", a_string_including('chat.voice_state'))
 
       ActivityPub::Activity::Update.new(voice_state_update(participants: [], updated: 1.minute.ago), host).perform
@@ -102,7 +102,7 @@ RSpec.describe Sharlayan::VoiceCallFederation do
       )
       expect(service.join(member, mirror)[:url]).to end_with("/remote/#{session.id}")
       expect(VoiceCallRemoteSession.sole.id).to eq session.id
-      expect(Sharlayan::VoiceCallService.state_for(mirror)[:participants].pluck(:account_id)).to eq [host.id.to_s]
+      expect(Sharlayan::VoiceCallService.state_for(mirror)[:participants].pluck(:account_id, :mic_muted, :deafened)).to eq [[host.id.to_s, nil, nil]]
 
       status = stub_request(:post, 'https://remote.test/livekit/federation/status').to_return(status: 200, body: '{}')
       expect(service.report_status(member, mirror, session_id: 'PA_1', mic_muted: true, deafened: false)).to be true
