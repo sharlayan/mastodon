@@ -101,7 +101,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
     public async Task HandleRemoteAsync(HttpContext context)
     {
         var rawTarget = context.Features.Get<IHttpRequestFeature>()?.RawTarget ?? string.Empty;
-        if (!RtcRequest.TryParse(rawTarget, options.RemotePath, out var rtc))
+        if (!TryParseRemoteSession(rawTarget, out var sessionId, out var sessionPath) || !RtcRequest.TryParse(rawTarget, sessionPath, out var rtc))
         {
             context.Response.StatusCode = StatusCodes.Status404NotFound;
             return;
@@ -122,7 +122,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         string? origin;
         try
         {
-            origin = await resolver.ResolveRemoteOriginAsync(claims, context.RequestAborted);
+            origin = await resolver.ResolveRemoteOriginAsync(sessionId, claims, context.RequestAborted);
         }
         catch (DbException exception)
         {
@@ -159,6 +159,30 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         {
             Release(address);
         }
+    }
+
+    private bool TryParseRemoteSession(string rawTarget, out long sessionId, out string sessionPath)
+    {
+        sessionId = 0;
+        sessionPath = string.Empty;
+
+        var prefix = options.RemotePath + "/";
+        if (!rawTarget.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var segment = rawTarget[prefix.Length..];
+        var end = segment.IndexOf('/');
+        if (end is < 1 or > 19
+            || !long.TryParse(segment.AsSpan(0, end), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out sessionId)
+            || sessionId < 1)
+        {
+            return false;
+        }
+
+        sessionPath = prefix + segment[..end];
+        return true;
     }
 
     private static string AddressKey(HttpContext context)

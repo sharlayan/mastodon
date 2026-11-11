@@ -76,8 +76,8 @@ public static class SignalApp
         app.MapGet(healthPath, () => Results.Text("ok"));
         app.Map($"{options.BasePath}/rtc", (HttpContext context, RtcProxy proxy) => proxy.HandleAsync(context));
         app.Map($"{options.BasePath}/rtc/{{**rest}}", (HttpContext context, RtcProxy proxy) => proxy.HandleAsync(context));
-        app.Map($"{options.RemotePath}/rtc", (HttpContext context, RtcProxy proxy) => proxy.HandleRemoteAsync(context));
-        app.Map($"{options.RemotePath}/rtc/{{**rest}}", (HttpContext context, RtcProxy proxy) => proxy.HandleRemoteAsync(context));
+        app.Map($"{options.RemotePath}/{{session}}/rtc", (HttpContext context, RtcProxy proxy) => proxy.HandleRemoteAsync(context));
+        app.Map($"{options.RemotePath}/{{session}}/rtc/{{**rest}}", (HttpContext context, RtcProxy proxy) => proxy.HandleRemoteAsync(context));
         app.Map($"{options.FederationPath}/rtc", (HttpContext context, RtcProxy proxy) => proxy.HandleAsync(context));
         app.Map($"{options.FederationPath}/rtc/{{**rest}}", (HttpContext context, RtcProxy proxy) => proxy.HandleAsync(context));
 

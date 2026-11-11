@@ -2240,9 +2240,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_153202) do
     t.datetime "expires_at", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["account_id"], name: "index_voice_call_remote_sessions_on_account_id"
+    t.index ["account_id", "chat_conversation_id"], name: "index_voice_call_remote_sessions_on_account_and_conversation", unique: true
     t.index ["chat_conversation_id"], name: "index_voice_call_remote_sessions_on_conversation"
-    t.index ["identity", "room_name"], name: "index_voice_call_remote_sessions_on_identity_and_room", unique: true
   end
 
   create_table "voice_call_remote_states", force: :cascade do |t|

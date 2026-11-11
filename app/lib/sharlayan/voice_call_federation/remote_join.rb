@@ -25,8 +25,8 @@ module Sharlayan
         credentials = parse_token_response(response, origin)
 
         store_participants(credentials[:participants], credentials[:updated_at])
-        remember_session(credentials[:token], origin)
-        credentials.except(:participants, :updated_at).merge(allow_screen_share: body[:canScreenShare])
+        session_id = remember_session(credentials[:token], origin)
+        credentials.except(:participants, :updated_at).merge(url: "#{Sharlayan::VoiceCallService.signal_url}/remote/#{session_id}", allow_screen_share: body[:canScreenShare])
       end
 
       def report_status(session_id:, mic_muted:, deafened:)
@@ -106,7 +106,6 @@ module Sharlayan
 
         provider = media_provider(value['mediaProvider'])
         {
-          url: "#{Sharlayan::VoiceCallService.signal_url}/remote",
           token: value['token'],
           identity: Sharlayan::VoiceCallService.identity_for(@account),
           media_provider: provider || origin,
@@ -145,12 +144,15 @@ module Sharlayan
       end
 
       def remember_session(token, origin)
-        identity = Sharlayan::VoiceCallService.identity_for(@account)
-        room_name = room_name_of(token)
+        now = Time.now.utc
         VoiceCallRemoteSession.upsert(
-          { account_id: @account.id, chat_conversation_id: @conversation.id, identity:, room_name:, origin:, expires_at: VoiceCallRemoteSession::LIFETIME.from_now, created_at: Time.now.utc, updated_at: Time.now.utc },
-          unique_by: :index_voice_call_remote_sessions_on_identity_and_room
-        )
+          {
+            account_id: @account.id, chat_conversation_id: @conversation.id, identity: Sharlayan::VoiceCallService.identity_for(@account),
+            room_name: room_name_of(token), origin:, expires_at: now + VoiceCallRemoteSession::LIFETIME, created_at: now, updated_at: now
+          },
+          unique_by: :index_voice_call_remote_sessions_on_account_and_conversation,
+          returning: :id
+        ).rows.first.first
       end
     end
   end

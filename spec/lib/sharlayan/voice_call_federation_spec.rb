@@ -88,11 +88,14 @@ RSpec.describe Sharlayan::VoiceCallFederation do
       credentials = service.join(member, mirror)
 
       expect(request.with { |req| req.headers['Signature'].include?(member_uri) && JSON.parse(req.body) == { 'room' => mirror.uri, 'canScreenShare' => true } }).to have_been_made
+      session = VoiceCallRemoteSession.sole
+      expect(session).to have_attributes(account_id: member.id, identity: member_uri, room_name: 'room-9', origin: 'https://remote.test')
       expect(credentials).to include(
-        url: 'wss://cb6e6126.ngrok.io/voice-signal/remote', token:, identity: member_uri, media_provider: 'https://voice.example.org',
+        url: "wss://cb6e6126.ngrok.io/voice-signal/remote/#{session.id}", token:, identity: member_uri, media_provider: 'https://voice.example.org',
         ice_servers: [{ urls: ['turn:turn.example.org:3478'], username: 'u', credential: 'c' }], allow_screen_share: true
       )
-      expect(VoiceCallRemoteSession.sole).to have_attributes(account_id: member.id, identity: member_uri, room_name: 'room-9', origin: 'https://remote.test')
+      expect(service.join(member, mirror)[:url]).to end_with("/remote/#{session.id}")
+      expect(VoiceCallRemoteSession.sole.id).to eq session.id
       expect(Sharlayan::VoiceCallService.state_for(mirror)[:participants].pluck(:account_id)).to eq [host.id.to_s]
 
       status = stub_request(:post, 'https://remote.test/livekit/federation/status').to_return(status: 200, body: '{}')

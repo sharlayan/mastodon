@@ -185,7 +185,7 @@ public sealed class ProxyTests : IAsyncLifetime
         using var http = new HttpClient();
         var token = TokenHintTests.RemoteToken(new { sub = "https://social.example/users/me", video = new { room = "room-1" } });
 
-        var validate = await http.GetAsync($"{proxyAddress}/voice-signal/remote/rtc/validate?access_token={token}");
+        var validate = await http.GetAsync($"{proxyAddress}/voice-signal/remote/7/rtc/validate?access_token={token}");
         Assert.Equal(HttpStatusCode.OK, validate.StatusCode);
         Assert.Equal("""{"remote":true}""", await validate.Content.ReadAsStringAsync());
         Assert.Equal("text/plain", validate.Content.Headers.ContentType?.MediaType);
@@ -198,8 +198,11 @@ public sealed class ProxyTests : IAsyncLifetime
         }
 
         var unknown = TokenHintTests.RemoteToken(new { sub = "https://social.example/users/me", video = new { room = "room-2" } });
-        Assert.Equal(HttpStatusCode.Unauthorized, (await http.GetAsync($"{proxyAddress}/voice-signal/remote/rtc?access_token={unknown}")).StatusCode);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await http.GetAsync($"{proxyAddress}/voice-signal/remote/rtc?access_token={Token("alloc-1")}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await http.GetAsync($"{proxyAddress}/voice-signal/remote/7/rtc?access_token={unknown}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await http.GetAsync($"{proxyAddress}/voice-signal/remote/8/rtc?access_token={token}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await http.GetAsync($"{proxyAddress}/voice-signal/remote/7/rtc?access_token={Token("alloc-1")}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await http.GetAsync($"{proxyAddress}/voice-signal/remote/rtc?access_token={token}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await http.GetAsync($"{proxyAddress}/voice-signal/remote/-7/rtc?access_token={token}")).StatusCode);
     }
 
     [Fact]
@@ -251,8 +254,8 @@ public sealed class ProxyTests : IAsyncLifetime
 
     private sealed class FakeResolver(string origin) : IAllocationResolver
     {
-        public Task<string?> ResolveRemoteOriginAsync(TokenClaims claims, CancellationToken cancellationToken) =>
-            Task.FromResult(claims is { Identity: "https://social.example/users/me", Room: "room-1" } ? origin : null);
+        public Task<string?> ResolveRemoteOriginAsync(long sessionId, TokenClaims claims, CancellationToken cancellationToken) =>
+            Task.FromResult(sessionId == 7 && claims is { Identity: "https://social.example/users/me", Room: "room-1" } ? origin : null);
 
         public Task<Upstream?> ResolveAsync(TokenHint hint, CancellationToken cancellationToken)
         {
