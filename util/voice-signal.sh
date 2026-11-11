@@ -136,7 +136,12 @@ spawn_mode() {
 
 signal_port() { local value; value="$(env_value VOICE_SIGNAL_PORT)"; printf '%s' "${value:-4100}"; }
 signal_path() { local value; value="$(env_value VOICE_SIGNAL_PATH)"; value="${value:-/voice-signal}"; printf '/%s' "${value#/}" | sed 's:/*$::'; }
-signal_image() { local value; value="$(env_value VOICE_SIGNAL_IMAGE)"; printf '%s' "${value:-ghcr.io/sharlayan/mastodon-voice-signal:edge}"; }
+default_signal_image() {
+  local tag=edge
+  [ "$(cat "${APP_DIR}/.git/HEAD" 2>/dev/null)" = 'ref: refs/heads/main' ] && tag=main
+  printf 'ghcr.io/sharlayan/mastodon-voice-signal:%s' "$tag"
+}
+signal_image() { local value; value="$(env_value VOICE_SIGNAL_IMAGE)"; printf '%s' "${value:-$(default_signal_image)}"; }
 
 service_file() {
   case "$(init_system)" in

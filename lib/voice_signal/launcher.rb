@@ -7,7 +7,8 @@ module VoiceSignal
   class Launcher
     MODES = %w(auto binary docker).freeze
     PULL_POLICIES = %w(always missing never).freeze
-    DEFAULT_IMAGE = 'ghcr.io/sharlayan/mastodon-voice-signal:edge'
+    IMAGE_REPOSITORY = 'ghcr.io/sharlayan/mastodon-voice-signal'
+    RELEASE_BRANCHES = %w(main).freeze
     FORWARDED_VARIABLES = %w(
       LOCAL_DOMAIN WEB_DOMAIN SECRET_KEY_BASE DATABASE_URL DB_HOST DB_PORT DB_NAME DB_USER DB_PASS DB_SSLMODE
       VOICE_SIGNAL_PATH VOICE_SIGNAL_FEDERATION_PATH VOICE_SIGNAL_BIND VOICE_SIGNAL_PORT VOICE_SIGNAL_TRUSTED_PROXIES
@@ -198,7 +199,7 @@ module VoiceSignal
       pull = @environment['VOICE_SIGNAL_IMAGE_PULL'].to_s.empty? ? 'missing' : @environment['VOICE_SIGNAL_IMAGE_PULL']
       raise ConfigurationError, "VOICE_SIGNAL_IMAGE_PULL must be one of #{PULL_POLICIES.join(', ')}" unless PULL_POLICIES.include?(pull)
 
-      image = @environment['VOICE_SIGNAL_IMAGE'].to_s.empty? ? DEFAULT_IMAGE : @environment['VOICE_SIGNAL_IMAGE']
+      image = @environment['VOICE_SIGNAL_IMAGE'].to_s.empty? ? default_image : @environment['VOICE_SIGNAL_IMAGE']
 
       [
         docker_executable, 'run', '--rm', *('--interactive' if @supervised), '--name', container_name, "--pull=#{pull}",
@@ -207,6 +208,10 @@ module VoiceSignal
         *FORWARDED_VARIABLES.select { |name| @environment[name] }.flat_map { |name| ['--env', name] },
         image
       ]
+    end
+
+    def default_image
+      "#{IMAGE_REPOSITORY}:#{RELEASE_BRANCHES.include?(checkout_branch) ? checkout_branch : 'edge'}"
     end
 
     def container_name
@@ -238,6 +243,13 @@ module VoiceSignal
         return path if File.file?(path) && File.executable?(path)
       end
 
+      nil
+    end
+
+    def checkout_branch
+      head = File.read(File.join(@root, '.git', 'HEAD')).strip
+      head.delete_prefix('ref: refs/heads/') if head.start_with?('ref: refs/heads/')
+    rescue SystemCallError, IOError
       nil
     end
   end

@@ -108,9 +108,13 @@ RAILS_ENV=production bin/voice-signal build   # 결과: voice_signal/publish/Voi
 컨테이너 이미지는 Microsoft 공식 이미지(`sdk:10.0`에서 빌드, `aspnet:10.0`에서 실행)를 기반으로 합니다.
 
 ```sh
-util/voice-signal.sh pull-image    # VOICE_SIGNAL_IMAGE(기본 ghcr.io/sharlayan/mastodon-voice-signal:edge) 받기
+util/voice-signal.sh pull-image    # VOICE_SIGNAL_IMAGE 받기
 util/voice-signal.sh build-image   # LOCAL_IMAGE(기본 mastodon-voice-signal:local)로 로컬 빌드
 ```
+
+`VOICE_SIGNAL_IMAGE`를 지정하지 않으면 checkout한 브랜치에 맞는 이미지를 씁니다. `main`이면
+`ghcr.io/sharlayan/mastodon-voice-signal:main`, 그 밖의 브랜치는 develop nightly인 `:edge`입니다.
+`:main` 이미지는 `voice_signal/`이 바뀐 커밋이 main에 들어올 때마다 다시 만들어집니다.
 
 로컬 이미지를 쓰려면 `.env.production`에 `VOICE_SIGNAL_IMAGE=mastodon-voice-signal:local`과
 `VOICE_SIGNAL_IMAGE_PULL=never`를 지정합니다.

@@ -57,9 +57,12 @@ RSpec.describe VoiceSignal::Launcher do
       docker, 'run', '--rm', '--interactive', '--name', 'mastodon-voice-signal-4300', '--pull=missing', '--network', 'host',
       '--user', "#{Process.uid}:#{Process.gid}", '--volume', "#{socket}:#{socket}",
       '--env', 'SECRET_KEY_BASE', '--env', 'DB_HOST', '--env', 'DB_PASS', '--env', 'VOICE_SIGNAL_BIND', '--env', 'VOICE_SIGNAL_PORT', '--env', 'VOICE_SIGNAL_EXIT_ON_STDIN_EOF',
-      described_class::DEFAULT_IMAGE
+      "#{described_class::IMAGE_REPOSITORY}:edge"
     ]
     expect(command.join(' ')).to_not include('top-secret', 'db-secret')
+    FileUtils.mkdir_p(File.join(root, '.git'))
+    File.write(File.join(root, '.git', 'HEAD'), "ref: refs/heads/main\n")
+    expect(launcher('docker').command.last).to eq "#{described_class::IMAGE_REPOSITORY}:main"
     expect(launcher('docker', VOICE_SIGNAL_IMAGE: 'example/voice:1', VOICE_SIGNAL_IMAGE_PULL: 'always').command).to include('--pull=always', 'example/voice:1')
     expect { launcher('docker', VOICE_SIGNAL_IMAGE_PULL: 'sometimes').command }.to raise_error(described_class::ConfigurationError)
 
