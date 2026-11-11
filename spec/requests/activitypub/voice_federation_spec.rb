@@ -58,15 +58,30 @@ RSpec.describe 'ActivityPub voice call federation' do
     expect(response.parsed_body).to eq('includeIceServers' => true)
   end
 
-  it 'accepts status reports from remote participants' do
+  it 'accepts status reports from remote participants, refusing them only once the call is gone' do
+    status = { room: room_uri, sessionId: 'PA_9', micMuted: true, deafened: false }
+    post '/livekit/federation/status', params: status.to_json, headers: json_headers.dup, sign_with: guest
+    expect(response).to have_http_status(403)
+
     token_request(guest, { room: room_uri })
 
-    post '/livekit/federation/status', params: { room: room_uri, sessionId: 'PA_9', micMuted: true, deafened: false }.to_json, headers: json_headers.dup, sign_with: guest
+    post '/livekit/federation/status', params: status.to_json, headers: json_headers.dup, sign_with: guest
     expect(response).to have_http_status(200)
     expect(response.parsed_body).to eq({})
 
-    post '/livekit/federation/status', params: { room: room_uri, sessionId: 'PA_9', micMuted: 'yes', deafened: false }.to_json, headers: json_headers.dup, sign_with: guest
+    post '/livekit/federation/status', params: status.merge(micMuted: 'yes').to_json, headers: json_headers.dup, sign_with: guest
     expect(response).to have_http_status(400)
+
+    relay.fail_with = [502, { code: 'PROVIDER_UNAVAILABLE' }]
+    post '/livekit/federation/status', params: status.to_json, headers: json_headers.dup, sign_with: guest
+    expect(response).to have_http_status(503)
+
+    relay.fail_with = nil
+    allow(Sharlayan::VoiceCallService).to receive(:new).and_wrap_original do |original|
+      original.call.tap { |service| allow(service).to receive(:report_status).and_raise(Mastodon::RaceConditionError) }
+    end
+    post '/livekit/federation/status', params: status.to_json, headers: json_headers.dup, sign_with: guest
+    expect(response).to have_http_status(503)
   end
 
   it 'refuses unsigned requests, outsiders, blocked servers and malformed rooms' do

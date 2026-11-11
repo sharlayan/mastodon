@@ -3,7 +3,10 @@ import type { VoiceCredentials } from '../api';
 const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 const dispatch = vi.hoisted(() => vi.fn());
 const rooms = vi.hoisted(() => [] as FakeRoomShape[]);
-const connection = vi.hoisted(() => ({ fails: false }));
+const connection = vi.hoisted(() => ({
+  fails: false,
+  wait: null as Promise<void> | null,
+}));
 
 interface FakeRoomShape {
   options: unknown;
@@ -21,13 +24,20 @@ vi.mock('flavours/glitch/api', () => ({ default: () => api }));
 vi.mock('flavours/glitch/store', () => ({ store: { dispatch } }));
 vi.mock('livekit-client', () => {
   class Room {
+    static getLocalDevices = vi.fn(() =>
+      Promise.resolve([
+        { deviceId: '', kind: 'audioinput', label: '' },
+        { deviceId: 'mic-1', kind: 'audioinput', label: 'Desk microphone' },
+      ]),
+    );
+
     options: unknown;
     handlers = new Map<string, ((...args: unknown[]) => void)[]>();
     remoteParticipants = new Map();
     canPlaybackAudio = true;
     engine = { pcManager: undefined, rtcConfig: {} };
     connect = vi.fn(() => {
-      if (!connection.fails) return Promise.resolve();
+      if (!connection.fails) return connection.wait ?? Promise.resolve();
       this.emit('Disconnected');
       return Promise.reject(new Error('could not connect'));
     });
@@ -104,12 +114,13 @@ describe('voice call engine', () => {
     vi.resetModules();
     rooms.length = 0;
     connection.fails = false;
+    connection.wait = null;
     api.post.mockReset().mockResolvedValue({ data: { accepted: true } });
     dispatch.mockReset();
     window.localStorage.clear();
   });
 
-  it('connects with the relay ICE servers, opens the microphone and reports the status', async () => {
+  it('connects with the relay ICE servers, opens the microphone, reports the status and names the call server', async () => {
     const call = await import('../call');
 
     await call.connectVoiceCall({ id: '5', title: 'Room' }, credentials);
@@ -127,6 +138,7 @@ describe('voice call engine', () => {
     expect(call.voiceCallSnapshot()).toMatchObject({
       status: 'connected',
       conversation: { id: '5', title: 'Room' },
+      mediaProvider: 'https://voice.example.org',
       micEnabled: true,
       allowScreenShare: true,
     });
@@ -134,6 +146,15 @@ describe('voice call engine', () => {
       '/api/v1/chat/conversations/5/voice/status',
       { session_id: 'PA_local', mic_muted: false, deafened: false },
     );
+
+    await call.connectVoiceCall(
+      { id: '6', title: 'Other' },
+      {
+        ...credentials,
+        media_provider: '',
+      },
+    );
+    expect(call.voiceCallSnapshot().mediaProvider).toBe('wss://example.com');
   });
 
   it('turns the microphone off with the sound and remembers the choice', async () => {
@@ -163,6 +184,72 @@ describe('voice call engine', () => {
     expect(preferences.voicePreferences().micEnabled).toBe(true);
   });
 
+  it('applies microphone and sound choices made while connecting once connected', async () => {
+    const call = await import('../call');
+    const statusOf = () => {
+      const { micEnabled, deafened } = call.voiceCallSnapshot();
+      return { micEnabled, deafened };
+    };
+    let finish: () => void = () => undefined;
+    connection.wait = new Promise((resolve) => {
+      finish = resolve;
+    });
+
+    const joining = call.connectVoiceCall(
+      { id: '5', title: 'Room' },
+      credentials,
+      {
+        micEnabled: true,
+      },
+    );
+    await flush();
+    expect(call.voiceCallSnapshot().status).toBe('connecting');
+    expect(statusOf()).toEqual({ micEnabled: true, deafened: false });
+
+    call.setDeafened(true);
+    expect(statusOf()).toEqual({ micEnabled: false, deafened: true });
+    await call.setMicEnabled(true);
+    expect(statusOf()).toEqual({ micEnabled: true, deafened: false });
+    expect(
+      rooms[0]?.localParticipant.setMicrophoneEnabled,
+    ).not.toHaveBeenCalled();
+
+    finish();
+    await joining;
+    await flush();
+    expect(
+      rooms[0]?.localParticipant.setMicrophoneEnabled,
+    ).toHaveBeenCalledWith(true, expect.anything());
+    expect(api.post).toHaveBeenLastCalledWith(
+      '/api/v1/chat/conversations/5/voice/status',
+      { session_id: 'PA_local', mic_muted: false, deafened: false },
+    );
+
+    connection.wait = new Promise((resolve) => {
+      finish = resolve;
+    });
+    const rejoining = call.connectVoiceCall(
+      { id: '6', title: 'Other' },
+      credentials,
+      {
+        micEnabled: true,
+      },
+    );
+    await flush();
+    call.setDeafened(true);
+    call.setDeafened(false);
+    finish();
+    await rejoining;
+    await flush();
+    expect(
+      rooms[1]?.localParticipant.setMicrophoneEnabled,
+    ).not.toHaveBeenCalled();
+    expect(api.post).toHaveBeenLastCalledWith(
+      '/api/v1/chat/conversations/6/voice/status',
+      { session_id: 'PA_local', mic_muted: true, deafened: false },
+    );
+  });
+
   it('resets and explains when the server removes this participant', async () => {
     const call = await import('../call');
     await call.connectVoiceCall({ id: '5', title: 'Room' }, credentials);
@@ -190,6 +277,14 @@ describe('voice call engine', () => {
     expect(action.payload.message.id).toBe(
       'chat.voice.error.connection_failed',
     );
+  });
+
+  it('leaves out devices the browser has not identified yet', async () => {
+    const call = await import('../call');
+
+    await expect(call.listAudioDevices('audioinput')).resolves.toEqual([
+      { deviceId: 'mic-1', kind: 'audioinput', label: 'Desk microphone' },
+    ]);
   });
 
   it('applies changed voice processing settings to the open microphone', async () => {

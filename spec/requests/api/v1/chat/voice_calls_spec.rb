@@ -64,6 +64,26 @@ RSpec.describe 'API V1 Chat voice calls' do
     expect(response.parsed_body.first['participants']).to contain_exactly(a_hash_including('account_id' => user.account.id.to_s, 'account' => a_hash_including('id' => user.account.id.to_s)))
   end
 
+  it 'keeps a running call joinable after its relay is disabled while new calls wait for a usable relay' do
+    relay.provider
+    other_room = Sharlayan::ChatService.new.create_conversation(owner, type: :group, title: 'Other')
+    other_room.memberships.create!(account: user.account, role: :member)
+    post "/api/v1/chat/conversations/#{room.id}/voice/join", headers: headers
+    relay.provider.update!(enabled: false)
+
+    get '/api/v1/chat/settings', headers: headers
+    expect(response.parsed_body).to include('voice_calls' => true)
+
+    get '/api/v1/chat/voice_states', params: { conversation_ids: [room.id, other_room.id] }, headers: headers
+    expect(response.parsed_body.to_h { |state| [state['conversation_id'], state['available']] }).to eq(room.id.to_s => true, other_room.id.to_s => false)
+
+    post "/api/v1/chat/conversations/#{room.id}/voice/join", headers: headers
+    expect(response).to have_http_status(200)
+
+    post "/api/v1/chat/conversations/#{other_room.id}/voice/join", headers: headers
+    expect(response.parsed_body).to eq('error' => 'VOICE_CALL_UNAVAILABLE')
+  end
+
   it 'refuses accounts whose role does not allow voice calls' do
     relay.provider
     UserRole.everyone.update!(extra_permissions: UserRole::EXTRA_FLAGS[:join_voice_calls])
@@ -94,7 +114,11 @@ RSpec.describe 'API V1 Chat voice calls' do
 
     relay.fail_with = nil
     post "/api/v1/chat/conversations/#{room.id}/voice/kick", params: { account_id: owner.id }, headers: headers
-    expect(response).to have_http_status(409)
+    expect(response).to have_http_status(403)
+
+    own_room = Sharlayan::ChatService.new.create_conversation(user.account, type: :group, title: 'Own')
+    post "/api/v1/chat/conversations/#{own_room.id}/voice/mute", params: { account_id: owner.id }, headers: headers
+    expect([response.status, response.parsed_body]).to eq [200, { 'accepted' => false }]
 
     room.update!(archived_at: Time.now.utc)
     post "/api/v1/chat/conversations/#{room.id}/voice/join", headers: headers

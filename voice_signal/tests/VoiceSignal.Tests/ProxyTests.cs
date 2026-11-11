@@ -97,7 +97,7 @@ public sealed class ProxyTests : IAsyncLifetime
         await upstream.StopAsync();
     }
 
-    private static string Token(string allocationId) => TokenHintTests.LiveKitToken(new { clientId = "c", allocationId, generation = "g-1", userId = "1" });
+    private static string Token(string allocationId, string userId = "1") => TokenHintTests.LiveKitToken(new { clientId = "c", allocationId, generation = "g-1", userId });
 
     [Fact]
     public async Task RelaysWebSocketFramesWithASignedRelayToken()
@@ -134,6 +134,14 @@ public sealed class ProxyTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, denied.HttpStatusCode);
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await http.GetAsync($"{proxyAddress}/voice-signal/rtc?access_token={Token("alloc-unknown")}")).StatusCode);
+        var targets = upstreamTargets.Count;
+        Assert.Equal(HttpStatusCode.Forbidden, (await http.GetAsync($"{proxyAddress}/voice-signal/rtc/validate?access_token={Token("alloc-1", "2")}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await http.GetAsync($"{proxyAddress}/livekit/rtc/validate?access_token={Token("alloc-1", "2")}")).StatusCode);
+        using var outsider = new ClientWebSocket();
+        outsider.Options.CollectHttpResponseDetails = true;
+        await Assert.ThrowsAsync<WebSocketException>(() => outsider.ConnectAsync(new Uri($"{proxyAddress.Replace("http", "ws")}/voice-signal/rtc?access_token={Token("alloc-1", "2")}"), CancellationToken.None));
+        Assert.Equal(HttpStatusCode.Forbidden, outsider.HttpStatusCode);
+        Assert.Equal(targets, upstreamTargets.Count);
         Assert.Equal(HttpStatusCode.OK, (await http.GetAsync($"{proxyAddress}/livekit/rtc/validate?access_token={Token("alloc-1")}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await http.GetAsync($"{proxyAddress}/livekit/federation/token?access_token={Token("alloc-1")}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await http.GetAsync($"{proxyAddress}/voice-signal/rtc/%2e%2e/x?access_token={Token("alloc-1")}")).StatusCode);
@@ -318,6 +326,8 @@ public sealed class ProxyTests : IAsyncLifetime
 
     private sealed class FakeResolver(string origin) : IAllocationResolver
     {
+        public Task<bool> IsAdmittedAsync(TokenHint hint, CancellationToken cancellationToken) => Task.FromResult(hint.UserId == 1);
+
         public Task<string?> ResolveRemoteOriginAsync(long sessionId, TokenClaims claims, CancellationToken cancellationToken) =>
             Task.FromResult(sessionId == 7 && claims is { Identity: "https://social.example/users/me", Room: "room-1" } ? origin : null);
 

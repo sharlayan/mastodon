@@ -38,12 +38,14 @@ class ActivityPub::VoiceFederationController < ActivityPub::BaseController
     return head 400 unless body && room_param?(body['room']) && body['sessionId'].is_a?(String) && body['sessionId'].length.between?(1, 128) && boolean?(body['micMuted']) && boolean?(body['deafened'])
 
     conversation = conversation_for(body['room'])
-    return head 403 if conversation.nil?
+    return head 403 if conversation.nil? || !VoiceCallAllocation.active.exists?(chat_conversation_id: conversation.id)
 
     accepted = Sharlayan::VoiceCallService.new.report_status(signed_request_account, conversation, session_id: body['sessionId'], mic_muted: body['micMuted'], deafened: body['deafened'])
     accepted ? render(json: {}) : head(403)
-  rescue Sharlayan::VoiceCallService::Unavailable, Sharlayan::VoiceCallService::Forbidden, Sharlayan::VoiceRelay::Error
+  rescue Sharlayan::VoiceCallService::Unavailable, Sharlayan::VoiceCallService::Forbidden
     head 403
+  rescue Sharlayan::VoiceRelay::Error, Mastodon::RaceConditionError
+    head 503
   end
 
   private

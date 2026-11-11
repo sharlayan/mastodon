@@ -21,7 +21,7 @@ RSpec.describe Sharlayan::VoiceRelay::Client do
     { status:, body: body.to_json, headers: { 'Content-Type' => 'application/json' } }
   end
 
-  it 'signs requests with a short-lived relay client JWT and returns the validated capacity' do
+  it 'signs requests with a short-lived relay client JWT, bounds them by the remaining relay budget and returns the validated capacity' do
     stub_request(:get, capacity_url).to_return(json_response(capacity.merge(unknown: 'ignored')))
 
     expect(client.capacity).to include(
@@ -38,14 +38,24 @@ RSpec.describe Sharlayan::VoiceRelay::Client do
         payload.keys.sort == %w(aud exp iat iss) &&
         payload['exp'] - payload['iat'] == 60
     end).to have_been_made
+
+    allow(Sharlayan::VoiceRelay::TimedRequest).to receive(:new).and_call_original
+    described_class.with_deadline(3.seconds) { client.capacity }
+    expect(Sharlayan::VoiceRelay::TimedRequest).to have_received(:new).with(:get, capacity_url, hash_including(timeout: a_value_between(0.1, 3)))
   end
 
-  it 'keeps relay error codes and does not follow redirects' do
+  it 'keeps relay error codes, treats other error pages as an unreachable relay and does not follow redirects' do
     stub_request(:get, capacity_url).to_return(json_response({ code: 'CLIENT_DISABLED' }, status: 403))
     expect { client.capacity }.to raise_error(Sharlayan::VoiceRelay::Error) { |error| expect([error.code, error.status, error.revoked?]).to eq ['CLIENT_DISABLED', 403, true] }
 
+    stub_request(:get, capacity_url).to_return(status: 403, body: '<html>Forbidden</html>', headers: { 'Content-Type' => 'text/html' })
+    expect { client.capacity }.to raise_error(Sharlayan::VoiceRelay::Error) { |error| expect([error.code, error.status, error.revoked?]).to eq ['PROVIDER_UNAVAILABLE', 503, false] }
+
+    stub_request(:get, capacity_url).to_return(json_response({ message: 'Unauthorized' }, status: 401))
+    expect { client.capacity }.to raise_error(Sharlayan::VoiceRelay::Error) { |error| expect([error.code, error.status, error.revoked?]).to eq ['PROVIDER_UNAVAILABLE', 503, false] }
+
     stub_request(:get, capacity_url).to_return(status: 302, headers: { 'Location' => 'https://elsewhere.example/voice-relay/v1/capacity' })
-    expect { client.capacity }.to raise_error(Sharlayan::VoiceRelay::Error) { |error| expect([error.code, error.status]).to eq ['PROVIDER_UNAVAILABLE', 302] }
+    expect { client.capacity }.to raise_error(Sharlayan::VoiceRelay::Error) { |error| expect([error.code, error.status]).to eq ['PROVIDER_UNAVAILABLE', 503] }
     expect(a_request(:get, 'https://elsewhere.example/voice-relay/v1/capacity')).to_not have_been_made
   end
 

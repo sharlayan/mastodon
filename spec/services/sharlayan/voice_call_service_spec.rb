@@ -31,7 +31,7 @@ RSpec.describe Sharlayan::VoiceCallService do
     Setting.voice_call_max_participants = 10
   end
 
-  it 'reserves the room on the least loaded relay and issues credentials for members' do
+  it 'reserves the room on the least loaded relay and issues credentials for members without unsafe ICE servers' do
     busy = FakeVoiceRelay.new('https://busy.example.org', reserved_slots: 90).install
     busy.provider
 
@@ -49,9 +49,12 @@ RSpec.describe Sharlayan::VoiceCallService do
     expect(allocation).to have_attributes(voice_relay_provider: provider, state: 'active', slots: 6, room_key: "https://cb6e6126.ngrok.io/chat/rooms/#{room.id}", remote_id: 'alloc-1')
     expect(VoiceCallEventsWorker).to have_enqueued_sidekiq_job(provider.id)
 
-    service.join(owner, room)
+    relay.ice_servers = [{ urls: ['turn:10.0.0.1:3478'], username: 'u', credential: 'c' }]
+    expect(service.join(owner, room)).to include(token: "lk-token-#{owner.id}", ice_servers: [])
     expect(relay.allocations.size).to eq 1
     expect(relay.called?(:post, '/allocations/alloc-1/lease')).to be true
+    relay.ice_servers = nil
+    expect(service.join(owner, room)).to include(ice_servers: nil)
   end
 
   it 'refuses non-members, unavailable rooms and full relays' do
@@ -125,6 +128,41 @@ RSpec.describe Sharlayan::VoiceCallService do
     expect(state[:participants].first[:account]).to include(id: member.id.to_s, username: member.username)
   end
 
+  it 'lets the owner mute and leave through moderation and treats moderation without a call as a no-op' do
+    service.join(owner, room)
+    VoiceCallEventsWorker.clear
+
+    expect(service.mute(owner, room, owner)).to be true
+    expect(VoiceCallEventsWorker).to have_enqueued_sidekiq_job(provider.id)
+    expect(service.kick(owner, room, owner)).to be true
+    expect(relay.kicked).to eq [ActivityPub::TagManager.instance.uri_for(owner)]
+    expect { service.join(owner, room) }.to_not raise_error
+
+    service.end_call(VoiceCallAllocation.find_by!(chat_conversation: room))
+    expect([service.kick(owner, room, member), service.mute(owner, room, member)]).to eq [false, false]
+    expect { service.mute(member, room, owner) }.to raise_error(described_class::Forbidden)
+  end
+
+  it 'tells members when a relay stops answering for a call and when it answers again' do
+    service.join(member, room)
+    VoiceCallAllocation.where(chat_conversation: room).update_all(updated_at: 1.minute.ago)
+    states = []
+    allow(redis).to(receive(:publish).and_wrap_original do |original, channel, message|
+      states << JSON.parse(JSON.parse(message)['payload']).slice('unavailable', 'updated_at') if channel == "timeline:#{owner.id}"
+      original.call(channel, message)
+    end)
+
+    relay.fail_with = [503, { code: 'PROVIDER_UNAVAILABLE' }]
+    2.times { service.poll_events(provider) }
+    expect(states.pluck('unavailable')).to eq [true]
+    expect(states.last['updated_at']).to be > 5.seconds.ago.to_i * 1000
+
+    relay.fail_with = nil
+    service.poll_events(provider)
+    expect(states.pluck('unavailable')).to eq [true, false]
+    expect(states.last['updated_at']).to be >= states.first['updated_at']
+  end
+
   it 'removes a participant whose membership ends and lets only the owner moderate' do
     service.join(member, room)
     relay.participants = [relay.participant(member)]
@@ -148,6 +186,30 @@ RSpec.describe Sharlayan::VoiceCallService do
     expect(VoiceCallAllocation.find_by!(chat_conversation: room).participants).to be_empty
   end
 
+  it 'removes participants as soon as their account is suspended, disabled or moved to a role without voice calls' do
+    bystander = Fabricate(:user).account
+    room.memberships.create!(account: bystander, role: :member)
+    service.join(member, room)
+    relay.participants = [relay.participant(member), relay.participant(owner, session_id: 'PA_2')]
+    service.poll_events(provider)
+
+    bystander.user.update!(disabled: true)
+    expect(VoiceCallRevocationWorker.jobs).to be_empty
+
+    member.user.update!(disabled: true)
+    owner.suspend!
+    expect(VoiceCallRevocationWorker).to have_enqueued_sidekiq_job(room.id, member.id)
+    expect(VoiceCallRevocationWorker).to have_enqueued_sidekiq_job(room.id, owner.id)
+
+    owner.unsuspend!
+    owner.user.update!(role: Fabricate(:user_role, extra_permissions: 0))
+    expect(VoiceCallRevocationWorker.jobs.size).to eq 3
+
+    UserRole.everyone.update!(extra_permissions: 0)
+    [member, owner].each { |account| service.revoke(room.id, account.id) }
+    expect(relay.kicked.uniq).to eq([member, owner].map { |account| ActivityPub::TagManager.instance.uri_for(account) })
+  end
+
   it 'ends calls of deleted rooms and disabled features during maintenance and prunes old records' do
     service.join(member, room)
     allocation = VoiceCallAllocation.find_by!(chat_conversation: room)
@@ -155,7 +217,7 @@ RSpec.describe Sharlayan::VoiceCallService do
     expect(VoiceCallEndWorker).to have_enqueued_sidekiq_job(allocation.id)
     expect(allocation.reload.chat_conversation_id).to be_nil
 
-    service.maintain
+    service.maintain_provider(provider)
     expect(allocation.reload.state).to eq 'ended'
     expect(relay.allocations['alloc-1']['state']).to eq 'ended'
 
@@ -190,13 +252,61 @@ RSpec.describe Sharlayan::VoiceCallService do
 
     allocation.update_columns(renewed_at: 1.minute.ago)
     relay.fail_with = [403, { code: 'CLIENT_DISABLED' }]
-    service.maintain
+    service.maintain_provider(provider)
     expect(provider.reload).to have_attributes(validated: false, last_error: 'CLIENT_DISABLED', revoked?: true)
     expect(allocation.reload.state).to eq 'ending'
 
     relay.fail_with = nil
-    service.maintain
+    service.maintain_provider(provider)
     expect(allocation.reload.state).to eq 'ended'
+  end
+
+  it 'does not record a revocation answered for credentials that were replaced since' do
+    service.join(member, room)
+    stale = VoiceRelayProvider.find(provider.id)
+    provider.update!(secret: 'n' * 40)
+    provider.update_columns(validated: true)
+
+    relay.fail_with = [401, { code: 'CLIENT_DISABLED' }]
+    service.poll_events(stale)
+    expect(provider.reload).to have_attributes(validated: true, revoked?: false, last_error: nil)
+    service.poll_events(provider)
+    expect(provider.reload).to have_attributes(validated: false, revoked?: true, last_error: 'CLIENT_DISABLED')
+
+    VoiceCallAllocation.find_by!(chat_conversation: room).update!(state: 'pending', unavailable: false)
+    stub_request(:get, %r{\Ahttps://voice\.example\.org/voice-relay/v1/allocations\?}).to_return do
+      provider.update!(secret: SecureRandom.hex(20))
+      provider.update_columns(validated: true)
+      { status: 401, body: { code: 'CLIENT_DISABLED' }.to_json, headers: { 'Content-Type' => 'application/json' } }
+    end
+    service.maintain_provider(provider)
+    expect(provider.reload).to have_attributes(validated: true, revoked?: false)
+  end
+
+  it 'maintains each relay in its own job with bounded requests so a stalled relay does not hold up renewals on another' do
+    other = FakeVoiceRelay.new('https://other.example.org', reserved_slots: 50).install
+    other.provider
+    other_room = Sharlayan::ChatService.new.create_conversation(owner, type: :group, title: 'Other')
+    service.join(member, room)
+    relay.reserved_slots = 90
+    service.join(owner, other_room)
+    stalled, healthy = [room, other_room].map { |conversation| VoiceCallAllocation.find_by!(chat_conversation: conversation) }
+    expect(healthy.voice_relay_provider).to eq other.provider
+    VoiceCallAllocation.update_all(renewed_at: 1.minute.ago)
+    relay.calls.clear
+
+    service.maintain
+    expect(relay.calls).to be_empty
+    [provider, other.provider].each { |enqueued| expect(VoiceCallMaintenanceWorker).to have_enqueued_sidekiq_job(enqueued.id) }
+
+    stub_request(:post, %r{\Ahttps://voice\.example\.org/voice-relay/v1/allocations/[^/]+/lease\z}).to_timeout
+    allow(Sharlayan::VoiceRelay::TimedRequest).to receive(:new).and_call_original
+    VoiceCallMaintenanceWorker.new.perform(provider.id)
+    expect(stalled.reload).to have_attributes(state: 'active', unavailable: true)
+    expect(Sharlayan::VoiceRelay::TimedRequest).to have_received(:new).with(:post, a_string_ending_with("/allocations/#{stalled.remote_id}/lease"), hash_including(timeout: 10))
+
+    VoiceCallMaintenanceWorker.new.perform(other.provider.id)
+    expect(healthy.reload.renewed_at).to be > 5.seconds.ago
   end
 
   it 'follows role permissions when issuing credentials' do
@@ -295,12 +405,31 @@ RSpec.describe Sharlayan::VoiceCallService do
     Setting.voice_call_federation_host_enabled = false
   end
 
-  it 'reports a relay as revoked only when it disabled this server' do
-    allow(relay).to(receive(:capacity).and_wrap_original { |original| original.call.merge('accepting' => false) })
-    expect { service.join(member, room) }.to raise_error(an_object_having_attributes(code: 'PROVIDER_UNAVAILABLE'))
+  it 'reports a relay as revoked only when it disabled this server and as full when it stopped accepting rooms' do
+    allow(relay).to(receive(:capacity).and_wrap_original { |original| original.call.merge('accepting' => false, 'remainingSlots' => 0) })
+    expect { service.join(member, room) }.to raise_error(an_object_having_attributes(code: 'CAPACITY_EXCEEDED'))
 
     allow(relay).to(receive(:capacity).and_wrap_original { |original| original.call.merge('enabled' => false, 'accepting' => false) })
     expect { service.join(member, room) }.to raise_error(an_object_having_attributes(code: 'CLIENT_DISABLED'))
+  end
+
+  it 'asks relays for capacity at the same time and stops waiting for a slow relay after a short while' do
+    stub_const("#{described_class}::CAPACITY_TIMEOUT", 0.5.seconds)
+    slow = FakeVoiceRelay.new('https://slow.example.org').install
+    slow.provider
+    relay.reserved_slots = 50
+    allow(slow).to(receive(:capacity).and_wrap_original { |original| sleep(3) || original.call })
+
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    service.join(member, room)
+    expect(VoiceCallAllocation.find_by!(chat_conversation: room).voice_relay_provider).to eq provider
+
+    relay.full = true
+    expect { service.join(owner, Sharlayan::ChatService.new.create_conversation(owner, type: :group, title: 'Other')) }
+      .to raise_error(an_object_having_attributes(code: 'CAPACITY_EXCEEDED'))
+    expect(Process.clock_gettime(Process::CLOCK_MONOTONIC) - started).to be < 2
+    expect(slow.provider.reload.last_error).to eq 'PROVIDER_UNAVAILABLE'
+    expect(redis.exists?("voice_relay:cooldown:#{slow.provider.id}")).to be true
   end
 
   it 'skips a failing relay for a short while and validates status reports' do
@@ -316,7 +445,7 @@ RSpec.describe Sharlayan::VoiceCallService do
     stub_const("#{described_class}::RELAY_BUDGET", 0.seconds)
 
     expect { service.join(member, room) }.to raise_error(Sharlayan::VoiceRelay::Client::DeadlineExceeded)
-    expect { service.maintain }.to_not raise_error
+    expect { service.maintain_provider(provider) }.to_not raise_error
     expect(relay.calls).to be_empty
     expect(provider.client.capacity).to include('enabled' => true)
   end

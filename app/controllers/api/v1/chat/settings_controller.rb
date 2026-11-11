@@ -47,7 +47,7 @@ class Api::V1::Chat::SettingsController < Api::V1::Chat::BaseController
     return @voice_calls_permitted if defined?(@voice_calls_permitted)
 
     @voice_calls_permitted = Sharlayan::VoiceCallService.permitted?(current_account) &&
-                             ((Sharlayan::VoiceCallService.enabled? && VoiceRelayProvider.usable.exists?) || Sharlayan::VoiceCallFederation.remote_join_enabled?)
+                             ((Sharlayan::VoiceCallService.enabled? && Sharlayan::VoiceCallService.relay_enabled?) || Sharlayan::VoiceCallFederation.remote_join_enabled?)
   end
 
   def boolean_param(key)
