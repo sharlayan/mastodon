@@ -81,8 +81,8 @@ interface CallMember {
   identity: string;
   account: ChatAccount;
   self: boolean;
-  micMuted: boolean;
-  deafened: boolean;
+  micMuted: boolean | null;
+  deafened: boolean | null;
   screenSharing: boolean;
   speaking: boolean;
 }
@@ -322,14 +322,14 @@ const MemberTile: FC<{
         )}
       </span>
       <span className='chat-voice__member-flags'>
-        {member.micMuted && (
+        {member.micMuted === true && (
           <Icon
             id='mic-off'
             icon={MicOffIcon}
             aria-label={intl.formatMessage(voiceMessages.micMuted)}
           />
         )}
-        {member.deafened && (
+        {member.deafened === true && (
           <Icon
             id='headset-off'
             icon={HeadsetOffIcon}

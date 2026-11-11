@@ -47,6 +47,13 @@ const bob = {
   avatar: '/bob.png',
   avatar_static: '/bob.png',
 };
+const carol = {
+  id: 'carol',
+  acct: 'carol@remote.example',
+  display_name: 'Carol',
+  avatar: '/carol.png',
+  avatar_static: '/carol.png',
+};
 const room: VoiceRoom = {
   id: 'room',
   title: 'Hikers',
@@ -71,6 +78,14 @@ const voiceState = (extra: Partial<VoiceState> = {}): VoiceState => ({
       screen_sharing: false,
       mic_muted: true,
       deafened: false,
+    },
+    {
+      identity: 'https://remote.example/users/carol',
+      account_id: 'carol',
+      account: carol,
+      screen_sharing: false,
+      mic_muted: null,
+      deafened: null,
     },
   ],
   ...extra,
@@ -121,8 +136,9 @@ describe('voice call panel', () => {
     mount();
     await settle();
 
-    expect(screen.getByText('1 person in call')).toBeTruthy();
-    expect(screen.getByLabelText('Microphone muted')).toBeTruthy();
+    expect(screen.getByText('2 people in call')).toBeTruthy();
+    expect(screen.getAllByLabelText('Microphone muted')).toHaveLength(1);
+    expect(screen.queryByLabelText('Sound turned off')).toBeNull();
 
     const [headerJoin, bannerJoin] = screen.getAllByRole('button', {
       name: 'Join call',
