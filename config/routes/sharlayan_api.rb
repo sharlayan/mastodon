@@ -70,7 +70,16 @@ namespace :api, format: false do
 
         resources :messages, only: [:index, :create]
         resources :invitations, only: :create
+
+        resource :voice, only: :show, controller: :voice_calls do
+          post :join
+          post :status
+          post :kick
+          post :mute
+        end
       end
+
+      get :voice_states, to: 'voice_calls#index'
 
       resources :messages, only: [:show, :update, :destroy] do
         collection do
