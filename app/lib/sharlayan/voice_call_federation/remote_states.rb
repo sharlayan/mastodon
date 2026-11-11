@@ -4,7 +4,7 @@ module Sharlayan
   module VoiceCallFederation
     class RemoteStates
       MAX_AHEAD = 5.minutes
-      ACTIVE_MAX_AGE = 7.minutes
+      ACTIVE_MAX_AGE = VoiceCallRemoteState::STALE_AFTER + MAX_AHEAD
       EMPTY_MAX_AGE = 2.days
       MAX_PARTICIPANTS = 1001
       BOOLEANS = [true, false].freeze

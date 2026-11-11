@@ -69,11 +69,15 @@ RSpec.describe Sharlayan::VoiceCallFederation do
       expect(Sharlayan::VoiceCallService.state_for(mirror)[:active]).to be false
     end
 
-    it 'rejects states from other actors, other servers, the far future and while remote calls are off' do
+    it 'rejects states from other actors, other servers, the far future, the distant past and while remote calls are off' do
       expect(Sharlayan::VoiceCallFederation::Incoming.handle(voice_state_update(participants: [], actor: other), other)).to eq 'skip: voice state is not on the sender server'
       expect(Sharlayan::VoiceCallFederation::Incoming.handle(voice_state_update(participants: [], room: 'https://remote.test/chat/rooms/9?x'), host)).to eq 'skip: voice state is not on the sender server'
       expect(Sharlayan::VoiceCallFederation::Incoming.handle(voice_state_update(participants: [], updated: 1.hour.from_now), host)).to eq 'ahead: voice state'
       expect(Sharlayan::VoiceCallFederation::Incoming.handle(voice_state_update(participants: [{ 'id' => host.uri }]), host)).to eq 'skip: invalid participants'
+      expect(Sharlayan::VoiceCallFederation::Incoming.handle(voice_state_update(participants: [{ 'id' => host.uri, 'screenSharing' => false }], updated: 16.minutes.ago), host)).to eq 'old: voice state'
+      expect(Sharlayan::VoiceCallFederation::Incoming.handle(voice_state_update(participants: [{ 'id' => host.uri, 'screenSharing' => false }], updated: 14.minutes.ago), host)).to eq 'stored: voice state'
+      expect(Sharlayan::VoiceCallService.state_for(mirror)[:participants].pluck(:account_id)).to eq [host.id.to_s]
+      VoiceCallRemoteState.delete_all
 
       Setting.voice_call_remote_join_enabled = false
       expect(Sharlayan::VoiceCallFederation::Incoming.handle(voice_state_update(participants: []), host)).to eq 'skip: remote voice calls disabled'
