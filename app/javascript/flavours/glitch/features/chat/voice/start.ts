@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 
 import { useIntl } from 'react-intl';
 
@@ -9,6 +9,7 @@ import { requestVoiceCredentials } from './api';
 import type { VoiceCredentials } from './api';
 import {
   connectVoiceCall,
+  leaveVoiceCall,
   notifyVoiceCallFailure,
   prepareVoiceCall,
   voiceCallSnapshot,
@@ -38,7 +39,38 @@ export const hostOf = (origin: string) => {
   }
 };
 
-let starting = false;
+interface PendingStart {
+  conversation: VoiceCallConversation;
+}
+
+let pending: PendingStart | null = null;
+const pendingListeners = new Set<() => void>();
+
+const setPending = (value: PendingStart | null) => {
+  pending = value;
+  pendingListeners.forEach((listener) => {
+    listener();
+  });
+};
+
+const subscribePending = (listener: () => void) => {
+  pendingListeners.add(listener);
+  return () => {
+    pendingListeners.delete(listener);
+  };
+};
+
+const currentPending = () => pending;
+
+const pendingConversation = () => currentPending()?.conversation ?? null;
+
+export const usePendingVoiceCall = () =>
+  useSyncExternalStore(subscribePending, pendingConversation);
+
+export const cancelPendingVoiceCall = () => {
+  setPending(null);
+  void leaveVoiceCall();
+};
 
 export const useStartVoiceCall = () => {
   const dispatch = useAppDispatch();
@@ -63,8 +95,9 @@ export const useStartVoiceCall = () => {
 
   const begin = useCallback(
     async (conversation: VoiceCallConversation, micEnabled?: boolean) => {
-      if (starting) return;
-      starting = true;
+      if (pending) return;
+      const entry = { conversation };
+      setPending(entry);
       const revision = voiceLeaveRevision();
       let credentials: VoiceCredentials;
       try {
@@ -76,7 +109,7 @@ export const useStartVoiceCall = () => {
         if (revision === voiceLeaveRevision()) notifyVoiceCallFailure(error);
         return;
       } finally {
-        starting = false;
+        if (currentPending() === entry) setPending(null);
       }
       if (revision !== voiceLeaveRevision()) return;
 

@@ -232,6 +232,35 @@ describe('voice call panel', () => {
     expect(engine.connectVoiceCall).toHaveBeenCalledTimes(2);
   });
 
+  it('shows that the join request is in flight on both join buttons', async () => {
+    api.get.mockResolvedValue({ data: [voiceState()] });
+    let answer: (value: unknown) => void = () => undefined;
+    api.post.mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+    mount();
+    await settle();
+
+    const [, bannerJoin] = screen.getAllByRole('button', { name: 'Join call' });
+    fireEvent.click(bannerJoin as HTMLElement);
+    await settle();
+    expect(screen.queryAllByRole('button', { name: 'Join call' })).toHaveLength(
+      0,
+    );
+    const header = screen.getByRole('button', { name: 'Connecting…' });
+    expect(header.hasAttribute('disabled')).toBe(true);
+    expect(bannerJoin?.textContent).toContain('Connecting…');
+    expect(bannerJoin?.getAttribute('aria-disabled')).toBe('true');
+
+    answer({ data: credentials });
+    await settle();
+    expect(screen.getAllByRole('button', { name: 'Join call' })).toHaveLength(
+      2,
+    );
+  });
+
   it('hides the call controls when the room has no call or cannot have one', async () => {
     api.get.mockResolvedValue({
       data: [voiceState({ active: false, participants: [], available: false })],

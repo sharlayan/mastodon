@@ -69,7 +69,7 @@ import {
   voicePreferences,
 } from './preferences';
 import type { ScreenShareQuality } from './preferences';
-import { hostOf, useStartVoiceCall } from './start';
+import { hostOf, usePendingVoiceCall, useStartVoiceCall } from './start';
 import { useVoiceState } from './states';
 
 export interface VoiceRoom {
@@ -188,6 +188,7 @@ export const VoiceCallHeaderButton: FC<{
   const state = useVoiceState(room.id, enabled);
   const call = useVoiceCall();
   const start = useStartVoiceCall();
+  const joining = usePendingVoiceCall()?.id === room.id;
   const handleClick = useCallback(() => {
     start({ id: room.id, title: room.title }, voicePreferences().micEnabled);
   }, [room.id, room.title, start]);
@@ -197,14 +198,17 @@ export const VoiceCallHeaderButton: FC<{
     state.active ? voiceMessages.join : voiceMessages.startCall,
   );
   const panelOffersJoin = state.active && state.participants.length > 0;
+  const title = joining ? intl.formatMessage(voiceMessages.connecting) : label;
   return (
     <>
       {!panelOffersJoin && <JoinMicToggle className='column-header__button' />}
       <button
         type='button'
         className='column-header__button'
-        title={label}
-        aria-label={label}
+        title={title}
+        aria-label={title}
+        aria-busy={joining}
+        disabled={joining}
         onClick={handleClick}
       >
         <Icon id='call' icon={CallIcon} />
@@ -852,6 +856,7 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
   const state = useVoiceState(room.id, enabled);
   const call = useVoiceCall();
   const start = useStartVoiceCall();
+  const joining = usePendingVoiceCall()?.id === room.id;
   const [selection, setSelection] = useState<{
     roomId: string;
     identity: string;
@@ -966,9 +971,11 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
         {!joined && state?.available && (
           <div className='chat-voice__join'>
             <JoinMicToggle className='chat-voice__join-mic' />
-            <Button compact onClick={handleJoin}>
+            <Button compact loading={joining} onClick={handleJoin}>
               <Icon id='call' icon={CallIcon} />
-              {intl.formatMessage(voiceMessages.join)}
+              {intl.formatMessage(
+                joining ? voiceMessages.connecting : voiceMessages.join,
+              )}
             </Button>
           </div>
         )}
