@@ -130,8 +130,10 @@ RSpec.describe Sharlayan::VoiceCallService do
 
   it 'lets the owner mute and leave through moderation and treats moderation without a call as a no-op' do
     service.join(owner, room)
+    VoiceCallEventsWorker.clear
 
     expect(service.mute(owner, room, owner)).to be true
+    expect(VoiceCallEventsWorker).to have_enqueued_sidekiq_job(provider.id)
     expect(service.kick(owner, room, owner)).to be true
     expect(relay.kicked).to eq [ActivityPub::TagManager.instance.uri_for(owner)]
     expect { service.join(owner, room) }.to_not raise_error

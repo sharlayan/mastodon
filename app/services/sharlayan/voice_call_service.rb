@@ -232,7 +232,9 @@ class Sharlayan::VoiceCallService
 
   def mute(actor, conversation, target)
     moderate(actor, conversation) do |allocation|
-      Responses.accepted(participant_request(allocation, 'mute', identity: self.class.identity_for(target)))
+      accepted = Responses.accepted(participant_request(allocation, 'mute', identity: self.class.identity_for(target)))
+      VoiceCallEventsWorker.perform_async(allocation.voice_relay_provider_id) if accepted
+      accepted
     end
   end
 
