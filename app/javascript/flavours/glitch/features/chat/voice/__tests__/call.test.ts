@@ -192,6 +192,37 @@ describe('voice call engine', () => {
     );
   });
 
+  it('keeps watching a screen share across a reconnection', async () => {
+    const call = await import('../call');
+    await call.connectVoiceCall({ id: '5', title: 'Room' }, credentials);
+    await flush();
+    const room = rooms[0] as unknown as FakeRoomShape & {
+      remoteParticipants: Map<string, unknown>;
+    };
+
+    call.watchScreenShare('https://remote.example/users/a');
+    call.watchScreenShare('https://remote.example/users/b');
+    room.emit('Reconnecting');
+    room.emit('ParticipantDisconnected', {
+      identity: 'https://remote.example/users/a',
+    });
+    room.emit('ParticipantDisconnected', {
+      identity: 'https://remote.example/users/b',
+    });
+    expect(call.voiceCallSnapshot().watchingIdentities).toHaveLength(2);
+
+    room.remoteParticipants.set('https://remote.example/users/a', {
+      identity: 'https://remote.example/users/a',
+      trackPublications: new Map([['TR_1', { source: 'screen_share' }]]),
+    });
+    room.emit('Reconnected');
+
+    expect(call.voiceCallSnapshot()).toMatchObject({
+      status: 'connected',
+      watchingIdentities: ['https://remote.example/users/a'],
+    });
+  });
+
   it('follows screen share permission changes from the server', async () => {
     const call = await import('../call');
     await call.connectVoiceCall({ id: '5', title: 'Room' }, credentials);

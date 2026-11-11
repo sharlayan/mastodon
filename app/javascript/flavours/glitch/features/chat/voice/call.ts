@@ -620,6 +620,23 @@ const forgetScreenShare = (identity: string) => {
   syncScreenShareSubscription(identity);
 };
 
+const releaseScreenShare = (identity: string) => {
+  if (state.status === 'reconnecting') screenShareTracks.delete(identity);
+  else forgetScreenShare(identity);
+};
+
+const pruneScreenShares = (room: LK.Room) => {
+  const sharing = (identity: string) =>
+    screenSharePublicationOf(room, identity) != null;
+  for (const identity of state.screenShareIdentities) {
+    if (!sharing(identity)) screenShareTracks.delete(identity);
+  }
+  setState({
+    screenShareIdentities: state.screenShareIdentities.filter(sharing),
+    watchingIdentities: state.watchingIdentities.filter(sharing),
+  });
+};
+
 const applySubscription = (
   lk: LiveKit,
   publication: LK.TrackPublication,
@@ -759,14 +776,14 @@ const bindRoomEvents = (lk: LiveKit, room: LK.Room) => {
       participant: LK.RemoteParticipant,
     ) => {
       if (isCurrent() && publication.source === Track.Source.ScreenShare)
-        forgetScreenShare(participant.identity);
+        releaseScreenShare(participant.identity);
     },
   );
 
   room.on(
     RoomEvent.ParticipantDisconnected,
     (participant: LK.RemoteParticipant) => {
-      if (isCurrent()) forgetScreenShare(participant.identity);
+      if (isCurrent()) releaseScreenShare(participant.identity);
     },
   );
 
@@ -874,6 +891,7 @@ const bindRoomEvents = (lk: LiveKit, room: LK.Room) => {
 
   room.on(RoomEvent.Reconnected, () => {
     if (!isCurrent()) return;
+    pruneScreenShares(room);
     setState({ status: 'connected' });
     reportStatus(room, true);
     startLocalMeter(room);
