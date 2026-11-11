@@ -270,9 +270,17 @@ RSpec.describe Sharlayan::VoiceCallService do
     relay.fail_with = [401, { code: 'CLIENT_DISABLED' }]
     service.poll_events(stale)
     expect(provider.reload).to have_attributes(validated: true, revoked?: false, last_error: nil)
-
     service.poll_events(provider)
     expect(provider.reload).to have_attributes(validated: false, revoked?: true, last_error: 'CLIENT_DISABLED')
+
+    VoiceCallAllocation.find_by!(chat_conversation: room).update!(state: 'pending', unavailable: false)
+    stub_request(:get, %r{\Ahttps://voice\.example\.org/voice-relay/v1/allocations\?}).to_return do
+      provider.update!(secret: SecureRandom.hex(20))
+      provider.update_columns(validated: true)
+      { status: 401, body: { code: 'CLIENT_DISABLED' }.to_json, headers: { 'Content-Type' => 'application/json' } }
+    end
+    service.maintain_provider(provider)
+    expect(provider.reload).to have_attributes(validated: true, revoked?: false)
   end
 
   it 'maintains each relay in its own job with bounded requests so a stalled relay does not hold up renewals on another' do

@@ -307,8 +307,8 @@ class Sharlayan::VoiceCallService
       failed = true
     rescue Error => e
       failed = true
-      flag_unavailable(allocation)
       record_provider_error(provider, e)
+      flag_unavailable(allocation)
     end
 
     provider.update_columns(events_cursor: feed[:cursor]) unless failed
@@ -739,8 +739,8 @@ class Sharlayan::VoiceCallService
   rescue Sharlayan::VoiceRelay::Client::DeadlineExceeded
     nil
   rescue Error => e
-    flag_unavailable(allocation)
     record_provider_error(allocation.voice_relay_provider, e)
+    flag_unavailable(allocation)
   end
 
   def renew_or_close(allocation)
