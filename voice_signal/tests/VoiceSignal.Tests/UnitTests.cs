@@ -139,7 +139,9 @@ public class SignalOptionsTests
         Assert.Equal(("/var/run/postgresql", "mastodon"), (socket.Host, socket.Database));
         Assert.Equal("https://social.example", options.LocalOrigin);
         Assert.Throws<InvalidOperationException>(() => SignalOptions.FromEnvironment(Environment(("VOICE_SIGNAL_PATH", "/a/../b"))));
-        Assert.Throws<InvalidOperationException>(() => SignalOptions.FromEnvironment(Environment(("VOICE_SIGNAL_PORT", "0"))));
+        Assert.Contains("VOICE_SIGNAL_PORT", Assert.Throws<InvalidOperationException>(() => SignalOptions.FromEnvironment(Environment(("VOICE_SIGNAL_PORT", "0")))).Message);
+        Assert.Contains("not-an-ip", Assert.Throws<InvalidOperationException>(() => SignalOptions.FromEnvironment(Environment(("VOICE_SIGNAL_TRUSTED_PROXIES", "10.0.0.0/8, not-an-ip")))).Message);
+        Assert.Equal(2, SignalOptions.FromEnvironment(Environment(("VOICE_SIGNAL_TRUSTED_PROXIES", "10.0.0.0/8 127.0.0.2"))).TrustedProxies.Count);
         Assert.Throws<InvalidOperationException>(() => SignalOptions.FromEnvironment(new Hashtable { ["LOCAL_DOMAIN"] = "a.example" }));
     }
 }

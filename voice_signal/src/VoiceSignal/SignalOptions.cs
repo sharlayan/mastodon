@@ -32,9 +32,9 @@ public sealed class SignalOptions
             SecretKeyBase = secretKeyBase,
             ConnectionString = BuildConnectionString(Get),
             BindAddress = Get("VOICE_SIGNAL_BIND") ?? "127.0.0.1",
-            Port = ParseInt(Get("VOICE_SIGNAL_PORT"), 4100, 1, 65535),
-            MaxConnections = ParseInt(Get("VOICE_SIGNAL_MAX_CONNECTIONS"), 1000, 1, 100_000),
-            UpgradesPerMinute = ParseInt(Get("VOICE_SIGNAL_UPGRADES_PER_MINUTE"), 60, 1, 100_000),
+            Port = ParseInt("VOICE_SIGNAL_PORT", Get("VOICE_SIGNAL_PORT"), 4100, 1, 65535),
+            MaxConnections = ParseInt("VOICE_SIGNAL_MAX_CONNECTIONS", Get("VOICE_SIGNAL_MAX_CONNECTIONS"), 1000, 1, 100_000),
+            UpgradesPerMinute = ParseInt("VOICE_SIGNAL_UPGRADES_PER_MINUTE", Get("VOICE_SIGNAL_UPGRADES_PER_MINUTE"), 60, 1, 100_000),
             TrustedProxies = ParseNetworks(Get("VOICE_SIGNAL_TRUSTED_PROXIES")),
             ExitOnStdinEof = Get("VOICE_SIGNAL_EXIT_ON_STDIN_EOF") is "1" or "true",
         };
@@ -56,12 +56,12 @@ public sealed class SignalOptions
         var builder = new NpgsqlConnectionStringBuilder
         {
             Host = get("DB_HOST") ?? "localhost",
-            Port = ParseInt(get("DB_PORT"), 5432, 1, 65535),
+            Port = ParseInt("DB_PORT", get("DB_PORT"), 5432, 1, 65535),
             Database = get("DB_NAME") ?? "mastodon_production",
             Username = get("DB_USER") ?? "mastodon",
             Password = get("DB_PASS"),
             SslMode = ParseSslMode(get("DB_SSLMODE")),
-            MaxPoolSize = ParseInt(get("VOICE_SIGNAL_DB_POOL"), 5, 1, 100),
+            MaxPoolSize = ParseInt("VOICE_SIGNAL_DB_POOL", get("VOICE_SIGNAL_DB_POOL"), 5, 1, 100),
             ApplicationName = "voice-signal",
             Timeout = 15,
         };
@@ -114,7 +114,7 @@ public sealed class SignalOptions
         _ => throw new InvalidOperationException($"Unsupported DB_SSLMODE: {value}"),
     };
 
-    private static int ParseInt(string? value, int fallback, int min, int max)
+    private static int ParseInt(string name, string? value, int fallback, int min, int max)
     {
         if (value is null)
         {
@@ -123,7 +123,7 @@ public sealed class SignalOptions
 
         if (!int.TryParse(value, out var number) || number < min || number > max)
         {
-            throw new InvalidOperationException($"Expected an integer between {min} and {max}, got {value}");
+            throw new InvalidOperationException($"{name} must be an integer between {min} and {max} (got {value})");
         }
 
         return number;
@@ -138,7 +138,24 @@ public sealed class SignalOptions
 
         return value
             .Split([',', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(entry => entry.Contains('/') ? IPNetwork.Parse(entry) : new IPNetwork(IPAddress.Parse(entry), IPAddress.Parse(entry).AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 32 : 128))
+            .Select(ParseNetwork)
             .ToList();
+    }
+
+    private static IPNetwork ParseNetwork(string entry)
+    {
+        if (entry.Contains('/'))
+        {
+            if (IPNetwork.TryParse(entry, out var network))
+            {
+                return network;
+            }
+        }
+        else if (IPAddress.TryParse(entry, out var address))
+        {
+            return new IPNetwork(address, address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 32 : 128);
+        }
+
+        throw new InvalidOperationException($"VOICE_SIGNAL_TRUSTED_PROXIES has an invalid address or network: {entry}");
     }
 }
