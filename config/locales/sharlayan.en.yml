@@ -62,7 +62,9 @@ en:
           attributes:
             origin:
               own_origin: "cannot be this server's own address"
+              unfinished_calls: "cannot be changed while calls on this relay are still open"
           provider_limit: "You can register up to %{count} voice relays"
+          unfinished_calls: "This relay still has open calls. Disable it and wait for the calls to end before deleting it."
   admin:
     accounts:
       block_avatar_decorations: Block avatar decorations
@@ -438,6 +440,12 @@ en:
         soft_delete_enabled_hint: Never delete messages for other participants. A deletion only hides the message from its sender while retaining it for participants and authorized moderation.
         soft_delete_roleplay_hint: Always enabled in OC roleplay mode so authorized owners can audit local chat messages.
         title: Chat
+        voice_call_enabled: "Enable voice calls in chat rooms"
+        voice_call_enabled_hint: "Let room members start voice calls and share their screens through a voice relay registered under Voice call relays. Requires native chat and an approved relay."
+        voice_call_max_participants: "Maximum participants per voice call"
+        voice_call_max_participants_hint: "Between 2 and 100. The relay reserves this many slots for each call, so a smaller number lets more rooms call at the same time. One-on-one rooms always reserve 2."
+        voice_call_screen_share_enabled: "Allow screen sharing in voice calls"
+        voice_call_screen_share_enabled_hint: "Screen sharing also requires the relay to allow it for this server."
       community_mode:
         soft_hide_deletion: Keep deleted posts for the owner
         soft_hide_deletion_hint: When a post is deleted, hide it instead of destroying

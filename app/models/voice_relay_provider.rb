@@ -8,6 +8,7 @@
 #  capacity           :jsonb            not null
 #  credential_version :string           not null
 #  enabled            :boolean          default(TRUE), not null
+#  events_cursor      :string
 #  last_checked_at    :datetime
 #  last_error         :string
 #  origin             :string           not null
@@ -23,6 +24,8 @@ class VoiceRelayProvider < ApplicationRecord
 
   attr_reader :secret_input
 
+  has_many :voice_call_allocations, dependent: nil
+
   scope :usable, -> { where(enabled: true, validated: true) }
 
   before_validation :normalize_origin
@@ -33,6 +36,9 @@ class VoiceRelayProvider < ApplicationRecord
   validate :validate_secret_presence
   validate :validate_secret_input
   validate :validate_provider_limit, on: :create
+  validate :validate_origin_unchanged_during_calls, on: :update
+
+  before_destroy :ensure_no_unfinished_calls
 
   def secret=(value)
     @secret_input = value.to_s.strip
@@ -107,6 +113,17 @@ class VoiceRelayProvider < ApplicationRecord
 
     errors.add(:secret, :too_short, count: SECRET_MIN_LENGTH) if secret_input.length < SECRET_MIN_LENGTH
     errors.add(:secret, :too_long, count: SECRET_MAX_LENGTH) if secret_input.length > SECRET_MAX_LENGTH
+  end
+
+  def ensure_no_unfinished_calls
+    return unless voice_call_allocations.unfinished.exists?
+
+    errors.add(:base, :unfinished_calls)
+    throw :abort
+  end
+
+  def validate_origin_unchanged_during_calls
+    errors.add(:origin, :unfinished_calls) if origin_changed? && voice_call_allocations.unfinished.exists?
   end
 
   def validate_provider_limit

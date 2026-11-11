@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_11_085800) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_11_091100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2210,6 +2210,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_085800) do
     t.index ["unconfirmed_email"], name: "index_users_on_unconfirmed_email", where: "(unconfirmed_email IS NOT NULL)"
   end
 
+  create_table "voice_call_allocations", force: :cascade do |t|
+    t.bigint "chat_conversation_id"
+    t.bigint "voice_relay_provider_id", null: false
+    t.string "room_key", null: false
+    t.string "generation", null: false
+    t.string "remote_id"
+    t.string "state", default: "pending", null: false
+    t.integer "slots", null: false
+    t.string "revision"
+    t.jsonb "participants", default: [], null: false
+    t.boolean "unavailable", default: false, null: false
+    t.datetime "renewed_at"
+    t.datetime "refreshed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chat_conversation_id"], name: "index_voice_call_allocations_on_chat_conversation_id", unique: true
+    t.index ["state"], name: "index_voice_call_allocations_unfinished", where: "((state)::text <> 'ended'::text)"
+    t.index ["voice_relay_provider_id", "remote_id"], name: "index_voice_call_allocations_on_provider_and_remote_id", unique: true, where: "(remote_id IS NOT NULL)"
+    t.index ["voice_relay_provider_id"], name: "index_voice_call_allocations_on_voice_relay_provider_id"
+  end
+
   create_table "voice_relay_providers", force: :cascade do |t|
     t.string "origin", null: false
     t.text "secret_ciphertext", null: false
@@ -2221,6 +2242,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_085800) do
     t.jsonb "capacity", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "events_cursor"
     t.index ["origin"], name: "index_voice_relay_providers_on_origin", unique: true
   end
 
@@ -2509,6 +2531,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_085800) do
   add_foreign_key "users", "invites", on_delete: :nullify
   add_foreign_key "users", "oauth_applications", column: "created_by_application_id", on_delete: :nullify
   add_foreign_key "users", "user_roles", column: "role_id", on_delete: :nullify
+  add_foreign_key "voice_call_allocations", "chat_conversations", on_delete: :nullify
+  add_foreign_key "voice_call_allocations", "voice_relay_providers", on_delete: :cascade
   add_foreign_key "web_push_subscriptions", "oauth_access_tokens", column: "access_token_id", on_delete: :cascade
   add_foreign_key "web_push_subscriptions", "users", on_delete: :cascade
   add_foreign_key "web_settings", "users", name: "fk_11910667b2", on_delete: :cascade

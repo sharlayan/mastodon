@@ -47,9 +47,12 @@ class Admin::VoiceRelayProvidersController < Admin::BaseController
   def destroy
     authorize :voice_relay_provider, :destroy?
 
-    @provider.destroy!
-    log_action :destroy, @provider
-    redirect_to admin_voice_relay_providers_path, notice: I18n.t('admin.voice_relay_providers.destroyed_msg')
+    if @provider.destroy
+      log_action :destroy, @provider
+      redirect_to admin_voice_relay_providers_path, notice: I18n.t('admin.voice_relay_providers.destroyed_msg')
+    else
+      redirect_to admin_voice_relay_providers_path, alert: @provider.errors.full_messages.to_sentence
+    end
   end
 
   def check

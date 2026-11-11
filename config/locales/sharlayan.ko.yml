@@ -62,7 +62,9 @@ ko:
           attributes:
             origin:
               own_origin: "이 서버 자신의 주소는 사용할 수 없습니다"
+              unfinished_calls: "이 릴레이의 통화가 아직 열려 있어 변경할 수 없습니다"
           provider_limit: "음성 릴레이는 최대 %{count}개까지 등록할 수 있습니다"
+          unfinished_calls: "이 릴레이에 아직 열린 통화가 있습니다. 사용을 중지하고 통화가 끝난 뒤 삭제하세요."
   admin:
     accounts:
       block_avatar_decorations: 장식 표시 끄기
@@ -413,6 +415,12 @@ ko:
         soft_delete_enabled_hint: 다른 참가자에게서 메시지를 삭제하지 않습니다. 삭제 요청은 발신자에게서만 숨기고 참가자와 권한 있는 관리자의 열람을 위해 보존합니다.
         soft_delete_roleplay_hint: 자캐 커뮤니티 모드에서는 권한 있는 Owner가 로컬 채팅을 감사할 수 있도록 항상 활성화됩니다.
         title: 채팅
+        voice_call_enabled: "채팅방 음성 통화 사용"
+        voice_call_enabled_hint: "방 멤버가 음성 통화 릴레이에 등록한 릴레이를 통해 음성 통화와 화면 공유를 할 수 있습니다. 네이티브 채팅과 승인된 릴레이가 필요합니다."
+        voice_call_max_participants: "통화당 최대 참가자 수"
+        voice_call_max_participants_hint: "2~100명입니다. 릴레이는 통화마다 이 수만큼 슬롯을 예약하므로, 값이 작을수록 더 많은 방이 동시에 통화할 수 있습니다. 1:1 방은 항상 2개를 예약합니다."
+        voice_call_screen_share_enabled: "음성 통화 화면 공유 허용"
+        voice_call_screen_share_enabled_hint: "릴레이에서도 이 서버의 화면 공유를 허용해야 합니다."
       community_mode:
         soft_hide_deletion: 삭제된 게시물을 소유자에게만 보존
         soft_hide_deletion_hint: 게시물을 삭제할 때 실제로 파기하지 않고 숨깁니다. 숨겨진 게시물과 첨부 미디어는 모든 피드와

@@ -59,4 +59,18 @@ RSpec.describe VoiceRelayProvider do
     provider.update!(secret: 'n' * 40)
     expect(provider.reload).to have_attributes(validated: false, capacity: {})
   end
+
+  it 'keeps a relay with open calls from being deleted or moved, but allows it once the calls ended' do
+    provider = Fabricate(:voice_relay_provider)
+    allocation = VoiceCallAllocation.create!(voice_relay_provider: provider, room_key: 'https://cb6e6126.ngrok.io/chat/rooms/1', generation: 'g', slots: 2, state: 'active')
+
+    expect(provider.destroy).to be false
+    expect(provider.errors.details[:base]).to include(error: :unfinished_calls)
+    expect(provider.update(origin: 'https://other.example.org')).to be false
+    expect(provider.reload.update(secret: 'n' * 40)).to be true
+
+    allocation.update!(state: 'ended')
+    expect(provider.reload.destroy).to be_truthy
+    expect(VoiceCallAllocation).to_not exist(allocation.id)
+  end
 end

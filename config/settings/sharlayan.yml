@@ -56,6 +56,9 @@ defaults:
   chat_delete_window_hours: 24
   chat_max_group_members: 50
   chat_max_attachments: 4
+  voice_call_enabled: false
+  voice_call_max_participants: 10
+  voice_call_screen_share_enabled: true
   status_character_limit: 500
   profile_fields_limit: 10
   remote_media_attachments_limit: 16

@@ -62,7 +62,9 @@ ja:
           attributes:
             origin:
               own_origin: "このサーバー自身のアドレスは使用できません"
+              unfinished_calls: "このリレーの通話がまだ開いているため変更できません"
           provider_limit: "音声リレーは最大%{count}件まで登録できます"
+          unfinished_calls: "このリレーにはまだ開いている通話があります。無効にして通話が終わってから削除してください。"
   admin:
     accounts:
       block_avatar_decorations: アバターデコレーションをブロック
@@ -405,6 +407,12 @@ ja:
         soft_delete_enabled_hint: 他の参加者からメッセージを削除しません。削除操作は送信者本人からのみ非表示にし、参加者と権限を持つ管理者のために保持します。
         soft_delete_roleplay_hint: OCロールプレイモードでは、権限を持つオーナーがローカルチャットを監査できるよう常に有効になります。
         title: チャット
+        voice_call_enabled: "チャットルームの音声通話を有効にする"
+        voice_call_enabled_hint: "ルームのメンバーが、音声通話リレーに登録したリレーを通じて音声通話と画面共有を行えるようにします。ネイティブチャットと承認済みのリレーが必要です。"
+        voice_call_max_participants: "通話あたりの最大参加人数"
+        voice_call_max_participants_hint: "2～100人です。リレーは通話ごとにこの数のスロットを予約するため、小さくするほど多くのルームが同時に通話できます。1対1のルームは常に2スロットを予約します。"
+        voice_call_screen_share_enabled: "音声通話で画面共有を許可する"
+        voice_call_screen_share_enabled_hint: "リレー側でもこのサーバーの画面共有が許可されている必要があります。"
       community_mode:
         soft_hide_deletion: 削除された投稿をオーナーのために保存する
         soft_hide_deletion_hint: 投稿を削除するとき、実際には破棄せず非表示にします。非表示になった投稿と添付メディアはすべてのタイムライン・検索インデックス・公開ページから消え、オーナーだけが管理タイムラインで閲覧できます。非表示の投稿をもう一度削除すると、復元できないように完全に削除されます。
