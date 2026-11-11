@@ -128,6 +128,9 @@ let current: LK.Room | null = null;
 let screenShareLimits: ScreenShareLimits | null = null;
 let pendingScreenShare: { room: LK.Room; promise: Promise<void> } | null = null;
 let joinAttempt = 0;
+let leaveRevision = 0;
+
+export const voiceLeaveRevision = () => leaveRevision;
 let deafenRevision = 0;
 
 const loadLiveKit = async () => {
@@ -976,6 +979,7 @@ export const connectVoiceCall = async (
 };
 
 export const leaveVoiceCall = async () => {
+  leaveRevision++;
   const attempt = ++joinAttempt;
   await disconnectCurrentRoom();
   if (attempt === joinAttempt) resetState();

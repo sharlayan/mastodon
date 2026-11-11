@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 
 import { useIntl } from 'react-intl';
 
@@ -12,6 +12,7 @@ import {
   notifyVoiceCallFailure,
   prepareVoiceCall,
   voiceCallSnapshot,
+  voiceLeaveRevision,
 } from './call';
 import type { VoiceCallConversation } from './call';
 import { voiceMessages } from './messages';
@@ -37,10 +38,11 @@ const hostOf = (origin: string) => {
   }
 };
 
+let starting = false;
+
 export const useStartVoiceCall = () => {
   const dispatch = useAppDispatch();
   const intl = useIntl();
-  const starting = useRef(false);
 
   const confirm = useCallback(
     (
@@ -61,8 +63,9 @@ export const useStartVoiceCall = () => {
 
   const begin = useCallback(
     async (conversation: VoiceCallConversation, micEnabled?: boolean) => {
-      if (starting.current) return;
-      starting.current = true;
+      if (starting) return;
+      starting = true;
+      const revision = voiceLeaveRevision();
       let credentials: VoiceCredentials;
       try {
         [credentials] = await Promise.all([
@@ -70,11 +73,12 @@ export const useStartVoiceCall = () => {
           prepareVoiceCall(),
         ]);
       } catch (error) {
-        notifyVoiceCallFailure(error);
+        if (revision === voiceLeaveRevision()) notifyVoiceCallFailure(error);
         return;
       } finally {
-        starting.current = false;
+        starting = false;
       }
+      if (revision !== voiceLeaveRevision()) return;
 
       const connect = () => {
         void connectVoiceCall(conversation, credentials, { micEnabled });
