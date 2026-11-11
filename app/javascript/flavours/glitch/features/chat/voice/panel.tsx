@@ -28,6 +28,7 @@ import SettingsIcon from '@/material-icons/400-24px/settings.svg?react';
 import StopScreenShareIcon from '@/material-icons/400-24px/stop_screen_share.svg?react';
 import VolumeUpIcon from '@/material-icons/400-24px/volume_up.svg?react';
 import { showAlert } from 'flavours/glitch/actions/alerts';
+import { openModal } from 'flavours/glitch/actions/modal';
 import { Button } from 'flavours/glitch/components/button';
 import { Icon } from 'flavours/glitch/components/icon';
 import { IconButton } from 'flavours/glitch/components/icon_button';
@@ -413,8 +414,22 @@ const MemberOptions: FC<{
     moderate('mute');
   }, [moderate]);
   const handleKick = useCallback(() => {
-    moderate('kick');
-  }, [moderate]);
+    dispatch(
+      openModal({
+        modalType: 'CONFIRM',
+        modalProps: {
+          title: intl.formatMessage(voiceMessages.removeConfirmTitle, {
+            name: member.account.display_name || member.account.acct,
+          }),
+          message: intl.formatMessage(voiceMessages.removeConfirmMessage),
+          confirm: intl.formatMessage(voiceMessages.removeFromCall),
+          onConfirm: () => {
+            moderate('kick');
+          },
+        },
+      }),
+    );
+  }, [dispatch, intl, member.account, moderate]);
 
   return (
     <div className='chat-voice__options'>

@@ -175,4 +175,26 @@ describe('voice call panel', () => {
 
     expect(screen.getByRole('button', { name: 'Start a call' })).toBeTruthy();
   });
+
+  it('asks the owner before removing someone from the call', async () => {
+    api.get.mockResolvedValue({ data: [voiceState()] });
+    mount();
+    await settle();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Options for Bob' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from call' }));
+    expect(api.post).not.toHaveBeenCalled();
+
+    const action = dispatch.mock.calls[0]?.[0] as ConfirmAction & {
+      payload: { modalProps: { title: string } };
+    };
+    expect(action.payload.modalProps.title).toBe('Remove Bob from the call?');
+    act(() => {
+      action.payload.modalProps.onConfirm();
+    });
+    expect(api.post).toHaveBeenCalledWith(
+      '/api/v1/chat/conversations/room/voice/kick',
+      { account_id: 'bob' },
+    );
+  });
 });

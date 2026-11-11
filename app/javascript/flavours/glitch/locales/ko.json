@@ -50,6 +50,8 @@
   "chat.voice.quality.sharp": "선명한 글자 (1080p, 15fps)",
   "chat.voice.quality.smooth": "부드러운 움직임 (720p, 30fps)",
   "chat.voice.reconnecting": "다시 연결하는 중…",
+  "chat.voice.remove_confirm.message": "내보낸 사람은 10분 동안 이 통화에 다시 참가할 수 없습니다.",
+  "chat.voice.remove_confirm.title": "{name} 님을 통화에서 내보낼까요?",
   "chat.voice.remove_from_call": "통화에서 내보내기",
   "chat.voice.screen_share_audio": "화면과 함께 소리 공유",
   "chat.voice.screen_share_quality": "화면 공유 화질",

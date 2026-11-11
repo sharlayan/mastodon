@@ -65,6 +65,14 @@ export const voiceMessages = defineMessages({
     id: 'chat.voice.remove_from_call',
     defaultMessage: 'Remove from call',
   },
+  removeConfirmTitle: {
+    id: 'chat.voice.remove_confirm.title',
+    defaultMessage: 'Remove {name} from the call?',
+  },
+  removeConfirmMessage: {
+    id: 'chat.voice.remove_confirm.message',
+    defaultMessage: 'They can’t rejoin this call for 10 minutes.',
+  },
   you: { id: 'chat.voice.you', defaultMessage: 'You' },
   micMuted: { id: 'chat.voice.mic_muted', defaultMessage: 'Microphone muted' },
   deafened: { id: 'chat.voice.deafened', defaultMessage: 'Sound turned off' },

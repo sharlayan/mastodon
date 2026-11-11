@@ -50,6 +50,8 @@
   "chat.voice.quality.sharp": "Sharp text (1080p, 15 fps)",
   "chat.voice.quality.smooth": "Smooth motion (720p, 30 fps)",
   "chat.voice.reconnecting": "Reconnecting…",
+  "chat.voice.remove_confirm.message": "They can’t rejoin this call for 10 minutes.",
+  "chat.voice.remove_confirm.title": "Remove {name} from the call?",
   "chat.voice.remove_from_call": "Remove from call",
   "chat.voice.screen_share_audio": "Share audio with the screen",
   "chat.voice.screen_share_quality": "Screen share quality",

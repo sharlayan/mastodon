@@ -50,6 +50,8 @@
   "chat.voice.quality.sharp": "くっきりした文字 (1080p、15fps)",
   "chat.voice.quality.smooth": "なめらかな動き (720p、30fps)",
   "chat.voice.reconnecting": "再接続中…",
+  "chat.voice.remove_confirm.message": "退出させた人は10分間この通話に再参加できません。",
+  "chat.voice.remove_confirm.title": "{name}さんを通話から退出させますか？",
   "chat.voice.remove_from_call": "通話から退出させる",
   "chat.voice.screen_share_audio": "画面と一緒に音声を共有",
   "chat.voice.screen_share_quality": "画面共有の画質",
