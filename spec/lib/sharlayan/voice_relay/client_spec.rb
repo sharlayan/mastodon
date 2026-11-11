@@ -40,12 +40,18 @@ RSpec.describe Sharlayan::VoiceRelay::Client do
     end).to have_been_made
   end
 
-  it 'keeps relay error codes and does not follow redirects' do
+  it 'keeps relay error codes, treats other error pages as an unreachable relay and does not follow redirects' do
     stub_request(:get, capacity_url).to_return(json_response({ code: 'CLIENT_DISABLED' }, status: 403))
     expect { client.capacity }.to raise_error(Sharlayan::VoiceRelay::Error) { |error| expect([error.code, error.status, error.revoked?]).to eq ['CLIENT_DISABLED', 403, true] }
 
+    stub_request(:get, capacity_url).to_return(status: 403, body: '<html>Forbidden</html>', headers: { 'Content-Type' => 'text/html' })
+    expect { client.capacity }.to raise_error(Sharlayan::VoiceRelay::Error) { |error| expect([error.code, error.status, error.revoked?]).to eq ['PROVIDER_UNAVAILABLE', 503, false] }
+
+    stub_request(:get, capacity_url).to_return(json_response({ message: 'Unauthorized' }, status: 401))
+    expect { client.capacity }.to raise_error(Sharlayan::VoiceRelay::Error) { |error| expect([error.code, error.status, error.revoked?]).to eq ['PROVIDER_UNAVAILABLE', 503, false] }
+
     stub_request(:get, capacity_url).to_return(status: 302, headers: { 'Location' => 'https://elsewhere.example/voice-relay/v1/capacity' })
-    expect { client.capacity }.to raise_error(Sharlayan::VoiceRelay::Error) { |error| expect([error.code, error.status]).to eq ['PROVIDER_UNAVAILABLE', 302] }
+    expect { client.capacity }.to raise_error(Sharlayan::VoiceRelay::Error) { |error| expect([error.code, error.status]).to eq ['PROVIDER_UNAVAILABLE', 503] }
     expect(a_request(:get, 'https://elsewhere.example/voice-relay/v1/capacity')).to_not have_been_made
   end
 

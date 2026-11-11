@@ -77,8 +77,9 @@ module Sharlayan
         value = parse_json(response.body_with_limit(RESPONSE_LIMIT))
 
         unless (200...300).cover?(response.code)
-          code = value.is_a?(Hash) && value['code'].is_a?(String) ? value['code'].first(64) : 'PROVIDER_UNAVAILABLE'
-          raise Error.new(code, response.code)
+          raise Error, 'PROVIDER_UNAVAILABLE' unless value.is_a?(Hash) && value['code'].is_a?(String)
+
+          raise Error.new(value['code'].first(64), response.code)
         end
 
         raise Error, 'INVALID_RESPONSE' unless value.is_a?(Hash)
