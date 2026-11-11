@@ -108,6 +108,10 @@ export const voiceErrorMessage = (code: VoiceErrorCode) => {
       return voiceMessages.errorRevoked;
     case 'VOICE_RELAY_UNREACHABLE':
       return voiceMessages.errorUnreachable;
+    case 'REMOTE_HOST_UNSUPPORTED':
+      return voiceMessages.errorRemoteUnsupported;
+    case 'REMOTE_HOST_UNREACHABLE':
+      return voiceMessages.errorRemoteUnreachable;
     case 'RATE_LIMITED':
       return voiceMessages.errorRateLimited;
     default:

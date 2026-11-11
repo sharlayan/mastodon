@@ -3,6 +3,7 @@
 class Sharlayan::VoiceCallService
   include Lockable
   include Redisable
+  extend Redisable
 
   class Unavailable < StandardError; end
   class Forbidden < StandardError; end
@@ -65,15 +66,25 @@ class Sharlayan::VoiceCallService
       Sharlayan::VoiceCallFederation.remote_account_permitted?(account)
     end
 
-    def participant_accounts(allocations)
-      ids = Array(allocations).select { |allocation| allocation&.active? }.flat_map { |allocation| allocation.participants.pluck('user_id') }.uniq
+    def participant_accounts(records)
+      ids = Array(records).flat_map { |record| participants_of(record) }.pluck('user_id').uniq
       Account.where(id: ids).index_by { |account| account.id.to_s }
     end
 
-    def state_for(conversation, allocation = :unset, relay_usable: nil, accounts: nil)
+    def participants_of(record)
+      case record
+      when VoiceCallAllocation then record.active? ? record.participants : []
+      when VoiceCallRemoteState then record.current_participants
+      else []
+      end
+    end
+
+    def state_for(conversation, allocation = :unset, relay_usable: nil, accounts: nil, remote_state: :unset)
+      return remote_state_for(conversation, remote_state, accounts:) unless conversation.local?
+
       allocation = VoiceCallAllocation.find_by(chat_conversation_id: conversation.id) if allocation == :unset
       relay_usable = VoiceRelayProvider.usable.exists? if relay_usable.nil?
-      participants = allocation&.active? ? allocation.participants : []
+      participants = participants_of(allocation)
       accounts ||= participant_accounts(allocation)
 
       {
@@ -83,24 +94,64 @@ class Sharlayan::VoiceCallService
         unavailable: allocation&.active? ? allocation.unavailable? : false,
         max_participants: allocation&.active? ? allocation.slots : slots_for(conversation),
         updated_at: allocation ? (allocation.updated_at.to_r * 1000).to_i : 0,
-        participants: participants.filter_map do |participant|
-          account = accounts[participant['user_id']]
-          next if account.nil?
-
-          {
-            identity: participant['identity'],
-            account_id: participant['user_id'],
-            account: REST::AccountSerializer.new(account).as_json,
-            screen_sharing: participant['screen_sharing'],
-            mic_muted: participant['mic_muted'],
-            deafened: participant['deafened'],
-          }
-        end,
+        participants: serialize_participants(participants, accounts),
       }
+    end
+
+    def remote_state_for(conversation, remote_state, accounts:)
+      remote_state = VoiceCallRemoteState.find_by(chat_conversation_id: conversation.id) if remote_state == :unset
+      participants = participants_of(remote_state)
+      accounts ||= participant_accounts(remote_state)
+
+      {
+        conversation_id: conversation.id.to_s,
+        available: remote_available?(conversation),
+        active: participants.any?,
+        unavailable: false,
+        max_participants: slots_for(conversation),
+        updated_at: remote_state&.remote_updated_at || 0,
+        participants: serialize_participants(participants, accounts),
+      }
+    end
+
+    def remote_available?(conversation)
+      owner = conversation.owner_account
+      Sharlayan::VoiceCallFederation.remote_join_enabled? && !conversation.local? && !conversation.archived? &&
+        owner.present? && !owner.local? && !owner.unavailable? && !DomainBlock.blocked?(owner.domain)
+    end
+
+    def serialize_participants(participants, accounts)
+      participants.filter_map do |participant|
+        account = accounts[participant['user_id']]
+        next if account.nil?
+
+        {
+          identity: participant['identity'],
+          account_id: participant['user_id'],
+          account: REST::AccountSerializer.new(account).as_json,
+          screen_sharing: participant['screen_sharing'],
+          mic_muted: participant['mic_muted'],
+          deafened: participant['deafened'],
+        }
+      end
+    end
+
+    def publish_state(conversation, payload = state_for(conversation))
+      json = JSON.generate(payload)
+      account_ids = conversation.memberships.joins(:account).merge(Account.local).pluck(:account_id)
+
+      ActiveRecord.after_all_transactions_commit do
+        account_ids.each do |account_id|
+          redis.publish("timeline:#{account_id}", JSON.generate(event: 'chat.voice_state', payload: json))
+        end
+        yield if block_given?
+      end
     end
   end
 
   def join(account, conversation, screen_share: true)
+    return join_remote(account, conversation, screen_share:) unless conversation.local?
+
     raise Unavailable unless self.class.joinable?(conversation) && self.class.permitted?(account)
 
     allocation, credentials = with_redis_lock(conversation_lock_key(conversation.id), autorelease: LOCK_AUTORELEASE) do
@@ -125,6 +176,8 @@ class Sharlayan::VoiceCallService
   def report_status(account, conversation, session_id:, mic_muted:, deafened:)
     raise Mastodon::InvalidParameterError, "session_id must be a string of up to #{MAX_SESSION_ID_LENGTH} characters" unless session_id.is_a?(String) && session_id.length.between?(1, MAX_SESSION_ID_LENGTH)
 
+    return report_remote_status(account, conversation, session_id:, mic_muted:, deafened:) unless conversation.local?
+
     with_active_allocation(conversation) do |allocation|
       require_member!(conversation, account)
 
@@ -132,6 +185,20 @@ class Sharlayan::VoiceCallService
       VoiceCallEventsWorker.perform_async(allocation.voice_relay_provider_id) if accepted
       accepted
     end
+  end
+
+  def join_remote(account, conversation, screen_share:)
+    raise Unavailable unless account.local? && self.class.permitted?(account)
+
+    require_member!(conversation, account)
+    Sharlayan::VoiceCallFederation::RemoteJoin.new(account, conversation).join(screen_share:)
+  end
+
+  def report_remote_status(account, conversation, session_id:, mic_muted:, deafened:)
+    raise Unavailable unless account.local? && self.class.permitted?(account)
+
+    require_member!(conversation, account)
+    Sharlayan::VoiceCallFederation::RemoteJoin.new(account, conversation).report_status(session_id:, mic_muted:, deafened:)
   end
 
   def kick(actor, conversation, target)
@@ -183,6 +250,7 @@ class Sharlayan::VoiceCallService
     end
 
     VoiceCallAllocation.where(state: 'ended', chat_conversation_id: nil, updated_at: ...ENDED_RETENTION.ago).in_batches.delete_all
+    VoiceCallRemoteSession.expired.in_batches.delete_all
   end
 
   def poll_events(provider)
@@ -541,13 +609,7 @@ class Sharlayan::VoiceCallService
     conversation = allocation.chat_conversation
     return if conversation.nil?
 
-    payload = JSON.generate(self.class.state_for(conversation, allocation))
-    account_ids = conversation.memberships.joins(:account).merge(Account.local).pluck(:account_id)
-
-    ActiveRecord.after_all_transactions_commit do
-      account_ids.each do |account_id|
-        redis.publish("timeline:#{account_id}", JSON.generate(event: 'chat.voice_state', payload:))
-      end
+    self.class.publish_state(conversation, self.class.state_for(conversation, allocation)) do
       Sharlayan::VoiceCallFederation::Outgoing.schedule(conversation)
     end
   end

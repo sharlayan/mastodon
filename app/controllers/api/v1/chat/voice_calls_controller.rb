@@ -6,6 +6,8 @@ class Api::V1::Chat::VoiceCallsController < Api::V1::Chat::BaseController
     'CAPACITY_EXCEEDED' => ['VOICE_RELAY_CAPACITY_EXCEEDED', 503],
     'CLIENT_DISABLED' => ['VOICE_RELAY_REVOKED', 503],
     'ALLOCATION_CONFLICT' => ['VOICE_CALL_BUSY', 409],
+    'REMOTE_HOST_UNSUPPORTED' => ['REMOTE_HOST_UNSUPPORTED', 422],
+    'REMOTE_HOST_UNREACHABLE' => ['REMOTE_HOST_UNREACHABLE', 503],
   }.freeze
 
   before_action :authorize_chat_read!, only: [:index, :show]
@@ -23,10 +25,11 @@ class Api::V1::Chat::VoiceCallsController < Api::V1::Chat::BaseController
 
     conversations = ChatConversation.for_account(current_account).where(id: ids).preload(:owner_account, :accounts).to_a
     allocations = VoiceCallAllocation.where(chat_conversation_id: conversations.map(&:id)).index_by(&:chat_conversation_id)
+    remote_states = VoiceCallRemoteState.where(chat_conversation_id: conversations.reject(&:local?).map(&:id)).index_by(&:chat_conversation_id)
     relay_usable = VoiceRelayProvider.usable.exists?
-    accounts = Sharlayan::VoiceCallService.participant_accounts(allocations.values)
+    accounts = Sharlayan::VoiceCallService.participant_accounts(allocations.values + remote_states.values)
 
-    render json: conversations.map { |conversation| Sharlayan::VoiceCallService.state_for(conversation, allocations[conversation.id], relay_usable:, accounts:) }
+    render json: conversations.map { |conversation| Sharlayan::VoiceCallService.state_for(conversation, allocations[conversation.id], relay_usable:, accounts:, remote_state: remote_states[conversation.id]) }
   end
 
   def show

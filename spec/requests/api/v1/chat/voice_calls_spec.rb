@@ -98,6 +98,31 @@ RSpec.describe 'API V1 Chat voice calls' do
     expect(response.parsed_body).to eq('error' => 'VOICE_CALL_UNAVAILABLE')
   end
 
+  it 'only joins calls hosted on other servers while no relay is registered' do
+    host = Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/host')
+    mirror = ChatConversation.create!(conversation_type: :group, owner_account: host, title: 'Mirror', uri: 'https://remote.test/chat/rooms/9')
+    mirror.memberships.create!(account: user.account)
+    Setting.chat_federation_enabled = true
+    Setting.voice_call_remote_join_enabled = true
+
+    get '/api/v1/chat/settings', headers: headers
+    expect(response.parsed_body).to include('voice_calls' => true)
+
+    get '/api/v1/chat/voice_states', params: { conversation_ids: [room.id, mirror.id] }, headers: headers
+    expect(response.parsed_body.to_h { |state| [state['conversation_id'], state['available']] }).to eq(room.id.to_s => false, mirror.id.to_s => true)
+
+    post "/api/v1/chat/conversations/#{room.id}/voice/join", headers: headers
+    expect(response).to have_http_status(422)
+
+    stub_request(:post, 'https://remote.test/livekit/federation/token').to_return(status: 404)
+    post "/api/v1/chat/conversations/#{mirror.id}/voice/join", headers: headers
+    expect(response.parsed_body).to eq('error' => 'REMOTE_HOST_UNSUPPORTED')
+  ensure
+    Setting.chat_federation_enabled = false
+    Setting.voice_call_remote_join_enabled = false
+    redis.del('voice_call:remote_unsupported:remote.test')
+  end
+
   it 'hides rooms the account does not belong to' do
     stranger_room = Sharlayan::ChatService.new.create_conversation(owner, type: :group, title: 'Private')
 

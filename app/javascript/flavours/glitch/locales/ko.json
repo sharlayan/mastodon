@@ -23,6 +23,8 @@
   "chat.voice.error.full": "통화 서버에 지금 새 통화를 열 자리가 없습니다.",
   "chat.voice.error.mic_unavailable": "마이크를 사용할 수 없습니다. 듣기만 하는 상태로 통화에 남습니다.",
   "chat.voice.error.rate_limited": "통화 요청이 너무 많습니다. 잠시 뒤 다시 시도하세요.",
+  "chat.voice.error.remote_unreachable": "이 방을 소유한 서버에서 통화 토큰을 받지 못했습니다.",
+  "chat.voice.error.remote_unsupported": "이 방을 소유한 서버는 음성 통화를 제공하지 않습니다.",
   "chat.voice.error.revoked": "이 서버는 더 이상 통화 서버를 사용할 수 없습니다. 관리자에게 문의하세요.",
   "chat.voice.error.screen_share_denied": "브라우저가 화면 공유를 허용하지 않았습니다.",
   "chat.voice.error.screen_share_failed": "화면을 공유하지 못했습니다.",

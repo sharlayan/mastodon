@@ -8,6 +8,7 @@ public sealed class SignalOptions
 {
     public required string BasePath { get; init; }
     public string FederationPath { get; init; } = "/livekit";
+    public string RemotePath => $"{BasePath}/remote";
     public required string LocalOrigin { get; init; }
     public required string SecretKeyBase { get; init; }
     public required string ConnectionString { get; init; }

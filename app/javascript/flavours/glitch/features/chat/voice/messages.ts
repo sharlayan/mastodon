@@ -161,6 +161,16 @@ export const voiceMessages = defineMessages({
     id: 'chat.voice.error.unreachable',
     defaultMessage: 'Could not reach the call server.',
   },
+  errorRemoteUnsupported: {
+    id: 'chat.voice.error.remote_unsupported',
+    defaultMessage:
+      'The server that owns this room does not offer voice calls.',
+  },
+  errorRemoteUnreachable: {
+    id: 'chat.voice.error.remote_unreachable',
+    defaultMessage:
+      'Could not get a call token from the server that owns this room.',
+  },
   errorRateLimited: {
     id: 'chat.voice.error.rate_limited',
     defaultMessage: 'Too many call requests. Wait a moment and try again.',

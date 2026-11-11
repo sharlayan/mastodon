@@ -19,6 +19,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
     private static readonly string[] ForwardedHeaders = ["Accept", "User-Agent"];
 
     private readonly SemaphoreSlim connections = new(options.MaxConnections, options.MaxConnections);
+    private readonly HttpMessageInvoker remoteInvoker = new(PublicAddressConnector.CreateHandler(options.AllowInsecureUpstream), disposeHandler: true);
 
     public async Task HandleAsync(HttpContext context)
     {
@@ -94,13 +95,95 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         }
     }
 
+    public async Task HandleRemoteAsync(HttpContext context)
+    {
+        var rawTarget = context.Features.Get<IHttpRequestFeature>()?.RawTarget ?? string.Empty;
+        if (!RtcRequest.TryParse(rawTarget, options.RemotePath, out var rtc))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        if (!HttpMethods.IsGet(context.Request.Method))
+        {
+            context.Response.StatusCode = StatusCodes.Status405MethodNotAllowed;
+            return;
+        }
+
+        if (!TokenClaims.TryParse(rtc.AccessToken, out var claims))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
+        string? origin;
+        try
+        {
+            origin = await resolver.ResolveRemoteOriginAsync(claims, context.RequestAborted);
+        }
+        catch (DbException exception)
+        {
+            logger.LogError(exception, "Could not look up the remote voice call session");
+            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            return;
+        }
+
+        if (origin is null || !TryBuildRemoteTarget(origin, rtc, out var target))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
+        if (!connections.Wait(0))
+        {
+            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            return;
+        }
+
+        try
+        {
+            if (context.WebSockets.IsWebSocketRequest)
+            {
+                await ProxyWebSocketAsync(context, target, null, remoteInvoker);
+            }
+            else
+            {
+                await ProxyHttpAsync(context, target, null, remoteInvoker);
+            }
+        }
+        finally
+        {
+            connections.Release();
+        }
+    }
+
+    private bool TryBuildRemoteTarget(string remoteOrigin, RtcRequest rtc, out Uri target)
+    {
+        target = null!;
+
+        if (!TryParseOrigin(remoteOrigin, out var origin)
+            || !Uri.TryCreate($"{origin.GetLeftPart(UriPartial.Authority)}{options.FederationPath}{rtc.Suffix}", UriKind.Absolute, out var built)
+            || built.GetLeftPart(UriPartial.Authority) != origin.GetLeftPart(UriPartial.Authority))
+        {
+            return false;
+        }
+
+        target = built;
+        return true;
+    }
+
+    private bool TryParseOrigin(string value, out Uri origin)
+    {
+        return Uri.TryCreate(value, UriKind.Absolute, out origin!)
+            && (origin.Scheme == Uri.UriSchemeHttps || (options.AllowInsecureUpstream && origin.Scheme == Uri.UriSchemeHttp))
+            && origin.AbsolutePath == "/" && origin.Query.Length == 0 && origin.UserInfo.Length == 0;
+    }
+
     private bool TryBuildTarget(Upstream upstream, RtcRequest rtc, out Uri target)
     {
         target = null!;
 
-        if (!Uri.TryCreate(upstream.Origin, UriKind.Absolute, out var origin)
-            || (origin.Scheme != Uri.UriSchemeHttps && !(options.AllowInsecureUpstream && origin.Scheme == Uri.UriSchemeHttp))
-            || origin.AbsolutePath != "/" || origin.Query.Length > 0 || origin.UserInfo.Length > 0)
+        if (!TryParseOrigin(upstream.Origin, out var origin))
         {
             return false;
         }
@@ -115,10 +198,14 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         return true;
     }
 
-    private async Task ProxyHttpAsync(HttpContext context, Uri target, string bearer)
+    private async Task ProxyHttpAsync(HttpContext context, Uri target, string? bearer, HttpMessageInvoker? invoker = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, target);
-        request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {bearer}");
+        if (bearer is not null)
+        {
+            request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {bearer}");
+        }
+
         foreach (var header in ForwardedHeaders)
         {
             if (context.Request.Headers.TryGetValue(header, out var value))
@@ -133,7 +220,9 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         HttpResponseMessage response;
         try
         {
-            response = await httpClientFactory.CreateClient(HttpClientName).SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+            response = invoker is null
+                ? await httpClientFactory.CreateClient(HttpClientName).SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token)
+                : await invoker.SendAsync(request, timeout.Token);
         }
         catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException)
         {
@@ -198,10 +287,14 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         return buffer.ToArray();
     }
 
-    private async Task ProxyWebSocketAsync(HttpContext context, Uri target, string bearer)
+    private async Task ProxyWebSocketAsync(HttpContext context, Uri target, string? bearer, HttpMessageInvoker? invoker = null)
     {
         using var upstream = new ClientWebSocket();
-        upstream.Options.SetRequestHeader("Authorization", $"Bearer {bearer}");
+        if (bearer is not null)
+        {
+            upstream.Options.SetRequestHeader("Authorization", $"Bearer {bearer}");
+        }
+
         upstream.Options.CollectHttpResponseDetails = true;
         upstream.Options.KeepAliveInterval = KeepAliveInterval;
         upstream.Options.KeepAliveTimeout = KeepAliveTimeout;
@@ -217,7 +310,14 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
             timeout.CancelAfter(ConnectTimeout);
             try
             {
-                await upstream.ConnectAsync(socketUri, timeout.Token);
+                if (invoker is null)
+                {
+                    await upstream.ConnectAsync(socketUri, timeout.Token);
+                }
+                else
+                {
+                    await upstream.ConnectAsync(socketUri, invoker, timeout.Token);
+                }
             }
             catch (Exception exception) when (exception is WebSocketException or OperationCanceledException or HttpRequestException)
             {

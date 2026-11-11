@@ -8,6 +8,8 @@ public sealed record Upstream(string Origin, string RemoteId, string SecretCiphe
 public interface IAllocationResolver
 {
     Task<Upstream?> ResolveAsync(TokenHint hint, CancellationToken cancellationToken);
+
+    Task<string?> ResolveRemoteOriginAsync(TokenClaims claims, CancellationToken cancellationToken);
 }
 
 public sealed class DatabaseAllocationResolver(NpgsqlDataSource dataSource, IMemoryCache cache) : IAllocationResolver
@@ -18,6 +20,13 @@ public sealed class DatabaseAllocationResolver(NpgsqlDataSource dataSource, IMem
         JOIN voice_relay_providers p ON p.id = a.voice_relay_provider_id
         WHERE a.remote_id = $1 AND a.generation = $2 AND a.state = 'active'
         LIMIT 2
+        """;
+
+    private const string RemoteQuery = """
+        SELECT origin
+        FROM voice_call_remote_sessions
+        WHERE identity = $1 AND room_name = $2 AND expires_at > now()
+        LIMIT 1
         """;
 
     private static readonly TimeSpan PositiveLifetime = TimeSpan.FromSeconds(10);
@@ -45,6 +54,23 @@ public sealed class DatabaseAllocationResolver(NpgsqlDataSource dataSource, IMem
         }
 
         var result = rows.Count == 1 ? rows[0] : null;
+        cache.Set(key, result, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = result is null ? NegativeLifetime : PositiveLifetime, Size = 1 });
+        return result;
+    }
+
+    public async Task<string?> ResolveRemoteOriginAsync(TokenClaims claims, CancellationToken cancellationToken)
+    {
+        var key = ("remote", claims.Identity, claims.Room);
+        if (cache.TryGetValue(key, out string? cached))
+        {
+            return cached;
+        }
+
+        await using var command = dataSource.CreateCommand(RemoteQuery);
+        command.Parameters.AddWithValue(claims.Identity);
+        command.Parameters.AddWithValue(claims.Room);
+        var result = await command.ExecuteScalarAsync(cancellationToken) as string;
+
         cache.Set(key, result, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = result is null ? NegativeLifetime : PositiveLifetime, Size = 1 });
         return result;
     }

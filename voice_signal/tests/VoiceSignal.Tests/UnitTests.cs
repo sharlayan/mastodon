@@ -86,6 +86,20 @@ public class TokenHintTests
     public static string LiveKitToken(object metadata) =>
         $"{Base64Url.Encode("{}"u8)}.{Base64Url.Encode(JsonSerializer.SerializeToUtf8Bytes(new { metadata = JsonSerializer.Serialize(metadata) }))}.sig";
 
+    public static string RemoteToken(object claims) =>
+        $"{Base64Url.Encode("{}"u8)}.{Base64Url.Encode(JsonSerializer.SerializeToUtf8Bytes(claims))}.sig";
+
+    [Fact]
+    public void ReadsTheIdentityAndRoomOfARemoteToken()
+    {
+        Assert.True(TokenClaims.TryParse(RemoteToken(new { sub = "https://social.example/users/me", video = new { room = "room-1", roomJoin = true } }), out var claims));
+        Assert.Equal(new TokenClaims("https://social.example/users/me", "room-1"), claims);
+
+        Assert.False(TokenClaims.TryParse(RemoteToken(new { sub = "https://social.example/users/me" }), out _));
+        Assert.False(TokenClaims.TryParse(RemoteToken(new { sub = 1, video = new { room = "room-1" } }), out _));
+        Assert.False(TokenClaims.TryParse("not-a-token", out _));
+    }
+
     [Fact]
     public void ReadsTheAllocationFromLiveKitMetadata()
     {
@@ -145,5 +159,28 @@ public class SignalOptionsTests
         Assert.Contains("not-an-ip", Assert.Throws<InvalidOperationException>(() => SignalOptions.FromEnvironment(Environment(("VOICE_SIGNAL_TRUSTED_PROXIES", "10.0.0.0/8, not-an-ip")))).Message);
         Assert.Equal(2, SignalOptions.FromEnvironment(Environment(("VOICE_SIGNAL_TRUSTED_PROXIES", "10.0.0.0/8 127.0.0.2"))).TrustedProxies.Count);
         Assert.Throws<InvalidOperationException>(() => SignalOptions.FromEnvironment(new Hashtable { ["LOCAL_DOMAIN"] = "a.example" }));
+    }
+}
+
+public class PublicAddressConnectorTests
+{
+    [Theory]
+    [InlineData("127.0.0.1", false)]
+    [InlineData("10.1.2.3", false)]
+    [InlineData("172.20.0.1", false)]
+    [InlineData("192.168.1.1", false)]
+    [InlineData("169.254.169.254", false)]
+    [InlineData("100.64.0.1", false)]
+    [InlineData("0.0.0.0", false)]
+    [InlineData("::1", false)]
+    [InlineData("fd00::1", false)]
+    [InlineData("fe80::1", false)]
+    [InlineData("::ffff:10.0.0.1", false)]
+    [InlineData("93.184.216.34", true)]
+    [InlineData("172.32.0.1", true)]
+    [InlineData("2606:4700::1111", true)]
+    public void AllowsOnlyPublicAddresses(string address, bool expected)
+    {
+        Assert.Equal(expected, PublicAddressConnector.IsPublic(System.Net.IPAddress.Parse(address)));
     }
 }

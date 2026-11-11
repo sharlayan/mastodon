@@ -29,6 +29,17 @@ public sealed class ProxyTests : IAsyncLifetime
         upstreamBuilder.WebHost.UseUrls("http://127.0.0.1:0");
         upstream = upstreamBuilder.Build();
         upstream.UseWebSockets();
+        upstream.Map("/livekit/rtc/{**rest}", async (HttpContext context) =>
+        {
+            lock (upstreamTargets)
+            {
+                upstreamTargets.Add(context.Features.Get<IHttpRequestFeature>()!.RawTarget);
+                upstreamAuthorizations.Add(context.Request.Headers.Authorization.ToString());
+            }
+
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsync("""{"remote":true}""");
+        });
         upstream.Map("/voice-relay/v1/allocations/{id}/{**rest}", async (HttpContext context) =>
         {
             lock (upstreamTargets)
@@ -168,8 +179,31 @@ public sealed class ProxyTests : IAsyncLifetime
         Assert.NotEqual(WebSocketState.Open, socket.State);
     }
 
+    [Fact]
+    public async Task ForwardsRemoteCallsToTheRecordedServerWithoutCredentials()
+    {
+        using var http = new HttpClient();
+        var token = TokenHintTests.RemoteToken(new { sub = "https://social.example/users/me", video = new { room = "room-1" } });
+
+        var validate = await http.GetAsync($"{proxyAddress}/voice-signal/remote/rtc/validate?access_token={token}");
+        Assert.Equal(HttpStatusCode.OK, validate.StatusCode);
+        Assert.Equal("""{"remote":true}""", await validate.Content.ReadAsStringAsync());
+        lock (upstreamTargets)
+        {
+            Assert.Equal($"/livekit/rtc/validate?access_token={token}", upstreamTargets[^1]);
+            Assert.Equal(string.Empty, upstreamAuthorizations[^1]);
+        }
+
+        var unknown = TokenHintTests.RemoteToken(new { sub = "https://social.example/users/me", video = new { room = "room-2" } });
+        Assert.Equal(HttpStatusCode.Unauthorized, (await http.GetAsync($"{proxyAddress}/voice-signal/remote/rtc?access_token={unknown}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await http.GetAsync($"{proxyAddress}/voice-signal/remote/rtc?access_token={Token("alloc-1")}")).StatusCode);
+    }
+
     private sealed class FakeResolver(string origin) : IAllocationResolver
     {
+        public Task<string?> ResolveRemoteOriginAsync(TokenClaims claims, CancellationToken cancellationToken) =>
+            Task.FromResult(claims is { Identity: "https://social.example/users/me", Room: "room-1" } ? origin : null);
+
         public Task<Upstream?> ResolveAsync(TokenHint hint, CancellationToken cancellationToken)
         {
             if (hint.AllocationId == "alloc-db-down")

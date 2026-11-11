@@ -53,6 +53,8 @@ export type VoiceErrorCode =
   | 'VOICE_RELAY_CAPACITY_EXCEEDED'
   | 'VOICE_RELAY_REVOKED'
   | 'VOICE_RELAY_UNREACHABLE'
+  | 'REMOTE_HOST_UNSUPPORTED'
+  | 'REMOTE_HOST_UNREACHABLE'
   | 'RATE_LIMITED'
   | 'UNKNOWN';
 
@@ -62,6 +64,8 @@ const KNOWN_ERRORS = new Set<string>([
   'VOICE_RELAY_CAPACITY_EXCEEDED',
   'VOICE_RELAY_REVOKED',
   'VOICE_RELAY_UNREACHABLE',
+  'REMOTE_HOST_UNSUPPORTED',
+  'REMOTE_HOST_UNREACHABLE',
 ]);
 
 export const voiceErrorCode = (error: unknown): VoiceErrorCode => {

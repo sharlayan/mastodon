@@ -178,6 +178,7 @@ sudo util/voice-signal.sh remove
 
 브라우저는 `wss://<WEB_DOMAIN>/voice-signal`로 접속하므로, 웹 서버가 이 경로를 서비스로 넘겨야 합니다.
 `dist/nginx.conf`에는 이 경로(`upstream voice_signal`, `location ^~ /voice-signal/`)가 들어 있습니다. 기존 설정을 쓰는 경우 아래 블록을 추가합니다. 다른 서버 멤버에게 통화를 제공하면(관리 설정 "다른 서버 멤버에게 통화 제공") 그 참가자들은 `/livekit/rtc`로 접속하므로, 같은 블록을 `location ^~ /livekit/rtc`로 하나 더 둡니다. `/livekit/federation/`은 Mastodon(웹)이 처리하므로 넘기지 않습니다.
+다른 서버가 연 통화 참가를 허용하면("다른 서버가 연 통화 참가 허용") 브라우저의 시그널링은 `/voice-signal/remote/rtc`로 들어오고, 서비스가 방을 소유한 서버의 `/livekit/rtc`로 직접 HTTPS 접속해 중계합니다. 서비스에서 외부로 나가는 HTTPS 연결이 필요하며, 공인 주소가 아닌 곳으로는 접속하지 않습니다.
 
 ```nginx
 location /voice-signal/ {
