@@ -26,7 +26,7 @@ RSpec.describe 'API V1 Chat voice calls' do
     Setting.voice_call_enabled = false
   end
 
-  it 'reports availability, joins a call and lists call states of own rooms only' do
+  it 'reports availability, joins a call, lists call states of own rooms only and keeps removed members out' do
     get '/api/v1/chat/settings', headers: headers
     expect(response.parsed_body['voice_calls']).to be false
 
@@ -49,6 +49,10 @@ RSpec.describe 'API V1 Chat voice calls' do
 
     post "/api/v1/chat/conversations/#{room.id}/voice/status", params: { session_id: 'PA_1', mic_muted: true, deafened: false }, headers: headers
     expect(response.parsed_body).to eq('accepted' => true)
+
+    Sharlayan::VoiceCallService.new.kick(owner, room, user.account)
+    post "/api/v1/chat/conversations/#{room.id}/voice/join", headers: headers
+    expect([response.status, response.parsed_body]).to eq [403, { 'error' => 'VOICE_CALL_REMOVED' }]
   end
 
   it 'lists call participants with their accounts' do

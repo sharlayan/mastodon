@@ -102,6 +102,8 @@ export const voiceErrorMessage = (code: VoiceErrorCode) => {
       return voiceMessages.errorUnavailable;
     case 'VOICE_CALL_BUSY':
       return voiceMessages.errorBusy;
+    case 'VOICE_CALL_REMOVED':
+      return voiceMessages.errorRemoved;
     case 'VOICE_RELAY_CAPACITY_EXCEEDED':
       return voiceMessages.errorFull;
     case 'VOICE_RELAY_REVOKED':

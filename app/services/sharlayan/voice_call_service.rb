@@ -7,6 +7,7 @@ class Sharlayan::VoiceCallService
 
   class Unavailable < StandardError; end
   class Forbidden < StandardError; end
+  class Removed < Forbidden; end
 
   Error = Sharlayan::VoiceRelay::Error
   Responses = Sharlayan::VoiceRelay::Responses
@@ -16,6 +17,7 @@ class Sharlayan::VoiceCallService
   LOCK_AUTORELEASE = 1.minute
   ENDED_RETENTION = 7.days
   PROVIDER_COOLDOWN = 10.seconds
+  REMOVAL_BLOCK = 10.minutes
   MAX_SESSION_ID_LENGTH = 2048
   GONE_CODES = %w(NOT_FOUND ALLOCATION_CONFLICT ALLOCATION_ENDED).freeze
 
@@ -156,6 +158,8 @@ class Sharlayan::VoiceCallService
 
     allocation, credentials = with_redis_lock(conversation_lock_key(conversation.id), autorelease: LOCK_AUTORELEASE) do
       require_member!(conversation, account)
+      raise Removed if removed_from_call?(conversation, account)
+
       allocation = ensure_allocation(conversation)
 
       begin
@@ -203,6 +207,7 @@ class Sharlayan::VoiceCallService
 
   def kick(actor, conversation, target)
     moderate(actor, conversation, target) do |allocation|
+      redis.set(removal_key(conversation.id, target.id), allocation.generation, ex: REMOVAL_BLOCK.to_i)
       kicked = remove_identities(allocation, identities_of(allocation, target.id.to_s, target))
       refresh(allocation)
       kicked
@@ -293,6 +298,15 @@ class Sharlayan::VoiceCallService
 
   def conversation_lock_key(conversation_id)
     "voice_call:#{conversation_id}"
+  end
+
+  def removal_key(conversation_id, account_id)
+    "voice_call:removed:#{conversation_id}:#{account_id}"
+  end
+
+  def removed_from_call?(conversation, account)
+    generation = redis.get(removal_key(conversation.id, account.id))
+    generation.present? && VoiceCallAllocation.unfinished.exists?(chat_conversation_id: conversation.id, generation:)
   end
 
   def require_member!(conversation, account)

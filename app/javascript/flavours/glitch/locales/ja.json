@@ -25,6 +25,7 @@
   "chat.voice.error.rate_limited": "通話のリクエストが多すぎます。少し待ってからもう一度お試しください。",
   "chat.voice.error.remote_unreachable": "このルームを所有するサーバーから通話トークンを取得できませんでした。",
   "chat.voice.error.remote_unsupported": "このルームを所有するサーバーは音声通話を提供していません。",
+  "chat.voice.error.removed": "この通話から退出させられました。数分後にもう一度お試しください。",
   "chat.voice.error.revoked": "このサーバーは通話サーバーを利用できなくなりました。管理者にお問い合わせください。",
   "chat.voice.error.screen_share_denied": "ブラウザが画面共有を許可しませんでした。",
   "chat.voice.error.screen_share_failed": "画面を共有できませんでした。",

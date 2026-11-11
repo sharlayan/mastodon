@@ -114,6 +114,13 @@ RSpec.describe Sharlayan::VoiceCallService do
 
     expect { service.kick(member, room, owner) }.to raise_error(described_class::Forbidden)
     expect(service.mute(owner, room, member)).to be true
+    expect(service.kick(owner, room, member)).to be true
+    expect { service.join(member, room) }.to raise_error(described_class::Removed)
+
+    service.end_call(VoiceCallAllocation.find_by!(chat_conversation: room))
+    service.join(member, room)
+    relay.participants = [relay.participant(member)]
+    service.poll_events(provider)
 
     room.memberships.find_by!(account: member).destroy!
     expect(VoiceCallRevocationWorker).to have_enqueued_sidekiq_job(room.id, member.id)

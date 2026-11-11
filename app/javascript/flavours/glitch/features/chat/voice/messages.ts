@@ -171,6 +171,11 @@ export const voiceMessages = defineMessages({
     defaultMessage:
       'Could not get a call token from the server that owns this room.',
   },
+  errorRemoved: {
+    id: 'chat.voice.error.removed',
+    defaultMessage:
+      'You were removed from this call. Try again in a few minutes.',
+  },
   errorRateLimited: {
     id: 'chat.voice.error.rate_limited',
     defaultMessage: 'Too many call requests. Wait a moment and try again.',

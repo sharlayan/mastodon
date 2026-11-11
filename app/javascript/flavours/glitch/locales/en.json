@@ -25,6 +25,7 @@
   "chat.voice.error.rate_limited": "Too many call requests. Wait a moment and try again.",
   "chat.voice.error.remote_unreachable": "Could not get a call token from the server that owns this room.",
   "chat.voice.error.remote_unsupported": "The server that owns this room does not offer voice calls.",
+  "chat.voice.error.removed": "You were removed from this call. Try again in a few minutes.",
   "chat.voice.error.revoked": "This server can no longer use its call server. Contact an administrator.",
   "chat.voice.error.screen_share_denied": "The browser did not allow screen sharing.",
   "chat.voice.error.screen_share_failed": "Could not share the screen.",

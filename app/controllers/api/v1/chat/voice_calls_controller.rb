@@ -17,6 +17,7 @@ class Api::V1::Chat::VoiceCallsController < Api::V1::Chat::BaseController
 
   rescue_from Sharlayan::VoiceCallService::Unavailable, with: :render_voice_unavailable
   rescue_from Sharlayan::VoiceCallService::Forbidden, with: :render_chat_forbidden
+  rescue_from Sharlayan::VoiceCallService::Removed, with: :render_voice_removed
   rescue_from Sharlayan::VoiceRelay::Error, with: :render_voice_relay_error
 
   def index
@@ -85,6 +86,10 @@ class Api::V1::Chat::VoiceCallsController < Api::V1::Chat::BaseController
 
   def render_voice_unavailable
     render json: { error: 'VOICE_CALL_UNAVAILABLE' }, status: 422
+  end
+
+  def render_voice_removed
+    render json: { error: 'VOICE_CALL_REMOVED' }, status: 403
   end
 
   def render_voice_relay_error(error)
