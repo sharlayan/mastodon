@@ -1,0 +1,131 @@
+using System.Collections;
+using System.Net;
+using Npgsql;
+
+namespace VoiceSignal;
+
+public sealed class SignalOptions
+{
+    public required string BasePath { get; init; }
+    public required string LocalOrigin { get; init; }
+    public required string SecretKeyBase { get; init; }
+    public required string ConnectionString { get; init; }
+    public string BindAddress { get; init; } = "127.0.0.1";
+    public int Port { get; init; } = 4100;
+    public int MaxConnections { get; init; } = 1000;
+    public int UpgradesPerMinute { get; init; } = 60;
+    public IReadOnlyList<IPNetwork> TrustedProxies { get; init; } = [];
+    public bool AllowInsecureUpstream { get; init; }
+
+    public static SignalOptions FromEnvironment(IDictionary environment)
+    {
+        string? Get(string key) => environment[key] is string value && value.Length > 0 ? value : null;
+
+        var domain = Get("WEB_DOMAIN") ?? Get("LOCAL_DOMAIN") ?? throw new InvalidOperationException("LOCAL_DOMAIN or WEB_DOMAIN is required");
+        var secretKeyBase = Get("SECRET_KEY_BASE") ?? throw new InvalidOperationException("SECRET_KEY_BASE is required");
+
+        return new SignalOptions
+        {
+            BasePath = NormalizeBasePath(Get("VOICE_SIGNAL_PATH") ?? "/voice-signal"),
+            LocalOrigin = $"https://{domain.ToLowerInvariant().TrimEnd('.')}",
+            SecretKeyBase = secretKeyBase,
+            ConnectionString = BuildConnectionString(Get),
+            BindAddress = Get("VOICE_SIGNAL_BIND") ?? "127.0.0.1",
+            Port = ParseInt(Get("VOICE_SIGNAL_PORT"), 4100, 1, 65535),
+            MaxConnections = ParseInt(Get("VOICE_SIGNAL_MAX_CONNECTIONS"), 1000, 1, 100_000),
+            UpgradesPerMinute = ParseInt(Get("VOICE_SIGNAL_UPGRADES_PER_MINUTE"), 60, 1, 100_000),
+            TrustedProxies = ParseNetworks(Get("VOICE_SIGNAL_TRUSTED_PROXIES")),
+        };
+    }
+
+    public static string NormalizeBasePath(string value)
+    {
+        var path = "/" + value.Trim().Trim('/');
+        if (path == "/" || path.Contains("//") || path.Contains('\\') || path.Contains('%') || path.Contains('?') || path.Split('/').Any(segment => segment is "." or ".."))
+        {
+            throw new InvalidOperationException("VOICE_SIGNAL_PATH must be a plain absolute path");
+        }
+
+        return path;
+    }
+
+    private static string BuildConnectionString(Func<string, string?> get)
+    {
+        var builder = new NpgsqlConnectionStringBuilder
+        {
+            Host = get("DB_HOST") ?? "localhost",
+            Port = ParseInt(get("DB_PORT"), 5432, 1, 65535),
+            Database = get("DB_NAME") ?? "mastodon_production",
+            Username = get("DB_USER") ?? "mastodon",
+            Password = get("DB_PASS"),
+            SslMode = ParseSslMode(get("DB_SSLMODE")),
+            MaxPoolSize = ParseInt(get("VOICE_SIGNAL_DB_POOL"), 5, 1, 100),
+            ApplicationName = "voice-signal",
+            Timeout = 15,
+        };
+
+        var url = get("DATABASE_URL");
+        if (url is null)
+        {
+            return builder.ConnectionString;
+        }
+
+        var uri = new Uri(url);
+        var credentials = uri.UserInfo.Split(':', 2);
+        builder.Host = uri.Host;
+        builder.Port = uri.Port > 0 ? uri.Port : 5432;
+        builder.Database = Uri.UnescapeDataString(uri.AbsolutePath.TrimStart('/'));
+        builder.Username = credentials.Length > 0 && credentials[0].Length > 0 ? Uri.UnescapeDataString(credentials[0]) : builder.Username;
+        builder.Password = credentials.Length > 1 ? Uri.UnescapeDataString(credentials[1]) : builder.Password;
+
+        foreach (var pair in uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            if (parts.Length == 2 && parts[0] == "sslmode")
+            {
+                builder.SslMode = ParseSslMode(Uri.UnescapeDataString(parts[1]));
+            }
+        }
+
+        return builder.ConnectionString;
+    }
+
+    private static SslMode ParseSslMode(string? value) => value switch
+    {
+        null or "prefer" => SslMode.Prefer,
+        "disable" => SslMode.Disable,
+        "allow" => SslMode.Allow,
+        "require" => SslMode.Require,
+        "verify-ca" => SslMode.VerifyCA,
+        "verify-full" => SslMode.VerifyFull,
+        _ => throw new InvalidOperationException($"Unsupported DB_SSLMODE: {value}"),
+    };
+
+    private static int ParseInt(string? value, int fallback, int min, int max)
+    {
+        if (value is null)
+        {
+            return fallback;
+        }
+
+        if (!int.TryParse(value, out var number) || number < min || number > max)
+        {
+            throw new InvalidOperationException($"Expected an integer between {min} and {max}, got {value}");
+        }
+
+        return number;
+    }
+
+    private static IReadOnlyList<IPNetwork> ParseNetworks(string? value)
+    {
+        if (value is null)
+        {
+            return [];
+        }
+
+        return value
+            .Split([',', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(entry => entry.Contains('/') ? IPNetwork.Parse(entry) : new IPNetwork(IPAddress.Parse(entry), IPAddress.Parse(entry).AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 32 : 128))
+            .ToList();
+    }
+}

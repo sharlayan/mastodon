@@ -8,6 +8,7 @@ on:
       - .github/workflows/test-image-build.yml
       - Dockerfile
       - streaming/Dockerfile
+      - voice_signal/Dockerfile
       - .dockerignore
 permissions:
   contents: read
@@ -31,4 +32,14 @@ jobs:
     uses: ./.github/workflows/build-container-image.yml
     with:
       file_to_build: streaming/Dockerfile
+      cache: true
+
+  build-image-voice-signal:
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-voice-signal
+      cancel-in-progress: true
+
+    uses: ./.github/workflows/build-container-image.yml
+    with:
+      file_to_build: voice_signal/Dockerfile
       cache: true

@@ -1,0 +1,312 @@
+using System.Buffers;
+using System.Net;
+using System.Net.WebSockets;
+using System.Security.Cryptography;
+using Microsoft.AspNetCore.Http.Features;
+
+namespace VoiceSignal;
+
+public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver, IHttpClientFactory httpClientFactory, ILogger<RtcProxy> logger)
+{
+    public const string HttpClientName = "relay";
+    public const int MaxMessageBytes = 1024 * 1024;
+
+    private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan KeepAliveInterval = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(5);
+    private static readonly string[] ForwardedHeaders = ["Accept", "User-Agent"];
+
+    private readonly SemaphoreSlim connections = new(options.MaxConnections, options.MaxConnections);
+
+    public async Task HandleAsync(HttpContext context)
+    {
+        var rawTarget = context.Features.Get<IHttpRequestFeature>()?.RawTarget ?? string.Empty;
+        if (!RtcRequest.TryParse(rawTarget, options.BasePath, out var rtc))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        if (!HttpMethods.IsGet(context.Request.Method))
+        {
+            context.Response.StatusCode = StatusCodes.Status405MethodNotAllowed;
+            return;
+        }
+
+        if (!TokenHint.TryParse(rtc.AccessToken, out var hint))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
+        var upstream = await resolver.ResolveAsync(hint, context.RequestAborted);
+        if (upstream is null || !TryBuildTarget(upstream, rtc, out var target))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
+        string bearer;
+        try
+        {
+            bearer = RelayToken.Create(SecretBox.Decrypt(upstream.SecretCiphertext, options.SecretKeyBase), options.LocalOrigin, upstream.Origin, DateTimeOffset.UtcNow);
+        }
+        catch (Exception exception) when (exception is CryptographicException or FormatException)
+        {
+            logger.LogError("The relay secret for {Origin} cannot be decrypted; re-enter it in the admin settings", upstream.Origin);
+            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            return;
+        }
+
+        if (!connections.Wait(0))
+        {
+            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            return;
+        }
+
+        try
+        {
+            if (context.WebSockets.IsWebSocketRequest)
+            {
+                await ProxyWebSocketAsync(context, target, bearer);
+            }
+            else
+            {
+                await ProxyHttpAsync(context, target, bearer);
+            }
+        }
+        finally
+        {
+            connections.Release();
+        }
+    }
+
+    private bool TryBuildTarget(Upstream upstream, RtcRequest rtc, out Uri target)
+    {
+        target = null!;
+
+        if (!Uri.TryCreate(upstream.Origin, UriKind.Absolute, out var origin)
+            || (origin.Scheme != Uri.UriSchemeHttps && !(options.AllowInsecureUpstream && origin.Scheme == Uri.UriSchemeHttp))
+            || origin.AbsolutePath != "/" || origin.Query.Length > 0 || origin.UserInfo.Length > 0)
+        {
+            return false;
+        }
+
+        if (!Uri.TryCreate($"{origin.GetLeftPart(UriPartial.Authority)}/voice-relay/v1/allocations/{upstream.RemoteId}{rtc.Suffix}", UriKind.Absolute, out var built)
+            || built.GetLeftPart(UriPartial.Authority) != origin.GetLeftPart(UriPartial.Authority))
+        {
+            return false;
+        }
+
+        target = built;
+        return true;
+    }
+
+    private async Task ProxyHttpAsync(HttpContext context, Uri target, string bearer)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, target);
+        request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {bearer}");
+        foreach (var header in ForwardedHeaders)
+        {
+            if (context.Request.Headers.TryGetValue(header, out var value))
+            {
+                request.Headers.TryAddWithoutValidation(header, value.ToArray());
+            }
+        }
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
+        timeout.CancelAfter(ConnectTimeout);
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await httpClientFactory.CreateClient(HttpClientName).SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException)
+        {
+            context.Response.StatusCode = StatusCodes.Status502BadGateway;
+            return;
+        }
+
+        using (response)
+        {
+            if ((int)response.StatusCode is >= 300 and < 400)
+            {
+                context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return;
+            }
+
+            byte[] body;
+            try
+            {
+                body = await ReadLimitedAsync(response.Content, MaxMessageBytes, timeout.Token);
+            }
+            catch (Exception exception) when (exception is InvalidDataException or HttpRequestException or OperationCanceledException)
+            {
+                context.Response.StatusCode = StatusCodes.Status502BadGateway;
+                return;
+            }
+
+            context.Response.StatusCode = (int)response.StatusCode;
+            context.Response.ContentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
+            context.Response.Headers.CacheControl = "no-store";
+            await context.Response.Body.WriteAsync(body, context.RequestAborted);
+        }
+    }
+
+    private static async Task<byte[]> ReadLimitedAsync(HttpContent content, int limit, CancellationToken cancellationToken)
+    {
+        if (content.Headers.ContentLength > limit)
+        {
+            throw new InvalidDataException("Upstream response is too large");
+        }
+
+        await using var stream = await content.ReadAsStreamAsync(cancellationToken);
+        using var buffer = new MemoryStream();
+        var chunk = ArrayPool<byte>.Shared.Rent(16 * 1024);
+        try
+        {
+            int read;
+            while ((read = await stream.ReadAsync(chunk, cancellationToken)) > 0)
+            {
+                if (buffer.Length + read > limit)
+                {
+                    throw new InvalidDataException("Upstream response is too large");
+                }
+
+                buffer.Write(chunk, 0, read);
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(chunk);
+        }
+
+        return buffer.ToArray();
+    }
+
+    private async Task ProxyWebSocketAsync(HttpContext context, Uri target, string bearer)
+    {
+        using var upstream = new ClientWebSocket();
+        upstream.Options.SetRequestHeader("Authorization", $"Bearer {bearer}");
+        upstream.Options.CollectHttpResponseDetails = true;
+        upstream.Options.KeepAliveInterval = KeepAliveInterval;
+        if (context.Request.Headers.UserAgent.Count > 0)
+        {
+            upstream.Options.SetRequestHeader("User-Agent", context.Request.Headers.UserAgent.ToString());
+        }
+
+        var socketUri = new UriBuilder(target) { Scheme = target.Scheme == Uri.UriSchemeHttps ? "wss" : "ws" }.Uri;
+
+        using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted))
+        {
+            timeout.CancelAfter(ConnectTimeout);
+            try
+            {
+                await upstream.ConnectAsync(socketUri, timeout.Token);
+            }
+            catch (Exception exception) when (exception is WebSocketException or OperationCanceledException or HttpRequestException)
+            {
+                var status = (int)upstream.HttpStatusCode;
+                context.Response.StatusCode = status is >= 400 and < 500 ? status : StatusCodes.Status502BadGateway;
+                return;
+            }
+        }
+
+        using var downstream = await context.WebSockets.AcceptWebSocketAsync(new WebSocketAcceptContext { KeepAliveInterval = KeepAliveInterval });
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
+
+        var toUpstream = PumpAsync(downstream, upstream, lifetime.Token);
+        var toDownstream = PumpAsync(upstream, downstream, lifetime.Token);
+
+        var finished = await Task.WhenAny(toUpstream, toDownstream);
+        if (finished.IsCompletedSuccessfully)
+        {
+            await Task.WhenAny(finished == toUpstream ? toDownstream : toUpstream, Task.Delay(CloseTimeout));
+        }
+
+        await lifetime.CancelAsync();
+
+        Abort(upstream);
+        Abort(downstream);
+        await Task.WhenAll(Swallow(toUpstream), Swallow(toDownstream));
+    }
+
+    private static async Task PumpAsync(WebSocket source, WebSocket destination, CancellationToken cancellationToken)
+    {
+        var buffer = ArrayPool<byte>.Shared.Rent(64 * 1024);
+        try
+        {
+            var messageBytes = 0;
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var result = await source.ReceiveAsync(buffer.AsMemory(), cancellationToken);
+
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    if (destination.State is WebSocketState.Open or WebSocketState.CloseReceived)
+                    {
+                        await destination.CloseOutputAsync(source.CloseStatus ?? WebSocketCloseStatus.NormalClosure, source.CloseStatusDescription, cancellationToken);
+                    }
+
+                    return;
+                }
+
+                messageBytes += result.Count;
+                if (messageBytes > MaxMessageBytes)
+                {
+                    await CloseQuietlyAsync(source, WebSocketCloseStatus.MessageTooBig);
+                    await CloseQuietlyAsync(destination, WebSocketCloseStatus.MessageTooBig);
+                    return;
+                }
+
+                await destination.SendAsync(buffer.AsMemory(0, result.Count), result.MessageType, result.EndOfMessage, cancellationToken);
+                if (result.EndOfMessage)
+                {
+                    messageBytes = 0;
+                }
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    private static async Task CloseQuietlyAsync(WebSocket socket, WebSocketCloseStatus status)
+    {
+        if (socket.State is not (WebSocketState.Open or WebSocketState.CloseReceived))
+        {
+            return;
+        }
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        try
+        {
+            await socket.CloseOutputAsync(status, null, timeout.Token);
+        }
+        catch (Exception exception) when (exception is WebSocketException or OperationCanceledException)
+        {
+            socket.Abort();
+        }
+    }
+
+    private static void Abort(WebSocket socket)
+    {
+        if (socket.State is not (WebSocketState.Closed or WebSocketState.Aborted))
+        {
+            socket.Abort();
+        }
+    }
+
+    private static async Task Swallow(Task task)
+    {
+        try
+        {
+            await task;
+        }
+        catch (Exception exception) when (exception is WebSocketException or OperationCanceledException or ObjectDisposedException)
+        {
+        }
+    }
+}
