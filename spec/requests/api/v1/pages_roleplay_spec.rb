@@ -16,6 +16,10 @@ RSpec.describe 'Pages in roleplay mode' do
 
     expect(response.status).to be_between(400, 499)
 
+    get "/api/v1/accounts/#{account.id}/page_series"
+
+    expect(response.status).to be_between(400, 499)
+
     get '/api/v1/pages/featured'
 
     expect(response.status).to be_between(400, 499)
