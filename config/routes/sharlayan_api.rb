@@ -628,6 +628,11 @@ namespace :api, format: false do
       post 'admin/system-webhook/update', to: 'system_webhooks#update'
       post 'admin/system-webhook/delete', to: 'system_webhooks#destroy'
       post 'admin/system-webhook/test', to: 'system_webhooks#test'
+      post 'admin/ad/list', to: 'ads#index'
+      post 'admin/ad/create', to: 'ads#create'
+      post 'admin/ad/update', to: 'ads#update'
+      post 'admin/ad/delete', to: 'ads#destroy'
+      post 'admin/promo/create', to: 'promo#create'
     end
 
     post 'admin/queue/pause', to: 'stub#unsupported'

@@ -1429,6 +1429,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191048) do
     t.index ["account_id", "name"], name: "index_misskey_achievements_on_account_id_and_name", unique: true
   end
 
+  create_table "misskey_ads", id: :bigint, default: -> { "timestamp_id('misskey_ads'::text)" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "day_of_week", default: 0, null: false
+    t.datetime "expires_at", null: false
+    t.string "image_url", null: false
+    t.boolean "is_sensitive", default: false, null: false
+    t.text "memo", default: "", null: false
+    t.string "place", default: "", null: false
+    t.string "priority", default: "", null: false
+    t.integer "ratio", default: 1, null: false
+    t.datetime "starts_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "url", null: false
+    t.index ["starts_at", "expires_at"], name: "index_misskey_ads_on_starts_at_and_expires_at"
+  end
+
   create_table "misskey_apps", id: :bigint, default: -> { "timestamp_id('misskey_apps'::text)" }, force: :cascade do |t|
     t.string "callback_url"
     t.datetime "created_at", null: false
@@ -1593,6 +1609,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191048) do
     t.datetime "updated_at", null: false
     t.index ["account_id", "id"], name: "index_misskey_notifications_on_account_id_and_id", order: { id: :desc }
     t.index ["from_account_id"], name: "index_misskey_notifications_on_from_account_id"
+  end
+
+  create_table "misskey_promo_notes", id: :bigint, default: -> { "timestamp_id('misskey_promo_notes'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.bigint "status_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_misskey_promo_notes_on_account_id"
+    t.index ["status_id"], name: "index_misskey_promo_notes_on_status_id", unique: true
   end
 
   create_table "misskey_registry_items", id: :bigint, default: -> { "timestamp_id('misskey_registry_items'::text)" }, force: :cascade do |t|
@@ -2758,6 +2784,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191048) do
   add_foreign_key "misskey_gallery_posts", "accounts", on_delete: :cascade
   add_foreign_key "misskey_notifications", "accounts", column: "from_account_id", on_delete: :cascade
   add_foreign_key "misskey_notifications", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_promo_notes", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_promo_notes", "statuses", on_delete: :cascade
   add_foreign_key "misskey_registry_items", "accounts", on_delete: :cascade
   add_foreign_key "misskey_reversi_games", "accounts", column: "account1_id", on_delete: :cascade
   add_foreign_key "misskey_reversi_games", "accounts", column: "account2_id", on_delete: :cascade
