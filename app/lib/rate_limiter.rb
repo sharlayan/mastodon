@@ -115,6 +115,16 @@ class RateLimiter
       period: 1.hour.freeze,
     }.freeze,
 
+    misskey_flash_create: {
+      limit: 10,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_flash_update: {
+      limit: 300,
+      period: 1.hour.freeze,
+    }.freeze,
+
     implicit_quotes: {
       limit: 30,
       period: 5.minutes.freeze,

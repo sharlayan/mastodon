@@ -1409,6 +1409,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
     t.index ["domain"], name: "index_misskey_federation_instance_stats_on_domain", unique: true
   end
 
+  create_table "misskey_flash_likes", id: :bigint, default: -> { "timestamp_id('misskey_flash_likes'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "misskey_flash_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "misskey_flash_id"], name: "index_misskey_flash_likes_on_account_id_and_flash_id", unique: true
+    t.index ["account_id"], name: "index_misskey_flash_likes_on_account_id"
+    t.index ["misskey_flash_id"], name: "index_misskey_flash_likes_on_misskey_flash_id"
+  end
+
+  create_table "misskey_flashes", id: :bigint, default: -> { "timestamp_id('misskey_flashes'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.integer "likes_count", default: 0, null: false
+    t.string "permissions", default: [], null: false, array: true
+    t.text "script", default: "", null: false
+    t.text "summary", default: "", null: false
+    t.string "title", default: "", null: false
+    t.datetime "updated_at", null: false
+    t.string "visibility", default: "public", null: false
+    t.index ["account_id"], name: "index_misskey_flashes_on_account_id"
+    t.index ["likes_count"], name: "index_misskey_flashes_on_likes_count"
+  end
+
   create_table "misskey_gallery_likes", id: :bigint, default: -> { "timestamp_id('misskey_gallery_likes'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
@@ -2533,6 +2557,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
   add_foreign_key "mentions", "accounts", name: "fk_970d43f9d1", on_delete: :cascade
   add_foreign_key "mentions", "statuses", on_delete: :cascade
   add_foreign_key "misskey_access_grants", "oauth_access_tokens", column: "access_token_id", on_delete: :cascade
+  add_foreign_key "misskey_flash_likes", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_flash_likes", "misskey_flashes", on_delete: :cascade
+  add_foreign_key "misskey_flashes", "accounts", on_delete: :cascade
   add_foreign_key "misskey_gallery_likes", "accounts", on_delete: :cascade
   add_foreign_key "misskey_gallery_likes", "misskey_gallery_posts", on_delete: :cascade
   add_foreign_key "misskey_gallery_posts", "accounts", on_delete: :cascade

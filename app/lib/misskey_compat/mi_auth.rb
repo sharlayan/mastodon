@@ -25,6 +25,8 @@ module MisskeyCompat::MiAuth
     read:clip-favorite write:clip-favorite
     read:gallery write:gallery
     read:gallery-likes write:gallery-likes
+    read:flash write:flash
+    read:flash-likes write:flash-likes
     write:report-abuse
   ).freeze
 

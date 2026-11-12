@@ -46,16 +46,6 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       channels/unfavorite
       channels/unfollow
       channels/update
-      flash/create
-      flash/delete
-      flash/featured
-      flash/like
-      flash/my
-      flash/my-likes
-      flash/search
-      flash/show
-      flash/unlike
-      flash/update
       i/change-password
       i/update-email
       request-reset-password
@@ -63,7 +53,6 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       reset-password
       sw/update-registration
       username/available
-      users/flashs
       verify-email
     )
   end
