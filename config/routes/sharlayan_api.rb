@@ -533,6 +533,7 @@ namespace :api, format: false do
     post 'admin/send-email', to: 'stub#unsupported'
     post 'admin/invite/create', to: 'admin_invites#create'
     post 'admin/invite/list', to: 'admin_invites#index'
+    post 'admin/show-moderation-logs', to: 'admin_moderation_logs#index'
     post 'admin/roles/list', to: 'admin_roles#index'
     post 'admin/roles/show', to: 'admin_roles#show'
     post 'admin/roles/users', to: 'admin_roles#users'
