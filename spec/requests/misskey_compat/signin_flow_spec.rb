@@ -169,6 +169,7 @@ RSpec.describe 'Misskey-compat signin-flow endpoint' do
         expect(response).to have_http_status(200)
         expect(response.parsed_body['finished']).to be(true)
         expect(Doorkeeper::AccessToken.by_token(response.parsed_body['i'])&.resource_owner_id).to eq(user.id)
+        expect(user.login_activities.sole).to have_attributes(authentication_method: 'otp', success: true)
       end
 
       it 'shares the hourly two-factor attempt limit with the web sign-in' do
@@ -189,6 +190,7 @@ RSpec.describe 'Misskey-compat signin-flow endpoint' do
         expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::INCORRECT_TOKEN_ID)
         expect(emails.size).to eq(1)
         expect(emails.first.to).to eq([email])
+        expect(user.login_activities.sole).to have_attributes(authentication_method: 'otp', success: false, failure_reason: 'invalid_otp')
       end
     end
   end

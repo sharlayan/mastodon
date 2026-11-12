@@ -27,7 +27,7 @@ class Api::MisskeyCompat::SigninController < Api::MisskeyCompat::BaseController
     return signin_error(403, INCORRECT_PASSWORD_ID) if user.nil?
     return signin_error(404, NO_SUCH_USER_ID) if user.account.suspended?
     return signin_error(403, UNAVAILABLE_ID) unless user.functional?
-    return render_finished(user) unless user.two_factor_enabled?
+    return render_finished(user, :password) unless user.two_factor_enabled?
 
     resolve_two_factor(user)
   end
@@ -64,8 +64,9 @@ class Api::MisskeyCompat::SigninController < Api::MisskeyCompat::BaseController
 
       if consume_otp(user, token.to_s)
         clear_second_factor_attempts(user)
-        render_finished(user)
+        render_finished(user, :otp)
       else
+        record_login_activity(user, :otp, success: false, failure_reason: :invalid_otp)
         notify_failed_second_factor(user)
         signin_error(403, INCORRECT_TOKEN_ID)
       end
@@ -84,10 +85,21 @@ class Api::MisskeyCompat::SigninController < Api::MisskeyCompat::BaseController
     render json: { finished: false, next: next_step }
   end
 
-  def render_finished(user)
+  def render_finished(user, authentication_method)
     token = MisskeyCompat::MiAuth.issue_native_token(user)
     user.update_sign_in!(new_sign_in: true)
+    record_login_activity(user, authentication_method, success: true)
     render json: { finished: true, id: MisskeyCompat::MiId.encode(user.account_id), i: token.token }
+  end
+
+  def record_login_activity(user, authentication_method, success:, failure_reason: nil)
+    user.login_activities.create(
+      authentication_method: authentication_method,
+      success: success,
+      failure_reason: failure_reason,
+      ip: request.remote_ip,
+      user_agent: request.user_agent
+    )
   end
 
   def signin_error(status, id)

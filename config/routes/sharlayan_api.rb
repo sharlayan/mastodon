@@ -280,6 +280,7 @@ namespace :api, format: false do
     post 'i/2fa/remove-key', to: 'two_factor#remove_key'
     post 'i/2fa/update-key', to: 'two_factor#update_key'
     post 'i/2fa/password-less', to: 'stub#unsupported'
+    post 'i/signin-history', to: 'signin_history#index'
     post 'miauth/:session/check', to: 'miauth#check'
     post 'signin-flow', to: 'signin#create'
 
