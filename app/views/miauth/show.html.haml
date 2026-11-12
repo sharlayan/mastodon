@@ -5,18 +5,16 @@
   .oauth-prompt
     %h3 MiAuth
 
-    %p
-      - if @app_name.present?
-        %strong= @app_name
-      님이 회원님의 계정
-      %strong @#{current_account.username}
-      에 접근하려고 합니다.
+    - if @app_name.present?
+      %p= t('misskey_compat.authorization.access_request_html', app: content_tag(:strong, @app_name), account: content_tag(:strong, "@#{current_account.username}"))
+    - else
+      %p= t('misskey_compat.authorization.access_request_unnamed_html', account: content_tag(:strong, "@#{current_account.username}"))
 
-    %p 승인하면 이 애플리케이션이 회원님을 대신해 글 작성, 리액션, 알림 확인 등을 할 수 있습니다.
+    %p= t('misskey_compat.authorization.permission_notice')
 
     .actions
       = form_with url: miauth_path(session: @session), method: :post do |form|
         = form.hidden_field :name, value: @app_name
         = form.hidden_field :callback, value: @callback
         = form.hidden_field :permission, value: @permission
-        = form.button '승인', type: :submit, class: 'btn button'
+        = form.button t('misskey_compat.authorization.approve'), type: :submit, class: 'btn button'

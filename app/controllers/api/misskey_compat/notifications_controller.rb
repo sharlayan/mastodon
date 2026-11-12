@@ -59,7 +59,7 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
     return render_invalid_param('#/properties/icon', 'must be a string') unless params[:icon].nil? || params[:icon].is_a?(String)
     return if rate_limited?(:misskey_compat_notifications_create)
 
-    MisskeyCompat::Notifier.notify!(current_account, 'app', body: params[:body], header: params[:header] || current_token.application&.name, icon: params[:icon])
+    MisskeyCompat::Notifier.notify!(current_account, 'app', body: params[:body], header: params[:header] || default_app_notification_header, icon: params[:icon])
     head 204
   end
 
@@ -78,6 +78,11 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
   end
 
   private
+
+  def default_app_notification_header
+    application = current_token.application
+    current_misskey_grant&.name.presence || (application&.misskey_app ? application.name : MisskeyCompat::MiAuth.display_name(application).presence)
+  end
 
   def valid_types?(types, param)
     return true if types.nil? || (types.is_a?(Array) && types.all? { |type| (NOTIFICATION_TYPES + OBSOLETE_NOTIFICATION_TYPES).include?(type) })

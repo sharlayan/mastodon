@@ -715,6 +715,16 @@ en:
     types:
       clips: Clips
   misskey_compat:
+    authorization:
+      access_request_html: "%{app} is requesting access to your account %{account}."
+      access_request_unnamed_html: An application is requesting access to your account %{account}.
+      approve: Approve
+      done_automatic: Authorization is complete. Returning you to the app automatically.
+      done_fallback: If you are not returned to the app, press the button below.
+      done_manual: Authorization is complete. Please return to the app.
+      done_title: Authorization complete
+      permission_notice: If you approve, this application will be able to post, react, check notifications and more on your behalf.
+      return_to_app: Return to the app
     scratchpad:
       code_label: AiScript code
       description: Paste the code shown in your Misskey-compatible app below and run

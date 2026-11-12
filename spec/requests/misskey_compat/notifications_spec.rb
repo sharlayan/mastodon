@@ -201,6 +201,10 @@ RSpec.describe 'Misskey-compat notification endpoints' do
                                               include(type: 'app', body: 'Custom', header: 'Header', icon: 'https://example.com/icon.png'),
                                               include(type: 'app', body: 'Build finished', header: 'Compat App', icon: nil).and(satisfy { |item| !item.key?('userId') }),
                                             ])
+
+      miauth_token = MisskeyCompat::MiAuth.issue_token(user, name: 'MyApp', permission: 'write:notifications').token
+      post '/api/notifications/create', params: { i: miauth_token, body: 'From MiAuth' }, as: :json
+      expect(MisskeyNotification.where(notification_type: 'app').order(:id).last.data).to include('body' => 'From MiAuth', 'header' => 'MyApp')
     end
 
     it 'merges Misskey-only notifications into Mastodon pages by id, type filters and the read marker' do

@@ -147,7 +147,7 @@ class MisskeyCompat::ReversiService
 
   def check_timeout(game_id)
     with_game(game_id) do |game|
-      next if !game.started? || game.ended?
+      next if !game.started? || game.ended? || !game.time_limit_for_each_turn.positive?
 
       turn = game.engine.turn
       next if turn.nil? || redis.exists?(turn_timer_key(game.id, turn))

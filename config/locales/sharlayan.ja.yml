@@ -644,6 +644,16 @@ ja:
     types:
       clips: クリップ
   misskey_compat:
+    authorization:
+      access_request_html: "%{app} があなたのアカウント %{account} へのアクセスを求めています。"
+      access_request_unnamed_html: アプリケーションがあなたのアカウント %{account} へのアクセスを求めています。
+      approve: 承認
+      done_automatic: 認証が完了しました。自動的にアプリに戻ります。
+      done_fallback: アプリに戻らない場合は、下のボタンを押してください。
+      done_manual: 認証が完了しました。アプリに戻ってください。
+      done_title: 承認完了
+      permission_notice: 承認すると、このアプリケーションはあなたの代わりに投稿、リアクション、通知の確認などを行えるようになります。
+      return_to_app: アプリに戻る
     scratchpad:
       code_label: AiScript コード
       description: Misskey 互換アプリに表示されたコードを下に貼り付けて実行すると、プッシュ通知が登録されます。完了したら結果をコピーしてアプリに貼り付けてください。

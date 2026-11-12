@@ -68,13 +68,17 @@ RSpec.describe 'Misskey-compat public user lists' do
   end
 
   it 'copies a public list with only the members the viewer may add and refuses when a member blocks the viewer' do
+    requested = Fabricate(:account)
+    owner.account.follow!(requested)
+    list.accounts << requested
     MisskeyUserListSetting.update_public!(list, true)
     viewer.account.follow!(followed)
+    viewer.account.request_follow!(requested)
     post '/api/users/lists/create-from-public', params: { i: viewer_token, listId: list_id, name: 'Copied' }, as: :json
     expect(response).to have_http_status(200)
     copy = viewer.account.owned_lists.find(MisskeyCompat::MiId.decode(response.parsed_body[:id]))
-    expect(response.parsed_body).to include(name: 'Copied', isPublic: false, userIds: [MisskeyCompat::MiId.encode(followed.id)])
-    expect(copy.accounts).to eq([followed])
+    expect(response.parsed_body).to include(name: 'Copied', isPublic: false, userIds: contain_exactly(MisskeyCompat::MiId.encode(followed.id), MisskeyCompat::MiId.encode(requested.id)))
+    expect(copy.accounts).to contain_exactly(followed, requested)
 
     unfollowed.block!(viewer.account)
     post '/api/users/lists/create-from-public', params: { i: viewer_token, listId: list_id, name: 'Blocked' }, as: :json

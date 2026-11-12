@@ -112,6 +112,11 @@ RSpec.describe MisskeyCompat::ReversiService do
     service.check_timeout(game.id)
     expect(game.reload).to have_attributes(ended?: true, winner_account_id: guest.id, timeout_account_id: host.id)
 
+    untimed_game = MisskeyReversiGame.create!(account1: host, account2: guest, map: MisskeyCompat::ReversiEngine::DEFAULT_MAP, account1_ready: true, account2_ready: true, bw: '1', time_limit_for_each_turn: 0)
+    service.start_game(untimed_game.id)
+    service.check_timeout(untimed_game.id)
+    expect(untimed_game.reload).to have_attributes(started?: true, ended?: false)
+
     pending_game = MisskeyReversiGame.create!(account1: host, account2: guest, map: %w(--))
     subscribe("reversiGame:#{pending_game.id}")
     service.cancel_game(pending_game.id, Fabricate(:account))

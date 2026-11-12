@@ -665,6 +665,16 @@ ko:
     types:
       clips: 클립
   misskey_compat:
+    authorization:
+      access_request_html: "%{app} 님이 회원님의 계정 %{account}에 접근하려고 합니다."
+      access_request_unnamed_html: 애플리케이션이 회원님의 계정 %{account}에 접근하려고 합니다.
+      approve: 승인
+      done_automatic: 인증이 완료되었습니다. 자동으로 앱으로 돌아갑니다.
+      done_fallback: 앱으로 돌아가지 않으면 아래 버튼을 눌러 주세요.
+      done_manual: 인증이 완료되었습니다. 앱으로 돌아가 주세요.
+      done_title: 승인 완료
+      permission_notice: 승인하면 이 애플리케이션이 회원님을 대신해 글 작성, 리액션, 알림 확인 등을 할 수 있습니다.
+      return_to_app: 앱으로 돌아가기
     scratchpad:
       code_label: AiScript 코드
       description: Misskey 호환 앱에 표시된 코드를 아래에 붙여넣고 실행하면 푸시 알림이 등록됩니다. 완료되면 결과를 복사해

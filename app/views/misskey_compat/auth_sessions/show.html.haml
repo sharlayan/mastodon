@@ -5,17 +5,13 @@
   .oauth-prompt
     %h3= @auth_session.application.name
 
-    %p
-      %strong= @auth_session.application.name
-      님이 회원님의 계정
-      %strong @#{current_account.username}
-      에 접근하려고 합니다.
+    %p= t('misskey_compat.authorization.access_request_html', app: content_tag(:strong, @auth_session.application.name), account: content_tag(:strong, "@#{current_account.username}"))
 
     - if @auth_session.application.misskey_app.description.present?
       %p= @auth_session.application.misskey_app.description
 
-    %p 승인하면 이 애플리케이션이 회원님을 대신해 글 작성, 리액션, 알림 확인 등을 할 수 있습니다.
+    %p= t('misskey_compat.authorization.permission_notice')
 
     .actions
       = form_with url: misskey_auth_session_path(@auth_session.token), method: :post do |form|
-        = form.button '승인', type: :submit, class: 'btn button'
+        = form.button t('misskey_compat.authorization.approve'), type: :submit, class: 'btn button'

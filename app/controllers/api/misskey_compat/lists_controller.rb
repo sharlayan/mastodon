@@ -61,13 +61,14 @@ class Api::MisskeyCompat::ListsController < Api::MisskeyCompat::BaseController
     return render_error('No such list.', 'NO_SUCH_LIST', 404, id: '9292f798-6175-4f7d-93f4-b6742279667d') if source.nil? # rubocop:disable I18n/RailsI18n/DecorateString
     return render_error('You cannot create user list any more.', 'TOO_MANY_USERLISTS', 400, id: 'e9c105b2-c595-47de-97fb-7f7c2c33e92f') if current_account.owned_lists.count >= List::PER_ACCOUNT_LIMIT # rubocop:disable I18n/RailsI18n/DecorateString
 
-    members = Account.without_requested_deletion.where(id: source.list_accounts.select(:account_id)).to_a
-    return render_error('You cannot push this user because you have been blocked by this user.', 'YOU_HAVE_BEEN_BLOCKED', 400, id: 'a2497f2a-2389-439c-8626-5298540530f4') if members.any? { |member| member.id != current_account.id && member.blocking?(current_account) } # rubocop:disable I18n/RailsI18n/DecorateString
+    member_ids = Account.without_requested_deletion.where(id: source.list_accounts.select(:account_id)).pluck(:id)
+    other_ids = member_ids - [current_account.id]
+    return render_error('You cannot push this user because you have been blocked by this user.', 'YOU_HAVE_BEEN_BLOCKED', 400, id: 'a2497f2a-2389-439c-8626-5298540530f4') if Block.exists?(account_id: other_ids, target_account_id: current_account.id) # rubocop:disable I18n/RailsI18n/DecorateString
 
-    addable = members.select { |member| member.id == current_account.id || current_account.following?(member) || current_account.requested?(member) }
+    addable_ids = member_ids & ([current_account.id] + current_account.active_relationships.where(target_account_id: other_ids).pluck(:target_account_id) + current_account.follow_requests.where(target_account_id: other_ids).pluck(:target_account_id))
     list = List.transaction do
       current_account.owned_lists.create!(title: params[:name]).tap do |created|
-        AddAccountsToListService.new.call(created, Account.where(id: addable.map(&:id)))
+        AddAccountsToListService.new.call(created, Account.where(id: addable_ids))
       end
     end
     render json: serialize(list)
