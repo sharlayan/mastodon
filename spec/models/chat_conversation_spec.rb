@@ -28,6 +28,14 @@ RSpec.describe ChatConversation do
     ActiveSupport::Notifications.unsubscribe(subscriber)
   end
 
+  it 'assigns timestamp-based ids to new rooms' do
+    created_after = Mastodon::Snowflake.id_at(1.second.ago, with_random: false)
+    room = described_class.create!(conversation_type: :group, owner_account: owner, title: 'Room')
+
+    expect(room.id).to be >= created_after
+    expect(room.id).to be < Mastodon::Snowflake.id_at(1.minute.from_now, with_random: false)
+  end
+
   describe '#destroy!' do
     it 'removes messages with their reactions, edits and attachment links without querying once for every message' do
       small = room_with_messages(2)

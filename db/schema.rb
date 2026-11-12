@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_12_214500) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_13_021400) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -606,7 +606,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_214500) do
     t.index ["reference_account_id"], name: "index_canonical_email_blocks_on_reference_account_id"
   end
 
-  create_table "chat_conversations", force: :cascade do |t|
+  create_table "chat_conversations", id: :bigint, default: -> { "timestamp_id('chat_conversations'::text)" }, force: :cascade do |t|
     t.datetime "archived_at"
     t.integer "conversation_type", default: 0, null: false
     t.datetime "created_at", null: false
