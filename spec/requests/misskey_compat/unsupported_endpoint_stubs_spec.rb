@@ -36,7 +36,6 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       i/import-antennas
       reset-db
       sw/update-registration
-      username/available
     )
   end
 

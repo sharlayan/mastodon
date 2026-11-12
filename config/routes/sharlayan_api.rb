@@ -600,7 +600,8 @@ namespace :api, format: false do
     match 'fetch-rss', to: 'fetch#rss', via: [:get, :post]
     post 'fetch-external-resources', to: 'fetch#external_resources'
     post 'test', to: 'stub#noop'
-    post 'username/available', to: 'stub#unsupported'
+    post 'username/available', to: 'availability#username'
+    post 'email-address/available', to: 'availability#email_address'
     post 'verify-email', to: 'credentials#verify_email'
   end
 end

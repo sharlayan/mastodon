@@ -85,6 +85,11 @@ class RateLimiter
       period: 1.hour.freeze,
     }.freeze,
 
+    misskey_compat_signup_check: {
+      limit: 60,
+      period: 5.minutes.freeze,
+    }.freeze,
+
     misskey_miauth_hourly: {
       limit: 10,
       period: 1.hour.freeze,
