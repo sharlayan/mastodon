@@ -120,10 +120,17 @@ interface ChatReaction {
   is_sensitive?: boolean;
 }
 
+interface ChatDice {
+  notation: string;
+  total: number;
+  output: string;
+}
+
 interface ChatMessage {
   id: string;
   conversation_id: string;
   content: string | null;
+  dice?: ChatDice | null;
   created_at: string;
   edited_at: string | null;
   deleted_at: string | null;
@@ -305,6 +312,16 @@ const isNotFound = (error: unknown) =>
   (error as { response?: { status?: number } }).response?.status === 404;
 const isRefused = (error: unknown) =>
   (error as { response?: { status?: number } }).response?.status === 403;
+const DICE_ERRORS: Record<string, string> = {
+  DICE_INVALID: 'dice_invalid',
+  DICE_LIMIT: 'dice_limit',
+  DICE_BUSY: 'dice_busy',
+};
+export const diceErrorOf = (error: unknown) => {
+  const code = (error as { response?: { data?: { error_code?: unknown } } })
+    .response?.data?.error_code;
+  return typeof code === 'string' ? (DICE_ERRORS[code] ?? null) : null;
+};
 const roomEndingOf = (error: unknown): RoomEnding | null => {
   const reason = (error as { response?: { data?: { reason?: unknown } } })
     .response?.data?.reason;
@@ -598,6 +615,26 @@ const fetchSentInvitations = async (
   const rest = await fetchSentInvitations(conversationId, nextPage, last.id);
   return rest ? [...data, ...rest] : undefined;
 };
+
+const ChatDiceResult: React.FC<{ dice: ChatDice }> = ({ dice }) => (
+  <div className='chat-native__dice'>
+    <div className='chat-native__dice-total'>
+      <span>
+        <FormattedMessage id='chat.dice_total' defaultMessage='Total' />
+      </span>{' '}
+      <strong>{dice.total}</strong>
+    </div>
+    <details className='chat-native__dice-details'>
+      <summary>
+        <FormattedMessage
+          id='chat.dice_details'
+          defaultMessage='Roll details'
+        />
+      </summary>
+      <pre>{dice.output}</pre>
+    </details>
+  </div>
+);
 
 const ChatMessageMedia: React.FC<{
   attachments: ChatMedia[];
@@ -2856,7 +2893,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       }
       setReplyToId((current) => (current === sentReply ? null : current));
     } catch (sendError) {
-      setSendError(isRefused(sendError) ? 'refused' : 'send');
+      setSendError(
+        isRefused(sendError) ? 'refused' : (diceErrorOf(sendError) ?? 'send'),
+      );
     } finally {
       setLoading(false);
     }
@@ -3915,6 +3954,21 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             id='chat.error_copy'
             defaultMessage='The message could not be copied.'
           />
+        ) : visibleError === 'dice_invalid' ? (
+          <FormattedMessage
+            id='chat.error_dice_invalid'
+            defaultMessage='The dice notation could not be read. Check the syntax and edit your message.'
+          />
+        ) : visibleError === 'dice_limit' ? (
+          <FormattedMessage
+            id='chat.error_dice_limit'
+            defaultMessage='The roll exceeded the execution limits. Reduce the number of dice or repetitions.'
+          />
+        ) : visibleError === 'dice_busy' ? (
+          <FormattedMessage
+            id='chat.error_dice_busy'
+            defaultMessage='Dice rolling is busy. Wait a moment and send your message again.'
+          />
         ) : visibleError === 'too_many_attachments' ? (
           <FormattedMessage
             id='chat.error_too_many_attachments'
@@ -4366,6 +4420,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                                 />
                               )}
                             </p>
+                            {message.dice && !message.deleted_at && (
+                              <ChatDiceResult dice={message.dice} />
+                            )}
                             <ChatMessageMedia
                               attachments={message.media_attachments}
                               onOpenMedia={handleOpenMedia}
