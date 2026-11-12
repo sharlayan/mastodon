@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_12_204300) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_12_214500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -695,6 +695,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_204300) do
     t.text "text"
     t.datetime "updated_at", null: false
     t.string "uri"
+    t.jsonb "dice"
     t.index ["account_id"], name: "index_chat_messages_on_account_id"
     t.index ["chat_conversation_id", "id"], name: "index_chat_messages_on_chat_conversation_id_and_id"
     t.index ["chat_conversation_id"], name: "index_chat_messages_on_chat_conversation_id"

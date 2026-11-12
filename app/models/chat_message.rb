@@ -6,6 +6,7 @@
 #
 #  id                   :bigint(8)        not null, primary key
 #  deleted_at           :datetime
+#  dice                 :jsonb
 #  edited_at            :datetime
 #  hidden_at            :datetime
 #  text                 :text
