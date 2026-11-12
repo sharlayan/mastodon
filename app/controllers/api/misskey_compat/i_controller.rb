@@ -154,13 +154,21 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     data
   end
 
+  def birthday_param
+    value = params[:birthday]
+    return if value.nil?
+    raise InvalidParamError.new('#/properties/birthday', 'must match YYYY-MM-DD') unless value.is_a?(String) && value.match?(/\A\d{4}-\d{2}-\d{2}\z/)
+
+    value
+  end
+
   def apply_profile!
     attrs = {}
     attrs[:display_name] = params[:name].to_s if params.key?(:name)
     attrs[:note] = params[:description].to_s if params.key?(:description)
     attrs[:followed_message] = params[:followedMessage].to_s.presence if params.key?(:followedMessage)
     attrs[:location] = params[:location].to_s.presence if params.key?(:location)
-    attrs[:birthday] = params[:birthday].to_s.presence if params.key?(:birthday)
+    attrs[:birthday] = birthday_param if params.key?(:birthday)
     attrs[:is_cat] = boolean_param(params[:isCat]) if params.key?(:isCat)
     attrs[:locked] = boolean_param(params[:isLocked]) if params.key?(:isLocked)
     attrs[:discoverable] = boolean_param(params[:isExplorable]) if params.key?(:isExplorable)

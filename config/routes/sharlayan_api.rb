@@ -374,6 +374,7 @@ namespace :api, format: false do
     post 'users/reactions', to: 'accounts#reactions'
     post 'users/featured-notes', to: 'accounts#featured_notes'
     post 'users/get-frequently-replied-users', to: 'accounts#frequently_replied_users'
+    post 'users/get-following-users-by-birthday', to: 'birthdays#index'
     post 'users/recommendation', to: 'accounts#recommendation'
     post 'users/search', to: 'accounts#search'
     post 'users/search-by-username-and-host', to: 'accounts#search_by_username_and_host'
