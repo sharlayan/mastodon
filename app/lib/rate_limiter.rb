@@ -110,6 +110,26 @@ class RateLimiter
       period: 30.seconds.freeze,
     }.freeze,
 
+    misskey_compat_export_antennas: {
+      limit: 1,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_compat_import_antennas: {
+      limit: 1,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_compat_export_favorites: {
+      limit: 1,
+      period: 24.hours.freeze,
+    }.freeze,
+
+    misskey_compat_export_custom_emojis: {
+      limit: 1,
+      period: 1.hour.freeze,
+    }.freeze,
+
     misskey_miauth_hourly: {
       limit: 10,
       period: 1.hour.freeze,

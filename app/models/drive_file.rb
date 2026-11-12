@@ -63,7 +63,7 @@ class DriveFile < ApplicationRecord
     application/xml image/svg+xml text/css text/html text/javascript text/xml
   ).freeze
 
-  GENERATED_EXPORT_CONTENT_TYPES = %w(text/csv application/json).freeze
+  GENERATED_EXPORT_CONTENT_TYPES = %w(text/csv application/json application/zip).freeze
 
   attr_accessor :generated_export
 

@@ -201,18 +201,18 @@ RSpec.describe 'Misskey-compat account export and import endpoints' do
   end
 
   describe 'policies' do
-    it 'advertises the Mastodon-backed imports only while the drive is enabled' do
+    it 'advertises the drive-backed imports only while the drive is enabled' do
       post '/api/i', params: { i: token }, as: :json
 
       expect(response.parsed_body['policies']).to include(
         'canImportFollowing' => true, 'canImportBlocking' => true, 'canImportMuting' => true,
-        'canImportUserLists' => true, 'canImportAntennas' => false
+        'canImportUserLists' => true, 'canImportAntennas' => true
       )
 
       Setting.drive_enabled = false
       post '/api/i', params: { i: token }, as: :json
 
-      expect(response.parsed_body['policies']).to include('canImportFollowing' => false)
+      expect(response.parsed_body['policies']).to include('canImportFollowing' => false, 'canImportAntennas' => false)
     end
   end
 end

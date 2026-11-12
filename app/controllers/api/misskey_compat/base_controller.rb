@@ -318,7 +318,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
       canImportBlocking: Setting.drive_enabled,
       canImportMuting: Setting.drive_enabled,
       canImportUserLists: Setting.drive_enabled,
-      canImportAntennas: false,
+      canImportAntennas: Setting.drive_enabled && Setting.antenna_enabled && !RoleplayModeHelper.roleplay_mode?,
       canHideAds: false,
       canScheduleNote: true,
       scheduleNoteMax: ScheduledStatus::TOTAL_LIMIT,

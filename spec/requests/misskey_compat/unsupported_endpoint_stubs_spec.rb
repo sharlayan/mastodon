@@ -22,9 +22,6 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
 
   let(:explicitly_unsupported_endpoints) do
     %w(
-      i/export-antennas
-      i/export-favorites
-      i/import-antennas
       reset-db
     )
   end
