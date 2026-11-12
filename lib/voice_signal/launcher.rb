@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'dotenv'
+require 'dotenv/parser'
 require 'uri'
 
 module VoiceSignal
@@ -30,7 +30,7 @@ module VoiceSignal
       files = [".env.#{rails_env}.local", rails_env == 'test' ? nil : '.env.local', ".env.#{rails_env}", '.env'].compact
       merged = files.reverse.each_with_object({}) do |name, values|
         path = File.join(root, name)
-        values.merge!(Dotenv.parse(path)) if File.file?(path)
+        values.merge!(Dotenv::Parser.call(File.read(path))) if File.file?(path)
       end
 
       merged.merge(env.to_h)

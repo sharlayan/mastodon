@@ -48,6 +48,14 @@ RSpec.describe VoiceSignal::Launcher do
     expect { described_class.from_environment(root:, env: { 'VOICE_SIGNAL_SPAWN' => 'sometimes' }, log: quiet) }.to raise_error(described_class::ConfigurationError)
   end
 
+  it 'leaves loading dotenv to Rails when Puma loads the plugin before the application' do
+    script = "require './lib/puma/plugin/voice_signal'; puts $LOADED_FEATURES.any? { |path| path.end_with?('/dotenv.rb') }"
+    output, status = Open3.capture2e({ 'RAILS_ENV' => 'test' }, RbConfig.ruby, '-rbundler/setup', '-e', script, chdir: Rails.root.to_s)
+
+    expect(status).to be_success, output
+    expect(output.lines.last.strip).to eq 'false'
+  end
+
   it 'prefers a local build and otherwise runs the published image without exposing secrets in its arguments' do
     docker = executable(File.join(bin, 'docker'))
     socket = File.join(root, 'postgresql').tap { |path| FileUtils.mkdir_p(path) }
