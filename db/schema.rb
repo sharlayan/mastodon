@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_13_021400) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_13_075600) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -625,7 +625,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_021400) do
     t.index ["uri"], name: "index_chat_conversations_on_uri", unique: true, where: "(uri IS NOT NULL)"
   end
 
-  create_table "chat_invitations", force: :cascade do |t|
+  create_table "chat_invitations", id: :bigint, default: -> { "timestamp_id('chat_invitations'::text)" }, force: :cascade do |t|
     t.bigint "chat_conversation_id", null: false
     t.datetime "created_at", null: false
     t.boolean "ignored", default: false, null: false
@@ -640,7 +640,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_021400) do
     t.index ["inviter_account_id"], name: "index_chat_invitations_on_inviter_account_id"
   end
 
-  create_table "chat_memberships", force: :cascade do |t|
+  create_table "chat_memberships", id: :bigint, default: -> { "timestamp_id('chat_memberships'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "chat_conversation_id", null: false
     t.datetime "created_at", null: false
@@ -655,14 +655,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_021400) do
     t.index ["last_read_message_id"], name: "index_chat_memberships_on_last_read_message_id", where: "(last_read_message_id IS NOT NULL)"
   end
 
-  create_table "chat_message_edits", force: :cascade do |t|
+  create_table "chat_message_edits", id: :bigint, default: -> { "timestamp_id('chat_message_edits'::text)" }, force: :cascade do |t|
     t.bigint "chat_message_id", null: false
     t.text "text"
     t.datetime "created_at", null: false
     t.index ["chat_message_id"], name: "index_chat_message_edits_on_chat_message_id"
   end
 
-  create_table "chat_message_media_attachments", force: :cascade do |t|
+  create_table "chat_message_media_attachments", id: :bigint, default: -> { "timestamp_id('chat_message_media_attachments'::text)" }, force: :cascade do |t|
     t.bigint "chat_message_id", null: false
     t.datetime "created_at", null: false
     t.bigint "media_attachment_id", null: false
@@ -671,7 +671,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_021400) do
     t.index ["media_attachment_id"], name: "index_chat_message_media_attachments_on_media_attachment_id", unique: true
   end
 
-  create_table "chat_message_reactions", force: :cascade do |t|
+  create_table "chat_message_reactions", id: :bigint, default: -> { "timestamp_id('chat_message_reactions'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "chat_message_id", null: false
     t.datetime "created_at", null: false
@@ -684,7 +684,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_021400) do
     t.index ["uri"], name: "index_chat_message_reactions_on_uri", where: "(uri IS NOT NULL)"
   end
 
-  create_table "chat_messages", force: :cascade do |t|
+  create_table "chat_messages", id: :bigint, default: -> { "timestamp_id('chat_messages'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "chat_conversation_id", null: false
     t.datetime "created_at", null: false
@@ -704,7 +704,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_021400) do
     t.index ["uri"], name: "index_chat_messages_on_uri", unique: true, where: "(uri IS NOT NULL)"
   end
 
-  create_table "chat_roster_states", force: :cascade do |t|
+  create_table "chat_roster_states", id: :bigint, default: -> { "timestamp_id('chat_roster_states'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "chat_conversation_id", null: false
     t.datetime "created_at", null: false
@@ -2499,7 +2499,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_021400) do
     t.index ["unconfirmed_email"], name: "index_users_on_unconfirmed_email", where: "(unconfirmed_email IS NOT NULL)"
   end
 
-  create_table "voice_call_allocations", force: :cascade do |t|
+  create_table "voice_call_allocations", id: :bigint, default: -> { "timestamp_id('voice_call_allocations'::text)" }, force: :cascade do |t|
     t.bigint "chat_conversation_id"
     t.bigint "voice_relay_provider_id", null: false
     t.string "room_key", null: false
@@ -2520,7 +2520,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_021400) do
     t.index ["voice_relay_provider_id"], name: "index_voice_call_allocations_on_voice_relay_provider_id"
   end
 
-  create_table "voice_call_remote_sessions", force: :cascade do |t|
+  create_table "voice_call_remote_sessions", id: :bigint, default: -> { "timestamp_id('voice_call_remote_sessions'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "chat_conversation_id", null: false
     t.string "identity", null: false
@@ -2533,7 +2533,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_021400) do
     t.index ["chat_conversation_id"], name: "index_voice_call_remote_sessions_on_conversation"
   end
 
-  create_table "voice_call_remote_states", force: :cascade do |t|
+  create_table "voice_call_remote_states", id: :bigint, default: -> { "timestamp_id('voice_call_remote_states'::text)" }, force: :cascade do |t|
     t.bigint "chat_conversation_id", null: false
     t.jsonb "participants", default: [], null: false
     t.bigint "remote_updated_at", null: false
@@ -2542,7 +2542,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_021400) do
     t.index ["chat_conversation_id"], name: "index_voice_call_remote_states_on_conversation", unique: true
   end
 
-  create_table "voice_relay_providers", force: :cascade do |t|
+  create_table "voice_relay_providers", id: :bigint, default: -> { "timestamp_id('voice_relay_providers'::text)" }, force: :cascade do |t|
     t.string "origin", null: false
     t.text "secret_ciphertext", null: false
     t.string "credential_version", null: false
