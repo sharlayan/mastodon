@@ -165,6 +165,10 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     render_error(I18n.t('errors.403'), 'ACCESS_DENIED', 403, id: ACCESS_DENIED_ID)
   end
 
+  def prohibit_moved_account!
+    render_error('You have moved your account', 'YOUR_ACCOUNT_MOVED', 403, id: '56f20ec9-fd06-4fa5-841b-edd6d7d4fa31', kind: 'permission') if current_account&.moved?
+  end
+
   def current_misskey_grant
     return @current_misskey_grant if defined?(@current_misskey_grant)
 

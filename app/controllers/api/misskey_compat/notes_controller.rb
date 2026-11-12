@@ -427,6 +427,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def favorites_create
     FavouriteService.new.call(current_account, @note)
+    MisskeyAchievement.unlock!(@note.account, 'myNoteFavorited1') unless @note.account_id == current_account.id
     head 204
   end
 

@@ -139,6 +139,7 @@ class MisskeyCompat::UserSerializer
       usePasswordLessLogin: false,
       securityKeys: user.otp_enabled? && user.webauthn_enabled?,
       twoFactorBackupCodesStock: backup_codes_stock(user),
+      achievements: MisskeyAchievement.for_account(account).map(&:as_misskey_json),
     }
   end
 

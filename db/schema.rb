@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_12_191043) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_12_191044) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1420,6 +1420,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191043) do
     t.index ["access_token_id"], name: "index_misskey_access_grants_on_access_token_id", unique: true
   end
 
+  create_table "misskey_achievements", id: :bigint, default: -> { "timestamp_id('misskey_achievements'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "unlocked_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "name"], name: "index_misskey_achievements_on_account_id_and_name", unique: true
+  end
+
   create_table "misskey_apps", id: :bigint, default: -> { "timestamp_id('misskey_apps'::text)" }, force: :cascade do |t|
     t.string "callback_url"
     t.datetime "created_at", null: false
@@ -2674,6 +2683,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191043) do
   add_foreign_key "misskey_abuse_report_recipients", "webhooks", on_delete: :cascade
   add_foreign_key "misskey_abuse_report_resolutions", "reports", on_delete: :cascade
   add_foreign_key "misskey_access_grants", "oauth_access_tokens", column: "access_token_id", on_delete: :cascade
+  add_foreign_key "misskey_achievements", "accounts", on_delete: :cascade
   add_foreign_key "misskey_apps", "oauth_applications", on_delete: :cascade
   add_foreign_key "misskey_auth_sessions", "oauth_applications", on_delete: :cascade
   add_foreign_key "misskey_auth_sessions", "users", on_delete: :cascade

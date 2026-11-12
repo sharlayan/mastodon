@@ -605,8 +605,8 @@ namespace :api, format: false do
     post 'i/import-following', to: 'account_data#import_following'
     post 'i/import-muting', to: 'account_data#import_muting'
     post 'i/import-user-lists', to: 'account_data#import_user_lists'
-    post 'i/claim-achievement', to: 'stub#no_content'
-    match 'users/achievements', to: 'stub#empty', via: [:get, :post]
+    post 'i/claim-achievement', to: 'achievements#claim'
+    match 'users/achievements', to: 'achievements#index', via: [:get, :post]
     post 'invite/create', to: 'invites#create'
     post 'invite/delete', to: 'invites#destroy'
     post 'invite/list', to: 'invites#index'
