@@ -603,6 +603,10 @@ namespace :api, format: false do
       post 'admin/relays/list', to: 'relays#index'
       post 'admin/relays/add', to: 'relays#create'
       post 'admin/relays/remove', to: 'relays#destroy'
+      post 'admin/drive/files', to: 'drive#index'
+      post 'admin/drive/show-file', to: 'drive#show'
+      post 'admin/drive/cleanup', to: 'drive#cleanup'
+      post 'admin/drive/clean-remote-files', to: 'drive#clean_remote_files'
     end
 
     match 'admin/*any', to: 'stub#noop', via: [:get, :post], format: false
