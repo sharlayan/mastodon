@@ -588,6 +588,8 @@ namespace :api, format: false do
     post 'reversi/surrender', to: 'reversi#surrender'
     post 'reversi/verify', to: 'reversi#verify'
     post 'i/change-password', to: 'i#change_password'
+    post 'i/delete-account', to: 'stub#unsupported'
+    post 'i/move', to: 'stub#unsupported'
     post 'i/update-email', to: 'i#update_email'
     post 'i/export-antennas', to: 'stub#unsupported'
     post 'i/export-blocking', to: 'account_data#export_blocking'
