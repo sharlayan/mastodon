@@ -607,8 +607,22 @@ namespace :api, format: false do
       post 'admin/drive/show-file', to: 'drive#show'
       post 'admin/drive/cleanup', to: 'drive#cleanup'
       post 'admin/drive/clean-remote-files', to: 'drive#clean_remote_files'
+      post 'admin/queue/stats', to: 'queue#stats'
+      post 'admin/queue/queues', to: 'queue#queues'
+      post 'admin/queue/queue-stats', to: 'queue#queue_stats'
+      post 'admin/queue/jobs', to: 'queue#jobs'
+      post 'admin/queue/show-job', to: 'queue#show_job'
+      post 'admin/queue/show-job-logs', to: 'queue#show_job_logs'
+      post 'admin/queue/retry-job', to: 'queue#retry_job'
+      post 'admin/queue/remove-job', to: 'queue#remove_job'
+      post 'admin/queue/promote-jobs', to: 'queue#promote_jobs'
+      post 'admin/queue/clear', to: 'queue#clear'
+      post 'admin/queue/deliver-delayed', to: 'queue#deliver_delayed'
+      post 'admin/queue/inbox-delayed', to: 'queue#inbox_delayed'
     end
 
+    post 'admin/queue/pause', to: 'stub#unsupported'
+    post 'admin/queue/resume', to: 'stub#unsupported'
     match 'admin/*any', to: 'stub#noop', via: [:get, :post], format: false
     post 'v2/admin/emoji/list', to: 'stub#noop'
     post 'app/create', to: 'apps#create'
