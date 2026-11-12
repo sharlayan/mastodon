@@ -36,7 +36,7 @@ public static class SignalApp
         }
 
         builder.Services.AddHttpClient(RtcProxy.HttpClientName)
-            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false, ConnectTimeout = TimeSpan.FromSeconds(5) })
+            .ConfigurePrimaryHttpMessageHandler(() => OutboundConnections.CreateRelayHandler(options))
             .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(15));
 
         builder.Services.Configure<ForwardedHeadersOptions>(forwarded =>

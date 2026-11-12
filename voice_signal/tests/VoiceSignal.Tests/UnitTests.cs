@@ -163,6 +163,59 @@ public class SignalOptionsTests
         Assert.Equal(2, SignalOptions.FromEnvironment(Environment(("VOICE_SIGNAL_TRUSTED_PROXIES", "10.0.0.0/8 127.0.0.2"))).TrustedProxies.Count);
         Assert.Throws<InvalidOperationException>(() => SignalOptions.FromEnvironment(new Hashtable { ["LOCAL_DOMAIN"] = "a.example" }));
     }
+    [Fact]
+    public void ReadsTheOutboundProxyFromTheSameVariableAsMastodon()
+    {
+        Assert.Null(SignalOptions.FromEnvironment(Environment()).OutboundProxy);
+        Assert.Null(SignalOptions.FromEnvironment(Environment(("HTTP_PROXY", "http://upper.example:3128"), ("https_proxy", "http://secure.example:3128"))).OutboundProxy);
+        Assert.Equal(new Uri("http://10.200.0.1:8128"), SignalOptions.FromEnvironment(Environment(("http_proxy", "http://10.200.0.1:8128"))).OutboundProxy);
+        Assert.Equal("https", SignalOptions.FromEnvironment(Environment(("http_proxy", "https://user:p%40ss@proxy.example:443"))).OutboundProxy!.Scheme);
+        Assert.Contains("http_proxy", Assert.Throws<InvalidOperationException>(() => SignalOptions.FromEnvironment(Environment(("http_proxy", "socks5://proxy.example:1080")))).Message);
+        Assert.Throws<InvalidOperationException>(() => SignalOptions.FromEnvironment(Environment(("http_proxy", "proxy.example:3128"))));
+    }
+}
+
+public class OutboundConnectionsTests
+{
+    private static SignalOptions Options(Uri? proxy) => new()
+    {
+        BasePath = "/voice-signal",
+        LocalOrigin = "https://social.example",
+        SecretKeyBase = "secret",
+        ConnectionString = string.Empty,
+        OutboundProxy = proxy,
+    };
+
+    [Fact]
+    public void ConnectsDirectlyWithoutAProxyAndIgnoresProxyEnvironmentVariables()
+    {
+        using var relay = OutboundConnections.CreateRelayHandler(Options(null));
+        using var remote = OutboundConnections.CreateRemoteHandler(Options(null));
+
+        Assert.False(relay.UseProxy);
+        Assert.False(remote.UseProxy);
+        Assert.NotNull(remote.ConnectCallback);
+    }
+
+    [Fact]
+    public void SendsRelayAndRemoteConnectionsThroughTheProxyAndLeavesLookupsToIt()
+    {
+        var options = Options(new Uri("http://user:p%40ss@10.200.0.1:8128/ignored"));
+        using var relay = OutboundConnections.CreateRelayHandler(options);
+        using var remote = OutboundConnections.CreateRemoteHandler(options);
+        var target = new Uri("https://remote.example/livekit/rtc");
+
+        foreach (var handler in new[] { relay, remote })
+        {
+            Assert.True(handler.UseProxy);
+            Assert.False(handler.AllowAutoRedirect);
+            Assert.Null(handler.ConnectCallback);
+            Assert.Equal(new Uri("http://10.200.0.1:8128/"), handler.Proxy!.GetProxy(target));
+            Assert.False(handler.Proxy.IsBypassed(new Uri("http://127.0.0.1/")));
+            var credential = handler.Proxy.Credentials!.GetCredential(target, "Basic")!;
+            Assert.Equal(("user", "p@ss"), (credential.UserName, credential.Password));
+        }
+    }
 }
 
 public class PublicAddressConnectorTests

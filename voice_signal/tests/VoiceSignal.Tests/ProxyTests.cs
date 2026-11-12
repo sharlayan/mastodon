@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
 using System.Text;
@@ -324,6 +325,48 @@ public sealed class ProxyTests : IAsyncLifetime
         Assert.True(watch.Elapsed < TimeSpan.FromSeconds(10), $"stopping took {watch.Elapsed}");
     }
 
+    [Fact]
+    public async Task SendsRelayAndRemoteConnectionsThroughTheConfiguredProxyWithoutLocalLookups()
+    {
+        await using var forward = new FakeForwardProxy(new Uri(upstreamOrigin).Port);
+        var options = new SignalOptions
+        {
+            BasePath = "/voice-signal",
+            LocalOrigin = "https://social.example",
+            SecretKeyBase = SecretKeyBase,
+            ConnectionString = string.Empty,
+            AllowInsecureUpstream = true,
+            OutboundProxy = forward.Address,
+        };
+        var proxied = SignalApp.Build(options, new FakeResolver($"http://relay.test:{new Uri(upstreamOrigin).Port}"), "http://127.0.0.1:0");
+        await proxied.StartAsync();
+        try
+        {
+            var address = proxied.Urls.First().TrimEnd('/');
+            using var socket = new ClientWebSocket();
+            await socket.ConnectAsync(new Uri($"{address.Replace("http", "ws")}/voice-signal/rtc?access_token={Token("alloc-1")}"), CancellationToken.None);
+            await socket.SendAsync("ping"u8.ToArray(), WebSocketMessageType.Binary, true, CancellationToken.None);
+            var buffer = new byte[64];
+            var result = await socket.ReceiveAsync(buffer, CancellationToken.None);
+            Assert.Equal("ping", Encoding.UTF8.GetString(buffer, 0, result.Count));
+            await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+
+            using var http = new HttpClient();
+            Assert.Equal(HttpStatusCode.OK, (await http.GetAsync($"{address}/voice-signal/rtc/validate?access_token={Token("alloc-1")}")).StatusCode);
+            var remote = TokenHintTests.RemoteToken(new { sub = "https://social.example/users/me", video = new { room = "room-1" } });
+            var validate = await http.GetAsync($"{address}/voice-signal/remote/7/rtc/validate?access_token={remote}");
+            Assert.Equal(HttpStatusCode.OK, validate.StatusCode);
+            Assert.Equal("""{"remote":true}""", await validate.Content.ReadAsStringAsync());
+
+            Assert.NotEmpty(forward.RequestLines);
+            Assert.All(forward.RequestLines, line => Assert.Contains("relay.test", line));
+        }
+        finally
+        {
+            await proxied.StopAsync();
+        }
+    }
+
     private sealed class FakeResolver(string origin) : IAllocationResolver
     {
         public Task<bool> IsAdmittedAsync(TokenHint hint, CancellationToken cancellationToken) => Task.FromResult(hint.UserId == 1);
@@ -343,4 +386,94 @@ public sealed class ProxyTests : IAsyncLifetime
     }
 
     private sealed class FakeDbException : System.Data.Common.DbException;
+
+    private sealed class FakeForwardProxy : IAsyncDisposable
+    {
+        private readonly TcpListener listener = new(IPAddress.Loopback, 0);
+        private readonly CancellationTokenSource stopping = new();
+        private readonly int upstreamPort;
+        private readonly Task accepting;
+
+        public FakeForwardProxy(int upstreamPort)
+        {
+            this.upstreamPort = upstreamPort;
+            listener.Start();
+            accepting = AcceptAsync();
+        }
+
+        public List<string> RequestLines { get; } = [];
+
+        public Uri Address => new($"http://127.0.0.1:{((IPEndPoint)listener.LocalEndpoint).Port}");
+
+        public async ValueTask DisposeAsync()
+        {
+            await stopping.CancelAsync();
+            listener.Stop();
+            await accepting;
+        }
+
+        private async Task AcceptAsync()
+        {
+            while (!stopping.IsCancellationRequested)
+            {
+                TcpClient client;
+                try
+                {
+                    client = await listener.AcceptTcpClientAsync(stopping.Token);
+                }
+                catch (Exception exception) when (exception is OperationCanceledException or SocketException or ObjectDisposedException)
+                {
+                    return;
+                }
+
+                _ = HandleAsync(client);
+            }
+        }
+
+        private async Task HandleAsync(TcpClient client)
+        {
+            using (client)
+            using (var upstream = new TcpClient())
+            {
+                var downstream = client.GetStream();
+                var head = new List<byte>();
+                var one = new byte[1];
+                while (head.Count < 16 * 1024 && !(head.Count >= 4 && head[^4] == '\r' && head[^3] == '\n' && head[^2] == '\r' && head[^1] == '\n'))
+                {
+                    if (await downstream.ReadAsync(one) == 0)
+                    {
+                        return;
+                    }
+
+                    head.Add(one[0]);
+                }
+
+                var text = Encoding.ASCII.GetString(head.ToArray());
+                var line = text[..text.IndexOf("\r\n", StringComparison.Ordinal)];
+                lock (RequestLines)
+                {
+                    RequestLines.Add(line);
+                }
+
+                await upstream.ConnectAsync(IPAddress.Loopback, upstreamPort);
+                var upstreamStream = upstream.GetStream();
+                if (line.StartsWith("CONNECT ", StringComparison.Ordinal))
+                {
+                    await downstream.WriteAsync("HTTP/1.1 200 Connection established\r\n\r\n"u8.ToArray());
+                }
+                else
+                {
+                    await upstreamStream.WriteAsync(head.ToArray());
+                }
+
+                try
+                {
+                    await Task.WhenAny(downstream.CopyToAsync(upstreamStream), upstreamStream.CopyToAsync(downstream));
+                }
+                catch (IOException)
+                {
+                }
+            }
+        }
+    }
 }

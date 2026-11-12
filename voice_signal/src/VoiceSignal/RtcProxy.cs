@@ -22,7 +22,8 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
 
     private readonly SemaphoreSlim connections = new(options.MaxConnections, options.MaxConnections);
     private readonly ConcurrentDictionary<string, int> addressConnections = new();
-    private readonly HttpMessageInvoker remoteInvoker = new(PublicAddressConnector.CreateHandler(options.AllowInsecureUpstream), disposeHandler: true);
+    private readonly HttpMessageInvoker relayInvoker = new(OutboundConnections.CreateRelayHandler(options), disposeHandler: true);
+    private readonly HttpMessageInvoker remoteInvoker = new(OutboundConnections.CreateRemoteHandler(options), disposeHandler: true);
 
     public async Task HandleAsync(HttpContext context)
     {
@@ -100,7 +101,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         {
             if (context.WebSockets.IsWebSocketRequest)
             {
-                await ProxyWebSocketAsync(context, target, bearer);
+                await ProxyWebSocketAsync(context, target, bearer, relayInvoker);
             }
             else
             {
@@ -390,7 +391,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         return buffer.ToArray();
     }
 
-    private async Task ProxyWebSocketAsync(HttpContext context, Uri target, string? bearer, HttpMessageInvoker? invoker = null)
+    private async Task ProxyWebSocketAsync(HttpContext context, Uri target, string? bearer, HttpMessageInvoker invoker)
     {
         using var upstream = new ClientWebSocket();
         if (bearer is not null)
@@ -413,14 +414,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
             timeout.CancelAfter(ConnectTimeout);
             try
             {
-                if (invoker is null)
-                {
-                    await upstream.ConnectAsync(socketUri, timeout.Token);
-                }
-                else
-                {
-                    await upstream.ConnectAsync(socketUri, invoker, timeout.Token);
-                }
+                await upstream.ConnectAsync(socketUri, invoker, timeout.Token);
             }
             catch (Exception exception) when (exception is WebSocketException or OperationCanceledException or HttpRequestException)
             {

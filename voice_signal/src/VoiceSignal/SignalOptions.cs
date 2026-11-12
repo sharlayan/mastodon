@@ -21,6 +21,7 @@ public sealed class SignalOptions
     public int UpgradesPerMinute { get; init; } = 60;
     public IReadOnlyList<IPNetwork> TrustedProxies { get; init; } = [];
     public bool AllowInsecureUpstream { get; init; }
+    public Uri? OutboundProxy { get; init; }
     public bool ExitOnStdinEof { get; init; }
 
     public static SignalOptions FromEnvironment(IDictionary environment)
@@ -49,6 +50,7 @@ public sealed class SignalOptions
             UpgradesPerMinute = ParseInt("VOICE_SIGNAL_UPGRADES_PER_MINUTE", Get("VOICE_SIGNAL_UPGRADES_PER_MINUTE"), 60, 1, 100_000),
             TrustedProxies = ParseNetworks(Get("VOICE_SIGNAL_TRUSTED_PROXIES")),
             ExitOnStdinEof = Get("VOICE_SIGNAL_EXIT_ON_STDIN_EOF") is "1" or "true",
+            OutboundProxy = ParseProxy(Get("http_proxy")),
         };
     }
 
@@ -61,6 +63,21 @@ public sealed class SignalOptions
         }
 
         return path;
+    }
+
+    public static Uri? ParseProxy(string? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) || uri.Host.Length == 0)
+        {
+            throw new InvalidOperationException("http_proxy must be an http or https proxy URL");
+        }
+
+        return uri;
     }
 
     private static string BuildConnectionString(Func<string, string?> get)
