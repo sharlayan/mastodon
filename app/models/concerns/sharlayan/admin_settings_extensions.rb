@@ -62,6 +62,7 @@ module Sharlayan::AdminSettingsExtensions
     voice_call_screen_share_enabled
     voice_call_federation_host_enabled
     voice_call_remote_join_enabled
+    link_preview_direct_hosts
     status_character_limit
     profile_fields_limit
     remote_media_attachments_limit
@@ -161,6 +162,7 @@ module Sharlayan::AdminSettingsExtensions
     validates :user_theme_catalog, :user_theme_defaults, length: { maximum: 65_536 }, if: -> { defined?(@user_theme_catalog) || defined?(@user_theme_defaults) }
     validate :validate_drive_allowed_extensions, if: -> { defined?(@drive_allowed_extensions) }
     validate :validate_misskey_signin_origins, if: -> { defined?(@misskey_compat_signin_flow_allowed_origins) }
+    validate :validate_link_preview_direct_hosts, if: -> { defined?(@link_preview_direct_hosts) }
     validate :validate_roleplay_forced_skin, if: -> { defined?(@roleplay_forced_skin) }
   end
 
@@ -178,6 +180,13 @@ module Sharlayan::AdminSettingsExtensions
     return if rejected.empty?
 
     errors.add(:misskey_compat_signin_flow_allowed_origins, I18n.t('admin.settings.misskey_compat.signin_flow_allowed_origins_invalid', origins: rejected.join(', ')))
+  end
+
+  def validate_link_preview_direct_hosts
+    rejected = Sharlayan::LinkPreviewDirectHosts.invalid_entries(@link_preview_direct_hosts)
+    return if rejected.empty?
+
+    errors.add(:link_preview_direct_hosts, I18n.t('admin.settings.link_preview_direct_hosts.invalid', hosts: rejected.join(', ')))
   end
 
   def validate_roleplay_forced_skin

@@ -519,6 +519,10 @@ en:
           federated instances. When disabled, the bar is hidden and no instance metadata
           is fetched.
         title: Instance Information Bar
+      link_preview_direct_hosts:
+        hint: When an outgoing HTTP proxy is configured, link previews (cards and oEmbed) for these hosts and their subdomains connect directly instead of through the proxy. Every other link, and any redirect to a host not listed here, goes through the proxy. Enter one domain per line. Listed sites learn the server's own IP address, so add only sites you trust. IP addresses are not accepted.
+        invalid: 'These entries are not valid domains: %{hosts}'
+        title: Hosts for direct link preview connections
       misskey_compat:
         enabled: Enable the Misskey-compatible API layer
         enabled_hint: When enabled, this server also answers a subset of the Misskey
