@@ -12,10 +12,11 @@ import type { ApiDriveFileJSON } from 'flavours/glitch/api_types/drive';
 import { Icon } from 'flavours/glitch/components/icon';
 import { useAppDispatch } from 'flavours/glitch/store';
 
-import { DRIVE_FILE_MIME } from '../dnd';
+import { DRIVE_FILE_MIME, DRIVE_ITEM_KEY_ATTRIBUTE, fileKey } from '../dnd';
 
 const messages = defineMessages({
   delete: { id: 'drive.delete', defaultMessage: 'Delete' },
+  select: { id: 'drive.select_item', defaultMessage: 'Select {name}' },
   rename: { id: 'drive.rename_file', defaultMessage: 'Rename file' },
   deleteConfirm: {
     id: 'drive.delete_confirm',
@@ -63,7 +64,11 @@ export const FileCard: React.FC<{
   file: ApiDriveFileJSON;
   manageable: boolean;
   draggable: boolean;
+  selectable?: boolean;
+  selected?: boolean;
   onSelect: (file: ApiDriveFileJSON) => void;
+  onItemClick?: (key: string, e: React.MouseEvent) => void;
+  onToggleItem?: (key: string) => void;
   onDelete: (fileId: string) => void;
   onRename: (fileId: string, name: string) => void;
   onTransferToPosts: (fileId: string) => void;
@@ -71,27 +76,58 @@ export const FileCard: React.FC<{
   file,
   manageable,
   draggable,
+  selectable = false,
+  selected = false,
   onSelect,
+  onItemClick,
+  onToggleItem,
   onDelete,
   onRename,
   onTransferToPosts,
 }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
+  const key = fileKey(file.id);
 
-  const handleClick = useCallback(() => {
-    onSelect(file);
-  }, [file, onSelect]);
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (selectable && onItemClick) {
+        onItemClick(key, e);
+        return;
+      }
+
+      onSelect(file);
+    },
+    [file, key, selectable, onItemClick, onSelect],
+  );
+
+  const handleDoubleClick = useCallback(() => {
+    if (selectable) onSelect(file);
+  }, [file, selectable, onSelect]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.target !== e.currentTarget) return;
       if (e.key !== 'Enter' && e.key !== ' ') return;
       e.preventDefault();
+
+      if (e.key === ' ' && selectable && onToggleItem) {
+        onToggleItem(key);
+        return;
+      }
+
       onSelect(file);
     },
-    [file, onSelect],
+    [file, key, selectable, onToggleItem, onSelect],
   );
+
+  const handleCheckboxChange = useCallback(() => {
+    onToggleItem?.(key);
+  }, [key, onToggleItem]);
+
+  const stopPropagation = useCallback((e: React.SyntheticEvent) => {
+    e.stopPropagation();
+  }, []);
 
   const handleDragStart = useCallback(
     (e: React.DragEvent) => {
@@ -157,16 +193,32 @@ export const FileCard: React.FC<{
 
   return (
     <div
-      className='drive__file'
+      className={`drive__file${selected ? ' drive__file--selected' : ''}`}
       role='button'
       tabIndex={0}
       draggable={draggable}
       onDragStart={draggable ? handleDragStart : undefined}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
       onKeyDown={handleKeyDown}
       title={file.name ?? undefined}
+      {...{ [DRIVE_ITEM_KEY_ATTRIBUTE]: key }}
     >
       <div className='drive__file__preview'>
+        {selectable && (
+          <input
+            type='checkbox'
+            className='drive__item-check'
+            checked={selected}
+            onChange={handleCheckboxChange}
+            onClick={stopPropagation}
+            onDoubleClick={stopPropagation}
+            aria-label={intl.formatMessage(messages.select, {
+              name: file.name ?? file.file_name,
+            })}
+          />
+        )}
+
         {file.type === 'image' || file.type === 'gifv' ? (
           <img
             src={file.preview_url}

@@ -13,10 +13,12 @@
     pointer-events: none;
   }
 
-  &__toolbar {
+  &__toolbar,
+  &__selection {
     padding: 12px;
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 8px;
 
     .button {
@@ -67,11 +69,87 @@
     }
   }
 
-  &--managing {
+  &--managing,
+  &--selectable {
     .drive__file[draggable='true'],
     .drive__folder__button[draggable='true'] {
       cursor: grab;
     }
+  }
+
+  &--selectable {
+    &:focus {
+      outline: 0;
+    }
+
+    .drive__body {
+      user-select: none;
+    }
+  }
+
+  &__selection {
+    padding-top: 0;
+
+    &__count {
+      margin-inline-end: auto;
+      color: var(--color-text-primary);
+      font-weight: 600;
+    }
+  }
+
+  &__body {
+    position: relative;
+    flex: 1 0 auto;
+    min-height: 160px;
+    padding-bottom: 12px;
+
+    &--selecting {
+      cursor: crosshair;
+    }
+  }
+
+  &__marquee {
+    position: absolute;
+    border: 1px solid var(--color-border-brand);
+    background: var(--color-bg-brand-softest);
+    opacity: 0.8;
+    pointer-events: none;
+  }
+
+  &__item-check {
+    position: absolute;
+    top: 6px;
+    inset-inline-start: 6px;
+    z-index: 1;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--color-bg-brand-base);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.1s ease-in-out;
+
+    &--inline {
+      position: static;
+      flex: 0 0 auto;
+      margin-inline-start: 10px;
+    }
+
+    &:checked,
+    &:focus-visible {
+      opacity: 1;
+    }
+
+    @media (hover: none) {
+      opacity: 1;
+    }
+  }
+
+  &__file:hover &__item-check,
+  &__file:focus-within &__item-check,
+  &__folder:hover &__item-check,
+  &__folder:focus-within &__item-check {
+    opacity: 1;
   }
 
   &__hint {
@@ -198,6 +276,14 @@
       background: var(--color-bg-brand-softest);
     }
 
+    &--selected,
+    &--selected:hover,
+    &--selected:focus-within {
+      border-color: var(--color-border-brand);
+      background: var(--color-bg-brand-softest);
+      box-shadow: 0 0 0 1px var(--color-border-brand);
+    }
+
     &--parent {
       cursor: pointer;
       color: var(--color-text-secondary);
@@ -273,6 +359,15 @@
         height: 100%;
         object-fit: cover;
       }
+    }
+
+    &--selected &__preview {
+      outline: 3px solid var(--color-border-brand);
+      outline-offset: -3px;
+    }
+
+    &--selected &__meta {
+      color: var(--color-text-primary);
     }
 
     &__placeholder {

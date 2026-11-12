@@ -11,7 +11,13 @@ import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import { Icon } from 'flavours/glitch/components/icon';
 import { useAppDispatch } from 'flavours/glitch/store';
 
-import { DRIVE_FOLDER_MIME, carriesDriveItem, readDragPayload } from '../dnd';
+import {
+  DRIVE_FOLDER_MIME,
+  DRIVE_ITEM_KEY_ATTRIBUTE,
+  carriesDriveItem,
+  folderKey,
+  readDragPayload,
+} from '../dnd';
 
 const messages = defineMessages({
   rename: { id: 'drive.rename_folder', defaultMessage: 'Rename folder' },
@@ -23,6 +29,7 @@ const messages = defineMessages({
   },
   more: { id: 'status.more', defaultMessage: 'More' },
   parent: { id: 'drive.parent_folder', defaultMessage: 'Parent folder' },
+  select: { id: 'drive.select_item', defaultMessage: 'Select {name}' },
 });
 
 interface DropTargetProps {
@@ -133,7 +140,11 @@ export const ParentFolderCard: React.FC<{
 export const FolderCard: React.FC<{
   folder: ApiDriveFolderJSON;
   manageable: boolean;
+  selectable?: boolean;
+  selected?: boolean;
   onOpen: (folderId: string | null) => void;
+  onItemClick?: (key: string, e: React.MouseEvent) => void;
+  onToggleItem?: (key: string) => void;
   onMoveFile: (fileId: string, folderId: string | null) => void;
   onMoveFolder: (folderId: string, parentId: string | null) => void;
   onRename: (folderId: string, name: string) => void;
@@ -142,7 +153,11 @@ export const FolderCard: React.FC<{
 }> = ({
   folder,
   manageable,
+  selectable = false,
+  selected = false,
   onOpen,
+  onItemClick,
+  onToggleItem,
   onMoveFile,
   onMoveFolder,
   onRename,
@@ -151,10 +166,46 @@ export const FolderCard: React.FC<{
 }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
+  const key = folderKey(folder.id);
 
-  const handleClick = useCallback(() => {
-    onOpen(folder.id);
-  }, [onOpen, folder.id]);
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (selectable && onItemClick) {
+        onItemClick(key, e);
+        return;
+      }
+
+      onOpen(folder.id);
+    },
+    [onOpen, onItemClick, selectable, key, folder.id],
+  );
+
+  const handleDoubleClick = useCallback(() => {
+    if (selectable) onOpen(folder.id);
+  }, [onOpen, selectable, folder.id]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!selectable) return;
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        onOpen(folder.id);
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        onToggleItem?.(key);
+      }
+    },
+    [onOpen, onToggleItem, selectable, key, folder.id],
+  );
+
+  const handleCheckboxChange = useCallback(() => {
+    onToggleItem?.(key);
+  }, [key, onToggleItem]);
+
+  const stopPropagation = useCallback((e: React.SyntheticEvent) => {
+    e.stopPropagation();
+  }, []);
 
   const handleDropFile = useCallback(
     (fileId: string) => {
@@ -231,15 +282,32 @@ export const FolderCard: React.FC<{
 
   return (
     <div
-      className={`drive__folder${isOver ? ' drive__folder--drop-target' : ''}`}
+      className={`drive__folder${isOver ? ' drive__folder--drop-target' : ''}${selected ? ' drive__folder--selected' : ''}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      {...{ [DRIVE_ITEM_KEY_ATTRIBUTE]: key }}
     >
+      {selectable && (
+        <input
+          type='checkbox'
+          className='drive__item-check drive__item-check--inline'
+          checked={selected}
+          onChange={handleCheckboxChange}
+          onClick={stopPropagation}
+          onDoubleClick={stopPropagation}
+          aria-label={intl.formatMessage(messages.select, {
+            name: folder.name,
+          })}
+        />
+      )}
+
       <button
         type='button'
         className='drive__folder__button'
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+        onKeyDown={handleKeyDown}
         draggable={manageable}
         onDragStart={manageable ? handleDragStart : undefined}
         title={folder.name}

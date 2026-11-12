@@ -26,12 +26,19 @@ import type {
 } from 'flavours/glitch/api_types/drive';
 import { useAppDispatch } from 'flavours/glitch/store';
 
+import type { DriveItems } from './dnd';
+
 export const ROOT_FOLDER_ID = null;
 
 const messages = defineMessages({
   attachedFile: {
     id: 'drive.delete_attached_error',
     defaultMessage: 'Files used by a post or page cannot be deleted.',
+  },
+  skippedInUse: {
+    id: 'drive.delete_selected_skipped',
+    defaultMessage:
+      '{count, plural, one {# file is} other {# files are}} used by a post or page and {count, plural, one {was} other {were}} not deleted.',
   },
   transferred: {
     id: 'drive.transfer_to_posts_success',
@@ -288,6 +295,96 @@ export const useDrive = () => {
     [files, onError],
   );
 
+  const deleteItems = useCallback(
+    (items: DriveItems) => {
+      const targets = files.filter((file) => items.fileIds.includes(file.id));
+      const deletable = targets.filter((file) => file.orphaned);
+      const inUse = new Set(
+        targets.filter((file) => !file.orphaned).map((file) => file.id),
+      );
+
+      const requests = [
+        ...deletable.map((file) =>
+          apiDeleteDriveFile(file.id).then(() => ({
+            kind: 'file' as const,
+            id: file.id,
+          })),
+        ),
+        ...items.folderIds.map((id) =>
+          apiDeleteDriveFolder(id).then(() => ({
+            kind: 'folder' as const,
+            id,
+          })),
+        ),
+      ];
+      const requestedIds = [
+        ...deletable.map((file) => ({ kind: 'file' as const, id: file.id })),
+        ...items.folderIds.map((id) => ({ kind: 'folder' as const, id })),
+      ];
+
+      void Promise.allSettled(requests).then((results) => {
+        const deletedFiles = new Set<string>();
+        const deletedFolders = new Set<string>();
+
+        results.forEach((result, index) => {
+          const request = requestedIds[index];
+          if (!request) return;
+
+          if (result.status === 'fulfilled') {
+            (request.kind === 'file' ? deletedFiles : deletedFolders).add(
+              request.id,
+            );
+          } else if (
+            request.kind === 'file' &&
+            result.reason instanceof AxiosError &&
+            result.reason.response?.status === 422
+          ) {
+            inUse.add(request.id);
+          } else {
+            onError(result.reason);
+          }
+        });
+
+        setFiles((prev) =>
+          prev
+            .filter((file) => !deletedFiles.has(file.id))
+            .map((file) =>
+              inUse.has(file.id) ? { ...file, orphaned: false } : file,
+            ),
+        );
+
+        if (deletedFolders.size > 0) {
+          apiGetDriveFolders()
+            .then((data) => {
+              setFolders(data);
+              return data;
+            })
+            .catch(onError);
+          setCurrentFolderId((prev) =>
+            prev && deletedFolders.has(prev) ? ROOT_FOLDER_ID : prev,
+          );
+          setNext(undefined);
+          setLoading(true);
+          setReloadKey((prev) => prev + 1);
+        }
+
+        if (deletedFiles.size > 0) refreshUsage();
+
+        if (inUse.size > 0) {
+          dispatch(
+            showAlert({
+              message: messages.skippedInUse,
+              values: { count: inUse.size },
+            }),
+          );
+        }
+
+        return results;
+      });
+    },
+    [files, dispatch, onError, refreshUsage],
+  );
+
   const createFolder = useCallback(
     (name: string) => {
       apiCreateDriveFolder({
@@ -423,6 +520,7 @@ export const useDrive = () => {
     createFolder,
     renameFolder,
     moveFolder,
+    deleteItems,
     deleteFolder,
     isDescendantOf,
   };
