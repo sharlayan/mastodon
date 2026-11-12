@@ -20,17 +20,6 @@ class Api::MisskeyCompat::EmojisController < Api::MisskeyCompat::BaseController
   private
 
   def serialize(emoji)
-    {
-      id: MisskeyCompat::MiId.encode(emoji.id),
-      aliases: Array(emoji.aliases).compact_blank,
-      name: emoji.shortcode,
-      category: emoji.category&.name,
-      host: emoji.domain,
-      url: full_asset_url(emoji.image.url),
-      license: emoji.license,
-      isSensitive: emoji.is_sensitive,
-      localOnly: emoji.local_only,
-      roleIdsThatCanBeUsedThisEmojiAsReaction: [],
-    }
+    MisskeyCompat::EmojiSerializer.detailed(emoji)
   end
 end

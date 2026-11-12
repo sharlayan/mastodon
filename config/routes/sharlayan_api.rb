@@ -578,6 +578,20 @@ namespace :api, format: false do
       post 'admin/announcements/create', to: 'announcements#create'
       post 'admin/announcements/update', to: 'announcements#update'
       post 'admin/announcements/delete', to: 'announcements#destroy'
+      post 'admin/emoji/list', to: 'emoji#index'
+      post 'admin/emoji/list-remote', to: 'emoji#remote'
+      post 'admin/emoji/add', to: 'emoji#create'
+      post 'admin/emoji/update', to: 'emoji#update'
+      post 'admin/emoji/delete', to: 'emoji#destroy'
+      post 'admin/emoji/delete-bulk', to: 'emoji#destroy_bulk'
+      post 'admin/emoji/copy', to: 'emoji#copy'
+      post 'admin/emoji/add-aliases-bulk', to: 'emoji#add_aliases'
+      post 'admin/emoji/remove-aliases-bulk', to: 'emoji#remove_aliases'
+      post 'admin/emoji/set-aliases-bulk', to: 'emoji#set_aliases'
+      post 'admin/emoji/set-category-bulk', to: 'emoji#set_category'
+      post 'admin/emoji/set-license-bulk', to: 'emoji#set_license'
+      post 'admin/emoji/import-zip', to: 'emoji#import_zip'
+      post 'v2/admin/emoji/list', to: 'emoji#search'
     end
 
     match 'admin/*any', to: 'stub#noop', via: [:get, :post], format: false

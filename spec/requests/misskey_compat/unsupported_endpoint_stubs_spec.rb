@@ -6,7 +6,6 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
   let(:object_endpoints) do
     %w(
       test
-      v2/admin/emoji/list
     )
   end
 
