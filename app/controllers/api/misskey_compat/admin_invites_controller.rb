@@ -6,6 +6,8 @@ class Api::MisskeyCompat::AdminInvitesController < Api::MisskeyCompat::BaseContr
   TYPES = %w(unused used expired all).freeze
   SORTS = %w(+createdAt -createdAt +usedAt -usedAt).freeze
   CREATE_LIMIT = 100
+  FIRST_USE_DESC = Arel.sql('(SELECT MIN(users.created_at) FROM users WHERE users.invite_id = invites.id) DESC NULLS LAST')
+  FIRST_USE_ASC = Arel.sql('(SELECT MIN(users.created_at) FROM users WHERE users.invite_id = invites.id) ASC NULLS FIRST')
 
   misskey_admin_endpoint 'write:admin:invite-codes', :create
   misskey_admin_endpoint 'read:admin:invite-codes', :index
@@ -66,16 +68,12 @@ class Api::MisskeyCompat::AdminInvitesController < Api::MisskeyCompat::BaseContr
     when '-createdAt'
       scope.order(id: :asc)
     when '+usedAt'
-      scope.order(Arel.sql("(#{first_use_sql}) DESC NULLS LAST"))
+      scope.order(FIRST_USE_DESC)
     when '-usedAt'
-      scope.order(Arel.sql("(#{first_use_sql}) ASC NULLS FIRST"))
+      scope.order(FIRST_USE_ASC)
     else
       scope.order(id: :desc)
     end
-  end
-
-  def first_use_sql
-    'SELECT MIN(users.created_at) FROM users WHERE users.invite_id = invites.id'
   end
 
   def serialize_invites(invites)

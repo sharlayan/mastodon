@@ -124,7 +124,8 @@ class Api::MisskeyCompat::AccountDataController < Api::MisskeyCompat::BaseContro
     tempfile = fetch_drive_file(drive_file)
     return antenna_import_error(:no_such_file, 404) if tempfile.nil?
 
-    entries = JSON.parse(File.read(tempfile.path))
+    tempfile.rewind
+    entries = JSON.parse(tempfile.read)
     return render_invalid_param('#/properties/fileId', 'must be an exported antenna array') unless entries.is_a?(Array)
     return antenna_import_error(:too_many_antennas) if current_account.antennas.count + entries.size >= Antenna::ANTENNAS_PER_ACCOUNT_LIMIT
 
