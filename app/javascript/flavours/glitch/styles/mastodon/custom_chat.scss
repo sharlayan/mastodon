@@ -272,11 +272,6 @@
 
     &--continued {
       margin-block-start: -8px;
-
-      .chat-native__bubble {
-        border-start-start-radius: 4px;
-        border-end-start-radius: 4px;
-      }
     }
 
     &--mine {
@@ -297,8 +292,12 @@
       outline-offset: 1px;
     }
 
-    &--mine#{&}--continued .chat-native__bubble {
-      border-radius: 14px 4px 4px 14px;
+    &--continued .chat-native__bubble {
+      border-start-start-radius: 4px;
+    }
+
+    &:has(+ .chat-native__message--continued) .chat-native__bubble {
+      border-end-start-radius: 4px;
     }
   }
 
