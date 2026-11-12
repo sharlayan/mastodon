@@ -180,7 +180,7 @@ export const useDrive = () => {
           const data = new FormData();
           data.append('file', file);
           data.append('name', file.name);
-          if (targetFolderId) data.append('folder_id', targetFolderId);
+          data.append('folder_id', targetFolderId ?? '');
           return apiUploadDriveFile(data);
         }),
       ).then((results) => {
