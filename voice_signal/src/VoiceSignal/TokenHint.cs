@@ -25,7 +25,8 @@ public sealed partial record TokenHint(string AllocationId, string Generation, l
         try
         {
             using var claims = JsonDocument.Parse(Base64Url.Decode(parts[1]));
-            if (!claims.RootElement.TryGetProperty("metadata", out var metadataElement) || metadataElement.ValueKind != JsonValueKind.String)
+            if (claims.RootElement.ValueKind != JsonValueKind.Object
+                || !claims.RootElement.TryGetProperty("metadata", out var metadataElement) || metadataElement.ValueKind != JsonValueKind.String)
             {
                 return false;
             }

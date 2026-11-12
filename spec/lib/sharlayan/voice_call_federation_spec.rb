@@ -137,6 +137,41 @@ RSpec.describe Sharlayan::VoiceCallFederation do
       expect(status.with(body: { room: mirror.uri, sessionId: 'PA_1', micMuted: true, deafened: false }.to_json)).to have_been_made
     end
 
+    def joined_remote_session
+      stub_request(:post, 'https://remote.test/livekit/federation/token').to_return(status: 200, body: token_response.to_json)
+      service.join(member, mirror)
+      VoiceCallRemoteSession.sole
+    end
+
+    it 'revokes the stored remote session when its membership is removed' do
+      session = joined_remote_session
+      mirror.memberships.find_by!(account: member).destroy!
+
+      expect(VoiceCallRemoteSession.exists?(session.id)).to be(false)
+      expect(VoiceCallRevocationWorker.jobs).to be_empty
+    end
+
+    it 'revokes stored remote sessions when the local account is disabled or suspended' do
+      session = joined_remote_session
+      member.user.update!(disabled: true)
+      expect(VoiceCallRemoteSession.exists?(session.id)).to be(false)
+
+      member.user.update!(disabled: false)
+      session = joined_remote_session
+      member.suspend!
+      expect(VoiceCallRemoteSession.exists?(session.id)).to be(false)
+    end
+
+    it 'revokes stored remote sessions only when a role change removes the join permission' do
+      session = joined_remote_session
+      member.user.update!(role: Fabricate(:user_role, extra_permissions: UserRole::EXTRA_FLAGS[:join_voice_calls]))
+      expect(VoiceCallRemoteSession.exists?(session.id)).to be(true)
+
+      UserRole.everyone.update!(extra_permissions: 0)
+      member.user.update!(role: Fabricate(:user_role, extra_permissions: 0))
+      expect(VoiceCallRemoteSession.exists?(session.id)).to be(false)
+    end
+
     it 'refuses responses that point somewhere else and remembers servers without calls' do
       stub_request(:post, 'https://remote.test/livekit/federation/token').to_return(status: 200, body: token_response.merge(url: 'https://evil.test/livekit').to_json)
       expect { service.join(member, mirror) }.to raise_error(Sharlayan::VoiceRelay::Error) { |error| expect(error.code).to eq 'REMOTE_HOST_UNREACHABLE' }

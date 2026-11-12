@@ -100,6 +100,51 @@ public class TokenHintTests
         Assert.False(TokenClaims.TryParse("not-a-token", out _));
     }
 
+    [Theory]
+    [InlineData("{}", true)]
+    [InlineData("{\"canPublish\":null}", true)]
+    [InlineData("{\"canPublish\":false}", false)]
+    [InlineData("{\"canPublishSources\":null}", true)]
+    [InlineData("{\"canPublishSources\":[]}", true)]
+    [InlineData("{\"canPublishSources\":[\"microphone\"]}", false)]
+    [InlineData("{\"canPublishSources\":[\"camera\",\"microphone\"]}", false)]
+    [InlineData("{\"canPublishSources\":[\"screen_share\"]}", true)]
+    [InlineData("{\"canPublishSources\":[\"screen_share_audio\"]}", true)]
+    [InlineData("{\"canPublish\":false,\"canPublishSources\":[\"screen_share\",\"screen_share_audio\"]}", false)]
+    public void ReadsScreenSharingPermissionFromRemoteTokenGrants(string grant, bool expected)
+    {
+        var video = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(grant)!;
+        video["room"] = JsonSerializer.SerializeToElement("room-1");
+        var token = RemoteToken(new { sub = "https://social.example/users/me", video });
+
+        Assert.True(TokenClaims.TryParse(token, out var claims));
+        Assert.Equal(expected, claims!.CanPublishScreenShare);
+    }
+
+    [Theory]
+    [InlineData("{\"canPublish\":\"true\"}")]
+    [InlineData("{\"canPublishSources\":\"screen_share\"}")]
+    [InlineData("{\"canPublishSources\":[3]}")]
+    public void RejectsRemoteTokensWithMalformedPublishGrants(string grant)
+    {
+        var video = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(grant)!;
+        video["room"] = JsonSerializer.SerializeToElement("room-1");
+        Assert.False(TokenClaims.TryParse(RemoteToken(new { sub = "https://social.example/users/me", video }), out _));
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("null")]
+    [InlineData("1")]
+    [InlineData("true")]
+    [InlineData("\"text\"")]
+    public void RejectsNonObjectTokenPayloads(string payload)
+    {
+        var token = $"{Base64Url.Encode("{}"u8)}.{Base64Url.Encode(Encoding.UTF8.GetBytes(payload))}.sig";
+        Assert.False(TokenHint.TryParse(token, out _));
+        Assert.False(TokenClaims.TryParse(token, out _));
+    }
+
     [Fact]
     public void ReadsTheAllocationFromLiveKitMetadata()
     {
@@ -142,6 +187,8 @@ public class SignalOptionsTests
         Assert.Equal(("localhost", 5432, "mastodon_production", "mastodon"), (connection.Host, connection.Port, connection.Database, connection.Username));
         Assert.Equal(("127.0.0.1", 4100), (options.BindAddress, options.Port));
         Assert.False(options.ExitOnStdinEof);
+        Assert.False(options.RoleplayMode);
+        Assert.True(SignalOptions.FromEnvironment(Environment(("OC_ROLEPLAY_OPTION", "true"))).RoleplayMode);
         Assert.True(SignalOptions.FromEnvironment(Environment(("VOICE_SIGNAL_EXIT_ON_STDIN_EOF", "1"))).ExitOnStdinEof);
     }
 

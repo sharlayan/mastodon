@@ -23,6 +23,7 @@ public sealed class SignalOptions
     public bool AllowInsecureUpstream { get; init; }
     public Uri? OutboundProxy { get; init; }
     public bool ExitOnStdinEof { get; init; }
+    public bool RoleplayMode { get; init; }
 
     public static SignalOptions FromEnvironment(IDictionary environment)
     {
@@ -50,6 +51,7 @@ public sealed class SignalOptions
             UpgradesPerMinute = ParseInt("VOICE_SIGNAL_UPGRADES_PER_MINUTE", Get("VOICE_SIGNAL_UPGRADES_PER_MINUTE"), 60, 1, 100_000),
             TrustedProxies = ParseNetworks(Get("VOICE_SIGNAL_TRUSTED_PROXIES")),
             ExitOnStdinEof = Get("VOICE_SIGNAL_EXIT_ON_STDIN_EOF") is "1" or "true",
+            RoleplayMode = Get("OC_ROLEPLAY_OPTION") == "true",
             OutboundProxy = ParseProxy(Get("http_proxy")),
         };
     }

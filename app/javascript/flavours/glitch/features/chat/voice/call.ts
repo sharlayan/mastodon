@@ -730,7 +730,11 @@ const disconnectMessage = (
   }
 };
 
-const bindRoomEvents = (lk: LiveKit, room: LK.Room) => {
+const bindRoomEvents = (
+  lk: LiveKit,
+  room: LK.Room,
+  allowScreenShareByCredentials: boolean,
+) => {
   const { RoomEvent, Track } = lk;
   const isCurrent = () => current === room;
 
@@ -857,7 +861,9 @@ const bindRoomEvents = (lk: LiveKit, room: LK.Room) => {
       const sources: readonly number[] =
         participant.permissions?.canPublishSources ?? [];
       const allowed =
-        sources.length === 0 || sources.includes(SCREEN_SHARE_SOURCE);
+        allowScreenShareByCredentials &&
+        participant.permissions?.canPublish === true &&
+        (sources.length === 0 || sources.includes(SCREEN_SHARE_SOURCE));
       if (allowed === state.allowScreenShare) return;
       setState({ allowScreenShare: allowed });
       if (
@@ -984,7 +990,7 @@ export const connectVoiceCall = async (
   screenShareLimits = credentials.screen_share_limits;
   const room = new lk.Room({ adaptiveStream: true, dynacast: true });
   current = room;
-  bindRoomEvents(lk, room);
+  bindRoomEvents(lk, room, credentials.allow_screen_share);
 
   const connectOptions: LK.RoomConnectOptions =
     credentials.ice_servers != null

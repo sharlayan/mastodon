@@ -14,7 +14,7 @@ public interface IAllocationResolver
     Task<string?> ResolveRemoteOriginAsync(long sessionId, TokenClaims claims, CancellationToken cancellationToken);
 }
 
-public sealed class DatabaseAllocationResolver(NpgsqlDataSource dataSource, IMemoryCache cache) : IAllocationResolver
+public sealed class DatabaseAllocationResolver(NpgsqlDataSource dataSource, IMemoryCache cache, bool roleplayMode = false) : IAllocationResolver
 {
     private const string Query = """
         SELECT p.origin, a.remote_id, p.secret_ciphertext
@@ -40,9 +40,35 @@ public sealed class DatabaseAllocationResolver(NpgsqlDataSource dataSource, IMem
         """;
 
     private const string RemoteQuery = """
-        SELECT origin
-        FROM voice_call_remote_sessions
-        WHERE id = $1 AND identity = $2 AND room_name = $3 AND expires_at > now()
+        SELECT session.origin
+        FROM voice_call_remote_sessions session
+        JOIN chat_conversations conversation ON conversation.id = session.chat_conversation_id
+        JOIN chat_memberships membership ON membership.chat_conversation_id = session.chat_conversation_id AND membership.account_id = session.account_id
+        JOIN accounts account ON account.id = session.account_id
+        JOIN users ON users.account_id = account.id
+        JOIN accounts owner ON owner.id = conversation.owner_account_id
+        LEFT JOIN user_roles role ON role.id = users.role_id
+        LEFT JOIN user_roles everyone ON everyone.id = -99
+        WHERE session.id = $1 AND session.identity = $2 AND session.room_name = $3 AND session.expires_at > now()
+          AND conversation.conversation_type = 1 AND conversation.archived_at IS NULL
+          AND account.domain IS NULL AND account.suspended_at IS NULL AND account.requested_deletion_at IS NULL AND NOT account.memorial
+          AND NOT users.disabled AND users.approved AND users.confirmed_at IS NOT NULL
+          AND (NOT COALESCE(role.require_2fa, everyone.require_2fa, FALSE) OR users.otp_required_for_login
+               OR EXISTS (SELECT 1 FROM webauthn_credentials WHERE user_id = users.id))
+          AND ((COALESCE(role.permissions, 0) & 1) = 1
+               OR ((COALESCE(role.extra_permissions, 0) | COALESCE(everyone.extra_permissions, 12)) & 4) = 4)
+          AND (NOT $4::boolean OR (
+               ((COALESCE(role.permissions, 0) & 1) = 1
+                OR ((COALESCE(role.extra_permissions, 0) | COALESCE(everyone.extra_permissions, 12)) & 8) = 8)
+               AND COALESCE((SELECT value FROM settings WHERE var = 'voice_call_screen_share_enabled'), E'--- true\n') = E'--- true\n'
+          ))
+          AND owner.domain IS NOT NULL AND owner.suspended_at IS NULL AND owner.requested_deletion_at IS NULL
+          AND COALESCE((SELECT severity FROM domain_blocks
+                        WHERE owner.domain = domain OR owner.domain LIKE '%.' || domain
+                        ORDER BY char_length(domain) DESC LIMIT 1), 2) <> 1
+          AND EXISTS (SELECT 1 FROM settings WHERE var = 'chat_enabled' AND value = E'--- true\n')
+          AND EXISTS (SELECT 1 FROM settings WHERE var = 'voice_call_remote_join_enabled' AND value = E'--- true\n')
+          AND COALESCE((SELECT value FROM settings WHERE var = 'chat_federation_enabled'), E'--- true\n') = E'--- true\n'
         """;
 
     private static readonly TimeSpan PositiveLifetime = TimeSpan.FromSeconds(10);
@@ -85,19 +111,17 @@ public sealed class DatabaseAllocationResolver(NpgsqlDataSource dataSource, IMem
 
     public async Task<string?> ResolveRemoteOriginAsync(long sessionId, TokenClaims claims, CancellationToken cancellationToken)
     {
-        var key = ("remote", sessionId, claims.Identity, claims.Room);
-        if (cache.TryGetValue(key, out string? cached))
+        if (roleplayMode)
         {
-            return cached;
+            return null;
         }
 
         await using var command = dataSource.CreateCommand(RemoteQuery);
+        command.CommandTimeout = 5;
         command.Parameters.AddWithValue(sessionId);
         command.Parameters.AddWithValue(claims.Identity);
         command.Parameters.AddWithValue(claims.Room);
-        var result = await command.ExecuteScalarAsync(cancellationToken) as string;
-
-        cache.Set(key, result, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = result is null ? NegativeLifetime : PositiveLifetime, Size = 1 });
-        return result;
+        command.Parameters.AddWithValue(claims.CanPublishScreenShare);
+        return await command.ExecuteScalarAsync(cancellationToken) as string;
     }
 }

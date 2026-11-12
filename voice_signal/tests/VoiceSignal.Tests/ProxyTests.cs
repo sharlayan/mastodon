@@ -23,6 +23,7 @@ public sealed class ProxyTests : IAsyncLifetime
     private WebApplication proxy = null!;
     private string upstreamOrigin = null!;
     private string proxyAddress = null!;
+    private FakeResolver resolver = null!;
 
     public async Task InitializeAsync()
     {
@@ -36,6 +37,23 @@ public sealed class ProxyTests : IAsyncLifetime
             {
                 upstreamTargets.Add(context.Features.Get<IHttpRequestFeature>()!.RawTarget);
                 upstreamAuthorizations.Add(context.Request.Headers.Authorization.ToString());
+            }
+
+            if (context.WebSockets.IsWebSocketRequest)
+            {
+                using var socket = await context.WebSockets.AcceptWebSocketAsync();
+                var buffer = new byte[64];
+                while (true)
+                {
+                    var result = await socket.ReceiveAsync(buffer, CancellationToken.None);
+                    if (result.MessageType == WebSocketMessageType.Close)
+                    {
+                        await socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+                        return;
+                    }
+
+                    await socket.SendAsync(buffer.AsMemory(0, result.Count), result.MessageType, result.EndOfMessage, CancellationToken.None);
+                }
             }
 
             context.Response.ContentType = "application/json";
@@ -87,7 +105,8 @@ public sealed class ProxyTests : IAsyncLifetime
             ConnectionString = string.Empty,
             AllowInsecureUpstream = true,
         };
-        proxy = SignalApp.Build(options, new FakeResolver(upstreamOrigin), "http://127.0.0.1:0");
+        resolver = new FakeResolver(upstreamOrigin);
+        proxy = SignalApp.Build(options, resolver, "http://127.0.0.1:0");
         await proxy.StartAsync();
         proxyAddress = proxy.Urls.First().TrimEnd('/');
     }
@@ -186,6 +205,69 @@ public sealed class ProxyTests : IAsyncLifetime
 
         Assert.True(result is null || result.CloseStatus == WebSocketCloseStatus.MessageTooBig);
         Assert.NotEqual(WebSocketState.Open, socket.State);
+    }
+
+    [Fact]
+    public async Task ClosesAnOpenRemoteSignalAndRejectsReconnectAfterAdmissionIsRevoked()
+    {
+        var token = TokenHintTests.RemoteToken(new { sub = "https://social.example/users/me", video = new { room = "room-1" } });
+        using var socket = new ClientWebSocket();
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        await socket.ConnectAsync(new Uri($"{proxyAddress.Replace("http", "ws")}/voice-signal/remote/7/rtc?access_token={token}"), deadline.Token);
+        await socket.SendAsync("ping"u8.ToArray(), WebSocketMessageType.Binary, true, deadline.Token);
+        var buffer = new byte[64];
+        var echoed = await socket.ReceiveAsync(buffer, deadline.Token);
+        Assert.Equal("ping", Encoding.UTF8.GetString(buffer, 0, echoed.Count));
+
+        resolver.AllowRemoteCalls = false;
+        try
+        {
+            var closed = await socket.ReceiveAsync(buffer, deadline.Token);
+            Assert.Equal(WebSocketMessageType.Close, closed.MessageType);
+        }
+        catch (WebSocketException)
+        {
+        }
+        Assert.NotEqual(WebSocketState.Open, socket.State);
+
+        using var http = new HttpClient();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await http.GetAsync($"{proxyAddress}/voice-signal/remote/7/rtc/validate?access_token={token}", deadline.Token)).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("screen_share")]
+    [InlineData("screen_share_audio")]
+    public async Task RevokesScreenTokensWithoutClosingMicrophoneOnlyConnections(string screenSource)
+    {
+        var screenToken = TokenHintTests.RemoteToken(new { sub = "https://social.example/users/me", video = new { room = "room-1", canPublish = true, canPublishSources = new[] { "microphone", screenSource } } });
+        var microphoneToken = TokenHintTests.RemoteToken(new { sub = "https://social.example/users/me", video = new { room = "room-1", canPublish = true, canPublishSources = new[] { "microphone" } } });
+        using var screen = new ClientWebSocket();
+        using var microphone = new ClientWebSocket();
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var socketAddress = proxyAddress.Replace("http", "ws");
+        await screen.ConnectAsync(new Uri($"{socketAddress}/voice-signal/remote/7/rtc?access_token={screenToken}"), deadline.Token);
+        await microphone.ConnectAsync(new Uri($"{socketAddress}/voice-signal/remote/7/rtc?access_token={microphoneToken}"), deadline.Token);
+
+        resolver.AllowScreenSharing = false;
+        var buffer = new byte[64];
+        try
+        {
+            var closed = await screen.ReceiveAsync(buffer, deadline.Token);
+            Assert.Equal(WebSocketMessageType.Close, closed.MessageType);
+        }
+        catch (WebSocketException)
+        {
+        }
+        Assert.NotEqual(WebSocketState.Open, screen.State);
+
+        await microphone.SendAsync("ping"u8.ToArray(), WebSocketMessageType.Binary, true, deadline.Token);
+        var echoed = await microphone.ReceiveAsync(buffer, deadline.Token);
+        Assert.Equal("ping", Encoding.UTF8.GetString(buffer, 0, echoed.Count));
+        await microphone.CloseAsync(WebSocketCloseStatus.NormalClosure, null, deadline.Token);
+
+        using var http = new HttpClient();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await http.GetAsync($"{proxyAddress}/voice-signal/remote/7/rtc/validate?access_token={screenToken}", deadline.Token)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await http.GetAsync($"{proxyAddress}/voice-signal/remote/7/rtc/validate?access_token={microphoneToken}", deadline.Token)).StatusCode);
     }
 
     [Fact]
@@ -369,10 +451,13 @@ public sealed class ProxyTests : IAsyncLifetime
 
     private sealed class FakeResolver(string origin) : IAllocationResolver
     {
+        public volatile bool AllowRemoteCalls = true;
+        public volatile bool AllowScreenSharing = true;
+
         public Task<bool> IsAdmittedAsync(TokenHint hint, CancellationToken cancellationToken) => Task.FromResult(hint.UserId == 1);
 
         public Task<string?> ResolveRemoteOriginAsync(long sessionId, TokenClaims claims, CancellationToken cancellationToken) =>
-            Task.FromResult(sessionId == 7 && claims is { Identity: "https://social.example/users/me", Room: "room-1" } ? origin : null);
+            Task.FromResult(AllowRemoteCalls && (!claims.CanPublishScreenShare || AllowScreenSharing) && sessionId == 7 && claims is { Identity: "https://social.example/users/me", Room: "room-1" } ? origin : null);
 
         public Task<Upstream?> ResolveAsync(TokenHint hint, CancellationToken cancellationToken)
         {

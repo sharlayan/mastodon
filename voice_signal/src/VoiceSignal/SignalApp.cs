@@ -28,7 +28,7 @@ public static class SignalApp
         if (resolver is null)
         {
             builder.Services.AddSingleton(_ => NpgsqlDataSource.Create(options.ConnectionString));
-            builder.Services.AddSingleton<IAllocationResolver>(services => new DatabaseAllocationResolver(services.GetRequiredService<NpgsqlDataSource>(), services.GetRequiredService<IMemoryCache>()));
+            builder.Services.AddSingleton<IAllocationResolver>(services => new DatabaseAllocationResolver(services.GetRequiredService<NpgsqlDataSource>(), services.GetRequiredService<IMemoryCache>(), options.RoleplayMode));
         }
         else
         {

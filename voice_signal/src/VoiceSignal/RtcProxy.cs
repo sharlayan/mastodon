@@ -18,6 +18,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
     private static readonly TimeSpan KeepAliveInterval = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan KeepAliveTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan ReadmissionInterval = TimeSpan.FromSeconds(5);
     private static readonly string[] ForwardedHeaders = ["Accept", "User-Agent"];
 
     private readonly SemaphoreSlim connections = new(options.MaxConnections, options.MaxConnections);
@@ -164,7 +165,8 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         {
             if (context.WebSockets.IsWebSocketRequest)
             {
-                await ProxyWebSocketAsync(context, target, null, remoteInvoker);
+                await ProxyWebSocketAsync(context, target, null, remoteInvoker,
+                    async cancellationToken => await resolver.ResolveRemoteOriginAsync(sessionId, claims, cancellationToken) == origin);
             }
             else
             {
@@ -391,7 +393,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         return buffer.ToArray();
     }
 
-    private async Task ProxyWebSocketAsync(HttpContext context, Uri target, string? bearer, HttpMessageInvoker invoker)
+    private async Task ProxyWebSocketAsync(HttpContext context, Uri target, string? bearer, HttpMessageInvoker invoker, Func<CancellationToken, Task<bool>>? readmission = null)
     {
         using var upstream = new ClientWebSocket();
         if (bearer is not null)
@@ -430,8 +432,10 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         var toUpstream = PumpAsync(downstream, upstream, session.Token);
         var toDownstream = PumpAsync(upstream, downstream, session.Token);
 
-        var finished = await Task.WhenAny(toUpstream, toDownstream);
-        if (finished.IsCompletedSuccessfully && !session.IsCancellationRequested)
+        var admission = readmission is null ? null : MonitorAdmissionAsync(readmission, session.Token);
+        Task[] running = admission is null ? [toUpstream, toDownstream] : [toUpstream, toDownstream, admission];
+        var finished = await Task.WhenAny(running);
+        if (finished != admission && finished.IsCompletedSuccessfully && !session.IsCancellationRequested)
         {
             await Task.WhenAny(finished == toUpstream ? toDownstream : toUpstream, Task.Delay(CloseTimeout));
         }
@@ -441,6 +445,30 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
         Abort(upstream);
         Abort(downstream);
         await Task.WhenAll(Swallow(toUpstream), Swallow(toDownstream));
+        if (admission is not null)
+        {
+            await Swallow(admission);
+        }
+    }
+
+    private async Task MonitorAdmissionAsync(Func<CancellationToken, Task<bool>> readmission, CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            await Task.Delay(ReadmissionInterval, cancellationToken);
+            try
+            {
+                if (!await readmission(cancellationToken))
+                {
+                    return;
+                }
+            }
+            catch (DbException exception)
+            {
+                logger.LogError(exception, "Could not recheck the remote voice call session");
+                return;
+            }
+        }
     }
 
     private static async Task PumpAsync(WebSocket source, WebSocket destination, CancellationToken cancellationToken)

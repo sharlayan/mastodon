@@ -409,7 +409,7 @@ describe('voice call engine', () => {
     if (room == null) throw new Error('no room');
 
     Object.assign(room.localParticipant, {
-      permissions: { canPublishSources: [2] },
+      permissions: { canPublish: true, canPublishSources: [2] },
     });
     room.emit(
       'ParticipantPermissionsChanged',
@@ -419,7 +419,7 @@ describe('voice call engine', () => {
     expect(call.voiceCallSnapshot().allowScreenShare).toBe(false);
 
     Object.assign(room.localParticipant, {
-      permissions: { canPublishSources: [2, 3, 4] },
+      permissions: { canPublish: true, canPublishSources: [2, 3, 4] },
     });
     room.emit(
       'ParticipantPermissionsChanged',
@@ -427,6 +427,46 @@ describe('voice call engine', () => {
       room.localParticipant,
     );
     expect(call.voiceCallSnapshot().allowScreenShare).toBe(true);
+  });
+
+  it('keeps the credential screen permission as an upper bound for server permission updates', async () => {
+    const call = await import('../call');
+    await call.connectVoiceCall(
+      { id: '5', title: 'Room' },
+      { ...credentials, allow_screen_share: false },
+    );
+    const room = rooms[0];
+    if (room == null) throw new Error('no room');
+    const publish = vi.fn();
+    Object.assign(room.localParticipant, {
+      permissions: { canPublish: true, canPublishSources: [] },
+      setScreenShareEnabled: publish,
+    });
+    room.emit(
+      'ParticipantPermissionsChanged',
+      undefined,
+      room.localParticipant,
+    );
+
+    expect(call.voiceCallSnapshot().allowScreenShare).toBe(false);
+    await call.startScreenShare();
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it('disables screen sharing when the server removes all publish permission', async () => {
+    const call = await import('../call');
+    await call.connectVoiceCall({ id: '5', title: 'Room' }, credentials);
+    const room = rooms[0];
+    if (room == null) throw new Error('no room');
+    Object.assign(room.localParticipant, {
+      permissions: { canPublish: false, canPublishSources: [2, 3, 4] },
+    });
+    room.emit(
+      'ParticipantPermissionsChanged',
+      undefined,
+      room.localParticipant,
+    );
+    expect(call.voiceCallSnapshot().allowScreenShare).toBe(false);
   });
 
   it('leaves without a notice and ignores a failed connection after leaving', async () => {

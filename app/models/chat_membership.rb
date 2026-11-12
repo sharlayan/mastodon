@@ -41,6 +41,7 @@ class ChatMembership < ApplicationRecord
   end
 
   def revoke_voice_call
+    VoiceCallRemoteSession.where(chat_conversation_id:, account_id:).delete_all
     return unless VoiceCallAllocation.unfinished.exists?(chat_conversation_id:)
 
     VoiceCallRevocationWorker.perform_async(chat_conversation_id, account_id)

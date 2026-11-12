@@ -77,6 +77,9 @@ class Sharlayan::VoiceCallService
     end
 
     def revoke_account_calls(account_id)
+      account = Account.includes(user: :role).find_by(id: account_id)
+      VoiceCallRemoteSession.where(account_id:).delete_all unless permitted?(account)
+
       VoiceCallAllocation.active.where.not(chat_conversation_id: nil)
         .where('participants @> ?', [{ user_id: account_id.to_s }].to_json)
         .pluck(:chat_conversation_id)
