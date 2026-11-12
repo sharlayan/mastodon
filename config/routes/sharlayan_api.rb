@@ -517,7 +517,7 @@ namespace :api, format: false do
     post 'app/show', to: 'stub#noop'
     post 'bubble-game/ranking', to: 'stub#empty'
     post 'bubble-game/register', to: 'stub#no_content'
-    post 'ping', to: 'stub#noop'
+    post 'ping', to: 'meta#ping'
     post 'promo/read', to: 'stub#no_content'
     post 'request-reset-password', to: 'stub#unsupported'
     post 'reset-db', to: 'stub#unsupported'

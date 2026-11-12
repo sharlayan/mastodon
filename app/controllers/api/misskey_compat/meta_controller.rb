@@ -50,6 +50,10 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
     }
   end
 
+  def ping
+    render json: { pong: (Time.now.to_f * 1000).floor }
+  end
+
   def server_info
     render json: {
       machine: '?',

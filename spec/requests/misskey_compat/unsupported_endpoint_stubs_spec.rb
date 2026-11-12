@@ -7,7 +7,6 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
     %w(
       app/create
       app/show
-      ping
       test
       v2/admin/emoji/list
     )
