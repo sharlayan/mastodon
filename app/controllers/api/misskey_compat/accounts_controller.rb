@@ -2,12 +2,12 @@
 
 class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseController
   requires_write_scope :update_memo, :report_abuse
-  requires_misskey_permission 'read:account', :followers, :following, :search, :search_by_username_and_host
+  requires_misskey_permission 'read:account', :followers, :following, :search, :search_by_username_and_host, :recommendation
   requires_misskey_permission 'read:account', :index, :notes, :reactions, :featured_notes, :pinned_users, :frequently_replied_users
   requires_misskey_permission 'write:account', :update_memo
   requires_misskey_permission 'write:report-abuse', :report_abuse
 
-  before_action :require_user!, only: [:followers, :following, :search, :search_by_username_and_host, :update_memo, :report_abuse]
+  before_action :require_user!, only: [:followers, :following, :search, :search_by_username_and_host, :update_memo, :report_abuse, :recommendation]
   before_action :require_user_if_authenticated!, only: [:index, :notes, :reactions, :featured_notes, :pinned_users, :frequently_replied_users]
 
   def index
@@ -158,6 +158,13 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     render json: accounts.zip(serialized).map { |target, user| { user: user, weight: counts[target.id].fdiv(peak) } }
   rescue ActiveRecord::RecordNotFound
     render_error('No such user', 'NO_SUCH_USER', 404)
+  end
+
+  def recommendation
+    return if (offset = offset_param).nil?
+
+    accounts = AccountSuggestions.new(current_account).get(pagination_limit(default: 10, max: 100), offset).map(&:account)
+    render json: serialize_detailed_accounts(accounts, viewer: current_account)
   end
 
   def report_abuse

@@ -111,4 +111,30 @@ RSpec.describe 'Misskey-compat user assist endpoints' do
       expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_USER')
     end
   end
+
+  describe 'users/recommendation' do
+    let!(:featured) { Fabricate(:account, username: 'featured', discoverable: true) }
+    let!(:followed) { Fabricate(:account, username: 'followed', discoverable: true) }
+
+    before do
+      Setting.bootstrap_timeline_accounts = 'featured, followed'
+      account.follow!(followed)
+    end
+
+    it 'returns Mastodon follow suggestions as detailed users, without accounts already followed' do
+      post '/api/users/recommendation', params: { i: read_token, limit: 5 }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to eq([MisskeyCompat::MiId.encode(featured.id)])
+      expect(response.parsed_body.first).to include(isFollowing: false)
+
+      post '/api/users/recommendation', params: { i: read_token, offset: 1 }, as: :json
+
+      expect(response.parsed_body).to eq([])
+
+      post '/api/users/recommendation', as: :json
+
+      expect(response).to have_http_status(401)
+    end
+  end
 end
