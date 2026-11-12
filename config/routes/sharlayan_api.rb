@@ -643,7 +643,6 @@ namespace :api, format: false do
     post 'admin/queue/resume', to: 'stub#unsupported'
     post 'admin/update-proxy-account', to: 'stub#unsupported'
     match 'admin/*any', to: 'stub#noop', via: [:get, :post], format: false
-    post 'v2/admin/emoji/list', to: 'stub#noop'
     post 'app/create', to: 'apps#create'
     post 'app/show', to: 'apps#show'
     match 'bubble-game/ranking', to: 'bubble_game#ranking', via: [:get, :post]
