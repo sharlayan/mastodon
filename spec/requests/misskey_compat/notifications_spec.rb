@@ -267,6 +267,8 @@ RSpec.describe 'Misskey-compat notification endpoints' do
     it 'rejects a read-only token, then deletes only the caller notifications' do
       own = Fabricate(:notification, account: account, type: :follow, activity: Fabricate(:follow, account: actor, target_account: account))
       foreign = Fabricate(:notification, account: actor, type: :follow, activity: Fabricate(:follow, account: account, target_account: actor))
+      own_misskey = MisskeyNotification.create!(account: account, notification_type: 'test')
+      foreign_misskey = MisskeyNotification.create!(account: actor, notification_type: 'test')
 
       post '/api/notifications/flush', params: { i: read_token }, as: :json
 
@@ -278,6 +280,7 @@ RSpec.describe 'Misskey-compat notification endpoints' do
       expect(response).to have_http_status(204)
       expect(Notification.exists?(own.id)).to be(false)
       expect(Notification.exists?(foreign.id)).to be(true)
+      expect(MisskeyNotification.where(id: [own_misskey.id, foreign_misskey.id]).ids).to eq([foreign_misskey.id])
     end
   end
 

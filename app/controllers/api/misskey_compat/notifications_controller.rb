@@ -73,6 +73,7 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
 
   def flush
     current_account.notifications.delete_all
+    MisskeyNotification.where(account: current_account).delete_all
     head 204
   end
 
