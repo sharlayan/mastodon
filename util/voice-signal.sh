@@ -298,7 +298,7 @@ check() {
   fi
 
   if command -v curl >/dev/null 2>&1; then
-    if curl --silent --fail --max-time 3 "http://127.0.0.1:$(signal_port)${path}/health" | grep -qx ok; then
+    if curl --silent --fail --noproxy '*' --max-time 3 "http://127.0.0.1:$(signal_port)${path}/health" | grep -qx ok; then
       ok "health check answered on 127.0.0.1:$(signal_port)"
     else
       warn "no answer on http://127.0.0.1:$(signal_port)${path}/health"
@@ -561,7 +561,7 @@ verify() {
   url="http://127.0.0.1:$(signal_port)$(signal_path)/health"
   while [ "$attempt" -lt 15 ]; do
     attempt=$((attempt + 1))
-    if curl --silent --fail --max-time 3 "$url" | grep -qx ok; then
+    if curl --silent --fail --noproxy '*' --max-time 3 "$url" | grep -qx ok; then
       log "voice signal answers on ${url}"
       return
     fi
