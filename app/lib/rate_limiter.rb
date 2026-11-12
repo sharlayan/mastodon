@@ -55,6 +55,11 @@ class RateLimiter
       period: 1.hour.freeze,
     }.freeze,
 
+    misskey_compat_following_update_all: {
+      limit: 10,
+      period: 1.hour.freeze,
+    }.freeze,
+
     misskey_compat_ap_get: {
       limit: 30,
       period: 1.hour.freeze,
