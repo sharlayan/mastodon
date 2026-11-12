@@ -272,14 +272,14 @@ class Api::MisskeyCompat::Admin::EmojiController < Api::MisskeyCompat::Admin::Se
   def filter_v2_query(scope, query)
     scope = scope.where('CAST(custom_emojis.updated_at AS DATE) >= ?', query[:updatedAtFrom]) if query[:updatedAtFrom].present?
     scope = scope.where('CAST(custom_emojis.updated_at AS DATE) <= ?', query[:updatedAtTo]) if query[:updatedAtTo].present?
-    scope = like_any(scope, 'custom_emojis.shortcode', query[:name])
+    scope = like_any(scope, emoji_table[:shortcode], query[:name])
     scope = filter_host_type(scope, query)
-    scope = like_any(scope, 'custom_emojis.uri', query[:uri])
-    scope = like_any(scope, 'custom_emojis.image_remote_url', query[:publicUrl])
-    scope = like_any(scope, 'custom_emojis.image_remote_url', query[:originalUrl])
-    scope = like_any(scope, 'custom_emojis.image_content_type', query[:type])
-    scope = like_any(scope, 'custom_emoji_categories.name', query[:category])
-    scope = like_any(scope, 'custom_emojis.license', query[:license])
+    scope = like_any(scope, emoji_table[:uri], query[:uri])
+    scope = like_any(scope, emoji_table[:image_remote_url], query[:publicUrl])
+    scope = like_any(scope, emoji_table[:image_remote_url], query[:originalUrl])
+    scope = like_any(scope, emoji_table[:image_content_type], query[:type])
+    scope = like_any(scope, CustomEmojiCategory.arel_table[:name], query[:category])
+    scope = like_any(scope, emoji_table[:license], query[:license])
     scope = filter_aliases(scope, query[:aliases])
     scope = scope.where(is_sensitive: query[:isSensitive]) if [true, false].include?(query[:isSensitive])
     scope = scope.where(local_only: query[:localOnly]) if [true, false].include?(query[:localOnly])
@@ -292,10 +292,14 @@ class Api::MisskeyCompat::Admin::EmojiController < Api::MisskeyCompat::Admin::Se
     when 'local'
       scope.where(domain: nil)
     when 'remote'
-      query[:host].present? ? like_any(scope, 'custom_emojis.domain', query[:host]) : scope.where.not(domain: nil)
+      query[:host].present? ? like_any(scope, emoji_table[:domain], query[:host]) : scope.where.not(domain: nil)
     else
       scope
     end
+  end
+
+  def emoji_table
+    CustomEmoji.arel_table
   end
 
   def like_patterns(words)
@@ -306,7 +310,7 @@ class Api::MisskeyCompat::Admin::EmojiController < Api::MisskeyCompat::Admin::Se
     patterns = like_patterns(words)
     return scope if patterns.empty?
 
-    scope.where("#{column} LIKE ANY (ARRAY[?]::text[])", patterns)
+    scope.where(column.matches_any(patterns, nil, true))
   end
 
   def filter_aliases(scope, words)

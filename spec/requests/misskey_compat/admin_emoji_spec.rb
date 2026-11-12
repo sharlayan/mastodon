@@ -80,6 +80,7 @@ RSpec.describe 'Misskey-compat admin emoji' do
     expect(result).to include(allCount: 2, allPages: 2, count: 1)
     expect(result[:emojis].sole).to include(name: 'local_one', host: nil, roleIdsThatCanBeUsedThisEmojiAsReaction: [])
 
+    expect(api('v2/admin/emoji/list', query: { name: 'part', category: '' })[:emojis].pluck(:name)).to eq(%w(party party))
     api('v2/admin/emoji/list', sortKeys: %w(+nope))
     expect(response).to have_http_status(400)
   end
