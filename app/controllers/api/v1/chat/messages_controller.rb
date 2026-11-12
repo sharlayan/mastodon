@@ -48,7 +48,8 @@ class Api::V1::Chat::MessagesController < Api::V1::Chat::BaseController
       @conversation,
       text: params[:text],
       reply_to_id: params[:reply_to_id],
-      media_ids: Array(params[:media_ids])
+      media_ids: Array(params[:media_ids]),
+      roll_dice: true
     )
     render json: message, serializer: REST::ChatMessageSerializer, current_account: current_account
   end

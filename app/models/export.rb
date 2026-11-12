@@ -128,6 +128,7 @@ class Export
       id: message.id.to_s,
       sender: acct(message.account),
       text: message.deleted? ? nil : message.text,
+      dice: message.deleted? ? nil : message.dice,
       reply_to_id: message.reply_to_id&.to_s,
       created_at: message.created_at,
       edited_at: message.edited_at,

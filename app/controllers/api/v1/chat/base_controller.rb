@@ -5,6 +5,7 @@ class Api::V1::Chat::BaseController < Api::BaseController
 
   rescue_from Sharlayan::ChatService::Error, with: :render_chat_error
   rescue_from Sharlayan::ChatService::Forbidden, with: :render_chat_forbidden
+  rescue_from Sharlayan::ChatDice::Error, with: :render_chat_dice_error
 
   private
 
@@ -49,5 +50,9 @@ class Api::V1::Chat::BaseController < Api::BaseController
 
   def render_chat_error(error)
     render json: { error: error.message }, status: 422
+  end
+
+  def render_chat_dice_error(error)
+    render json: { error: error.message, error_code: error.code }, status: error.reason == :busy ? 429 : 422
   end
 end

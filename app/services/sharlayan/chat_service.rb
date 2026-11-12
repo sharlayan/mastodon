@@ -22,6 +22,7 @@ class Sharlayan::ChatService
   ACCEPT_DELIVERY_GRACE = 5.minutes
   LEFT_ROOM_OWNED_HERE = 'removed_here'
   ROOM_DELETION_DISABLED = 'Rooms cannot be deleted while chat history is preserved'
+  DICE_MESSAGE_IMMUTABLE = 'Dice messages cannot be edited'
 
   def self.room_deletion_enabled?
     !RoleplayModeHelper.roleplay_mode?
@@ -69,7 +70,7 @@ class Sharlayan::ChatService
     end
   end
 
-  def create_message(account, conversation, text:, reply_to_id: nil, media_ids: [])
+  def create_message(account, conversation, text:, reply_to_id: nil, media_ids: [], roll_dice: false)
     membership = membership!(account, conversation)
     ensure_conversation_writable!(conversation)
     ensure_federation_available!(conversation)
@@ -80,11 +81,12 @@ class Sharlayan::ChatService
     raise Error, 'Reply target was not found' if reply_to_id.present? && reply_to.nil?
 
     attachments = media_attachments(account, media_ids)
+    dice = roll_dice ? dice_for(account, text) : nil
 
     message = nil
     conversation.with_lock do
       ensure_conversation_writable!(conversation)
-      message = conversation.messages.build(account: account, text: text.to_s.strip.presence, reply_to: reply_to)
+      message = conversation.messages.build(account: account, text: text.to_s.strip.presence, reply_to: reply_to, dice: dice)
       message.pending_media_attachments = attachments
       message.save!
       message.update!(uri: local_message_uri(message)) if message.uri.nil? && account.local?
@@ -100,6 +102,7 @@ class Sharlayan::ChatService
 
   def update_message(account, message, text:)
     raise Forbidden unless message.account_id == account.id
+    raise Error, DICE_MESSAGE_IMMUTABLE if message.dice.present?
     raise Error, 'This message can no longer be edited' unless message.within_delete_window?
 
     ensure_conversation_writable!(message.chat_conversation)
@@ -110,6 +113,7 @@ class Sharlayan::ChatService
       ensure_conversation_writable!(message.chat_conversation)
       message.lock!
       raise Error, 'Deleted messages cannot be edited' if message.deleted?
+      raise Error, DICE_MESSAGE_IMMUTABLE if message.dice.present?
 
       edited_at = Time.current
       edited_at = [edited_at, message.edited_at + Rational(1, 1000)].max if message.edited_at
@@ -385,7 +389,7 @@ class Sharlayan::ChatService
     account_from_uri(uri)
   end
 
-  def receive_direct_message(recipient, actor, uri:, text:, created_at: nil, edited_at: nil, attachments: [], reply_to_uri: nil)
+  def receive_direct_message(recipient, actor, uri:, text:, created_at: nil, edited_at: nil, attachments: [], reply_to_uri: nil, dice: nil)
     key = [recipient.id, actor.id].sort.join(':')
 
     ChatConversation.transaction do
@@ -397,11 +401,11 @@ class Sharlayan::ChatService
         conversation = create_direct_record(recipient, actor, key)
       end
 
-      create_remote_message(conversation, actor, uri: uri, text: text, created_at: created_at, edited_at: edited_at, attachments: attachments, reply_to_uri: reply_to_uri)
+      create_remote_message(conversation, actor, uri: uri, text: text, created_at: created_at, edited_at: edited_at, attachments: attachments, reply_to_uri: reply_to_uri, dice: dice)
     end
   end
 
-  def receive_group_message(actor, room_uri:, uri:, text:, created_at: nil, edited_at: nil, attachments: [], reply_to_uri: nil)
+  def receive_group_message(actor, room_uri:, uri:, text:, created_at: nil, edited_at: nil, attachments: [], reply_to_uri: nil, dice: nil)
     conversation = ChatConversation.find_by(uri: room_uri)
     if conversation.nil?
       raise Error, 'The chat room is gone' if room_gone?(room_uri)
@@ -418,7 +422,7 @@ class Sharlayan::ChatService
       raise Forbidden
     end
 
-    message = create_remote_message(conversation, actor, uri: uri, text: text, created_at: created_at, edited_at: edited_at, attachments: attachments, reply_to_uri: reply_to_uri)
+    message = create_remote_message(conversation, actor, uri: uri, text: text, created_at: created_at, edited_at: edited_at, attachments: attachments, reply_to_uri: reply_to_uri, dice: dice)
     relay_to_room(conversation, message)
     release_held_relays(message) if message&.previously_new_record?
     message
@@ -635,6 +639,7 @@ class Sharlayan::ChatService
   def update_remote_message(actor, message, text:, edited_at:)
     raise Forbidden unless message.account_id == actor.id
     raise Error, 'Deleted messages cannot be edited' if message.deleted?
+    raise Error, DICE_MESSAGE_IMMUTABLE if message.dice.present?
 
     ensure_room_member!(message.chat_conversation, actor)
     ensure_conversation_writable!(message.chat_conversation)
@@ -642,6 +647,7 @@ class Sharlayan::ChatService
 
     message.with_lock do
       raise Error, 'Deleted messages cannot be edited' if message.deleted?
+      raise Error, DICE_MESSAGE_IMMUTABLE if message.dice.present?
       return message if edited_at && message.edited_at && edited_at <= message.edited_at
 
       keep_previous_text(message, text)
@@ -1036,7 +1042,7 @@ class Sharlayan::ChatService
       message.reactions.destroy_all
       message.chat_message_media_attachments.destroy_all
       message.edits.delete_all
-      message.update!(text: nil, deleted_at: Time.current)
+      message.update!(text: nil, dice: nil, deleted_at: Time.current)
       media
     end
     return false if media_attachments.nil?
@@ -1087,7 +1093,7 @@ class Sharlayan::ChatService
     ensure_room_member!(conversation, actor)
   end
 
-  def create_remote_message(conversation, actor, uri:, text:, created_at:, attachments:, edited_at: nil, reply_to_uri: nil)
+  def create_remote_message(conversation, actor, uri:, text:, created_at:, attachments:, edited_at: nil, reply_to_uri: nil, dice: nil)
     return nil if tombstone?(uri, actor)
 
     raise Forbidden unless conversation.memberships.exists?(account: actor)
@@ -1111,6 +1117,7 @@ class Sharlayan::ChatService
         uri: uri,
         reply_to: reply_to,
         text: text.to_s.strip.presence,
+        dice: Sharlayan::ChatDice.parse(dice),
         edited_at: edited_at,
         created_at: created_at || Time.current
       )
@@ -1333,6 +1340,13 @@ class Sharlayan::ChatService
 
   def local_base_url
     "#{Rails.configuration.x.use_https ? 'https' : 'http'}://#{Rails.configuration.x.web_domain}"
+  end
+
+  def dice_for(account, text)
+    notation = Sharlayan::ChatDice.notation(text)
+    return if notation.nil? || !account.local?
+
+    Sharlayan::ChatDice.new.roll(account, notation)
   end
 
   def keep_previous_text(message, text)
