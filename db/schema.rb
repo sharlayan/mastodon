@@ -1430,6 +1430,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
     t.index ["oauth_application_id"], name: "index_misskey_apps_on_oauth_application_id", unique: true
   end
 
+  create_table "misskey_auth_sessions", id: :bigint, default: -> { "timestamp_id('misskey_auth_sessions'::text)" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "oauth_application_id", null: false
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.index ["oauth_application_id"], name: "index_misskey_auth_sessions_on_oauth_application_id"
+    t.index ["token"], name: "index_misskey_auth_sessions_on_token", unique: true
+    t.index ["user_id"], name: "index_misskey_auth_sessions_on_user_id"
+  end
+
   create_table "misskey_channel_favorites", id: :bigint, default: -> { "timestamp_id('misskey_channel_favorites'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
@@ -2653,6 +2664,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
   add_foreign_key "misskey_abuse_report_resolutions", "reports", on_delete: :cascade
   add_foreign_key "misskey_access_grants", "oauth_access_tokens", column: "access_token_id", on_delete: :cascade
   add_foreign_key "misskey_apps", "oauth_applications", on_delete: :cascade
+  add_foreign_key "misskey_auth_sessions", "oauth_applications", on_delete: :cascade
+  add_foreign_key "misskey_auth_sessions", "users", on_delete: :cascade
   add_foreign_key "misskey_channel_favorites", "accounts", on_delete: :cascade
   add_foreign_key "misskey_channel_favorites", "misskey_channels", on_delete: :cascade
   add_foreign_key "misskey_channel_followings", "accounts", on_delete: :cascade

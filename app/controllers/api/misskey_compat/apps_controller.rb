@@ -54,17 +54,6 @@ class Api::MisskeyCompat::AppsController < Api::MisskeyCompat::BaseController
     object_body!
   end
 
-  def require_valid_credential!
-    return unless bearer_token.present? || params[:i].present?
-    return if current_user&.functional?
-
-    render_error('Authentication required', 'AUTHENTICATION_FAILED', 401)
-  end
-
-  def misskey_applications
-    Doorkeeper::Application.joins(:misskey_app).includes(:misskey_app)
-  end
-
   def valid_permission_param?
     permission = params[:permission]
 

@@ -106,6 +106,26 @@ module MisskeyCompat::MiAuth
     end
   end
 
+  def issue_app_token(user, application)
+    Doorkeeper::AccessToken.transaction do
+      token = Doorkeeper::AccessToken.create!(
+        application: application,
+        resource_owner_id: user.id,
+        scopes: TOKEN_SCOPE,
+        expires_in: TOKEN_TTL.to_i,
+        use_refresh_token: false
+      )
+      raw_token = token.token
+      token.update_columns(token: app_token_hash(raw_token, application))
+      token.create_misskey_access_grant!(permissions: normalize_permissions(application.misskey_app.permission), name: application.name)
+      raw_token
+    end
+  end
+
+  def app_token_hash(raw_token, application)
+    Digest::SHA256.hexdigest("#{raw_token}#{application.secret}")
+  end
+
   def refresh_token_expiry!(token, request, clock: Time)
     now = clock.now.utc
     return if token.last_used_at.present? && token.last_used_at >= now - TOKEN_REFRESH_INTERVAL

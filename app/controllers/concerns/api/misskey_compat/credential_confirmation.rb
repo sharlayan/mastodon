@@ -46,6 +46,17 @@ module Api::MisskeyCompat::CredentialConfirmation
     end
   end
 
+  def require_valid_credential!
+    return unless bearer_token.present? || params[:i].present?
+    return if current_user&.functional?
+
+    render_error('Authentication required', 'AUTHENTICATION_FAILED', 401)
+  end
+
+  def misskey_applications
+    Doorkeeper::Application.joins(:misskey_app).includes(:misskey_app)
+  end
+
   def render_internal_error(message)
     render_error(INTERNAL_ERROR_MESSAGE, 'INTERNAL_ERROR', 500,
                  id: INTERNAL_ERROR_ID, kind: 'server', info: { e: { message: message, code: 'Error', id: SecureRandom.uuid } })

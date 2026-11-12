@@ -287,6 +287,10 @@ namespace :api, format: false do
     post 'i/revoke-token', to: 'tokens#revoke'
     post 'i/regenerate-token', to: 'tokens#regenerate'
     post 'miauth/gen-token', to: 'tokens#gen_token'
+    post 'auth/session/generate', to: 'auth_sessions#generate'
+    post 'auth/session/show', to: 'auth_sessions#show'
+    post 'auth/session/userkey', to: 'auth_sessions#userkey'
+    post 'auth/accept', to: 'auth_sessions#accept'
     post 'miauth/:session/check', to: 'miauth#check'
     post 'signin-flow', to: 'signin#create'
 
