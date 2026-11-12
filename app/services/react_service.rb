@@ -29,31 +29,35 @@ class ReactService < BaseService
 
     name, custom_emoji = status.accepted_reaction(name, custom_emoji, account)
 
-    reaction = StatusReaction.find_by(account: account, status: status, name: name, custom_emoji: custom_emoji)
-    return reaction if reaction
-
-    evictable = evictable_reactions(account, status)
-    validate_before_eviction!(StatusReaction.new(account: account, status: status, name: name, custom_emoji: custom_emoji), evictable)
-
-    evict_reactions(account, status, evictable)
-
-    begin
-      reaction = StatusReaction.create!(account: account, status: status, name: name, custom_emoji: custom_emoji)
-    rescue ActiveRecord::RecordNotUnique
-      return StatusReaction.find_by(account: account, status: status, name: name, custom_emoji: custom_emoji)
-    end
-
-    Trends.statuses.register(status)
-
-    create_notification(reaction)
-    BroadcastStatusUpdateWorker.perform_async(status.id)
-    MisskeyCompat::Streaming.broadcast_reaction(redis, reaction.status, reaction, account, 'reacted')
-    increment_statistics
-
-    reaction
+    create_reaction(account, status, name, custom_emoji)
   end
 
   private
+
+  def create_reaction(account, status, name, custom_emoji)
+    account.with_lock do
+      reaction = StatusReaction.find_by(account: account, status: status, name: name, custom_emoji: custom_emoji)
+      next reaction if reaction
+
+      evictable = evictable_reactions(account, status)
+      validate_before_eviction!(StatusReaction.new(account: account, status: status, name: name, custom_emoji: custom_emoji), evictable)
+
+      evict_reactions(account, status, evictable)
+      reaction = StatusReaction.create!(account: account, status: status, name: name, custom_emoji: custom_emoji)
+
+      ActiveRecord.after_all_transactions_commit do
+        Trends.statuses.register(status)
+        create_notification(reaction)
+        BroadcastStatusUpdateWorker.perform_async(status.id)
+        MisskeyCompat::Streaming.broadcast_reaction(redis, reaction.status, reaction, account, 'reacted')
+        increment_statistics
+      end
+
+      reaction
+    end
+  rescue ActiveRecord::RecordNotUnique
+    StatusReaction.find_by(account: account, status: status, name: name, custom_emoji: custom_emoji)
+  end
 
   def validate_before_eviction!(reaction, evictable)
     return if reaction.valid?
