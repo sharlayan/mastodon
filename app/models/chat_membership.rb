@@ -1,5 +1,18 @@
 # frozen_string_literal: true
 
+# == Schema Information
+#
+# Table name: chat_memberships
+#
+#  id                   :bigint(8)        not null, primary key
+#  muted                :boolean          default(FALSE), not null
+#  role                 :integer          default("member"), not null
+#  created_at           :datetime         not null
+#  updated_at           :datetime         not null
+#  account_id           :bigint(8)        not null
+#  chat_conversation_id :bigint(8)        not null
+#  last_read_message_id :bigint(8)
+#
 class ChatMembership < ApplicationRecord
   enum :role, { member: 0, owner: 1 }
 

@@ -1,5 +1,21 @@
 # frozen_string_literal: true
 
+# == Schema Information
+#
+# Table name: chat_messages
+#
+#  id                   :bigint(8)        not null, primary key
+#  deleted_at           :datetime
+#  edited_at            :datetime
+#  hidden_at            :datetime
+#  text                 :text
+#  uri                  :string
+#  created_at           :datetime         not null
+#  updated_at           :datetime         not null
+#  account_id           :bigint(8)        not null
+#  chat_conversation_id :bigint(8)        not null
+#  reply_to_id          :bigint(8)
+#
 class ChatMessage < ApplicationRecord
   attr_accessor :pending_media_attachments
 

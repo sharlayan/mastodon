@@ -1,5 +1,22 @@
 # frozen_string_literal: true
 
+# == Schema Information
+#
+# Table name: chat_conversations
+#
+#  id                :bigint(8)        not null, primary key
+#  archived_at       :datetime
+#  conversation_type :integer          default("direct"), not null
+#  description       :text
+#  direct_key        :string
+#  state_updated_at  :datetime
+#  title             :string
+#  uri               :string
+#  created_at        :datetime         not null
+#  updated_at        :datetime         not null
+#  last_message_id   :bigint(8)
+#  owner_account_id  :bigint(8)
+#
 class ChatConversation < ApplicationRecord
   enum :conversation_type, { direct: 0, group: 1 }, prefix: :chat
 
