@@ -1409,6 +1409,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
     t.index ["domain"], name: "index_misskey_federation_instance_stats_on_domain", unique: true
   end
 
+  create_table "misskey_gallery_likes", id: :bigint, default: -> { "timestamp_id('misskey_gallery_likes'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "misskey_gallery_post_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "misskey_gallery_post_id"], name: "index_misskey_gallery_likes_on_account_id_and_post_id", unique: true
+    t.index ["account_id"], name: "index_misskey_gallery_likes_on_account_id"
+    t.index ["misskey_gallery_post_id"], name: "index_misskey_gallery_likes_on_misskey_gallery_post_id"
+  end
+
+  create_table "misskey_gallery_posts", id: :bigint, default: -> { "timestamp_id('misskey_gallery_posts'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.integer "likes_count", default: 0, null: false
+    t.bigint "media_attachment_ids", default: [], null: false, array: true
+    t.boolean "sensitive", default: false, null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_misskey_gallery_posts_on_account_id"
+    t.index ["likes_count"], name: "index_misskey_gallery_posts_on_likes_count"
+    t.index ["media_attachment_ids"], name: "index_misskey_gallery_posts_on_media_attachment_ids", using: :gin
+  end
+
   create_table "misskey_registry_items", id: :bigint, default: -> { "timestamp_id('misskey_registry_items'::text)" }, force: :cascade do |t|
     t.bigint "access_token_id"
     t.bigint "account_id", null: false
@@ -2509,6 +2533,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
   add_foreign_key "mentions", "accounts", name: "fk_970d43f9d1", on_delete: :cascade
   add_foreign_key "mentions", "statuses", on_delete: :cascade
   add_foreign_key "misskey_access_grants", "oauth_access_tokens", column: "access_token_id", on_delete: :cascade
+  add_foreign_key "misskey_gallery_likes", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_gallery_likes", "misskey_gallery_posts", on_delete: :cascade
+  add_foreign_key "misskey_gallery_posts", "accounts", on_delete: :cascade
   add_foreign_key "misskey_registry_items", "accounts", on_delete: :cascade
   add_foreign_key "misskey_reversi_games", "accounts", column: "account1_id", on_delete: :cascade
   add_foreign_key "misskey_reversi_games", "accounts", column: "account2_id", on_delete: :cascade

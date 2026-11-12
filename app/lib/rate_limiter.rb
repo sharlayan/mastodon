@@ -105,6 +105,16 @@ class RateLimiter
       period: 1.hour.freeze,
     }.freeze,
 
+    misskey_gallery_post_create: {
+      limit: 20,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_gallery_post_update: {
+      limit: 300,
+      period: 1.hour.freeze,
+    }.freeze,
+
     implicit_quotes: {
       limit: 30,
       period: 5.minutes.freeze,

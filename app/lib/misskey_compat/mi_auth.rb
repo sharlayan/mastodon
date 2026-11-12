@@ -23,6 +23,8 @@ module MisskeyCompat::MiAuth
     read:pages write:pages
     read:page-likes write:page-likes
     read:clip-favorite write:clip-favorite
+    read:gallery write:gallery
+    read:gallery-likes write:gallery-likes
     write:report-abuse
   ).freeze
 

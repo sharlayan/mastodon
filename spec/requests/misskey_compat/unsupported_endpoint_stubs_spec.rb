@@ -56,18 +56,7 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       flash/show
       flash/unlike
       flash/update
-      gallery/featured
-      gallery/popular
-      gallery/posts
-      gallery/posts/create
-      gallery/posts/delete
-      gallery/posts/like
-      gallery/posts/show
-      gallery/posts/unlike
-      gallery/posts/update
       i/change-password
-      i/gallery/likes
-      i/gallery/posts
       i/update-email
       request-reset-password
       reset-db
@@ -75,7 +64,6 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       sw/update-registration
       username/available
       users/flashs
-      users/gallery/posts
       verify-email
     )
   end

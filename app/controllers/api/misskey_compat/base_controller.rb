@@ -21,7 +21,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   MAX_COMPAT_ID = (2**63) - 1
   COMPAT_TIME_RANGE = (Time.utc(1)..Time.utc(9999, 12, 31, 23, 59, 59))
 
-  MI_ID_SCALAR_PARAMS = %i(untilId sinceId userId noteId roleId clipId pageId replyId renoteId listId antennaId announcementId avatarId bannerId folderId parentId fileId eyeCatchingImageId channelId draftId webhookId gameId inviteId).freeze
+  MI_ID_SCALAR_PARAMS = %i(untilId sinceId userId noteId roleId clipId pageId replyId renoteId listId antennaId announcementId avatarId bannerId folderId parentId fileId eyeCatchingImageId channelId draftId webhookId gameId inviteId postId).freeze
   MI_ID_ARRAY_PARAMS = %i(fileIds visibleUserIds userIds noteIds).freeze
   PAGINATION_ID_PARAMS = %i(untilId sinceId).freeze
   SCALAR_PARAM_TYPES = %i(limit offset untilDate sinceDate).index_with('integer').merge(MI_ID_SCALAR_PARAMS.index_with('string')).freeze
