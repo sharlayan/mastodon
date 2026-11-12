@@ -195,6 +195,24 @@ RSpec.describe 'Misskey-compat notification endpoints' do
     end
   end
 
+  describe 'POST /api/notifications/flush' do
+    it 'rejects a read-only token, then deletes only the caller notifications' do
+      own = Fabricate(:notification, account: account, type: :follow, activity: Fabricate(:follow, account: actor, target_account: account))
+      foreign = Fabricate(:notification, account: actor, type: :follow, activity: Fabricate(:follow, account: account, target_account: actor))
+
+      post '/api/notifications/flush', params: { i: read_token }, as: :json
+
+      expect(response).to have_http_status(403)
+      expect(Notification.exists?(own.id)).to be(true)
+
+      post '/api/notifications/flush', params: { i: write_token }, as: :json
+
+      expect(response).to have_http_status(204)
+      expect(Notification.exists?(own.id)).to be(false)
+      expect(Notification.exists?(foreign.id)).to be(true)
+    end
+  end
+
   def collect_queries(&block)
     queries = []
     callback = lambda do |*, payload|

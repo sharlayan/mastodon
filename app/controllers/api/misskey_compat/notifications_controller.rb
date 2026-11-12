@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseController
-  requires_write_scope :mark_all_as_read, :create
+  requires_write_scope :mark_all_as_read, :create, :flush
   requires_misskey_permission 'read:notifications', :index
-  requires_misskey_permission 'write:notifications', :mark_all_as_read, :create
+  requires_misskey_permission 'write:notifications', :mark_all_as_read, :create, :flush
 
   include RoutingHelper
 
@@ -53,6 +53,11 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
   end
 
   def create
+    head 204
+  end
+
+  def flush
+    current_account.notifications.delete_all
     head 204
   end
 
