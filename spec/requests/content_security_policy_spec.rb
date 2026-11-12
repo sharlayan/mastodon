@@ -8,6 +8,7 @@ RSpec.describe 'Content-Security-Policy' do
   it 'sets the expected CSP headers' do
     get '/'
 
+    expect(inline_script_hashes).to_not be_empty
     expect(response_csp_headers)
       .to match_array(expected_csp_headers)
   end
@@ -50,10 +51,16 @@ RSpec.describe 'Content-Security-Policy' do
       img-src 'self' data: blob: #{local_domain}
       manifest-src 'self' #{local_domain}
       media-src 'self' data: #{local_domain}
-      script-src 'self' #{local_domain} 'wasm-unsafe-eval' 'sha256-2jM8bG7amYEjEadbKDKqDTNrGUR1FZFevAHLvb+Fsf4='
+      script-src 'self' #{local_domain} 'wasm-unsafe-eval' #{inline_script_hashes.join(' ')}
       style-src 'self' #{local_domain} 'nonce-ZbA+JmE7+bK8F5qvADZHuQ=='
       worker-src 'self' blob: #{local_domain}
     CSP
+  end
+
+  def inline_script_hashes
+    response.parsed_body.css('script[type="text/javascript"]:not([src])').map do |script|
+      "'sha256-#{Digest::SHA256.base64digest(script.content)}'"
+    end
   end
 
   def local_domain
