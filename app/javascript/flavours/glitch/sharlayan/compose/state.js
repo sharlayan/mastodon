@@ -48,6 +48,7 @@ export const reduceSharlayanCompose = (
   if (action.type === 'compose/circle_change') {
     return state
       .set('circle_id', action.payload)
+      .update('privacy', privacy => action.payload && privacy === 'direct' ? 'private' : privacy)
       .set('idempotencyKey', createIdempotencyKey());
   }
 

@@ -1,6 +1,7 @@
 import { fromJS } from 'immutable';
 
-import { COMPOSE_REPLY, COMPOSE_RESET, COMPOSE_SET_STATUS, COMPOSE_SUBMIT_SUCCESS } from '../../actions/compose';
+import { COMPOSE_DIRECT, COMPOSE_REPLY, COMPOSE_RESET, COMPOSE_SET_STATUS, COMPOSE_SUBMIT_SUCCESS } from '../../actions/compose';
+import { changeComposeCircle } from '../../actions/compose_typed';
 import { STATUS_DRAFT_DELETE_SUCCESS, STATUS_DRAFT_SAVE_REQUEST, STATUS_DRAFT_SAVE_SUCCESS } from '../../actions/status_drafts';
 import { REDRAFT } from '../../actions/statuses';
 import { getScheduledSubmissionContext } from '../../sharlayan/compose/scheduled_submission';
@@ -98,6 +99,71 @@ describe('compose restoration transitions', () => {
       [COMPOSE_SET_STATUS, null, 'nobody', null],
       [REDRAFT, null, 'nobody', null],
     ]);
+  });
+
+  it('clears a restored circle when starting a direct message', () => {
+    const state = composeReducer(loadedDraft(), {
+      type: COMPOSE_DIRECT,
+      account: fromJS({ id: 'recipient', acct: 'alice' }),
+    });
+    const submission = getSharlayanComposeSubmission({
+      getState: () => fromJS({}).set('compose', state),
+      effectiveStatusId: null,
+    });
+
+    expect(state.get('circle_id')).toBeNull();
+    expect(state.get('privacy')).toBe('direct');
+    expect(submission).toMatchObject({ circleId: null, visibility: 'direct', quoteApprovalPolicy: 'nobody' });
+  });
+
+  it('clears a previously selected circle when replying to a direct message', () => {
+    const state = composeReducer(loadedDraft(), {
+      type: COMPOSE_REPLY,
+      status: sourceStatus.merge(fromJS({ visibility: 'direct', account: { id: 'recipient', acct: 'alice' }, mentions: [] })),
+    });
+    const submission = getSharlayanComposeSubmission({
+      getState: () => fromJS({}).set('compose', state),
+      effectiveStatusId: null,
+    });
+
+    expect(state.get('in_reply_to')).toBe(sourceStatus.get('id'));
+    expect(state.get('circle_id')).toBeNull();
+    expect(submission).toMatchObject({ circleId: null, visibility: 'direct' });
+  });
+
+  it('keeps an explicitly selected circle when replying to a circle post outside direct mode', () => {
+    const state = composeReducer(loadedDraft(), {
+      type: COMPOSE_REPLY,
+      status: sourceStatus.merge(fromJS({ visibility: 'private', limited_scope: 'circle', account: { id: 'recipient', acct: 'alice' }, mentions: [] })),
+    });
+    const submission = getSharlayanComposeSubmission({
+      getState: () => fromJS({}).set('compose', state),
+      effectiveStatusId: null,
+    });
+
+    expect(submission).toMatchObject({ circleId: 'old-circle', visibility: 'private' });
+  });
+
+  it('allows a circle to be explicitly selected after entering direct mode', () => {
+    const direct = composeReducer(undefined, { type: COMPOSE_DIRECT, account: fromJS({ id: 'recipient', acct: 'alice' }) });
+    const state = composeReducer(direct, changeComposeCircle('chosen-circle'));
+    const submission = getSharlayanComposeSubmission({
+      getState: () => fromJS({}).set('compose', state),
+      effectiveStatusId: null,
+    });
+
+    expect(state.get('privacy')).toBe('private');
+    expect(submission).toMatchObject({ circleId: 'chosen-circle', visibility: 'private' });
+  });
+
+  it('keeps direct visibility when a stale circle reaches the submission boundary', () => {
+    const state = loadedDraft().set('privacy', 'direct');
+    const submission = getSharlayanComposeSubmission({
+      getState: () => fromJS({}).set('compose', state),
+      effectiveStatusId: null,
+    });
+
+    expect(submission).toMatchObject({ circleId: null, visibility: 'direct', quoteApprovalPolicy: 'nobody' });
   });
 
   it('forgets the loaded draft when the composer is reset', () => {

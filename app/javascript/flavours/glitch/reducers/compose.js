@@ -586,7 +586,9 @@ export const composeReducer = (state = initialState, action) => {
       map.set('draft_save_request', null);
       map.set('in_reply_to', action.status.get('id'));
       map.set('text', statusToTextMentions(state, action.status, action.statusRebloggedBy));
-      map.set('privacy', privacyPreference(action.status.get('visibility'), state.get('default_privacy')));
+      const privacy = privacyPreference(action.status.get('visibility'), state.get('default_privacy'));
+      map.set('privacy', privacy);
+      if (privacy === 'direct') map.set('circle_id', null);
       map.update(
         'advanced_options',
         map => map.merge(new ImmutableMap({ do_not_federate: !!action.status.get('local_only') })),
@@ -690,6 +692,7 @@ export const composeReducer = (state = initialState, action) => {
       map.update('text', text => [text.trim(), `@${action.account.get('acct')} `].filter((str) => str.length !== 0).join(' '));
       map.setIn(['advanced_options', 'threaded_mode'], false);
       map.set('privacy', 'direct');
+      map.set('circle_id', null);
       map.set('focusDate', new Date());
       map.set('caretPosition', null);
       map.set('idempotencyKey', uuid());
