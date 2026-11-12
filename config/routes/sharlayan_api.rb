@@ -551,8 +551,8 @@ namespace :api, format: false do
     post 'invite/delete', to: 'invites#destroy'
     post 'invite/list', to: 'invites#index'
     post 'invite/limit', to: 'invites#limit'
-    match 'fetch-rss', to: 'stub#noop', via: [:get, :post]
-    post 'fetch-external-resources', to: 'stub#noop'
+    match 'fetch-rss', to: 'fetch#rss', via: [:get, :post]
+    post 'fetch-external-resources', to: 'fetch#external_resources'
     post 'test', to: 'stub#noop'
     post 'username/available', to: 'stub#unsupported'
     post 'verify-email', to: 'stub#unsupported'
