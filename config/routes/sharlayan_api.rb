@@ -622,6 +622,12 @@ namespace :api, format: false do
       post 'admin/server-info', to: 'system#server_info'
       post 'admin/get-index-stats', to: 'system#index_stats'
       post 'admin/get-table-stats', to: 'system#table_stats'
+      post 'admin/system-webhook/list', to: 'system_webhooks#index'
+      post 'admin/system-webhook/show', to: 'system_webhooks#show'
+      post 'admin/system-webhook/create', to: 'system_webhooks#create'
+      post 'admin/system-webhook/update', to: 'system_webhooks#update'
+      post 'admin/system-webhook/delete', to: 'system_webhooks#destroy'
+      post 'admin/system-webhook/test', to: 'system_webhooks#test'
     end
 
     post 'admin/queue/pause', to: 'stub#unsupported'

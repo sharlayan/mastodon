@@ -1644,6 +1644,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191048) do
     t.index ["account2_id"], name: "index_misskey_reversi_games_on_account2_id"
   end
 
+  create_table "misskey_system_webhooks", id: :bigint, default: -> { "timestamp_id('misskey_system_webhooks'::text)" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "webhook_id", null: false
+    t.index ["webhook_id"], name: "index_misskey_system_webhooks_on_webhook_id", unique: true
+  end
+
   create_table "misskey_user_list_favorites", id: :bigint, default: -> { "timestamp_id('misskey_user_list_favorites'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
@@ -2753,6 +2761,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191048) do
   add_foreign_key "misskey_registry_items", "accounts", on_delete: :cascade
   add_foreign_key "misskey_reversi_games", "accounts", column: "account1_id", on_delete: :cascade
   add_foreign_key "misskey_reversi_games", "accounts", column: "account2_id", on_delete: :cascade
+  add_foreign_key "misskey_system_webhooks", "webhooks", on_delete: :cascade
   add_foreign_key "misskey_user_list_favorites", "accounts", on_delete: :cascade
   add_foreign_key "misskey_user_list_favorites", "lists", on_delete: :cascade
   add_foreign_key "misskey_user_list_settings", "lists", on_delete: :cascade
