@@ -665,7 +665,9 @@ export const DecorationModal: FC<DialogModalProps> = ({ onClose }) => {
         ({ instanceId: _instanceId, ...rest }) => rest,
       );
       void dispatch(patchProfile({ avatar_decorations: payload })).then(
-        onClose,
+        (action) => {
+          if (patchProfile.fulfilled.match(action)) onClose();
+        },
       );
     }
   }, [dispatch, isPending, configs, onClose]);
