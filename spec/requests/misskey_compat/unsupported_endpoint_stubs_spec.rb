@@ -73,13 +73,6 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       request-reset-password
       reset-db
       reset-password
-      reversi/cancel-match
-      reversi/games
-      reversi/invitations
-      reversi/match
-      reversi/show-game
-      reversi/surrender
-      reversi/verify
       sw/update-registration
       username/available
       users/flashs
