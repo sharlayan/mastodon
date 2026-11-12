@@ -14,7 +14,7 @@ module Sharlayan
           '_misskey_reaction' => 'misskey:_misskey_reaction',
           '_misskey_chatRoom' => 'misskey:_misskey_chatRoom',
           '_misskey_chatArchived' => 'misskey:_misskey_chatArchived',
-          '_misskey_chatRoomMembers' => 'misskey:_misskey_chatRoomMembers',
+          '_misskey_chatRoomMembers' => { '@id' => 'misskey:_misskey_chatRoomMembers', '@type' => '@id', '@container' => '@set' },
           '_misskey_chatRoomRosterAt' => 'misskey:_misskey_chatRoomRosterAt',
           '_misskey_dice' => { '@id' => 'misskey:_misskey_dice', '@type' => '@json' },
         },
