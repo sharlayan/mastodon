@@ -619,6 +619,9 @@ namespace :api, format: false do
       post 'admin/queue/clear', to: 'queue#clear'
       post 'admin/queue/deliver-delayed', to: 'queue#deliver_delayed'
       post 'admin/queue/inbox-delayed', to: 'queue#inbox_delayed'
+      post 'admin/server-info', to: 'system#server_info'
+      post 'admin/get-index-stats', to: 'system#index_stats'
+      post 'admin/get-table-stats', to: 'system#table_stats'
     end
 
     post 'admin/queue/pause', to: 'stub#unsupported'
