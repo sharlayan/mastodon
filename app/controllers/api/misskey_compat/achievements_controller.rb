@@ -2,6 +2,7 @@
 
 class Api::MisskeyCompat::AchievementsController < Api::MisskeyCompat::BaseController
   requires_write_scope :claim
+  requires_misskey_permission 'read:account', :index
   requires_misskey_permission 'write:account', :claim
 
   before_action :require_user!, only: :claim

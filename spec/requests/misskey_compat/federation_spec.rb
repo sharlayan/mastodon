@@ -143,15 +143,39 @@ RSpec.describe 'Misskey-compat federation' do
       expect(response).to have_http_status(403)
     end
 
-    it 'enqueues a refresh for a privileged user' do
+    it 'rejects read-only OAuth and MiAuth app tokens for privileged users' do
       admin = Fabricate(:admin_user)
-      token = Fabricate(:accessible_access_token, resource_owner_id: admin.id, scopes: 'read').token
+      tokens = [
+        Fabricate(:accessible_access_token, resource_owner_id: admin.id, scopes: 'read').token,
+        Fabricate(:accessible_access_token, resource_owner_id: admin.id, scopes: 'admin:read').token,
+        MisskeyCompat::MiAuth.issue_token(admin, permissions: %w(read:account write:account)).token,
+      ]
 
-      expect do
-        post '/api/federation/update-remote-user', params: { i: token, userId: MisskeyCompat::MiId.encode(remote.id) }, as: :json
-      end.to enqueue_sidekiq_job(RemoteAccountRefreshWorker).with(remote.id)
+      tokens.each do |access_token|
+        expect do
+          post '/api/federation/update-remote-user', params: { i: access_token, userId: MisskeyCompat::MiId.encode(remote.id) }, as: :json
+        end.to_not enqueue_sidekiq_job(RemoteAccountRefreshWorker)
 
-      expect(response).to have_http_status(204)
+        expect(response).to have_http_status(403)
+        expect(response.parsed_body.dig(:error, :code)).to eq('PERMISSION_DENIED')
+      end
+    end
+
+    it 'enqueues a refresh with native federation-manager tokens and admin write OAuth tokens' do
+      role = Fabricate(:user_role, permissions: UserRole::FLAGS[:manage_federation])
+      manager = Fabricate(:user, role: role)
+      tokens = [
+        MisskeyCompat::MiAuth.issue_native_token(manager).token,
+        Fabricate(:accessible_access_token, resource_owner_id: manager.id, scopes: 'admin:write').token,
+      ]
+
+      tokens.each do |access_token|
+        expect do
+          post '/api/federation/update-remote-user', params: { i: access_token, userId: MisskeyCompat::MiId.encode(remote.id) }, as: :json
+        end.to enqueue_sidekiq_job(RemoteAccountRefreshWorker).with(remote.id)
+
+        expect(response).to have_http_status(204)
+      end
     end
   end
 end

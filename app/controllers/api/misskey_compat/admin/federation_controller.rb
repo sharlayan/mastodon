@@ -1,9 +1,19 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::Admin::FederationController < Api::MisskeyCompat::Admin::ServerBaseController
-  misskey_admin_endpoint :delete_all_files, :refresh_metadata, :remove_all_following, :update_instance, kind: 'write:admin:federation', permission: :manage_federation
+  misskey_admin_endpoint :delete_all_files, :refresh_metadata, :remove_all_following, :update_instance, :update_remote_user, kind: 'write:admin:federation', permission: :manage_federation
 
-  before_action :set_domain
+  before_action :set_domain, except: :update_remote_user
+
+  def update_remote_user
+    return if rate_limited?(:misskey_compat_api)
+
+    account = Account.remote.find_by(id: params[:userId])
+    return render_error('No such user', 'NO_SUCH_USER', 404) if account.nil?
+
+    RemoteAccountRefreshWorker.perform_async(account.id)
+    head 204
+  end
 
   def delete_all_files
     authorize :instance, :destroy?

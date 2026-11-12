@@ -39,6 +39,27 @@ RSpec.describe 'Misskey-compat achievement endpoints' do
     expect(response).to have_http_status(404)
   end
 
+  it 'lists achievements for native and account-reading MiAuth tokens while rejecting other app permissions' do
+    MisskeyAchievement.unlock!(account, 'notes1')
+    tokens = [
+      MisskeyCompat::MiAuth.issue_native_token(user).token,
+      MisskeyCompat::MiAuth.issue_token(user, permissions: ['read:account']).token,
+    ]
+
+    tokens.each do |access_token|
+      post '/api/users/achievements', params: { i: access_token, userId: MisskeyCompat::MiId.encode(account.id) }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:name)).to eq(['notes1'])
+    end
+
+    app_token = MisskeyCompat::MiAuth.issue_token(user, permissions: ['write:account']).token
+    post '/api/users/achievements', params: { i: app_token, userId: MisskeyCompat::MiId.encode(account.id) }, as: :json
+
+    expect(response).to have_http_status(403)
+    expect(response.parsed_body.dig(:error, :code)).to eq('PERMISSION_DENIED')
+  end
+
   it 'awards myNoteFavorited1 to the local author when someone else favorites the note through the compat API' do
     status = Fabricate(:status, account: account)
     other = Fabricate(:user)

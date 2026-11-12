@@ -246,7 +246,7 @@ namespace :api, format: false do
     match 'federation/users', to: 'federation#users', via: [:get, :post]
     match 'federation/followers', to: 'federation#followers', via: [:get, :post]
     match 'federation/following', to: 'federation#following', via: [:get, :post]
-    post 'federation/update-remote-user', to: 'federation#update_remote_user'
+    post 'federation/update-remote-user', to: 'admin/federation#update_remote_user'
     post 'i', to: 'i#show'
     post 'i/update', to: 'i#update'
     post 'i/pin', to: 'i#pin'

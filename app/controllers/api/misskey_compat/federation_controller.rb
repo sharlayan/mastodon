@@ -83,24 +83,6 @@ class Api::MisskeyCompat::FederationController < Api::MisskeyCompat::BaseControl
     render_followings(:following)
   end
 
-  def update_remote_user
-    return if rate_limited?(:misskey_compat_api)
-
-    require_user!
-    return if performed?
-
-    unless current_user.can?(:manage_federation)
-      render_error('Insufficient privileges', 'PERMISSION_DENIED', 403)
-      return
-    end
-
-    account = Account.remote.find_by(id: params[:userId])
-    return render_error('No such user', 'NO_SUCH_USER', 404) if account.nil?
-
-    RemoteAccountRefreshWorker.perform_async(account.id)
-    head 204
-  end
-
   private
 
   def render_followings(direction)
