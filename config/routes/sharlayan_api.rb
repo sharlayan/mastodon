@@ -531,6 +531,8 @@ namespace :api, format: false do
     post 'admin/accounts/delete', to: 'stub#unsupported'
     post 'admin/delete-account', to: 'stub#unsupported'
     post 'admin/send-email', to: 'stub#unsupported'
+    post 'admin/invite/create', to: 'admin_invites#create'
+    post 'admin/invite/list', to: 'admin_invites#index'
     post 'admin/roles/list', to: 'admin_roles#index'
     post 'admin/roles/show', to: 'admin_roles#show'
     post 'admin/roles/users', to: 'admin_roles#users'
