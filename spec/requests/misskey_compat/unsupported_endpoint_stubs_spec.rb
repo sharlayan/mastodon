@@ -34,14 +34,9 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       i/export-antennas
       i/export-favorites
       i/import-antennas
-      i/change-password
-      i/update-email
-      request-reset-password
       reset-db
-      reset-password
       sw/update-registration
       username/available
-      verify-email
     )
   end
 

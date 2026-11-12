@@ -13,6 +13,8 @@ class MisskeyCompat::UserSerializer
 
   def self.secret_fields(user)
     {
+      email: user.unconfirmed_email.presence || user.email,
+      emailVerified: user.confirmed? && user.unconfirmed_email.blank?,
       securityKeysList: security_keys_list(user),
     }
   end

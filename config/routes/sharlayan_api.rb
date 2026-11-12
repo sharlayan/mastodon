@@ -565,9 +565,9 @@ namespace :api, format: false do
     post 'bubble-game/register', to: 'stub#no_content'
     post 'ping', to: 'meta#ping'
     post 'promo/read', to: 'stub#no_content'
-    post 'request-reset-password', to: 'stub#unsupported'
+    post 'request-reset-password', to: 'credentials#request_reset_password'
     post 'reset-db', to: 'stub#unsupported'
-    post 'reset-password', to: 'stub#unsupported'
+    post 'reset-password', to: 'credentials#reset_password'
     match 'retention', to: 'retention#index', via: [:get, :post]
     post 'reversi/cancel-match', to: 'reversi#cancel_match'
     post 'reversi/games', to: 'reversi#games'
@@ -576,8 +576,8 @@ namespace :api, format: false do
     post 'reversi/show-game', to: 'reversi#show_game'
     post 'reversi/surrender', to: 'reversi#surrender'
     post 'reversi/verify', to: 'reversi#verify'
-    post 'i/change-password', to: 'stub#unsupported'
-    post 'i/update-email', to: 'stub#unsupported'
+    post 'i/change-password', to: 'i#change_password'
+    post 'i/update-email', to: 'i#update_email'
     post 'i/export-antennas', to: 'stub#unsupported'
     post 'i/export-blocking', to: 'account_data#export_blocking'
     post 'i/export-clips', to: 'account_data#export_clips'
@@ -601,6 +601,6 @@ namespace :api, format: false do
     post 'fetch-external-resources', to: 'fetch#external_resources'
     post 'test', to: 'stub#noop'
     post 'username/available', to: 'stub#unsupported'
-    post 'verify-email', to: 'stub#unsupported'
+    post 'verify-email', to: 'credentials#verify_email'
   end
 end
