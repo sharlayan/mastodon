@@ -24,6 +24,7 @@ class Api::MisskeyCompat::UsersController < Api::MisskeyCompat::BaseController
     return render_error('No such user', 'NO_SUCH_USER', 404) if @account.nil?
     return if rate_limited?(:misskey_users_show)
 
+    MisskeyUserPageView.record!(@account, viewer: current_account, ip: request.remote_ip)
     render json: serialize_account(@account)
   end
 

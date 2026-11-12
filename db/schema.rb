@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_12_191047) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_12_191048) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1661,6 +1661,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191047) do
     t.index ["list_id"], name: "index_misskey_user_list_settings_on_list_id", unique: true
   end
 
+  create_table "misskey_user_page_views", id: :bigint, default: -> { "timestamp_id('misskey_user_page_views'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "bucket_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "viewer_key", null: false
+    t.integer "views", default: 0, null: false
+    t.boolean "visitor", default: false, null: false
+    t.index ["account_id", "bucket_at", "visitor", "viewer_key"], name: "index_misskey_user_page_views_on_viewer_bucket", unique: true
+  end
+
   create_table "misskey_webhooks", id: :bigint, default: -> { "timestamp_id('misskey_webhooks'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.boolean "active", default: true, null: false
@@ -2745,6 +2756,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191047) do
   add_foreign_key "misskey_user_list_favorites", "accounts", on_delete: :cascade
   add_foreign_key "misskey_user_list_favorites", "lists", on_delete: :cascade
   add_foreign_key "misskey_user_list_settings", "lists", on_delete: :cascade
+  add_foreign_key "misskey_user_page_views", "accounts", on_delete: :cascade
   add_foreign_key "misskey_webhooks", "accounts", on_delete: :cascade
   add_foreign_key "mutes", "accounts", column: "target_account_id", name: "fk_eecff219ea", on_delete: :cascade
   add_foreign_key "mutes", "accounts", name: "fk_b8d8daf315", on_delete: :cascade
