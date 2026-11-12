@@ -573,6 +573,13 @@ namespace :api, format: false do
     post 'admin/roles/unassign', to: 'admin_roles#unassign'
     post 'admin/roles/update-default-policies', to: 'admin_roles#update_default_policies'
 
+    scope module: :admin do
+      post 'admin/announcements/list', to: 'announcements#index'
+      post 'admin/announcements/create', to: 'announcements#create'
+      post 'admin/announcements/update', to: 'announcements#update'
+      post 'admin/announcements/delete', to: 'announcements#destroy'
+    end
+
     match 'admin/*any', to: 'stub#noop', via: [:get, :post], format: false
     post 'v2/admin/emoji/list', to: 'stub#noop'
     post 'app/create', to: 'apps#create'
