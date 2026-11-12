@@ -28,7 +28,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   RELATED_NOTE_SCAN_LIMIT = 1_000
   PARTIAL_BULK_MAX_IDS = 100
   SCALAR_ID_PARAMS = %i(noteId replyId renoteId draftId).freeze
-  OPTIONAL_AUTHENTICATION_ACTIONS = %i(show show_partial_bulk children replies conversation renotes note_reactions featured clips).freeze
+  OPTIONAL_AUTHENTICATION_ACTIONS = %i(index show show_partial_bulk children replies conversation renotes note_reactions featured clips).freeze
 
   requires_write_scope :unrenote, :thread_muting_create, :thread_muting_delete,
                        :reactions_create, :reactions_delete, :create, :update,
@@ -66,6 +66,13 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   rescue_from InvalidParamError do |e|
     render_invalid_param(e.param, e.reason)
+  end
+
+  def index
+    return if current_account.nil? && rate_limited?(:misskey_compat_api)
+
+    feed = public_feed(local: ActiveModel::Type::Boolean.new.cast(params[:local]), only_media: timeline_with_files?)
+    render_notes(filtered_timeline([feed], timeline_pagination_limit) { |status| global_note_filters_match?(status) })
   end
 
   def timeline
@@ -983,6 +990,15 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     end
   end
 
+  def global_note_filters_match?(status)
+    {
+      reply: -> { status.in_reply_to_id.present? },
+      renote: -> { status.reblog? || status.quote&.accepted? || false },
+      withFiles: -> { status.ordered_media_attachments.any? },
+      poll: -> { status.poll_id.present? },
+    }.all? { |key, matches| params[key].nil? || ActiveModel::Type::Boolean.new.cast(params[key]) == matches.call }
+  end
+
   def filtered_timeline(feeds, limit, filter_replies: false)
     forward = timeline_min_id.present?
     states = feeds.map { |feed| { feed: feed, buffer: [], cursor: forward ? timeline_min_id : timeline_until_id, scanned: 0, exhausted: false } }
@@ -1000,6 +1016,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       next if timeline_with_files? && status.ordered_media_attachments.empty?
       next if !timeline_with_renotes? && pure_timeline_renote?(status)
       next if filter_replies && !timeline_with_replies? && status.in_reply_to_account_id.present? && status.in_reply_to_account_id != status.account_id
+      next if block_given? && !yield(status)
 
       results << status
     end

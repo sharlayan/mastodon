@@ -280,6 +280,7 @@ namespace :api, format: false do
     post 'sw/show-registration', to: 'sw#show_registration'
     post 'sw/update-registration', to: 'stub#unsupported'
 
+    post 'notes', to: 'notes#index'
     post 'notes/timeline', to: 'notes#timeline'
     post 'notes/local-timeline', to: 'notes#local_timeline'
     post 'notes/hybrid-timeline', to: 'notes#hybrid_timeline'
