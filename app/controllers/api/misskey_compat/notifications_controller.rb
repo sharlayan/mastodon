@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseController
-  requires_write_scope :mark_all_as_read, :create, :flush
+  requires_write_scope :mark_all_as_read, :create, :flush, :test_notification
   requires_misskey_permission 'read:notifications', :index
-  requires_misskey_permission 'write:notifications', :mark_all_as_read, :create, :flush
+  requires_misskey_permission 'write:notifications', :mark_all_as_read, :create, :flush, :test_notification
 
   include RoutingHelper
 
@@ -41,7 +41,7 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
     scope = scope.where('notifications.created_at > ?', compat_time(params[:sinceDate])) if params[:sinceId].blank? && params[:sinceDate].present?
     direction = (params[:sinceId].present? || params[:sinceDate].present?) && params[:untilId].blank? && params[:untilDate].blank? ? :asc : :desc
     limit = pagination_limit(default: 10, max: 100)
-    notifications = filtered_notifications(scope, include_types, exclude_types, direction, limit)
+    notifications = merged_notifications(scope, include_types, exclude_types, direction, limit)
 
     advance_notification_marker! unless params[:markAsRead] == false
     render json: notifications
@@ -53,6 +53,21 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
   end
 
   def create
+    return unless object_body!
+    return render_invalid_param('#/properties/body', 'must be a string') unless params[:body].is_a?(String)
+    return render_invalid_param('#/properties/header', 'must be a string') unless params[:header].nil? || params[:header].is_a?(String)
+    return render_invalid_param('#/properties/icon', 'must be a string') unless params[:icon].nil? || params[:icon].is_a?(String)
+    return if rate_limited?(:misskey_compat_notifications_create)
+
+    MisskeyCompat::Notifier.notify!(current_account, 'app', body: params[:body], header: params[:header] || current_token.application&.name, icon: params[:icon])
+    head 204
+  end
+
+  def test_notification
+    return unless object_body!
+    return if rate_limited?(:misskey_compat_test_notification)
+
+    MisskeyCompat::Notifier.notify!(current_account, 'test')
     head 204
   end
 
@@ -70,16 +85,40 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
     false
   end
 
-  def filtered_notifications(scope, include_types, exclude_types, direction, limit)
-    notifications = filter_types(scope, include_types, exclude_types).joins(:from_account).includes(:from_account).order(id: direction).limit(limit).to_a
-    notifications.group_by(&:type).each do |type, records|
+  def merged_notifications(scope, include_types, exclude_types, direction, limit)
+    records = filter_types(scope, include_types, exclude_types).joins(:from_account).includes(:from_account).order(id: direction).limit(limit).to_a
+    records.concat(misskey_notifications(include_types, exclude_types, direction, limit))
+    records.sort_by!(&:id)
+    records.reverse! if direction == :desc
+    records = records.first(limit)
+
+    notifications = records.grep(Notification)
+    notifications.group_by(&:type).each do |type, group|
       associations = Notification::TARGET_STATUS_INCLUDES_BY_TYPE[type]
-      ActiveRecord::Associations::Preloader.new(records: records, associations: associations).call if associations
+      ActiveRecord::Associations::Preloader.new(records: group, associations: associations).call if associations
     end
 
     statuses = notifications.filter_map { |notification| note_status(notification, notification.target_status) }
     context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
-    notifications.filter_map { |notification| serialize(notification, context: context) }
+    records.filter_map do |record|
+      if record.is_a?(MisskeyNotification)
+        MisskeyCompat::MisskeyNotificationSerializer.serialize(record, user: record.from_account && context.user(record.from_account))
+      else
+        serialize(record, context: context)
+      end
+    end
+  end
+
+  def misskey_notifications(include_types, exclude_types, direction, limit)
+    types = (include_types || (NOTIFICATION_TYPES - Array(exclude_types))) & MisskeyNotification::TYPES
+    return [] if types.empty?
+
+    scope = MisskeyNotification.where(account: current_account).of_types(types).includes(:from_account)
+    scope = scope.where(id: ...(params[:untilId].to_i)) if params[:untilId].present?
+    scope = scope.where('misskey_notifications.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
+    scope = scope.where(created_at: ...compat_time(params[:untilDate])) if params[:untilId].blank? && params[:untilDate].present?
+    scope = scope.where('misskey_notifications.created_at > ?', compat_time(params[:sinceDate])) if params[:sinceId].blank? && params[:sinceDate].present?
+    scope.order(id: direction).limit(limit).to_a
   end
 
   def filter_types(scope, include_types, exclude_types)
@@ -95,7 +134,7 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
   end
 
   def advance_notification_marker!
-    latest_id = current_account.notifications.where(filtered: false).maximum(:id)
+    latest_id = [current_account.notifications.where(filtered: false).maximum(:id), MisskeyNotification.latest_id_for(current_account)].compact.max
     return if latest_id.nil?
 
     marker = current_user.markers.find_or_create_by(timeline: 'notifications')

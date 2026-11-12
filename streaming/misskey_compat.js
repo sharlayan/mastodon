@@ -72,6 +72,7 @@ const hasScope = (request, ...scopes) => Array.isArray(request.scopes) && scopes
 const canReadStatuses = (request, grantPermissions) => (Array.isArray(grantPermissions) ? grantPermissions.includes('read:account') : hasScope(request, 'read', 'read:statuses'));
 
 const canPlayReversi = (request, grantPermissions) => (Array.isArray(grantPermissions) ? grantPermissions.includes('write:account') : hasScope(request, 'write', 'write:accounts'));
+const canReadMain = (request, grantPermissions) => (Array.isArray(grantPermissions) ? grantPermissions.includes('read:account') : hasScope(request, 'read', 'read:notifications'));
 
 const canReadDrive = (request, grantPermissions) => (Array.isArray(grantPermissions) ? grantPermissions.includes('read:drive') : hasScope(request, 'read', 'read:drive'));
 
@@ -381,6 +382,41 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
     })().catch((err) => logger.error({ err }, 'misskey compat reversi action failed'));
   };
 
+  const mainStore = (session) => {
+    if (!session.misskeyMain) session.misskeyMain = new Map();
+    return session.misskeyMain;
+  };
+
+  const connectMain = (session, id) => {
+    const subscriptions = mainStore(session);
+    if (subscriptions.has(id) || subscriptions.size >= MAX_CHANNEL_SUBSCRIPTIONS) return;
+    const reservation = {};
+    subscriptions.set(id, reservation);
+
+    isEnabled().then((enabled) => (enabled ? grantPermissions(session) : null)).then((permissions) => {
+      if (permissions === null || subscriptions.get(id) !== reservation || !canReadMain(session.request, permissions)) return;
+
+      const channelId = `${MISSKEY_PREFIX}main:${session.request.accountId}`;
+      const listener = (json) => {
+        if (!json || json.event !== 'main' || typeof json.payload?.type !== 'string') return;
+        send(session, 'channel', { id, type: json.payload.type, body: json.payload.body });
+      };
+      subscribe(channelId, listener);
+      subscriptions.set(id, { channelId, listener, stopHeartbeat: subscriptionHeartbeat([channelId]) });
+    }).catch((err) => logger.error({ err }, 'misskey compat main connect failed')).finally(() => {
+      if (subscriptions.get(id) === reservation) subscriptions.delete(id);
+    });
+  };
+
+  const teardownMain = (session, id) => {
+    const sub = session.misskeyMain?.get(id);
+    if (!sub) return;
+    session.misskeyMain.delete(id);
+    if (!sub.channelId) return;
+    unsubscribe(sub.channelId, sub.listener);
+    sub.stopHeartbeat();
+  };
+
   const channelMessage = (session, body) => {
     if (!body || typeof body.id !== 'string') return;
     const reversiSubscription = session.misskey?.channels.get(body.id);
@@ -412,6 +448,7 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
     const { channel, id } = body;
     if (id.length > MAX_CHANNEL_ID_LENGTH || channel.length > MAX_CHANNEL_NAME_LENGTH) return;
     if (CHAT_CHANNELS.has(channel)) {
+      if (channel === 'main') connectMain(session, id);
       connectChat(session, body);
       return;
     }
@@ -505,11 +542,18 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
   };
 
   const disconnect = (session, body) => {
-    if (!session.misskey || !body || typeof body.id !== 'string') return;
-    teardown(session.misskey.channels, body.id);
+    if (!body || typeof body.id !== 'string') return;
+    teardownMain(session, body.id);
+    if (session.misskey) teardown(session.misskey.channels, body.id);
   };
 
   const cleanup = (session) => {
+    if (session.misskeyMain) {
+      for (const id of Array.from(session.misskeyMain.keys())) {
+        teardownMain(session, id);
+      }
+    }
+
     if (session.misskey) {
       for (const id of Array.from(session.misskey.channels.keys())) {
         teardown(session.misskey.channels, id);

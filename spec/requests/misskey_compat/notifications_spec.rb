@@ -176,6 +176,74 @@ RSpec.describe 'Misskey-compat notification endpoints' do
     end
   end
 
+  describe 'Misskey-only notifications' do
+    let(:compat_app) { Fabricate(:application, name: 'Compat App') }
+    let(:app_token) { Fabricate(:accessible_access_token, resource_owner_id: user.id, application: compat_app, scopes: 'read write').token }
+
+    it 'validates and creates app and test notifications with the token application as the default header' do
+      post '/api/notifications/create', params: { i: read_token, body: 'denied' }, as: :json
+      expect(response).to have_http_status(403)
+
+      post '/api/notifications/create', params: { i: app_token }, as: :json
+      expect(response).to have_http_status(400)
+
+      post '/api/notifications/create', params: { i: app_token, body: 'Build finished' }, as: :json
+      expect(response).to have_http_status(204)
+      post '/api/notifications/create', params: { i: app_token, body: 'Custom', header: 'Header', icon: 'https://example.com/icon.png' }, as: :json
+      post '/api/notifications/test-notification', params: { i: app_token }, as: :json
+      expect(response).to have_http_status(204)
+
+      post '/api/i/notifications', params: { i: read_token, markAsRead: false }, as: :json
+
+      test_notification = MisskeyNotification.find_by(notification_type: 'test')
+      expect(response.parsed_body).to match([
+                                              eq('id' => MisskeyCompat::MiId.encode(test_notification.id), 'createdAt' => test_notification.created_at.iso8601, 'type' => 'test'),
+                                              include(type: 'app', body: 'Custom', header: 'Header', icon: 'https://example.com/icon.png'),
+                                              include(type: 'app', body: 'Build finished', header: 'Compat App', icon: nil).and(satisfy { |item| !item.key?('userId') }),
+                                            ])
+    end
+
+    it 'merges Misskey-only notifications into Mastodon pages by id, type filters and the read marker' do
+      older = Fabricate(:notification, account: account, type: :follow, activity: Fabricate(:follow, account: actor, target_account: account))
+      app_notification = MisskeyCompat::Notifier.notify!(account, 'app', body: 'one', header: nil, icon: nil)
+      test_notification = MisskeyCompat::Notifier.notify!(account, 'test')
+      newer = Fabricate(:notification, account: account, type: :status, activity: Fabricate(:status, account: actor))
+
+      post '/api/i/notifications', params: { i: read_token, markAsRead: false }, as: :json
+      expect(response.parsed_body.pluck(:id)).to eq([newer, test_notification, app_notification, older].map { |n| MisskeyCompat::MiId.encode(n.id) })
+
+      post '/api/i/notifications', params: { i: read_token, untilId: MisskeyCompat::MiId.encode(test_notification.id), limit: 1, markAsRead: false }, as: :json
+      expect(response.parsed_body.pluck(:id)).to eq([MisskeyCompat::MiId.encode(app_notification.id)])
+
+      post '/api/i/notifications', params: { i: read_token, excludeTypes: ['app', 'test'], markAsRead: false }, as: :json
+      expect(response.parsed_body.pluck(:type)).to eq(%w(note follow))
+
+      newest = MisskeyCompat::Notifier.notify!(account, 'test')
+      post '/api/i/notifications', params: { i: read_token, includeTypes: ['test'] }, as: :json
+      expect(response.parsed_body.pluck(:id)).to eq([newest, test_notification].map { |n| MisskeyCompat::MiId.encode(n.id) })
+      expect(user.markers.find_by(timeline: 'notifications').last_read_id).to eq(newest.id)
+    end
+
+    it 'publishes Misskey-only notifications to the main stream, keeps only the newest per account and skips muted notifiers' do
+      stub_const('MisskeyNotification::PER_ACCOUNT_LIMIT', 2)
+      allow(redis).to receive(:exists?).and_call_original
+      allow(redis).to receive(:exists?).with("subscribed:misskey:main:#{account.id}").and_return(true)
+      allow(redis).to receive(:publish)
+      remote = Fabricate(:account, domain: 'remote.example')
+
+      first = MisskeyCompat::Notifier.notify!(account, 'achievementEarned', achievement: 'notes1')
+      MisskeyCompat::Notifier.notify!(account, 'test')
+      third = MisskeyCompat::Notifier.notify!(account, 'test')
+      account.mute!(actor)
+
+      expect(MisskeyCompat::Notifier.notify!(account, 'test', from_account: actor)).to be_nil
+      expect(MisskeyCompat::Notifier.notify!(remote, 'test')).to be_nil
+      expect(MisskeyNotification.where(account: account).order(:id).pluck(:id)).to eq([third.id - 1, third.id])
+      expect(redis).to have_received(:publish).with("misskey:main:#{account.id}", JSON.generate({ event: 'main', payload: { type: 'notification', body: { id: MisskeyCompat::MiId.encode(first.id), createdAt: first.created_at.iso8601, type: 'achievementEarned', achievement: 'notes1' } } }))
+      expect(redis).to have_received(:publish).exactly(3).times
+    end
+  end
+
   describe 'POST /api/i/read-all-notifications' do
     it 'rejects a read-only token without advancing the marker, then advances it to the latest owned notification' do
       follow = Fabricate(:follow, account: actor, target_account: account)

@@ -257,6 +257,7 @@ namespace :api, format: false do
     post 'notifications/mark-all-as-read', to: 'notifications#mark_all_as_read'
     post 'notifications/create', to: 'notifications#create'
     post 'notifications/flush', to: 'notifications#flush'
+    post 'notifications/test-notification', to: 'notifications#test_notification'
 
     post 'i/registry/get-all', to: 'registry#get_all'
     post 'i/registry/get', to: 'registry#get'

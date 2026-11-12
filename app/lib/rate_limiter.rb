@@ -90,6 +90,16 @@ class RateLimiter
       period: 5.minutes.freeze,
     }.freeze,
 
+    misskey_compat_notifications_create: {
+      limit: 10,
+      period: 1.minute.freeze,
+    }.freeze,
+
+    misskey_compat_test_notification: {
+      limit: 10,
+      period: 1.minute.freeze,
+    }.freeze,
+
     misskey_miauth_hourly: {
       limit: 10,
       period: 1.hour.freeze,

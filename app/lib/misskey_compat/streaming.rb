@@ -77,6 +77,21 @@ module MisskeyCompat
       Rails.logger.warn("[misskey_compat] drive broadcast failed for #{account&.id}: #{e.class} #{e.message}")
     end
 
+    def broadcast_main(redis, account, type, body = nil)
+      return unless Setting.misskey_compat_enabled
+      return if account.nil?
+
+      channel = "misskey:main:#{account.id}"
+      return unless redis.exists?("subscribed:#{channel}")
+
+      body = yield if block_given?
+      return if body.nil?
+
+      redis.publish(channel, JSON.generate({ event: 'main', payload: { type: type, body: body } }))
+    rescue => e
+      Rails.logger.warn("[misskey_compat] main broadcast failed for #{account&.id}: #{e.class} #{e.message}")
+    end
+
     def drive_id(record)
       record.respond_to?(:id) ? record.id : record
     end

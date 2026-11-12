@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_12_191043) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1560,6 +1560,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
     t.index ["media_attachment_ids"], name: "index_misskey_gallery_posts_on_media_attachment_ids", using: :gin
   end
 
+  create_table "misskey_notifications", id: :bigint, default: -> { "timestamp_id('misskey_notifications'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.jsonb "data", default: {}, null: false
+    t.bigint "from_account_id"
+    t.string "notification_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "id"], name: "index_misskey_notifications_on_account_id_and_id", order: { id: :desc }
+    t.index ["from_account_id"], name: "index_misskey_notifications_on_from_account_id"
+  end
+
   create_table "misskey_registry_items", id: :bigint, default: -> { "timestamp_id('misskey_registry_items'::text)" }, force: :cascade do |t|
     t.bigint "access_token_id"
     t.bigint "account_id", null: false
@@ -2683,6 +2694,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
   add_foreign_key "misskey_gallery_likes", "accounts", on_delete: :cascade
   add_foreign_key "misskey_gallery_likes", "misskey_gallery_posts", on_delete: :cascade
   add_foreign_key "misskey_gallery_posts", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_notifications", "accounts", column: "from_account_id", on_delete: :cascade
+  add_foreign_key "misskey_notifications", "accounts", on_delete: :cascade
   add_foreign_key "misskey_registry_items", "accounts", on_delete: :cascade
   add_foreign_key "misskey_reversi_games", "accounts", column: "account1_id", on_delete: :cascade
   add_foreign_key "misskey_reversi_games", "accounts", column: "account2_id", on_delete: :cascade

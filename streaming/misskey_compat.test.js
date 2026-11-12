@@ -153,7 +153,41 @@ test('chat channels tell the server that the viewer has a compatible client', as
   await chat.connect('chatRoom', { roomId: '9' });
   await chat.connect('main');
 
-  assert.deepEqual(chat.heartbeats, [['misskey:chatRoom:7:9', 'misskey:chatClient:7'], ['misskey:chatMain:7', 'misskey:chatClient:7']]);
+  assert.deepEqual(chat.heartbeats.filter((channels) => channels.length > 1), [['misskey:chatRoom:7:9', 'misskey:chatClient:7'], ['misskey:chatMain:7', 'misskey:chatClient:7']]);
+});
+
+test('main channel delivers main stream events without chat and stops after disconnect', async () => {
+  const chat = chatFixture();
+  chat.state.enabled = false;
+  await chat.connect('main', {}, 'main-1');
+  const emitMain = async (payload) => {
+    for (const listener of chat.listeners.get('misskey:main:7') ?? []) listener({ event: 'main', payload });
+    await chat.flush();
+  };
+  await emitMain({ type: 'notification', body: { id: 'n1', type: 'app', body: 'hello' } });
+  await emitMain({ type: 'pageEvent', body: { pageId: 'p1', event: 'clicked' } });
+  for (const listener of chat.listeners.get('misskey:main:7') ?? []) listener({ event: 'chat', payload: { type: 'notification' } });
+  chat.compat.handleMessage(chat.session, { type: 'disconnect', body: { id: 'main-1' } });
+  await emitMain({ type: 'notification', body: { id: 'n2' } });
+
+  assert.deepEqual(chat.sent.map(({ body }) => [body.id, body.type, body.body.id ?? body.body.pageId]), [['main-1', 'notification', 'n1'], ['main-1', 'pageEvent', 'p1']]);
+  assert.deepEqual(chat.heartbeats, [['misskey:main:7']]);
+  assert.equal(chat.session.misskeyMain.size, 0);
+});
+
+test('main channel events need read:account from a Misskey grant or broad OAuth read', async () => {
+  const subscribed = async (grants, scopes) => {
+    const chat = chatFixture();
+    chat.state.grants = grants;
+    chat.session.request.scopes = scopes;
+    await chat.connect('main');
+    return chat.listeners.get('misskey:main:7')?.size ?? 0;
+  };
+
+  assert.equal(await subscribed(['read:chat'], ['read']), 0);
+  assert.equal(await subscribed(undefined, ['read:statuses']), 0);
+  assert.equal(await subscribed(['read:account'], []), 1);
+  assert.equal(await subscribed(undefined, ['read:notifications']), 1);
 });
 
 test('chatUser and chatRoom deliver viewer-specific message and mutation envelopes', async () => {
