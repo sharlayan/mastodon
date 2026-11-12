@@ -281,6 +281,12 @@ namespace :api, format: false do
     post 'i/2fa/update-key', to: 'two_factor#update_key'
     post 'i/2fa/password-less', to: 'stub#unsupported'
     post 'i/signin-history', to: 'signin_history#index'
+    post 'my/apps', to: 'apps#index'
+    post 'i/apps', to: 'tokens#index'
+    post 'i/authorized-apps', to: 'tokens#authorized_apps'
+    post 'i/revoke-token', to: 'tokens#revoke'
+    post 'i/regenerate-token', to: 'tokens#regenerate'
+    post 'miauth/gen-token', to: 'tokens#gen_token'
     post 'miauth/:session/check', to: 'miauth#check'
     post 'signin-flow', to: 'signin#create'
 
@@ -560,8 +566,8 @@ namespace :api, format: false do
 
     match 'admin/*any', to: 'stub#noop', via: [:get, :post], format: false
     post 'v2/admin/emoji/list', to: 'stub#noop'
-    post 'app/create', to: 'stub#noop'
-    post 'app/show', to: 'stub#noop'
+    post 'app/create', to: 'apps#create'
+    post 'app/show', to: 'apps#show'
     post 'bubble-game/ranking', to: 'stub#empty'
     post 'bubble-game/register', to: 'stub#no_content'
     post 'ping', to: 'meta#ping'

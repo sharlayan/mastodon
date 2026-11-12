@@ -13,9 +13,9 @@ module Api::MisskeyCompat::CredentialConfirmation
 
   private
 
-  def confirm_credentials!(password, incorrect_password_id: nil)
+  def confirm_credentials!(password, incorrect_password_id: nil, second_factor: true)
     return false if rate_limited?(:misskey_compat_signin)
-    return false unless confirm_second_factor!
+    return false if second_factor && !confirm_second_factor!
     return true if password.is_a?(String) && current_user.encrypted_password.present? && current_user.valid_password?(password)
 
     if incorrect_password_id.nil?

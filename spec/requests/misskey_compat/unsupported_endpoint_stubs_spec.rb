@@ -5,8 +5,6 @@ require 'rails_helper'
 RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
   let(:object_endpoints) do
     %w(
-      app/create
-      app/show
       test
       v2/admin/emoji/list
     )

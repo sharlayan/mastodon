@@ -1411,10 +1411,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
   create_table "misskey_access_grants", id: :bigint, default: -> { "timestamp_id('misskey_access_grants'::text)" }, force: :cascade do |t|
     t.bigint "access_token_id", null: false
     t.datetime "created_at", null: false
+    t.text "description"
+    t.string "icon_url"
+    t.string "name"
     t.boolean "native_user_token", default: false, null: false
     t.string "permissions", default: [], null: false, array: true
     t.datetime "updated_at", null: false
     t.index ["access_token_id"], name: "index_misskey_access_grants_on_access_token_id", unique: true
+  end
+
+  create_table "misskey_apps", id: :bigint, default: -> { "timestamp_id('misskey_apps'::text)" }, force: :cascade do |t|
+    t.string "callback_url"
+    t.datetime "created_at", null: false
+    t.text "description", default: "", null: false
+    t.bigint "oauth_application_id", null: false
+    t.string "permission", default: [], null: false, array: true
+    t.datetime "updated_at", null: false
+    t.index ["oauth_application_id"], name: "index_misskey_apps_on_oauth_application_id", unique: true
   end
 
   create_table "misskey_channel_favorites", id: :bigint, default: -> { "timestamp_id('misskey_channel_favorites'::text)" }, force: :cascade do |t|
@@ -2639,6 +2652,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
   add_foreign_key "misskey_abuse_report_recipients", "webhooks", on_delete: :cascade
   add_foreign_key "misskey_abuse_report_resolutions", "reports", on_delete: :cascade
   add_foreign_key "misskey_access_grants", "oauth_access_tokens", column: "access_token_id", on_delete: :cascade
+  add_foreign_key "misskey_apps", "oauth_applications", on_delete: :cascade
   add_foreign_key "misskey_channel_favorites", "accounts", on_delete: :cascade
   add_foreign_key "misskey_channel_favorites", "misskey_channels", on_delete: :cascade
   add_foreign_key "misskey_channel_followings", "accounts", on_delete: :cascade
