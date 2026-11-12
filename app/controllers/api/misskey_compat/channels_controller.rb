@@ -4,27 +4,38 @@ class Api::MisskeyCompat::ChannelsController < Api::MisskeyCompat::BaseControlle
   NO_SUCH_CHANNEL_IDS = {
     'show' => '6f6c314b-7486-4897-8966-c04a66a02923',
     'update' => 'f9c5467f-d492-4c3c-9a8d-a70dacc86512',
+    'follow' => 'c0031718-d573-4e85-928e-10039f1fbb68',
+    'unfollow' => '19959ee9-0153-4c51-bbd9-a98c49dc59d6',
+    'favorite' => '4938f5f3-6167-4c04-9149-6607b7542861',
+    'unfavorite' => '353c68dd-131a-476c-aa99-88a345e83668',
+    'mute_create' => '7174361e-d58f-31d6-2e7c-6fb830786a3f',
+    'mute_delete' => 'e7998769-6e94-d9c2-6b8f-94a527314aba',
   }.freeze
   NO_SUCH_FILE_IDS = {
     'create' => 'cd1e9f3e-5a12-4ab4-96f6-5d0a2cc32050',
     'update' => 'e86c14a4-0da2-4032-8df3-e737a04c7f3b',
   }.freeze
   UPDATE_ACCESS_DENIED_ID = '1fb7cb09-d46a-4fdf-b8df-057788cce513'
+  ALREADY_MUTING_ID = '5a251978-769a-da44-3e89-3931e43bb592'
+  EXPIRES_AT_IS_PAST_ID = '42b32236-df2c-a45f-fdbf-def67268f749'
+  NOT_MUTING_ID = '14d55962-6ea8-d990-1333-d6bef78dc2ab'
+  MAX_EXPIRES_AT = 253_402_300_799_000
   FEATURED_LIMIT = 10
   SEARCH_TYPES = %w(nameAndDescription nameOnly).freeze
 
   OPTIONAL_AUTHENTICATION_ACTIONS = %i(show featured search).freeze
-  USER_ACTIONS = %i(create update owned).freeze
+  WRITE_ACTIONS = %i(create update follow unfollow favorite unfavorite mute_create mute_delete).freeze
+  USER_ACTIONS = (WRITE_ACTIONS + %i(owned followed my_favorites mute_list)).freeze
 
-  requires_write_scope :create, :update
+  requires_write_scope(*WRITE_ACTIONS)
   requires_misskey_permission 'read:account', *OPTIONAL_AUTHENTICATION_ACTIONS
-  requires_misskey_permission 'read:channels', :owned
-  requires_misskey_permission 'write:channels', :create, :update
+  requires_misskey_permission 'read:channels', :owned, :followed, :my_favorites, :mute_list
+  requires_misskey_permission 'write:channels', *WRITE_ACTIONS
 
   before_action :require_user!, only: USER_ACTIONS
   before_action :require_user_if_authenticated!, only: OPTIONAL_AUTHENTICATION_ACTIONS
   before_action :require_object_body!
-  before_action :set_channel, only: [:show, :update]
+  before_action :set_channel, only: [:show, :update, :follow, :unfollow, :favorite, :unfavorite, :mute_create, :mute_delete]
 
   def show
     render json: serialize(@channel, detailed: true)
@@ -77,7 +88,71 @@ class Api::MisskeyCompat::ChannelsController < Api::MisskeyCompat::BaseControlle
     render json: serialize_many(paginate(search_scope, MisskeyChannel.arel_table[:id]))
   end
 
+  def follow
+    MisskeyChannelFollowing.find_or_create_by!(account: current_account, misskey_channel: @channel)
+    head 204
+  end
+
+  def unfollow
+    MisskeyChannelFollowing.where(account: current_account, misskey_channel: @channel).delete_all
+    head 204
+  end
+
+  def favorite
+    MisskeyChannelFavorite.find_or_create_by!(account: current_account, misskey_channel: @channel)
+    head 204
+  end
+
+  def unfavorite
+    MisskeyChannelFavorite.where(account: current_account, misskey_channel: @channel).delete_all
+    head 204
+  end
+
+  def followed
+    followings = paginate(MisskeyChannelFollowing.where(account: current_account), MisskeyChannelFollowing.arel_table[:misskey_channel_id]).includes(:misskey_channel)
+    render json: serialize_many(followings.map(&:misskey_channel))
+  end
+
+  def my_favorites
+    favorites = MisskeyChannelFavorite.where(account: current_account).includes(:misskey_channel).order(:id)
+    render json: serialize_many(favorites.map(&:misskey_channel))
+  end
+
+  def mute_create
+    expires_at = mute_expires_at
+    return if expires_at == false
+
+    muting = MisskeyChannelMuting.find_or_initialize_by(account: current_account, misskey_channel: @channel)
+    return render_error('You are already muting that user', 'ALREADY_MUTING_CHANNEL', 400, id: ALREADY_MUTING_ID) if muting.persisted? && !muting.expired?
+    return render_error('Cannot set past date to "expiresAt"', 'EXPIRES_AT_IS_PAST', 400, id: EXPIRES_AT_IS_PAST_ID) if expires_at.present? && expires_at <= Time.now.utc
+
+    muting.update!(expires_at: expires_at)
+    head 204
+  end
+
+  def mute_delete
+    muting = MisskeyChannelMuting.active.find_by(account: current_account, misskey_channel: @channel)
+    return render_error('You are not muting that channel', 'NOT_MUTING_CHANNEL', 400, id: NOT_MUTING_ID) if muting.nil?
+
+    muting.destroy!
+    head 204
+  end
+
+  def mute_list
+    channels = MisskeyChannel.where(id: MisskeyChannelMuting.active.where(account: current_account).select(:misskey_channel_id)).order(:id)
+    render json: serialize_many(channels)
+  end
+
   private
+
+  def mute_expires_at
+    value = params[:expiresAt]
+    return nil if value.nil?
+    return Time.zone.at(value / 1000.0) if value.is_a?(Integer) && value.abs <= MAX_EXPIRES_AT
+
+    render_invalid_param('#/properties/expiresAt', 'must be integer')
+    false
+  end
 
   def require_object_body!
     object_body!

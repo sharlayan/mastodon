@@ -98,6 +98,58 @@ RSpec.describe 'Misskey-compat channels' do
     end
   end
 
+  describe 'follow, favorite and mute' do
+    let!(:first) { MisskeyChannel.create!(account: other_user.account, name: 'First') }
+    let!(:second) { MisskeyChannel.create!(account: other_user.account, name: 'Second', archived: true) }
+
+    it 'follows, favorites and lists channels idempotently and reports the relationship flags' do
+      [first, second].each do |channel|
+        2.times { api('channels/follow', i: token, channelId: mi(channel.id)) }
+        expect(response).to have_http_status(204)
+      end
+      api('channels/favorite', i: token, channelId: mi(first.id))
+
+      expect(api('channels/followed', i: read_token, limit: 10).pluck(:id)).to eq([mi(second.id), mi(first.id)])
+      expect(api('channels/followed', i: read_token, sinceId: mi(first.id)).pluck(:id)).to eq([mi(second.id)])
+      expect(api('channels/my-favorites', i: read_token).sole).to include(id: mi(first.id), isFollowing: true, isFavorited: true, isMuting: false)
+
+      api('channels/unfollow', i: token, channelId: mi(second.id))
+      api('channels/unfavorite', i: token, channelId: mi(first.id))
+      expect(MisskeyChannelFollowing.where(account: account).pluck(:misskey_channel_id)).to eq([first.id])
+      expect(api('channels/my-favorites', i: read_token)).to eq([])
+
+      %w(follow unfollow favorite unfavorite).each do |action|
+        api("channels/#{action}", i: token, channelId: mi(first.id + 10))
+        expect(response).to have_http_status(404)
+      end
+
+      api('channels/follow', i: read_token, channelId: mi(first.id))
+      expect(response).to have_http_status(403)
+    end
+
+    it 'mutes channels with optional expiry and rejects duplicate, past and missing mutes' do
+      api('channels/mute/create', i: token, channelId: mi(first.id), expiresAt: 1.day.from_now.to_i * 1000)
+      expect(response).to have_http_status(204)
+      api('channels/mute/create', i: token, channelId: mi(second.id))
+
+      expect(api('channels/mute/create', i: token, channelId: mi(first.id))[:error]).to include(code: 'ALREADY_MUTING_CHANNEL', id: '5a251978-769a-da44-3e89-3931e43bb592')
+      expect(api('channels/mute/list', i: read_token).pluck(:id, :isMuting)).to eq([[mi(first.id), true], [mi(second.id), true]])
+
+      MisskeyChannelMuting.find_by(misskey_channel: first).update!(expires_at: 1.minute.ago)
+      expect(api('channels/mute/list', i: read_token).pluck(:id)).to eq([mi(second.id)])
+      expect(api('channels/mute/delete', i: token, channelId: mi(first.id))[:error]).to include(code: 'NOT_MUTING_CHANNEL', id: '14d55962-6ea8-d990-1333-d6bef78dc2ab')
+      expect(api('channels/mute/create', i: token, channelId: mi(first.id), expiresAt: 1000)[:error]).to include(code: 'EXPIRES_AT_IS_PAST')
+      api('channels/mute/create', i: token, channelId: mi(first.id), expiresAt: nil)
+      expect(MisskeyChannelMuting.find_by(misskey_channel: first).expires_at).to be_nil
+
+      api('channels/mute/delete', i: token, channelId: mi(second.id))
+      expect(response).to have_http_status(204)
+      expect(api('channels/mute/create', i: token, channelId: mi(first.id + 10))[:error]).to include(code: 'NO_SUCH_CHANNEL', id: '7174361e-d58f-31d6-2e7c-6fb830786a3f')
+      api('channels/mute/create', i: token, channelId: mi(second.id), expiresAt: 'soon')
+      expect(response).to have_http_status(400)
+    end
+  end
+
   describe 'discovery' do
     it 'lists featured channels by last note and searches unarchived channels' do
       older = MisskeyChannel.create!(account: account, name: 'Cooking club', description: 'Recipes', last_noted_at: 2.days.ago)
