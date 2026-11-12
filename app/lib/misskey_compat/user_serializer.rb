@@ -11,6 +11,20 @@ class MisskeyCompat::UserSerializer
     new.avatar_decorations_for(account)
   end
 
+  def self.secret_fields(user)
+    {
+      securityKeysList: security_keys_list(user),
+    }
+  end
+
+  def self.security_keys_list(user)
+    return [] unless user.otp_enabled?
+
+    user.webauthn_credentials.order(:id).map do |credential|
+      { id: credential.external_id, name: credential.nickname, lastUsed: credential.updated_at.iso8601 }
+    end
+  end
+
   def self.relation_fields(account_id, relationships)
     following = relationships.following[account_id]
 
@@ -119,7 +133,18 @@ class MisskeyCompat::UserSerializer
       hardMutedWords: parse_muted_words(user.settings['misskey_hard_muted_words']),
       mutedInstances: account.domain_mutes.pluck(:domain),
       mutedEmojis: MisskeyCompat::MutedEmojiConverter.to_misskey(account),
+      twoFactorEnabled: user.otp_enabled?,
+      usePasswordLessLogin: false,
+      securityKeys: user.otp_enabled? && user.webauthn_enabled?,
+      twoFactorBackupCodesStock: backup_codes_stock(user),
     }
+  end
+
+  def backup_codes_stock(user)
+    count = Array(user.otp_backup_codes).size
+    return 'none' if count.zero?
+
+    count >= User.otp_number_of_backup_codes ? 'full' : 'partial'
   end
 
   def parse_muted_words(raw)

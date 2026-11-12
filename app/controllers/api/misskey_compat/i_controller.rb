@@ -120,6 +120,7 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     data = MisskeyCompat::UserSerializer.serialize(current_account, detailed: true, me_user: current_user)
     data[:hasUnreadAnnouncement] = unread_announcement?
     data[:policies] = compat_policies
+    data.merge!(MisskeyCompat::UserSerializer.secret_fields(current_user)) if native_user_token?
     data
   end
 
