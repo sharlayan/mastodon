@@ -2,6 +2,7 @@
 
 class Api::MisskeyCompat::BirthdaysController < Api::MisskeyCompat::BaseController
   BIRTHDAY_PATTERN = '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+  VISIBLE_BIRTHDAY_SQL = "accounts.domain IS NOT NULL OR (NULLIF(users.settings, '')::jsonb ->> 'show_birthday') = 'true'"
   BIRTHDAY_DATE_SQL = '(substring(accounts.birthday from 6 for 2) || substring(accounts.birthday from 9 for 2))::integer'
 
   requires_misskey_permission 'read:account', :index
@@ -28,6 +29,8 @@ class Api::MisskeyCompat::BirthdaysController < Api::MisskeyCompat::BaseControll
     scope = Account.without_suspended.without_requested_deletion
       .joins(:passive_relationships).where(follows: { account_id: current_account.id })
       .where('accounts.birthday ~ ?', BIRTHDAY_PATTERN)
+      .left_joins(:user)
+      .where(VISIBLE_BIRTHDAY_SQL)
     date = Arel.sql(BIRTHDAY_DATE_SQL)
     scope = scope.where(range.first <= range.last ? date.between(range.first..range.last) : date.between(range.first..1231).or(date.between(101..range.last)))
     scope.reorder(date.asc)

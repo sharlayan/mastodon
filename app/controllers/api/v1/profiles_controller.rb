@@ -13,11 +13,21 @@ class Api::V1::ProfilesController < Api::BaseController
   def update
     @account = current_account
     UpdateAccountService.new.call(@account, account_params, raise_error: true)
+    update_birthday_visibility!
     ActivityPub::UpdateDistributionWorker.perform_in(ActivityPub::UpdateDistributionWorker::DEBOUNCE_DELAY, @account.id)
 
     render json: @account, serializer: REST::ProfileSerializer
   rescue ActiveRecord::RecordInvalid => e
     render json: ValidationErrorFormatter.new(e).as_json, status: 422
+  end
+
+  private
+
+  def update_birthday_visibility!
+    return unless params.key?(:show_birthday)
+
+    current_user.settings['show_birthday'] = ActiveModel::Type::Boolean.new.cast(params[:show_birthday]) == true
+    current_user.save!
   end
 
   def account_params
@@ -40,6 +50,7 @@ class Api::V1::ProfilesController < Api::BaseController
       :show_media_replies,
       :show_featured,
       :followed_message,
+      :birthday,
       attribution_domains: [],
       fields_attributes: [:name, :value],
       avatar_decorations: [:id, :angle, :flip_h, :offset_x, :offset_y, :scale, :opacity]

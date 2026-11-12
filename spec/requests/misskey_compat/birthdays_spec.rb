@@ -14,14 +14,22 @@ RSpec.describe 'Misskey-compat birthday endpoints' do
 
   after { Setting.misskey_compat_enabled = false }
 
-  it 'stores a Misskey birthday, rejects other formats and exposes it on the detailed user' do
+  it 'stores a Misskey birthday, rejects other formats and shows it to others only when the owner allows it' do
     post '/api/i/update', params: { i: token, birthday: '12/31' }, as: :json
     expect(response).to have_http_status(400)
     expect(response.parsed_body.dig(:error, :info, :param)).to eq('#/properties/birthday')
 
+    post '/api/i/update', params: { i: token, birthday: '2999-01-01' }, as: :json
+    expect(response).to have_http_status(400)
+
     post '/api/i/update', params: { i: token, birthday: '1990-12-31' }, as: :json
     expect(response.parsed_body[:birthday]).to eq('1990-12-31')
 
+    post '/api/users/show', params: { userId: MisskeyCompat::MiId.encode(account.id) }, as: :json
+    expect(response.parsed_body[:birthday]).to be_nil
+
+    user.settings['show_birthday'] = true
+    user.save!
     post '/api/users/show', params: { userId: MisskeyCompat::MiId.encode(account.id) }, as: :json
     expect(response.parsed_body[:birthday]).to eq('1990-12-31')
 
@@ -32,10 +40,14 @@ RSpec.describe 'Misskey-compat birthday endpoints' do
   it 'lists followed users by birthday with year-wrapping ranges, the next occurrence and offset paging' do
     birthdays = { 'nov' => '1990-11-12', 'dec' => '1985-12-31', 'jan' => '2000-01-02', 'oct' => '1999-10-01', 'bad' => 'sometime' }
     followees = birthdays.to_h do |name, birthday|
-      followee = Fabricate(:account, username: name, birthday: birthday)
+      followee = Fabricate(:user, account_attributes: { username: name }).account
+      followee.user.update!(settings_attributes: { show_birthday: true })
+      followee.update_column(:birthday, birthday)
       account.follow!(followee)
       [name, followee]
     end
+    hidden = Fabricate(:user, account_attributes: { username: 'hidden', birthday: '1990-11-12' }).account
+    account.follow!(hidden)
     Fabricate(:account, username: 'stranger', birthday: '1990-11-12')
 
     post '/api/users/get-following-users-by-birthday', params: { i: token, birthday: { month: 11, day: 12 } }, as: :json
