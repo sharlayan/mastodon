@@ -217,6 +217,7 @@ namespace :api, format: false do
 
   namespace :misskey_compat, path: '' do
     post 'users/show', to: 'users#show'
+    post 'users/relation', to: 'users#relation'
     post 'get-avatar-decorations', to: 'avatar_decorations#index'
 
     post 'meta', to: 'meta#show'

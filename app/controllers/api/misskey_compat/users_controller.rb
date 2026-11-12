@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::UsersController < Api::MisskeyCompat::BaseController
-  requires_misskey_permission 'read:account', :show
+  requires_misskey_permission 'read:account', :show, :relation
 
-  before_action :require_user_if_authenticated!
+  skip_before_action :require_scalar_params!, only: :relation
+  before_action :require_user!, only: :relation
+  before_action :require_user_if_authenticated!, except: :relation
 
   def show
     if params.key?(:userIds)
@@ -25,7 +27,21 @@ class Api::MisskeyCompat::UsersController < Api::MisskeyCompat::BaseController
     render json: serialize_account(@account)
   end
 
+  def relation
+    ids = relation_target_ids
+    return render_invalid_param('#/properties/userId', 'must be an id or an array of ids') if ids.nil?
+
+    relationships = AccountRelationshipsPresenter.new(Account.where(id: ids).to_a, current_account.id)
+    render json: ids.map { |id| { id: MisskeyCompat::MiId.encode(id) }.merge(MisskeyCompat::UserSerializer.relation_fields(id.to_i, relationships)) }
+  end
+
   private
+
+  def relation_target_ids
+    value = params[:userId]
+    ids = value.is_a?(Array) ? MisskeyCompat::MiId.decode_many(value.grep(String)).uniq : [value]
+    ids if ids.all? { |id| compat_id?(id) } && (!value.is_a?(Array) || value.all?(String))
+  end
 
   def serialize_account(account, collection: nil)
     me_user = current_user if current_user && current_user.account_id == account.id

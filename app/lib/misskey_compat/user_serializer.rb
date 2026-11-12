@@ -11,6 +11,21 @@ class MisskeyCompat::UserSerializer
     new.avatar_decorations_for(account)
   end
 
+  def self.relation_fields(account_id, relationships)
+    following = relationships.following[account_id]
+
+    {
+      isFollowing: following.present?,
+      isFollowed: relationships.followed_by[account_id] || false,
+      hasPendingFollowRequestFromYou: relationships.requested[account_id].present?,
+      hasPendingFollowRequestToYou: relationships.requested_by[account_id].present?,
+      isBlocking: relationships.blocking[account_id] || false,
+      isBlocked: relationships.blocked_by[account_id] || false,
+      isMuted: relationships.muting[account_id].present?,
+      isRenoteMuted: following.present? && following[:reblogs] == false,
+    }
+  end
+
   def serialize(account, detailed: false, viewer: nil, me_user: nil, context: nil, relationships: nil, collection: nil)
     @context = context
     @collection = collection
@@ -75,18 +90,7 @@ class MisskeyCompat::UserSerializer
   end
 
   def preloaded_viewer_fields(account, relationships)
-    following = relationships.following[account.id]
-
-    {
-      isFollowing: following.present?,
-      isFollowed: relationships.followed_by[account.id] || false,
-      hasPendingFollowRequestFromYou: relationships.requested[account.id].present?,
-      hasPendingFollowRequestToYou: relationships.requested_by[account.id].present?,
-      isBlocking: relationships.blocking[account.id] || false,
-      isBlocked: relationships.blocked_by[account.id] || false,
-      isMuted: relationships.muting[account.id].present?,
-      isRenoteMuted: following.present? && following[:reblogs] == false,
-    }
+    self.class.relation_fields(account.id, relationships)
   end
 
   def me_fields(user)
