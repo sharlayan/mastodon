@@ -392,4 +392,29 @@
     max-height: 70vh;
     overflow-y: auto;
   }
+
+  &--manager {
+    max-width: 1040px;
+    height: 85vh;
+    max-height: 85vh;
+    display: flex;
+
+    .dialog-modal__content {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      max-height: none;
+      min-height: 0;
+    }
+
+    .drive {
+      flex: 1 0 auto;
+    }
+  }
+
+  &__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 }
