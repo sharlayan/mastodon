@@ -5,6 +5,7 @@ import { FormattedMessage, useIntl } from 'react-intl';
 
 import { openModal } from '@/flavours/glitch/actions/modal';
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
+import { SharlayanBirthdayNumberField } from '@/flavours/glitch/sharlayan/account/birthday_number_field';
 import { useAppDispatch } from '@/flavours/glitch/store';
 
 import { FormattedDateWrapper } from '../formatted_date';
@@ -81,6 +82,8 @@ export const AccountNumberFields: FC<{ accountId: string }> = ({
           )}
         </button>
       </NumberFieldsItem>
+
+      <SharlayanBirthdayNumberField birthday={account.birthday} />
     </NumberFields>
   );
 };

@@ -57,4 +57,8 @@ export const sharlayanModalComponents = {
     })),
   ACCOUNT_EDIT_DECORATION: accountEditModal('DecorationModal'),
   ACCOUNT_EDIT_FOLLOW_MESSAGE: accountEditModal('FollowMessageModal'),
+  ACCOUNT_EDIT_BIRTHDAY: () =>
+    import('@/flavours/glitch/sharlayan/account/birthday_modal').then((module) => ({
+      default: module.BirthdayModal,
+    })),
 };

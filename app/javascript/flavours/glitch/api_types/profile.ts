@@ -35,6 +35,8 @@ export interface ApiProfileJSON {
   followed_message: string | null;
   is_cat: boolean;
   avatar_decorations: ApiProfileDecorationConfigJSON[];
+  birthday: string | null;
+  show_birthday: boolean;
 }
 
 export type ApiProfileUpdateParams = Partial<
@@ -54,8 +56,10 @@ export type ApiProfileUpdateParams = Partial<
     | 'show_featured'
     | 'followed_message'
     | 'is_cat'
+    | 'show_birthday'
   >
 > & {
+  birthday?: string;
   avatar_drive_file_id?: string;
   header_drive_file_id?: string;
   attribution_domains?: string[];
