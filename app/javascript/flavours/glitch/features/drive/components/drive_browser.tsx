@@ -6,6 +6,7 @@ import CloseIcon from '@/material-icons/400-24px/close.svg?react';
 import CreateNewFolderIcon from '@/material-icons/400-24px/create_new_folder.svg?react';
 import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
 import EditIcon from '@/material-icons/400-24px/edit.svg?react';
+import FolderIcon from '@/material-icons/400-24px/folder.svg?react';
 import LinkOffIcon from '@/material-icons/400-24px/link_off.svg?react';
 import UploadFileIcon from '@/material-icons/400-24px/upload_file.svg?react';
 import { openModal } from 'flavours/glitch/actions/modal';
@@ -13,31 +14,39 @@ import type {
   ApiDriveFileJSON,
   ApiDriveUsageJSON,
 } from 'flavours/glitch/api_types/drive';
+import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import { EmptyState } from 'flavours/glitch/components/empty_state';
 import { Icon } from 'flavours/glitch/components/icon';
 import { LoadMore } from 'flavours/glitch/components/load_more';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
+import type { MenuItem } from 'flavours/glitch/models/dropdown_menu';
 import { useAppDispatch } from 'flavours/glitch/store';
 
 import {
   DRIVE_DROPZONE_ATTRIBUTE,
   DRIVE_ITEM_KEY_ATTRIBUTE,
-  carriesDriveItem,
   fileKey,
   folderKey,
   itemsFromKeys,
-  readDragPayload,
+  writeDragPayload,
 } from '../dnd';
+import type { DriveItems } from '../dnd';
 import type { DriveState } from '../use_drive';
 
 import { FileCard } from './file_card';
-import { FolderCard, ParentFolderCard } from './folder_card';
+import {
+  FolderCard,
+  ParentFolderCard,
+  useDriveDropTarget,
+} from './folder_card';
 
 const messages = defineMessages({
   upload: { id: 'drive.upload', defaultMessage: 'Upload' },
   newFolder: { id: 'drive.new_folder', defaultMessage: 'New folder' },
   showUnused: { id: 'drive.show_unused', defaultMessage: 'Unused files' },
   manage: { id: 'drive.manage', defaultMessage: 'Manage' },
+  root: { id: 'drive.root', defaultMessage: 'Drive' },
+  moveTo: { id: 'drive.move_selected', defaultMessage: 'Move to' },
   deleteSelected: { id: 'drive.delete_selected', defaultMessage: 'Delete' },
   clearSelection: {
     id: 'drive.clear_selection',
@@ -51,6 +60,10 @@ const messages = defineMessages({
     id: 'drive.delete_selected_confirm',
     defaultMessage:
       'Delete {count, plural, one {# item} other {# items}}? Files used by a post or page are skipped, and the contents of deleted folders move back to the drive root.',
+  },
+  dragCount: {
+    id: 'drive.drag_count',
+    defaultMessage: '{count, plural, one {# item} other {# items}}',
   },
 });
 
@@ -131,8 +144,7 @@ export const DriveBrowser: React.FC<{
     deleteFile,
     renameFile,
     transferFileToPosts,
-    moveFile,
-    moveFolder,
+    moveItems,
     deleteItems,
     createFolder,
     renameFolder,
@@ -248,6 +260,35 @@ export const DriveBrowser: React.FC<{
     [itemKeys, selected, anchor, openItem, toggleItem, setSelection],
   );
 
+  const handleDragItem = useCallback(
+    (key: string, e: React.DragEvent) => {
+      const keys = selected.has(key) ? [...selected] : [key];
+
+      if (!selected.has(key)) {
+        setSelection(new Set([key]), key);
+      }
+
+      writeDragPayload(e.dataTransfer, itemsFromKeys(keys));
+
+      if (
+        keys.length > 1 &&
+        typeof e.dataTransfer.setDragImage === 'function'
+      ) {
+        const ghost = document.createElement('div');
+        ghost.className = 'drive__drag-ghost';
+        ghost.textContent = intl.formatMessage(messages.dragCount, {
+          count: keys.length,
+        });
+        document.body.appendChild(ghost);
+        e.dataTransfer.setDragImage(ghost, 16, 16);
+        window.setTimeout(() => {
+          ghost.remove();
+        }, 0);
+      }
+    },
+    [selected, intl, setSelection],
+  );
+
   const clearSelection = useCallback(() => {
     setSelection(new Set(), null);
   }, [setSelection]);
@@ -265,6 +306,14 @@ export const DriveBrowser: React.FC<{
       clearSelection();
     }
   }, [selectedItems, intl, deleteItems, clearSelection]);
+
+  const handleMoveSelected = useCallback(
+    (targetId: string | null) => {
+      moveItems(selectedItems, targetId);
+      clearSelection();
+    },
+    [selectedItems, moveItems, clearSelection],
+  );
 
   const openRenameModal = useCallback(
     (key: string) => {
@@ -441,6 +490,67 @@ export const DriveBrowser: React.FC<{
     [],
   );
 
+  const folderPaths = useMemo(() => {
+    const byId = new Map(folders.map((folder) => [folder.id, folder]));
+
+    return folders
+      .map((folder) => {
+        const names: string[] = [];
+        const seen = new Set<string>();
+        let node: typeof folder | undefined = folder;
+
+        while (node && !seen.has(node.id)) {
+          seen.add(node.id);
+          names.unshift(node.name);
+          node = node.parent_id ? byId.get(node.parent_id) : undefined;
+        }
+
+        return { id: folder.id, path: names.join(' / ') };
+      })
+      .sort((a, b) => a.path.localeCompare(b.path));
+  }, [folders]);
+
+  const moveMenu = useMemo(() => {
+    const blocked = (targetId: string) =>
+      selectedItems.folderIds.some(
+        (id) => id === targetId || isDescendantOf(targetId, id),
+      );
+
+    const menu: MenuItem[] = [];
+
+    if (currentFolderId !== null || orphanedOnly) {
+      menu.push({
+        text: intl.formatMessage(messages.root),
+        action: () => {
+          handleMoveSelected(null);
+        },
+      });
+    }
+
+    folderPaths
+      .filter(
+        ({ id }) => (orphanedOnly || id !== currentFolderId) && !blocked(id),
+      )
+      .forEach(({ id, path }) => {
+        menu.push({
+          text: path,
+          action: () => {
+            handleMoveSelected(id);
+          },
+        });
+      });
+
+    return menu;
+  }, [
+    selectedItems,
+    isDescendantOf,
+    currentFolderId,
+    orphanedOnly,
+    folderPaths,
+    intl,
+    handleMoveSelected,
+  ]);
+
   const handleUploadClick = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
@@ -465,34 +575,6 @@ export const DriveBrowser: React.FC<{
       }),
     );
   }, [dispatch, createFolder]);
-
-  const handleOpenRoot = useCallback(() => {
-    openFolder(null);
-  }, [openFolder]);
-
-  const handleRootDragOver = useCallback((e: React.DragEvent) => {
-    if (!carriesDriveItem(e.dataTransfer)) return;
-
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  }, []);
-
-  const handleRootDrop = useCallback(
-    (e: React.DragEvent) => {
-      if (!carriesDriveItem(e.dataTransfer)) return;
-
-      e.preventDefault();
-
-      const { fileId, folderId } = readDragPayload(e.dataTransfer);
-
-      if (fileId) {
-        moveFile(fileId, null);
-      } else if (folderId) {
-        moveFolder(folderId, null);
-      }
-    },
-    [moveFile, moveFolder],
-  );
 
   const handleExternalDragOver = useCallback((e: React.DragEvent) => {
     if (!e.dataTransfer.types.includes('Files')) return;
@@ -551,19 +633,13 @@ export const DriveBrowser: React.FC<{
         </p>
       ) : (
         <nav className='drive__breadcrumb'>
-          <button
-            type='button'
-            className={
-              currentFolderId === null
-                ? 'drive__breadcrumb__crumb drive__breadcrumb__crumb--active'
-                : 'drive__breadcrumb__crumb'
-            }
-            onClick={handleOpenRoot}
-            onDragOver={handleRootDragOver}
-            onDrop={handleRootDrop}
-          >
-            <FormattedMessage id='drive.root' defaultMessage='Drive' />
-          </button>
+          <BreadcrumbCrumb
+            id={null}
+            name={intl.formatMessage(messages.root)}
+            isCurrent={currentFolderId === null}
+            onOpen={openFolder}
+            onMoveItems={moveItems}
+          />
 
           {ancestors.map((folder) => (
             <Fragment key={folder.id}>
@@ -576,8 +652,7 @@ export const DriveBrowser: React.FC<{
                 name={folder.name}
                 isCurrent={folder.id === currentFolderId}
                 onOpen={openFolder}
-                onMoveFile={moveFile}
-                onMoveFolder={moveFolder}
+                onMoveItems={moveItems}
               />
             </Fragment>
           ))}
@@ -653,6 +728,15 @@ export const DriveBrowser: React.FC<{
             />
           </span>
 
+          {moveMenu.length > 0 && (
+            <Dropdown items={moveMenu} placement='bottom-start'>
+              <button type='button' className='button button-secondary'>
+                <Icon id='folder' icon={FolderIcon} />
+                {intl.formatMessage(messages.moveTo)}
+              </button>
+            </Dropdown>
+          )}
+
           <button
             type='button'
             className='button button-secondary drive__selection__delete'
@@ -674,6 +758,15 @@ export const DriveBrowser: React.FC<{
       )}
 
       {usage && <DriveUsage usage={usage} />}
+
+      {selectable && !orphanedOnly && (
+        <p className='drive__hint'>
+          <FormattedMessage
+            id='drive.select_hint'
+            defaultMessage='Click to select and double-click to open. Hold Ctrl or Shift to select several, or drag across empty space. Drag selected items onto a folder to move them.'
+          />
+        </p>
+      )}
 
       {managing && !orphanedOnly && (
         <p className='drive__hint'>
@@ -699,9 +792,7 @@ export const DriveBrowser: React.FC<{
               <ParentFolderCard
                 parentId={currentFolder.parent_id}
                 onOpen={openFolder}
-                onMoveFile={moveFile}
-                onMoveFolder={moveFolder}
-                isDescendantOf={isDescendantOf}
+                onMoveItems={moveItems}
               />
             )}
 
@@ -715,11 +806,10 @@ export const DriveBrowser: React.FC<{
                 onOpen={openFolder}
                 onItemClick={handleItemClick}
                 onToggleItem={toggleItem}
-                onMoveFile={moveFile}
-                onMoveFolder={moveFolder}
+                onDragItem={handleDragItem}
+                onMoveItems={moveItems}
                 onRename={renameFolder}
                 onDelete={deleteFolder}
-                isDescendantOf={isDescendantOf}
               />
             ))}
           </div>
@@ -756,12 +846,13 @@ export const DriveBrowser: React.FC<{
                 key={file.id}
                 file={file}
                 manageable={managing}
-                draggable={managing && !orphanedOnly}
+                draggable={selectable && !orphanedOnly}
                 selectable={selectable}
                 selected={selected.has(fileKey(file.id))}
                 onSelect={onSelectFile}
                 onItemClick={handleItemClick}
                 onToggleItem={toggleItem}
+                onDragItem={handleDragItem}
                 onDelete={deleteFile}
                 onRename={renameFile}
                 onTransferToPosts={transferFileToPosts}
@@ -859,47 +950,33 @@ const DriveUsage: React.FC<{ usage: ApiDriveUsageJSON }> = ({ usage }) => {
 };
 
 const BreadcrumbCrumb: React.FC<{
-  id: string;
+  id: string | null;
   name: string;
   isCurrent: boolean;
   onOpen: (folderId: string | null) => void;
-  onMoveFile: (fileId: string, folderId: string | null) => void;
-  onMoveFolder: (folderId: string, parentId: string | null) => void;
-}> = ({ id, name, isCurrent, onOpen, onMoveFile, onMoveFolder }) => {
+  onMoveItems: (items: DriveItems, folderId: string | null) => void;
+}> = ({ id, name, isCurrent, onOpen, onMoveItems }) => {
   const handleClick = useCallback(() => {
     onOpen(id);
   }, [onOpen, id]);
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    if (!carriesDriveItem(e.dataTransfer)) return;
-
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      if (!carriesDriveItem(e.dataTransfer)) return;
-
-      e.preventDefault();
-
-      const { fileId, folderId } = readDragPayload(e.dataTransfer);
-
-      if (fileId) {
-        onMoveFile(fileId, id);
-      } else if (folderId && folderId !== id) {
-        onMoveFolder(folderId, id);
-      }
+  const handleDropItems = useCallback(
+    (items: DriveItems) => {
+      onMoveItems(items, id);
     },
-    [onMoveFile, onMoveFolder, id],
+    [onMoveItems, id],
   );
+
+  const { isOver, handleDragOver, handleDragLeave, handleDrop } =
+    useDriveDropTarget(handleDropItems);
 
   return (
     <button
       type='button'
-      className={`drive__breadcrumb__crumb${isCurrent ? ' drive__breadcrumb__crumb--active' : ''}`}
+      className={`drive__breadcrumb__crumb${isCurrent ? ' drive__breadcrumb__crumb--active' : ''}${isOver ? ' drive__breadcrumb__crumb--drop-target' : ''}`}
       onClick={handleClick}
       onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       {name}

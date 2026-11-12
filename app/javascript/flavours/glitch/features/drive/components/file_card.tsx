@@ -12,7 +12,7 @@ import type { ApiDriveFileJSON } from 'flavours/glitch/api_types/drive';
 import { Icon } from 'flavours/glitch/components/icon';
 import { useAppDispatch } from 'flavours/glitch/store';
 
-import { DRIVE_FILE_MIME, DRIVE_ITEM_KEY_ATTRIBUTE, fileKey } from '../dnd';
+import { DRIVE_ITEM_KEY_ATTRIBUTE, fileKey, writeDragPayload } from '../dnd';
 
 const messages = defineMessages({
   delete: { id: 'drive.delete', defaultMessage: 'Delete' },
@@ -69,6 +69,7 @@ export const FileCard: React.FC<{
   onSelect: (file: ApiDriveFileJSON) => void;
   onItemClick?: (key: string, e: React.MouseEvent) => void;
   onToggleItem?: (key: string) => void;
+  onDragItem?: (key: string, e: React.DragEvent) => void;
   onDelete: (fileId: string) => void;
   onRename: (fileId: string, name: string) => void;
   onTransferToPosts: (fileId: string) => void;
@@ -81,6 +82,7 @@ export const FileCard: React.FC<{
   onSelect,
   onItemClick,
   onToggleItem,
+  onDragItem,
   onDelete,
   onRename,
   onTransferToPosts,
@@ -131,10 +133,14 @@ export const FileCard: React.FC<{
 
   const handleDragStart = useCallback(
     (e: React.DragEvent) => {
-      e.dataTransfer.setData(DRIVE_FILE_MIME, file.id);
-      e.dataTransfer.effectAllowed = 'move';
+      if (onDragItem) {
+        onDragItem(key, e);
+        return;
+      }
+
+      writeDragPayload(e.dataTransfer, { fileIds: [file.id], folderIds: [] });
     },
-    [file.id],
+    [file.id, key, onDragItem],
   );
 
   const handleDelete = useCallback(

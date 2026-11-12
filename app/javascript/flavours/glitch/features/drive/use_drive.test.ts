@@ -26,6 +26,7 @@ vi.mock('@/flavours/glitch/api/drive', () => ({
   apiGetDriveFolders: vi.fn(() => Promise.resolve([])),
   apiGetDriveUsage: vi.fn(() => Promise.resolve(null)),
   apiMoveDriveFile: vi.fn(),
+  apiMoveDriveFiles: vi.fn(),
   apiMoveDriveFolder: vi.fn(),
   apiRenameDriveFile: vi.fn(),
   apiTransferDriveFileToPosts: vi.fn(),

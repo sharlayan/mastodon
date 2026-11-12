@@ -12,12 +12,13 @@ import { Icon } from 'flavours/glitch/components/icon';
 import { useAppDispatch } from 'flavours/glitch/store';
 
 import {
-  DRIVE_FOLDER_MIME,
   DRIVE_ITEM_KEY_ATTRIBUTE,
   carriesDriveItem,
   folderKey,
   readDragPayload,
+  writeDragPayload,
 } from '../dnd';
+import type { DriveItems } from '../dnd';
 
 const messages = defineMessages({
   rename: { id: 'drive.rename_folder', defaultMessage: 'Rename folder' },
@@ -32,23 +33,16 @@ const messages = defineMessages({
   select: { id: 'drive.select_item', defaultMessage: 'Select {name}' },
 });
 
-interface DropTargetProps {
-  onDropFile: (fileId: string) => void;
-  onDropFolder: (folderId: string) => void;
-  canAcceptFolder: (folderId: string) => boolean;
-}
-
-const useDropTarget = ({
-  onDropFile,
-  onDropFolder,
-  canAcceptFolder,
-}: DropTargetProps) => {
+export const useDriveDropTarget = (
+  onDropItems: (items: DriveItems) => void,
+) => {
   const [isOver, setIsOver] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     if (!carriesDriveItem(e.dataTransfer)) return;
 
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
     setIsOver(true);
   }, []);
@@ -62,17 +56,11 @@ const useDropTarget = ({
       if (!carriesDriveItem(e.dataTransfer)) return;
 
       e.preventDefault();
+      e.stopPropagation();
       setIsOver(false);
-
-      const { fileId, folderId } = readDragPayload(e.dataTransfer);
-
-      if (fileId) {
-        onDropFile(fileId);
-      } else if (folderId && canAcceptFolder(folderId)) {
-        onDropFolder(folderId);
-      }
+      onDropItems(readDragPayload(e.dataTransfer));
     },
-    [onDropFile, onDropFolder, canAcceptFolder],
+    [onDropItems],
   );
 
   return { isOver, handleDragOver, handleDragLeave, handleDrop };
@@ -81,44 +69,23 @@ const useDropTarget = ({
 export const ParentFolderCard: React.FC<{
   parentId: string | null;
   onOpen: (folderId: string | null) => void;
-  onMoveFile: (fileId: string, folderId: string | null) => void;
-  onMoveFolder: (folderId: string, parentId: string | null) => void;
-  isDescendantOf: (folderId: string, maybeAncestorId: string) => boolean;
-}> = ({ parentId, onOpen, onMoveFile, onMoveFolder, isDescendantOf }) => {
+  onMoveItems: (items: DriveItems, folderId: string | null) => void;
+}> = ({ parentId, onOpen, onMoveItems }) => {
   const intl = useIntl();
 
   const handleClick = useCallback(() => {
     onOpen(parentId);
   }, [onOpen, parentId]);
 
-  const handleDropFile = useCallback(
-    (fileId: string) => {
-      onMoveFile(fileId, parentId);
+  const handleDropItems = useCallback(
+    (items: DriveItems) => {
+      onMoveItems(items, parentId);
     },
-    [onMoveFile, parentId],
+    [onMoveItems, parentId],
   );
 
-  const handleDropFolder = useCallback(
-    (folderId: string) => {
-      onMoveFolder(folderId, parentId);
-    },
-    [onMoveFolder, parentId],
-  );
-
-  const canAcceptFolder = useCallback(
-    (draggedId: string) =>
-      parentId === null ||
-      (draggedId !== parentId && !isDescendantOf(parentId, draggedId)),
-    [parentId, isDescendantOf],
-  );
-
-  const { isOver, handleDragOver, handleDragLeave, handleDrop } = useDropTarget(
-    {
-      onDropFile: handleDropFile,
-      onDropFolder: handleDropFolder,
-      canAcceptFolder,
-    },
-  );
+  const { isOver, handleDragOver, handleDragLeave, handleDrop } =
+    useDriveDropTarget(handleDropItems);
 
   return (
     <button
@@ -145,11 +112,10 @@ export const FolderCard: React.FC<{
   onOpen: (folderId: string | null) => void;
   onItemClick?: (key: string, e: React.MouseEvent) => void;
   onToggleItem?: (key: string) => void;
-  onMoveFile: (fileId: string, folderId: string | null) => void;
-  onMoveFolder: (folderId: string, parentId: string | null) => void;
+  onDragItem?: (key: string, e: React.DragEvent) => void;
+  onMoveItems: (items: DriveItems, folderId: string | null) => void;
   onRename: (folderId: string, name: string) => void;
   onDelete: (folderId: string) => void;
-  isDescendantOf: (folderId: string, maybeAncestorId: string) => boolean;
 }> = ({
   folder,
   manageable,
@@ -158,11 +124,10 @@ export const FolderCard: React.FC<{
   onOpen,
   onItemClick,
   onToggleItem,
-  onMoveFile,
-  onMoveFolder,
+  onDragItem,
+  onMoveItems,
   onRename,
   onDelete,
-  isDescendantOf,
 }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
@@ -207,40 +172,29 @@ export const FolderCard: React.FC<{
     e.stopPropagation();
   }, []);
 
-  const handleDropFile = useCallback(
-    (fileId: string) => {
-      onMoveFile(fileId, folder.id);
+  const handleDropItems = useCallback(
+    (items: DriveItems) => {
+      onMoveItems(items, folder.id);
     },
-    [onMoveFile, folder.id],
+    [onMoveItems, folder.id],
   );
 
-  const handleDropFolder = useCallback(
-    (draggedId: string) => {
-      onMoveFolder(draggedId, folder.id);
-    },
-    [onMoveFolder, folder.id],
-  );
-
-  const canAcceptFolder = useCallback(
-    (draggedId: string) =>
-      draggedId !== folder.id && !isDescendantOf(folder.id, draggedId),
-    [isDescendantOf, folder.id],
-  );
-
-  const { isOver, handleDragOver, handleDragLeave, handleDrop } = useDropTarget(
-    {
-      onDropFile: handleDropFile,
-      onDropFolder: handleDropFolder,
-      canAcceptFolder,
-    },
-  );
+  const { isOver, handleDragOver, handleDragLeave, handleDrop } =
+    useDriveDropTarget(handleDropItems);
 
   const handleDragStart = useCallback(
     (e: React.DragEvent) => {
-      e.dataTransfer.setData(DRIVE_FOLDER_MIME, folder.id);
-      e.dataTransfer.effectAllowed = 'move';
+      if (onDragItem) {
+        onDragItem(key, e);
+        return;
+      }
+
+      writeDragPayload(e.dataTransfer, {
+        fileIds: [],
+        folderIds: [folder.id],
+      });
     },
-    [folder.id],
+    [folder.id, key, onDragItem],
   );
 
   const handleRenameSubmit = useCallback(
@@ -308,8 +262,8 @@ export const FolderCard: React.FC<{
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
         onKeyDown={handleKeyDown}
-        draggable={manageable}
-        onDragStart={manageable ? handleDragStart : undefined}
+        draggable={manageable || selectable}
+        onDragStart={manageable || selectable ? handleDragStart : undefined}
         title={folder.name}
       >
         <Icon id='folder' icon={FolderIcon} className='drive__folder__icon' />

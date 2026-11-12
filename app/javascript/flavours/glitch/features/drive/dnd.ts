@@ -1,32 +1,49 @@
-export const DRIVE_FILE_MIME = 'application/x-drive-file';
-export const DRIVE_FOLDER_MIME = 'application/x-drive-folder';
+export const DRIVE_ITEMS_MIME = 'application/x-drive-items';
 
-export interface DriveDragPayload {
-  fileId?: string;
-  folderId?: string;
+export interface DriveItems {
+  fileIds: string[];
+  folderIds: string[];
 }
 
-export const readDragPayload = (
+export const EMPTY_DRIVE_ITEMS: DriveItems = { fileIds: [], folderIds: [] };
+
+export const writeDragPayload = (
   dataTransfer: DataTransfer,
-): DriveDragPayload => ({
-  fileId: dataTransfer.getData(DRIVE_FILE_MIME) || undefined,
-  folderId: dataTransfer.getData(DRIVE_FOLDER_MIME) || undefined,
-});
+  items: DriveItems,
+) => {
+  dataTransfer.setData(DRIVE_ITEMS_MIME, JSON.stringify(items));
+  dataTransfer.effectAllowed = 'move';
+};
+
+const stringList = (value: unknown) =>
+  Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
+
+export const readDragPayload = (dataTransfer: DataTransfer): DriveItems => {
+  try {
+    const parsed = JSON.parse(dataTransfer.getData(DRIVE_ITEMS_MIME)) as {
+      fileIds?: unknown;
+      folderIds?: unknown;
+    };
+
+    return {
+      fileIds: stringList(parsed.fileIds),
+      folderIds: stringList(parsed.folderIds),
+    };
+  } catch {
+    return EMPTY_DRIVE_ITEMS;
+  }
+};
 
 export const carriesDriveItem = (dataTransfer: DataTransfer) =>
-  dataTransfer.types.includes(DRIVE_FILE_MIME) ||
-  dataTransfer.types.includes(DRIVE_FOLDER_MIME);
+  dataTransfer.types.includes(DRIVE_ITEMS_MIME);
 
 export const DRIVE_DROPZONE_ATTRIBUTE = 'data-drive-dropzone';
 
 export const isWithinDriveDropzone = (target: EventTarget | null) =>
   target instanceof Element &&
   target.closest(`[${DRIVE_DROPZONE_ATTRIBUTE}]`) !== null;
-
-export interface DriveItems {
-  fileIds: string[];
-  folderIds: string[];
-}
 
 export const DRIVE_ITEM_KEY_ATTRIBUTE = 'data-drive-item';
 

@@ -235,6 +235,39 @@ describe('Drive manager selection', () => {
     ).toEqual(['Alpha', 'Beta', 'Gamma']);
   });
 
+  it('drags every selected file onto a folder and moves them in one bulk request', async () => {
+    await renderManager();
+
+    fireEvent.click(screen.getByTitle('Alpha'));
+    fireEvent.click(screen.getByTitle('Beta'), { ctrlKey: true });
+
+    const data = new Map<string, string>();
+    const dataTransfer = {
+      types: [] as string[],
+      setData: (type: string, value: string) => {
+        data.set(type, value);
+        dataTransfer.types.push(type);
+      },
+      getData: (type: string) => data.get(type) ?? '',
+      effectAllowed: '',
+      dropEffect: '',
+    };
+
+    fireEvent.dragStart(screen.getByTitle('Beta'), { dataTransfer });
+    const target = screen.getByTitle('Album');
+    fireEvent.dragOver(target, { dataTransfer });
+    fireEvent.drop(target, { dataTransfer });
+
+    expect(mocks.apiMoveDriveFiles).toHaveBeenCalledWith(
+      ['Alpha', 'Beta'],
+      'Album',
+    );
+    await waitFor(() => {
+      expect(screen.queryByTitle('Alpha')).toBeNull();
+    });
+    expect(screen.getByTitle('Gamma')).toBeTruthy();
+  });
+
   it('selects the items under a rubber band dragged across empty space', async () => {
     await renderManager();
 

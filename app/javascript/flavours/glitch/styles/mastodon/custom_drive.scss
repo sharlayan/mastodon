@@ -231,6 +231,12 @@
         color: var(--color-text-primary);
         font-weight: 700;
       }
+
+      &--drop-target {
+        outline: 2px dashed var(--color-border-brand);
+        outline-offset: -2px;
+        background: var(--color-bg-brand-softest);
+      }
     }
 
     &__separator {
@@ -512,4 +518,17 @@
     align-items: center;
     gap: 8px;
   }
+}
+
+.drive__drag-ghost {
+  position: fixed;
+  top: -1000px;
+  inset-inline-start: -1000px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--color-bg-brand-base);
+  color: var(--color-text-on-brand-base);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
 }
