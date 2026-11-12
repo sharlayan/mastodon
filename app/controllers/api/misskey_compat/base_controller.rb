@@ -297,6 +297,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
       ltlAvailable: true,
       canPublicNote: true,
       canInitiateConversation: true,
+      canCreateChannel: true,
       canCreateContent: true,
       canUpdateContent: true,
       canDeleteContent: true,

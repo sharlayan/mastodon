@@ -75,6 +75,11 @@ class RateLimiter
       period: 1.hour.freeze,
     }.freeze,
 
+    misskey_compat_channel_create: {
+      limit: 10,
+      period: 1.hour.freeze,
+    }.freeze,
+
     misskey_miauth_hourly: {
       limit: 10,
       period: 1.hour.freeze,

@@ -1397,6 +1397,54 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
     t.index ["access_token_id"], name: "index_misskey_access_grants_on_access_token_id", unique: true
   end
 
+  create_table "misskey_channel_favorites", id: :bigint, default: -> { "timestamp_id('misskey_channel_favorites'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "misskey_channel_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "misskey_channel_id"], name: "index_misskey_channel_favorites_on_account_and_channel", unique: true
+    t.index ["misskey_channel_id"], name: "index_misskey_channel_favorites_on_misskey_channel_id"
+  end
+
+  create_table "misskey_channel_followings", id: :bigint, default: -> { "timestamp_id('misskey_channel_followings'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "misskey_channel_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "misskey_channel_id"], name: "index_misskey_channel_followings_on_account_and_channel", unique: true
+    t.index ["misskey_channel_id"], name: "index_misskey_channel_followings_on_misskey_channel_id"
+  end
+
+  create_table "misskey_channel_mutings", id: :bigint, default: -> { "timestamp_id('misskey_channel_mutings'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "expires_at"
+    t.bigint "misskey_channel_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "misskey_channel_id"], name: "index_misskey_channel_mutings_on_account_and_channel", unique: true
+    t.index ["misskey_channel_id"], name: "index_misskey_channel_mutings_on_misskey_channel_id"
+  end
+
+  create_table "misskey_channels", id: :bigint, default: -> { "timestamp_id('misskey_channels'::text)" }, force: :cascade do |t|
+    t.bigint "account_id"
+    t.boolean "allow_renote_to_external", default: true, null: false
+    t.boolean "archived", default: false, null: false
+    t.bigint "banner_drive_file_id"
+    t.string "color", default: "#86b300", null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.datetime "last_noted_at"
+    t.string "name", null: false
+    t.integer "notes_count", default: 0, null: false
+    t.bigint "pinned_status_ids", default: [], null: false, array: true
+    t.boolean "sensitive", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.integer "users_count", default: 0, null: false
+    t.index ["account_id"], name: "index_misskey_channels_on_account_id"
+    t.index ["banner_drive_file_id"], name: "index_misskey_channels_on_banner_drive_file_id"
+    t.index ["last_noted_at"], name: "index_misskey_channels_on_last_noted_at"
+  end
+
   create_table "misskey_federation_instance_stats", id: :bigint, default: -> { "timestamp_id('misskey_federation_instance_stats'::text)" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "domain", null: false
@@ -2557,6 +2605,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
   add_foreign_key "mentions", "accounts", name: "fk_970d43f9d1", on_delete: :cascade
   add_foreign_key "mentions", "statuses", on_delete: :cascade
   add_foreign_key "misskey_access_grants", "oauth_access_tokens", column: "access_token_id", on_delete: :cascade
+  add_foreign_key "misskey_channel_favorites", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_channel_favorites", "misskey_channels", on_delete: :cascade
+  add_foreign_key "misskey_channel_followings", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_channel_followings", "misskey_channels", on_delete: :cascade
+  add_foreign_key "misskey_channel_mutings", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_channel_mutings", "misskey_channels", on_delete: :cascade
+  add_foreign_key "misskey_channels", "accounts", on_delete: :nullify
+  add_foreign_key "misskey_channels", "drive_files", column: "banner_drive_file_id", on_delete: :nullify
   add_foreign_key "misskey_flash_likes", "accounts", on_delete: :cascade
   add_foreign_key "misskey_flash_likes", "misskey_flashes", on_delete: :cascade
   add_foreign_key "misskey_flashes", "accounts", on_delete: :cascade
