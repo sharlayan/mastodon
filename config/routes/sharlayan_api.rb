@@ -633,10 +633,15 @@ namespace :api, format: false do
       post 'admin/ad/update', to: 'ads#update'
       post 'admin/ad/delete', to: 'ads#destroy'
       post 'admin/promo/create', to: 'promo#create'
+      post 'admin/meta', to: 'meta#admin_show'
+      post 'admin/update-meta', to: 'meta#admin_update'
+      post 'admin/captcha/current', to: 'captcha#show'
+      post 'admin/captcha/save', to: 'captcha#update'
     end
 
     post 'admin/queue/pause', to: 'stub#unsupported'
     post 'admin/queue/resume', to: 'stub#unsupported'
+    post 'admin/update-proxy-account', to: 'stub#unsupported'
     match 'admin/*any', to: 'stub#noop', via: [:get, :post], format: false
     post 'v2/admin/emoji/list', to: 'stub#noop'
     post 'app/create', to: 'apps#create'
