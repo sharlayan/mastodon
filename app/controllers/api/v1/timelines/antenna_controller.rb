@@ -23,7 +23,8 @@ class Api::V1::Timelines::AntennaController < Api::V1::Timelines::BaseController
   end
 
   def set_statuses
-    @statuses = preload_collection(antenna_statuses, Status)
+    @statuses_page = antenna_statuses.to_a
+    @statuses = preload_collection(@statuses_page, Status).select { |status| StatusPolicy.new(current_account, status).show? }
   end
 
   def antenna_statuses
@@ -33,6 +34,14 @@ class Api::V1::Timelines::AntennaController < Api::V1::Timelines::BaseController
       params[:since_id],
       params[:min_id]
     )
+  end
+
+  def pagination_collection
+    @statuses_page
+  end
+
+  def pagination_available?
+    @statuses_page.present?
   end
 
   def next_path

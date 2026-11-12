@@ -3,6 +3,7 @@
 module Sharlayan::FeedManagerExtensions
   def filter(timeline_type, status, receiver)
     return super unless timeline_type == :antenna
+    return :filter unless StatusPolicy.new(receiver.account, status).show?
 
     filter_from_antenna?(status, receiver.account_id, build_crutches(receiver.account_id, [status])) ? :filter : nil
   end
