@@ -11,14 +11,11 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
   end
 
   let(:array_endpoints) do
-    %w(
-      bubble-game/ranking
-    )
+    %w()
   end
 
   let(:void_endpoints) do
     %w(
-      bubble-game/register
       promo/read
     )
   end

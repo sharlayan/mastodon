@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_12_191044) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_12_191045) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1450,6 +1450,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191044) do
     t.index ["user_id"], name: "index_misskey_auth_sessions_on_user_id"
   end
 
+  create_table "misskey_bubble_game_records", id: :bigint, default: -> { "timestamp_id('misskey_bubble_game_records'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.string "game_mode", null: false
+    t.integer "game_version", null: false
+    t.boolean "is_verified", default: false, null: false
+    t.jsonb "logs", default: [], null: false
+    t.integer "score", null: false
+    t.string "seed", null: false
+    t.datetime "seeded_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_misskey_bubble_game_records_on_account_id"
+    t.index ["game_mode", "seeded_at"], name: "index_misskey_bubble_game_records_on_game_mode_and_seeded_at"
+  end
+
   create_table "misskey_channel_favorites", id: :bigint, default: -> { "timestamp_id('misskey_channel_favorites'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
@@ -2687,6 +2702,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191044) do
   add_foreign_key "misskey_apps", "oauth_applications", on_delete: :cascade
   add_foreign_key "misskey_auth_sessions", "oauth_applications", on_delete: :cascade
   add_foreign_key "misskey_auth_sessions", "users", on_delete: :cascade
+  add_foreign_key "misskey_bubble_game_records", "accounts", on_delete: :cascade
   add_foreign_key "misskey_channel_favorites", "accounts", on_delete: :cascade
   add_foreign_key "misskey_channel_favorites", "misskey_channels", on_delete: :cascade
   add_foreign_key "misskey_channel_followings", "accounts", on_delete: :cascade

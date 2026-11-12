@@ -100,6 +100,16 @@ class RateLimiter
       period: 1.minute.freeze,
     }.freeze,
 
+    misskey_compat_bubble_game: {
+      limit: 120,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_compat_bubble_game_interval: {
+      limit: 1,
+      period: 30.seconds.freeze,
+    }.freeze,
+
     misskey_miauth_hourly: {
       limit: 10,
       period: 1.hour.freeze,

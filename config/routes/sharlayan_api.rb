@@ -573,8 +573,8 @@ namespace :api, format: false do
     post 'v2/admin/emoji/list', to: 'stub#noop'
     post 'app/create', to: 'apps#create'
     post 'app/show', to: 'apps#show'
-    post 'bubble-game/ranking', to: 'stub#empty'
-    post 'bubble-game/register', to: 'stub#no_content'
+    match 'bubble-game/ranking', to: 'bubble_game#ranking', via: [:get, :post]
+    post 'bubble-game/register', to: 'bubble_game#register'
     post 'ping', to: 'meta#ping'
     post 'promo/read', to: 'stub#no_content'
     post 'request-reset-password', to: 'credentials#request_reset_password'
