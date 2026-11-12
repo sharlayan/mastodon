@@ -511,6 +511,11 @@ namespace :api, format: false do
     post 'channels/mute/delete', to: 'channels#mute_delete'
     post 'channels/mute/list', to: 'channels#mute_list'
 
+    post 'admin/abuse-user-reports', to: 'admin_reports#index'
+    post 'admin/resolve-abuse-user-report', to: 'admin_reports#resolve'
+    post 'admin/update-abuse-user-report', to: 'admin_reports#update'
+    post 'admin/forward-abuse-user-report', to: 'admin_reports#forward'
+
     match 'admin/*any', to: 'stub#noop', via: [:get, :post], format: false
     post 'v2/admin/emoji/list', to: 'stub#noop'
     post 'app/create', to: 'stub#noop'

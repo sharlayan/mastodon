@@ -1388,6 +1388,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
     t.index ["status_id"], name: "index_mentions_on_status_id"
   end
 
+  create_table "misskey_abuse_report_resolutions", id: :bigint, default: -> { "timestamp_id('misskey_abuse_report_resolutions'::text)" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "report_id", null: false
+    t.string "resolved_as", null: false
+    t.datetime "updated_at", null: false
+    t.index ["report_id"], name: "index_misskey_abuse_report_resolutions_on_report_id", unique: true
+  end
+
   create_table "misskey_access_grants", id: :bigint, default: -> { "timestamp_id('misskey_access_grants'::text)" }, force: :cascade do |t|
     t.bigint "access_token_id", null: false
     t.datetime "created_at", null: false
@@ -2615,6 +2623,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
   add_foreign_key "media_attachments", "statuses", on_delete: :nullify
   add_foreign_key "mentions", "accounts", name: "fk_970d43f9d1", on_delete: :cascade
   add_foreign_key "mentions", "statuses", on_delete: :cascade
+  add_foreign_key "misskey_abuse_report_resolutions", "reports", on_delete: :cascade
   add_foreign_key "misskey_access_grants", "oauth_access_tokens", column: "access_token_id", on_delete: :cascade
   add_foreign_key "misskey_channel_favorites", "accounts", on_delete: :cascade
   add_foreign_key "misskey_channel_favorites", "misskey_channels", on_delete: :cascade
