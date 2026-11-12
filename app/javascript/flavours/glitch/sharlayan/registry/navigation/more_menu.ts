@@ -4,13 +4,7 @@ export const extendSharlayanMoreMenuItems = (
   items: MenuItem[],
   formatMessage: (descriptor: { id: string; defaultMessage: string }) => string,
   openAccountSwitcher: () => void,
-  driveEnabled: boolean,
 ) => {
-  const driveItems: MenuItem[] = driveEnabled
-    ? [{ to: '/drive', text: formatMessage(messages.drive) }, null]
-    : [];
-
-  items.unshift(...driveItems);
   insertAfter(items, '/mutes', [
     {
       to: '/custom_emoji_mutes',
@@ -56,5 +50,4 @@ const messages = {
     id: 'navigation_bar.switch_account',
     defaultMessage: 'Switch account',
   },
-  drive: { id: 'navigation_bar.drive', defaultMessage: 'Drive' },
 };

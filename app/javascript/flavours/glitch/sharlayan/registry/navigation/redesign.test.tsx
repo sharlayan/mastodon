@@ -246,6 +246,12 @@ describe('Sharlayan redesign navigation', () => {
       '/pages',
       '/circles',
     ]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Drive' }));
+    expect(context.dispatch).toHaveBeenLastCalledWith({
+      type: 'OPEN_MODAL',
+      payload: { modalType: 'DRIVE_MANAGER', modalProps: {} },
+    });
   });
 
   it('does not fetch antennas when disabled', () => {
@@ -267,11 +273,10 @@ describe('Sharlayan redesign navigation', () => {
     expect(paths()).toEqual(['/antennas', '/antennas/two', '/antennas/one']);
   });
 
-  it('connects Drive, custom mute screens, account switching, and app settings', () => {
+  it('connects custom mute screens, account switching, and app settings', () => {
     renderNavigation(<SharlayanRedesignAccountMenuItems />);
 
     expect(paths()).toEqual([
-      '/drive',
       '/mutes',
       '/custom_emoji_mutes',
       '/reaction_mutes',
@@ -291,10 +296,10 @@ describe('Sharlayan redesign navigation', () => {
     });
   });
 
-  it('hides Drive when its feature gate is off', () => {
+  it('hides the Drive button when its feature gate is off', () => {
     context.flags.driveEnabled = false;
-    renderNavigation(<SharlayanRedesignAccountMenuItems />);
+    renderNavigation(<SharlayanRedesignExtensions />);
 
-    expect(paths()).not.toContain('/drive');
+    expect(screen.queryByRole('button', { name: 'Drive' })).toBeNull();
   });
 });
