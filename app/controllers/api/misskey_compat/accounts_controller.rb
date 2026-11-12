@@ -22,7 +22,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   def notes
     account = Account.without_requested_deletion.find(params[:userId])
     filter = AccountStatusesFilter.new(account, current_account, statuses_filter_params)
-    scope = apply_compat_date_range(filter.results)
+    scope = MisskeyChannelNote.filter_user_notes(apply_compat_date_range(filter.results), owner: account, viewer: current_account, with_channel_notes: ActiveModel::Type::Boolean.new.cast(params[:withChannelNotes]))
     statuses = scope.to_a_paginated_by_id(pagination_limit, max_id: params[:untilId].presence, since_id: params[:sinceId].presence).to_a
     context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
 

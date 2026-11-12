@@ -150,6 +150,76 @@ RSpec.describe 'Misskey-compat channels' do
     end
   end
 
+  describe 'channel notes' do
+    let!(:channel) { MisskeyChannel.create!(account: other_user.account, name: 'Lobby', color: '#123456') }
+
+    def create_note(**params)
+      api('notes/create', i: token, **params)
+    end
+
+    it 'posts local-only public notes into a channel and follows reply channels' do
+      note = create_note(text: 'hello', channelId: mi(channel.id), visibility: 'followers', localOnly: false)[:createdNote]
+
+      expect(note).to include(channelId: mi(channel.id), visibility: 'public', localOnly: true)
+      expect(note[:channel]).to include(id: mi(channel.id), name: 'Lobby', color: '#123456', isSensitive: false, allowRenoteToExternal: true, userId: mi(other_user.account.id))
+
+      reply = create_note(text: 'reply', replyId: note[:id])[:createdNote]
+      expect(reply).to include(channelId: mi(channel.id), localOnly: true)
+
+      plain = create_note(text: 'plain')[:createdNote]
+      expect(plain).to include(channel: nil)
+      expect(plain).to_not have_key(:channelId)
+      expect(create_note(text: 'escape', replyId: plain[:id], channelId: mi(channel.id))[:createdNote]).to include(channel: nil)
+
+      channel.update!(archived: true)
+      expect(create_note(text: 'archived', channelId: mi(channel.id))[:error]).to include(code: 'NO_SUCH_CHANNEL', id: 'b1653923-5453-4edc-b786-7c4f39bb0bbb')
+      expect(response).to have_http_status(404)
+      expect(create_note(text: 'archived reply', replyId: note[:id])[:createdNote]).to include(channelId: mi(channel.id))
+    end
+
+    it 'renotes inside channels and enforces allowRenoteToExternal' do
+      note = PostStatusService.new.call(other_user.account, text: 'source', visibility: 'public', local_only: true, misskey_channel_id: channel.id, quote_approval_policy: InteractionPolicy::POLICY_FLAGS[:public] << 16)
+
+      renote = create_note(renoteId: mi(note.id), channelId: mi(channel.id))[:createdNote]
+      expect(renote).to include(renoteId: mi(note.id), channelId: mi(channel.id))
+      expect(Status.find(MisskeyCompat::MiId.decode(renote[:id]))).to have_attributes(local_only: true, reblog_of_id: note.id)
+
+      expect(create_note(text: 'quote', renoteId: mi(note.id))[:createdNote]).to include(renoteId: mi(note.id), channel: nil, localOnly: true)
+
+      channel.update!(allow_renote_to_external: false)
+      expect(create_note(text: 'quote', renoteId: mi(note.id))[:error]).to include(code: 'CANNOT_RENOTE_OUTSIDE_OF_CHANNEL', id: '33510210-8452-094c-6227-4a6c05d99f00')
+      expect(create_note(text: 'quote', renoteId: mi(note.id), channelId: mi(channel.id))[:createdNote]).to include(channelId: mi(channel.id))
+    end
+
+    it 'pages the channel timeline for viewers and hides renotes from other muted channels' do
+      muted = MisskeyChannel.create!(account: other_user.account, name: 'Muted')
+      outside = PostStatusService.new.call(other_user.account, text: 'muted source', visibility: 'public', local_only: true, misskey_channel_id: muted.id)
+      notes = Array.new(3) { |i| PostStatusService.new.call(other_user.account, text: "note #{i}", visibility: 'public', local_only: true, misskey_channel_id: channel.id) }
+      MisskeyCompat::ChannelRenoteService.new.call(other_user.account, outside, channel)
+      Fabricate(:status, account: other_user.account, text: 'not in channel')
+      MisskeyChannelMuting.create!(account: account, misskey_channel: muted)
+      MisskeyChannelMuting.create!(account: account, misskey_channel: channel)
+
+      expect(api('channels/timeline', i: token, channelId: mi(channel.id)).pluck(:id)).to eq(notes.reverse.map { |status| mi(status.id) })
+      expect(api('channels/timeline', i: token, channelId: mi(channel.id), limit: 1, untilId: mi(notes.last.id)).pluck(:id)).to eq([mi(notes[1].id)])
+      expect(api('channels/timeline', i: token, channelId: mi(channel.id), sinceId: mi(notes.first.id), limit: 1).pluck(:id)).to eq([mi(notes[1].id)])
+      expect(api('channels/timeline', i: other_token, channelId: mi(channel.id)).size).to eq(4)
+      expect(api('channels/timeline', channelId: mi(channel.id))).to eq([])
+      expect(api('channels/timeline', channelId: mi(channel.id + 10))[:error]).to include(code: 'NO_SUCH_CHANNEL', id: '4d0eeeba-a02c-4c3c-9966-ef60d38d2e7f')
+    end
+
+    it 'excludes channel notes from users/notes unless withChannelNotes is set' do
+      sensitive = MisskeyChannel.create!(account: account, name: 'Sensitive', sensitive: true)
+      plain = Fabricate(:status, account: account, text: 'plain')
+      in_channel = PostStatusService.new.call(account, text: 'channel', visibility: 'public', local_only: true, misskey_channel_id: channel.id)
+      in_sensitive = PostStatusService.new.call(account, text: 'sensitive', visibility: 'public', local_only: true, misskey_channel_id: sensitive.id)
+
+      expect(api('users/notes', i: other_token, userId: mi(account.id)).pluck(:id)).to eq([mi(plain.id)])
+      expect(api('users/notes', i: other_token, userId: mi(account.id), withChannelNotes: true).pluck(:id)).to eq([mi(in_channel.id), mi(plain.id)])
+      expect(api('users/notes', i: token, userId: mi(account.id), withChannelNotes: true).pluck(:id)).to eq([mi(in_sensitive.id), mi(in_channel.id), mi(plain.id)])
+    end
+  end
+
   describe 'discovery' do
     it 'lists featured channels by last note and searches unarchived channels' do
       older = MisskeyChannel.create!(account: account, name: 'Cooking club', description: 'Recipes', last_noted_at: 2.days.ago)

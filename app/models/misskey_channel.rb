@@ -32,6 +32,7 @@ class MisskeyChannel < ApplicationRecord
   has_many :followings, class_name: 'MisskeyChannelFollowing', inverse_of: :misskey_channel, dependent: :delete_all
   has_many :favorites, class_name: 'MisskeyChannelFavorite', inverse_of: :misskey_channel, dependent: :delete_all
   has_many :mutings, class_name: 'MisskeyChannelMuting', inverse_of: :misskey_channel, dependent: :delete_all
+  has_many :channel_notes, class_name: 'MisskeyChannelNote', inverse_of: :misskey_channel, dependent: :delete_all
 
   scope :unarchived, -> { where(archived: false) }
 

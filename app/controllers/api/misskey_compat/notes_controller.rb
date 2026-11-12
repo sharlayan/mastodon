@@ -236,9 +236,10 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     poll = poll_param
     return render_invalid_param('#/properties/poll', 'poll expiration is required') if poll && poll[:expiredAfter].blank? && poll[:expiresAt].blank?
 
+    @note_channel = MisskeyCompat::ChannelNoteTarget.resolve(channel_id: params[:channelId], reply: reply_status, renote: renote_id.present? ? renote_target.proper : nil)
     status = if renote_id.present? && pure_renote_request?
                reaction_acceptance_option if params.key?(:reactionAcceptance)
-               ReblogService.new.call(current_account, reblog_target)
+               @note_channel ? MisskeyCompat::ChannelRenoteService.new.call(current_account, reblog_target, @note_channel) : ReblogService.new.call(current_account, reblog_target)
              else
                with_resolved_media_ids do |media_ids|
                  PostStatusService.new.call(current_account, post_options.merge(media_ids: media_ids))
@@ -248,6 +249,10 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     return render json: { scheduledNoteId: MisskeyCompat::MiId.encode(status.id) } if status.is_a?(ScheduledStatus)
 
     render json: { createdNote: serialize(status) }
+  rescue MisskeyCompat::ChannelNoteTarget::NoSuchChannelError
+    render_error('No such channel', 'NO_SUCH_CHANNEL', 404, id: 'b1653923-5453-4edc-b786-7c4f39bb0bbb')
+  rescue MisskeyCompat::ChannelNoteTarget::RenoteOutsideChannelError
+    render_error('Cannot renote outside of channel', 'CANNOT_RENOTE_OUTSIDE_OF_CHANNEL', 400, id: '33510210-8452-094c-6227-4a6c05d99f00')
   rescue NoSuchReplyTargetError
     render_error('No such reply target', 'NO_SUCH_REPLY_TARGET', 404)
   rescue CannotReplyToSpecifiedVisibilityNoteError
@@ -641,7 +646,14 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       poll: post_poll_options,
       scheduled_at: scheduled_at_option,
       reaction_acceptance: reaction_acceptance_option,
-    }.compact
+    }.compact.merge(channel_post_options(quoted))
+  end
+
+  def channel_post_options(quoted)
+    return { visibility: 'public', local_only: true, misskey_channel_id: @note_channel.id } if @note_channel
+    return { local_only: true } if quoted&.local_only?
+
+    {}
   end
 
   def update_options

@@ -1425,6 +1425,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
     t.index ["misskey_channel_id"], name: "index_misskey_channel_mutings_on_misskey_channel_id"
   end
 
+  create_table "misskey_channel_notes", id: :bigint, default: -> { "timestamp_id('misskey_channel_notes'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "misskey_channel_id", null: false
+    t.bigint "status_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["misskey_channel_id", "account_id"], name: "index_misskey_channel_notes_on_channel_and_account"
+    t.index ["misskey_channel_id", "status_id"], name: "index_misskey_channel_notes_on_channel_and_status"
+    t.index ["status_id"], name: "index_misskey_channel_notes_on_status_id", unique: true
+  end
+
   create_table "misskey_channels", id: :bigint, default: -> { "timestamp_id('misskey_channels'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.boolean "allow_renote_to_external", default: true, null: false
@@ -2611,6 +2622,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
   add_foreign_key "misskey_channel_followings", "misskey_channels", on_delete: :cascade
   add_foreign_key "misskey_channel_mutings", "accounts", on_delete: :cascade
   add_foreign_key "misskey_channel_mutings", "misskey_channels", on_delete: :cascade
+  add_foreign_key "misskey_channel_notes", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_channel_notes", "misskey_channels", on_delete: :cascade
+  add_foreign_key "misskey_channel_notes", "statuses", on_delete: :cascade
   add_foreign_key "misskey_channels", "accounts", on_delete: :nullify
   add_foreign_key "misskey_channels", "drive_files", column: "banner_drive_file_id", on_delete: :nullify
   add_foreign_key "misskey_flash_likes", "accounts", on_delete: :cascade

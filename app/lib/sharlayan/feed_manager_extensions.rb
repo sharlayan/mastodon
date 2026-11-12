@@ -12,7 +12,9 @@ module Sharlayan::FeedManagerExtensions
 
     crutches = build_crutches(receiver.id, statuses)
     statuses.reject do |status|
-      if status.tags.any? { |tag| followed_tag_ids.include?(tag.id) }
+      if misskey_channel_filtered?(status, crutches, :home)
+        true
+      elsif status.tags.any? { |tag| followed_tag_ids.include?(tag.id) }
         filter_from_tags?(status, receiver.id, crutches)
       else
         filter_from_home(status, receiver.id, crutches, :home)
@@ -106,6 +108,8 @@ module Sharlayan::FeedManagerExtensions
   end
 
   def filter_from_home(status, receiver_id, crutches, timeline_type = :home)
+    return :filter if misskey_channel_filtered?(status, crutches, timeline_type)
+
     result = super
     return result if result || !status.reblog?
 
@@ -134,7 +138,26 @@ module Sharlayan::FeedManagerExtensions
     super.tap do |crutches|
       domains = statuses.flat_map { |status| [status.account.domain, status.reblog&.account&.domain] }.compact
       crutches[:domain_muting_home] = domains.empty? ? {} : AccountDomainMute.where(hide_from_home: true, account_id: receiver_id, domain: domains).pluck(:domain).index_with(true)
+      add_misskey_channel_crutches(crutches, receiver_id, statuses)
     end
+  end
+
+  def add_misskey_channel_crutches(crutches, receiver_id, statuses)
+    crutches[:misskey_channels] = MisskeyChannelNote.channel_ids_by_status_id(statuses.flat_map { |status| [status.id, status.reblog_of_id] })
+    channel_ids = crutches[:misskey_channels].values.uniq
+    crutches[:misskey_channel_following] = channel_ids.empty? ? {} : MisskeyChannelFollowing.where(account_id: receiver_id, misskey_channel_id: channel_ids).pluck(:misskey_channel_id).index_with(true)
+    crutches[:misskey_channel_muting] = channel_ids.empty? ? {} : MisskeyChannelMuting.active.where(account_id: receiver_id, misskey_channel_id: channel_ids).pluck(:misskey_channel_id).index_with(true)
+  end
+
+  def misskey_channel_filtered?(status, crutches, timeline_type)
+    channels = crutches[:misskey_channels]
+    return false if channels.blank?
+
+    channel_id = channels[status.id]
+    return true if channel_id && (timeline_type == :list || !crutches[:misskey_channel_following][channel_id] || crutches[:misskey_channel_muting][channel_id])
+
+    reblog_channel_id = channels[status.reblog_of_id] if status.reblog?
+    reblog_channel_id.present? && crutches[:misskey_channel_muting][reblog_channel_id].present?
   end
 
   def crutches_following(recipient_id, statuses, list)

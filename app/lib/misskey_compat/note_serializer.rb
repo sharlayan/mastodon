@@ -70,7 +70,7 @@ class MisskeyCompat::NoteSerializer
       emojis: emojis,
       uri: status.local? ? nil : status.uri,
       url: status.local? ? nil : (status.url || ActivityPub::TagManager.instance.url_for(status)),
-    }
+    }.merge(channel_fields(status))
   end
 
   private
@@ -97,6 +97,23 @@ class MisskeyCompat::NoteSerializer
       renoteCount: status.reblogs_count + status.quotes_count,
       repliesCount: status.replies_count,
       emojis: {},
+    }.merge(channel_fields(status))
+  end
+
+  def channel_fields(status)
+    channel = @context.channel_for(status)
+    return { channel: nil } if channel.nil?
+
+    {
+      channelId: MisskeyCompat::MiId.encode(channel.id),
+      channel: {
+        id: MisskeyCompat::MiId.encode(channel.id),
+        name: channel.name,
+        color: channel.color,
+        isSensitive: channel.sensitive?,
+        allowRenoteToExternal: channel.allow_renote_to_external?,
+        userId: MisskeyCompat::MiId.encode(channel.account_id),
+      },
     }
   end
 

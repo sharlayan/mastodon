@@ -498,7 +498,7 @@ namespace :api, format: false do
     post 'channels/my-favorites', to: 'channels#my_favorites'
     post 'channels/owned', to: 'channels#owned'
     post 'channels/featured', to: 'channels#featured'
-    post 'channels/timeline', to: 'stub#unsupported'
+    post 'channels/timeline', to: 'channels#timeline'
     post 'channels/search', to: 'channels#search'
     post 'channels/show', to: 'channels#show'
     post 'channels/create', to: 'channels#create'

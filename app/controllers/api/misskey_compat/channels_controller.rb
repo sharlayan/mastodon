@@ -10,6 +10,7 @@ class Api::MisskeyCompat::ChannelsController < Api::MisskeyCompat::BaseControlle
     'unfavorite' => '353c68dd-131a-476c-aa99-88a345e83668',
     'mute_create' => '7174361e-d58f-31d6-2e7c-6fb830786a3f',
     'mute_delete' => 'e7998769-6e94-d9c2-6b8f-94a527314aba',
+    'timeline' => '4d0eeeba-a02c-4c3c-9966-ef60d38d2e7f',
   }.freeze
   NO_SUCH_FILE_IDS = {
     'create' => 'cd1e9f3e-5a12-4ab4-96f6-5d0a2cc32050',
@@ -21,9 +22,10 @@ class Api::MisskeyCompat::ChannelsController < Api::MisskeyCompat::BaseControlle
   NOT_MUTING_ID = '14d55962-6ea8-d990-1333-d6bef78dc2ab'
   MAX_EXPIRES_AT = 253_402_300_799_000
   FEATURED_LIMIT = 10
+  TIMELINE_SCAN_LIMIT = 1_000
   SEARCH_TYPES = %w(nameAndDescription nameOnly).freeze
 
-  OPTIONAL_AUTHENTICATION_ACTIONS = %i(show featured search).freeze
+  OPTIONAL_AUTHENTICATION_ACTIONS = %i(show featured search timeline).freeze
   WRITE_ACTIONS = %i(create update follow unfollow favorite unfavorite mute_create mute_delete).freeze
   USER_ACTIONS = (WRITE_ACTIONS + %i(owned followed my_favorites mute_list)).freeze
 
@@ -35,7 +37,7 @@ class Api::MisskeyCompat::ChannelsController < Api::MisskeyCompat::BaseControlle
   before_action :require_user!, only: USER_ACTIONS
   before_action :require_user_if_authenticated!, only: OPTIONAL_AUTHENTICATION_ACTIONS
   before_action :require_object_body!
-  before_action :set_channel, only: [:show, :update, :follow, :unfollow, :favorite, :unfavorite, :mute_create, :mute_delete]
+  before_action :set_channel, only: [:show, :update, :follow, :unfollow, :favorite, :unfavorite, :mute_create, :mute_delete, :timeline]
 
   def show
     render json: serialize(@channel, detailed: true)
@@ -143,7 +145,57 @@ class Api::MisskeyCompat::ChannelsController < Api::MisskeyCompat::BaseControlle
     render json: serialize_many(channels)
   end
 
+  def timeline
+    return if current_account.nil? && rate_limited?(:misskey_compat_api)
+
+    statuses = visible_timeline_statuses
+    context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
+    render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, context: context) }
+  end
+
   private
+
+  def timeline_scope
+    notes = MisskeyChannelNote.arel_table
+    scope = Status.joins(Status.arel_table.join(notes).on(notes[:status_id].eq(Status.arel_table[:id])).join_sources)
+      .where(misskey_channel_notes: { misskey_channel_id: @channel.id })
+    return scope if current_account.nil?
+
+    scope = scope.not_excluded_by_account(current_account)
+    muted_channel_ids = MisskeyChannelMuting.channel_ids_for(current_account) - [@channel.id]
+    return scope if muted_channel_ids.empty?
+
+    scope.where.not(MisskeyChannelNote.where(misskey_channel_id: muted_channel_ids).linked_status_condition(Status.arel_table[:reblog_of_id]))
+  end
+
+  def visible_timeline_statuses
+    column = Status.arel_table[:id]
+    upper = params[:untilId].presence || snowflake_id_at(params[:untilDate])
+    lower = params[:sinceId].presence || snowflake_id_at(params[:sinceDate])
+    forward = lower.present? && upper.blank?
+    limit = pagination_limit(default: 10, max: 100)
+    scope = timeline_scope
+    scope = scope.where(column.lt(upper.to_i)) if upper.present?
+    scope = scope.where(column.gt(lower.to_i)) if lower.present?
+    scope = scope.reorder(column.public_send(forward ? :asc : :desc))
+    statuses = []
+    cursor = nil
+    scanned = 0
+
+    while statuses.size < limit && scanned < TIMELINE_SCAN_LIMIT
+      batch = scope
+      batch = batch.where(forward ? column.gt(cursor) : column.lt(cursor)) if cursor
+      page = batch.limit([limit * 2, 100].min).to_a
+      break if page.empty?
+
+      relations = MisskeyCompat::SerializationContext.new(current_account: current_account).prime_relations(page)
+      statuses.concat(page.select { |status| relations.visible?(status) })
+      scanned += page.size
+      cursor = page.last.id
+    end
+
+    statuses.first(limit)
+  end
 
   def mute_expires_at
     value = params[:expiresAt]

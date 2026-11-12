@@ -30,7 +30,6 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       i/export-antennas
       i/export-favorites
       i/import-antennas
-      channels/timeline
       i/change-password
       i/update-email
       request-reset-password

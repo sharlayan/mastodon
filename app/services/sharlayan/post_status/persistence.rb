@@ -20,6 +20,7 @@ module Sharlayan::PostStatus
         yield
         @circle.statuses << status if @circle.present?
         attach_clips!(status)
+        attach_misskey_channel!(status)
         @options[:scheduled_status]&.destroy!
       end
     end
@@ -32,6 +33,12 @@ module Sharlayan::PostStatus
     end
 
     private
+
+    def attach_misskey_channel!(status)
+      return if @options[:misskey_channel_id].blank?
+
+      MisskeyChannelNote.create!(status: status, misskey_channel_id: @options[:misskey_channel_id])
+    end
 
     def attach_clips!(status)
       return unless Setting.clips_enabled
