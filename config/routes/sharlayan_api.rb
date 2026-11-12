@@ -592,6 +592,10 @@ namespace :api, format: false do
       post 'admin/emoji/set-license-bulk', to: 'emoji#set_license'
       post 'admin/emoji/import-zip', to: 'emoji#import_zip'
       post 'v2/admin/emoji/list', to: 'emoji#search'
+      post 'admin/avatar-decorations/list', to: 'avatar_decorations#index'
+      post 'admin/avatar-decorations/create', to: 'avatar_decorations#create'
+      post 'admin/avatar-decorations/update', to: 'avatar_decorations#update'
+      post 'admin/avatar-decorations/delete', to: 'avatar_decorations#destroy'
     end
 
     match 'admin/*any', to: 'stub#noop', via: [:get, :post], format: false
