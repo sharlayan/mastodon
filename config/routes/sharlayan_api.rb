@@ -596,6 +596,13 @@ namespace :api, format: false do
       post 'admin/avatar-decorations/create', to: 'avatar_decorations#create'
       post 'admin/avatar-decorations/update', to: 'avatar_decorations#update'
       post 'admin/avatar-decorations/delete', to: 'avatar_decorations#destroy'
+      post 'admin/federation/delete-all-files', to: 'federation#delete_all_files'
+      post 'admin/federation/refresh-remote-instance-metadata', to: 'federation#refresh_metadata'
+      post 'admin/federation/remove-all-following', to: 'federation#remove_all_following'
+      post 'admin/federation/update-instance', to: 'federation#update_instance'
+      post 'admin/relays/list', to: 'relays#index'
+      post 'admin/relays/add', to: 'relays#create'
+      post 'admin/relays/remove', to: 'relays#destroy'
     end
 
     match 'admin/*any', to: 'stub#noop', via: [:get, :post], format: false
