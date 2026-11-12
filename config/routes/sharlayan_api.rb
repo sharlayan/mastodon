@@ -515,6 +515,15 @@ namespace :api, format: false do
     post 'admin/resolve-abuse-user-report', to: 'admin_reports#resolve'
     post 'admin/update-abuse-user-report', to: 'admin_reports#update'
     post 'admin/forward-abuse-user-report', to: 'admin_reports#forward'
+    post 'admin/roles/list', to: 'admin_roles#index'
+    post 'admin/roles/show', to: 'admin_roles#show'
+    post 'admin/roles/users', to: 'admin_roles#users'
+    post 'admin/roles/create', to: 'admin_roles#create'
+    post 'admin/roles/update', to: 'admin_roles#update'
+    post 'admin/roles/delete', to: 'admin_roles#destroy'
+    post 'admin/roles/assign', to: 'admin_roles#assign'
+    post 'admin/roles/unassign', to: 'admin_roles#unassign'
+    post 'admin/roles/update-default-policies', to: 'admin_roles#update_default_policies'
 
     match 'admin/*any', to: 'stub#noop', via: [:get, :post], format: false
     post 'v2/admin/emoji/list', to: 'stub#noop'
