@@ -9,8 +9,8 @@ export interface VoiceParticipant {
   account_id: string;
   account: ChatAccount;
   screen_sharing: boolean;
-  mic_muted: boolean;
-  deafened: boolean;
+  mic_muted: boolean | null;
+  deafened: boolean | null;
 }
 
 export interface VoiceState {

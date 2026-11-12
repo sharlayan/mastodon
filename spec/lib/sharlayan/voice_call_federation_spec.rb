@@ -59,7 +59,7 @@ RSpec.describe Sharlayan::VoiceCallFederation do
 
       state = Sharlayan::VoiceCallService.state_for(mirror)
       expect(state).to include(available: true, active: true)
-      expect(state[:participants].map { |participant| [participant[:account_id], participant[:mic_muted]] }).to contain_exactly([host.id.to_s, true], [member.id.to_s, false])
+      expect(state[:participants].map { |participant| [participant[:account_id], participant[:mic_muted]] }).to contain_exactly([host.id.to_s, true], [member.id.to_s, nil])
       expect(redis).to have_received(:publish).with("timeline:#{member.id}", a_string_including('chat.voice_state'))
 
       ActivityPub::Activity::Update.new(voice_state_update(participants: [], updated: 1.minute.ago), host).perform
@@ -69,15 +69,47 @@ RSpec.describe Sharlayan::VoiceCallFederation do
       expect(Sharlayan::VoiceCallService.state_for(mirror)[:active]).to be false
     end
 
-    it 'rejects states from other actors, other servers, the far future and while remote calls are off' do
+    it 'rejects states from other actors, other servers, the far future, the distant past and while remote calls are off' do
       expect(Sharlayan::VoiceCallFederation::Incoming.handle(voice_state_update(participants: [], actor: other), other)).to eq 'skip: voice state is not on the sender server'
       expect(Sharlayan::VoiceCallFederation::Incoming.handle(voice_state_update(participants: [], room: 'https://remote.test/chat/rooms/9?x'), host)).to eq 'skip: voice state is not on the sender server'
       expect(Sharlayan::VoiceCallFederation::Incoming.handle(voice_state_update(participants: [], updated: 1.hour.from_now), host)).to eq 'ahead: voice state'
       expect(Sharlayan::VoiceCallFederation::Incoming.handle(voice_state_update(participants: [{ 'id' => host.uri }]), host)).to eq 'skip: invalid participants'
+      expect(Sharlayan::VoiceCallFederation::Incoming.handle(voice_state_update(participants: [{ 'id' => host.uri, 'screenSharing' => false }], updated: 16.minutes.ago), host)).to eq 'old: voice state'
+      expect(Sharlayan::VoiceCallFederation::Incoming.handle(voice_state_update(participants: [{ 'id' => host.uri, 'screenSharing' => false }], updated: 14.minutes.ago), host)).to eq 'stored: voice state'
+      expect(Sharlayan::VoiceCallService.state_for(mirror)[:participants].pluck(:account_id)).to eq [host.id.to_s]
+      VoiceCallRemoteState.delete_all
 
       Setting.voice_call_remote_join_enabled = false
       expect(Sharlayan::VoiceCallFederation::Incoming.handle(voice_state_update(participants: []), host)).to eq 'skip: remote voice calls disabled'
       expect(VoiceCallRemoteState.count).to eq 0
+    end
+  end
+
+  describe 'mirror call states' do
+    def cleared_state_pushed?(message)
+      payload = JSON.parse(JSON.parse(message)['payload'])
+      payload['conversation_id'] == mirror.id.to_s && payload['active'] == false && payload['participants'] == []
+    end
+
+    it 'hides participants while the owner server is suspended and clears them when an admin turns remote calls off' do
+      ActivityPub::Activity::Update.new(voice_state_update(participants: [{ 'id' => host.uri, 'screenSharing' => false }]), host).perform
+      expect(Sharlayan::VoiceCallService.state_for(mirror)).to include(active: true)
+
+      block = DomainBlock.create!(domain: 'remote.test', severity: :suspend)
+      expect(Sharlayan::VoiceCallService.state_for(mirror)).to include(available: false, active: false, participants: [])
+      block.destroy!
+
+      expect(Form::AdminSettings.new(voice_call_remote_join_enabled: '1').save).to be_truthy
+      expect(VoiceCallMirrorClearWorker.jobs).to be_empty
+
+      allow(redis).to receive(:publish).and_call_original
+      Form::AdminSettings.new(voice_call_remote_join_enabled: '0').save
+      VoiceCallMirrorClearWorker.drain
+      expect(redis).to have_received(:publish).with("timeline:#{member.id}", satisfy { |message| cleared_state_pushed?(message) })
+
+      Setting.voice_call_remote_join_enabled = true
+      expect(Sharlayan::VoiceCallService.state_for(mirror)).to include(available: true, active: false)
+      expect(VoiceCallRemoteState.sole).to have_attributes(participants: [], remote_updated_at: be_positive)
     end
   end
 
@@ -98,7 +130,7 @@ RSpec.describe Sharlayan::VoiceCallFederation do
       )
       expect(service.join(member, mirror)[:url]).to end_with("/remote/#{session.id}")
       expect(VoiceCallRemoteSession.sole.id).to eq session.id
-      expect(Sharlayan::VoiceCallService.state_for(mirror)[:participants].pluck(:account_id)).to eq [host.id.to_s]
+      expect(Sharlayan::VoiceCallService.state_for(mirror)[:participants].pluck(:account_id, :mic_muted, :deafened)).to eq [[host.id.to_s, nil, nil]]
 
       status = stub_request(:post, 'https://remote.test/livekit/federation/status').to_return(status: 200, body: '{}')
       expect(service.report_status(member, mirror, session_id: 'PA_1', mic_muted: true, deafened: false)).to be true

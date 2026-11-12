@@ -19,6 +19,8 @@ class Sharlayan::VoiceCallService
   POLL_BUDGET = 30.seconds
   ENDED_RETENTION = 7.days
   PROVIDER_COOLDOWN = 10.seconds
+  CAPACITY_TIMEOUT = 2.seconds
+  CAPACITY_SETTLE = 0.1.seconds
   REMOVAL_BLOCK = 10.minutes
   MAX_SESSION_ID_LENGTH = 2048
   GONE_CODES = %w(NOT_FOUND ALLOCATION_CONFLICT ALLOCATION_ENDED).freeze
@@ -35,7 +37,11 @@ class Sharlayan::VoiceCallService
     end
 
     def joinable?(conversation)
-      available?(conversation) && VoiceRelayProvider.usable.exists?
+      available?(conversation) && (VoiceRelayProvider.usable.exists? || VoiceCallAllocation.active.exists?(chat_conversation_id: conversation.id))
+    end
+
+    def relay_enabled?
+      VoiceRelayProvider.usable.exists? || VoiceCallAllocation.active.where.not(chat_conversation_id: nil).exists?
     end
 
     def slots_for(conversation)
@@ -70,6 +76,13 @@ class Sharlayan::VoiceCallService
       Sharlayan::VoiceCallFederation.remote_account_permitted?(account)
     end
 
+    def revoke_account_calls(account_id)
+      VoiceCallAllocation.active.where.not(chat_conversation_id: nil)
+        .where('participants @> ?', [{ user_id: account_id.to_s }].to_json)
+        .pluck(:chat_conversation_id)
+        .each { |conversation_id| VoiceCallRevocationWorker.perform_async(conversation_id, account_id) }
+    end
+
     def participant_accounts(records)
       ids = Array(records).flat_map { |record| participants_of(record) }.pluck('user_id').uniq
       Account.where(id: ids).includes(:account_stat, :user).index_by { |account| account.id.to_s }
@@ -93,7 +106,7 @@ class Sharlayan::VoiceCallService
 
       {
         conversation_id: conversation.id.to_s,
-        available: relay_usable && available?(conversation),
+        available: (relay_usable || allocation&.active? || false) && available?(conversation),
         active: participants.any?,
         unavailable: allocation&.active? ? allocation.unavailable? : false,
         max_participants: allocation&.active? ? allocation.slots : slots_for(conversation),
@@ -104,12 +117,13 @@ class Sharlayan::VoiceCallService
 
     def remote_state_for(conversation, remote_state, accounts:)
       remote_state = VoiceCallRemoteState.find_by(chat_conversation_id: conversation.id) if remote_state == :unset
-      participants = participants_of(remote_state)
-      accounts ||= participant_accounts(remote_state)
+      available = remote_available?(conversation)
+      participants = available ? participants_of(remote_state) : []
+      accounts = participants.empty? ? {} : accounts || participant_accounts(remote_state)
 
       {
         conversation_id: conversation.id.to_s,
-        available: remote_available?(conversation),
+        available:,
         active: participants.any?,
         unavailable: false,
         max_participants: slots_for(conversation),
@@ -209,8 +223,8 @@ class Sharlayan::VoiceCallService
   end
 
   def kick(actor, conversation, target)
-    moderate(actor, conversation, target) do |allocation|
-      redis.set(removal_key(conversation.id, target.id), allocation.generation, ex: REMOVAL_BLOCK.to_i)
+    moderate(actor, conversation) do |allocation|
+      redis.set(removal_key(conversation.id, target.id), allocation.generation, ex: REMOVAL_BLOCK.to_i) unless actor.id == target.id
       kicked = remove_identities(allocation, identities_of(allocation, target.id.to_s, target))
       refresh(allocation)
       kicked
@@ -218,8 +232,10 @@ class Sharlayan::VoiceCallService
   end
 
   def mute(actor, conversation, target)
-    moderate(actor, conversation, target) do |allocation|
-      Responses.accepted(participant_request(allocation, 'mute', identity: self.class.identity_for(target)))
+    moderate(actor, conversation) do |allocation|
+      accepted = Responses.accepted(participant_request(allocation, 'mute', identity: self.class.identity_for(target)))
+      VoiceCallEventsWorker.perform_async(allocation.voice_relay_provider_id) if accepted
+      accepted
     end
   end
 
@@ -230,9 +246,7 @@ class Sharlayan::VoiceCallService
 
       account = Account.find_by(id: account_id)
       member = account && ChatMembership.exists?(chat_conversation_id: conversation_id, account_id: account_id)
-      next if member
-
-      remove_identities(allocation, identities_of(allocation, account_id.to_s, account))
+      remove_identities(allocation, identities_of(allocation, account_id.to_s, account)) unless member && self.class.permitted?(account)
       refresh(allocation)
     end
   end
@@ -245,8 +259,8 @@ class Sharlayan::VoiceCallService
   end
 
   def maintain
-    VoiceCallAllocation.unfinished.includes(:voice_relay_provider, :chat_conversation).find_each do |allocation|
-      maintain_allocation(allocation)
+    VoiceCallAllocation.unfinished.distinct.pluck(:voice_relay_provider_id).each do |provider_id|
+      VoiceCallMaintenanceWorker.perform_async(provider_id)
     end
 
     VoiceCallAllocation.active.distinct.pluck(:voice_relay_provider_id).each do |provider_id|
@@ -259,6 +273,14 @@ class Sharlayan::VoiceCallService
 
     VoiceCallAllocation.where(state: 'ended', chat_conversation_id: nil, updated_at: ...ENDED_RETENTION.ago).in_batches.delete_all
     VoiceCallRemoteSession.expired.in_batches.delete_all
+  end
+
+  def maintain_provider(provider)
+    with_redis_lock("voice_call_maintenance:#{provider.id}", autorelease: LOCK_AUTORELEASE, raise_on_failure: false) do
+      provider.voice_call_allocations.unfinished.includes(:voice_relay_provider, :chat_conversation).find_each do |allocation|
+        maintain_allocation(allocation)
+      end
+    end
   end
 
   def poll_events(provider)
@@ -286,8 +308,8 @@ class Sharlayan::VoiceCallService
       failed = true
     rescue Error => e
       failed = true
-      allocation.update_columns(unavailable: true)
       record_provider_error(provider, e)
+      flag_unavailable(allocation)
     end
 
     provider.update_columns(events_cursor: feed[:cursor]) unless failed
@@ -304,7 +326,7 @@ class Sharlayan::VoiceCallService
       provider.update_columns(events_cursor: nil)
     else
       record_provider_error(provider, e)
-      VoiceCallAllocation.where(id: allocations.map(&:id)).update_all(unavailable: true)
+      allocations.each { |allocation| flag_unavailable(allocation) }
     end
     nil
   end
@@ -336,11 +358,12 @@ class Sharlayan::VoiceCallService
     raise Forbidden unless ChatMembership.exists?(chat_conversation_id: conversation.id, account_id: account.id, role: :owner)
   end
 
-  def moderate(actor, conversation, target)
-    raise Forbidden if actor.id == target.id
-
-    with_active_allocation(conversation) do |allocation|
+  def moderate(actor, conversation)
+    with_room_lock(conversation_lock_key(conversation.id)) do
       require_owner!(conversation, actor)
+      allocation = VoiceCallAllocation.active.find_by(chat_conversation_id: conversation.id)
+      next false if allocation.nil?
+
       yield allocation
     end
   end
@@ -408,34 +431,88 @@ class Sharlayan::VoiceCallService
 
   def candidate_providers(slots)
     outcomes = []
+    providers = VoiceRelayProvider.usable.order(:id).reject do |provider|
+      cooling_down?(provider).tap { |cooling| outcomes << :unavailable if cooling }
+    end
 
-    ranked = VoiceRelayProvider.usable.order(:id).filter_map do |provider|
-      if cooling_down?(provider)
-        outcomes << :unavailable
+    ranked = query_capacities(providers, slots).filter_map do |provider, result|
+      raise result if result.is_a?(StandardError) && !result.is_a?(Error)
+
+      if result.is_a?(Error)
+        record_provider_error(provider, result)
+        start_cooldown(provider)
+        outcomes << (result.revoked? ? :disabled : :unavailable)
         next
       end
 
-      capacity = provider.client.capacity
       VoiceRelayProvider.where(id: provider.id, credential_version: provider.credential_version)
-        .update_all(capacity:, validated: capacity['enabled'], last_error: nil, last_checked_at: Time.now.utc, updated_at: Time.now.utc)
+        .update_all(capacity: result, validated: result['enabled'], last_error: nil, last_checked_at: Time.now.utc, updated_at: Time.now.utc)
 
-      unless capacity['enabled'] && capacity['accepting']
-        outcomes << (capacity['enabled'] ? :unavailable : :disabled)
+      unless result['enabled']
+        outcomes << :disabled
         next
       end
 
       outcomes << :measured
-      next unless capacity['remainingSlots'] >= slots && capacity['remainingRooms'].positive?
+      next unless fits?(result, slots)
 
-      [provider, capacity['reservedSlots'].fdiv(capacity['maxSlots']), rand]
-    rescue Error => e
-      record_provider_error(provider, e)
-      start_cooldown(provider)
-      outcomes << (e.revoked? ? :disabled : :unavailable)
-      nil
+      [provider, result['reservedSlots'].fdiv(result['maxSlots']), rand]
     end
 
     [ranked.sort_by { |_, ratio, tie| [ratio, tie] }.map(&:first), outcomes]
+  end
+
+  def query_capacities(providers, slots)
+    return [] if providers.empty?
+
+    timeout = Sharlayan::VoiceRelay::Client.time_left(CAPACITY_TIMEOUT)
+    queue = Thread::Queue.new
+    threads = providers.map do |provider|
+      Thread.new do
+        Rails.application.executor.wrap do
+          queue << [provider, provider.client.capacity(timeout:)]
+        rescue => e
+          queue << [provider, e]
+        end
+      end
+    end
+
+    collect_capacities(queue, providers, slots, timeout)
+  ensure
+    threads&.each(&:kill)
+  end
+
+  def collect_capacities(queue, providers, slots, timeout)
+    results = {}
+    deadline = monotonic_now + timeout
+    settle_by = nil
+
+    ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
+      while results.size < providers.size
+        wait = [deadline, settle_by].compact.min - monotonic_now
+        break unless wait.positive?
+
+        provider, result = queue.pop(timeout: wait)
+        break if provider.nil?
+
+        results[provider.id] = result
+        settle_by ||= monotonic_now + CAPACITY_SETTLE.to_f if result.is_a?(Hash) && fits?(result, slots)
+      end
+    end
+
+    providers.filter_map do |provider|
+      next [provider, results[provider.id]] if results.key?(provider.id)
+
+      [provider, Error.new('PROVIDER_UNAVAILABLE')] if settle_by.nil?
+    end
+  end
+
+  def fits?(capacity, slots)
+    capacity['enabled'] && capacity['accepting'] && capacity['remainingSlots'] >= slots && capacity['remainingRooms'].positive?
+  end
+
+  def monotonic_now
+    Process.clock_gettime(Process::CLOCK_MONOTONIC)
   end
 
   def reserve(allocation, fresh:)
@@ -484,7 +561,9 @@ class Sharlayan::VoiceCallService
 
     case result['state']
     when 'active'
+      was_unavailable = allocation.unavailable?
       allocation.update!(renewed_at: Time.now.utc, unavailable: false)
+      broadcast(allocation) if was_unavailable
       true
     when 'ended'
       mark_ended(allocation)
@@ -534,9 +613,16 @@ class Sharlayan::VoiceCallService
   end
 
   def mark_ended(allocation)
-    had_participants = allocation.participants.any?
+    shown = allocation.participants.any? || allocation.unavailable?
     allocation.update!(state: 'ended', participants: [], unavailable: false)
-    broadcast(allocation) if had_participants
+    broadcast(allocation) if shown
+  end
+
+  def flag_unavailable(allocation)
+    return unless VoiceCallAllocation.where(id: allocation.id, unavailable: false).update_all(unavailable: true, updated_at: Time.now.utc).positive?
+
+    allocation.reload
+    broadcast(allocation) if allocation.active?
   end
 
   def request_join(allocation, account, screen_share: true)
@@ -580,7 +666,7 @@ class Sharlayan::VoiceCallService
     return mark_ended(allocation) if snapshot[:state] == 'ended'
 
     participants = admitted_participants(allocation, snapshot[:participants])
-    changed = participants != allocation.participants
+    changed = participants != allocation.participants || allocation.unavailable?
 
     allocation.update!(participants:, revision: snapshot[:revision], refreshed_at: Time.now.utc, unavailable: false)
     broadcast(allocation) if changed
@@ -654,8 +740,8 @@ class Sharlayan::VoiceCallService
   rescue Sharlayan::VoiceRelay::Client::DeadlineExceeded
     nil
   rescue Error => e
-    allocation.update_columns(unavailable: true)
     record_provider_error(allocation.voice_relay_provider, e)
+    flag_unavailable(allocation)
   end
 
   def renew_or_close(allocation)
@@ -669,7 +755,11 @@ class Sharlayan::VoiceCallService
   end
 
   def record_provider_error(provider, error)
-    provider.update_columns(VoiceRelayProvider.error_attributes(error, revoked_at: provider.revoked_at))
+    attributes = VoiceRelayProvider.error_attributes(error, revoked_at: provider.revoked_at)
+    return if VoiceRelayProvider.where(id: provider.id, credential_version: provider.credential_version).update_all(attributes).zero?
+
+    provider.assign_attributes(attributes)
+    provider.clear_attribute_changes(attributes.keys)
   end
 
   def broadcast(allocation)

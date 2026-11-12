@@ -4,7 +4,7 @@ module Sharlayan
   module VoiceCallFederation
     class RemoteStates
       MAX_AHEAD = 5.minutes
-      ACTIVE_MAX_AGE = 7.minutes
+      ACTIVE_MAX_AGE = VoiceCallRemoteState::STALE_AFTER + MAX_AHEAD
       EMPTY_MAX_AGE = 2.days
       MAX_PARTICIPANTS = 1001
       BOOLEANS = [true, false].freeze
@@ -25,11 +25,20 @@ module Sharlayan
           :stored
         end
 
+        def clear
+          return if Sharlayan::VoiceCallFederation.remote_join_enabled?
+
+          VoiceCallRemoteState.where("participants <> '[]'::jsonb").includes(:chat_conversation).find_each do |state|
+            cleared = VoiceCallRemoteState.where(id: state.id).where("participants <> '[]'::jsonb").update_all(participants: [], updated_at: Time.now.utc)
+            Sharlayan::VoiceCallService.publish_state(state.chat_conversation) if cleared.positive?
+          end
+        end
+
         def parse_participants(value, identity_key:)
           return unless value.is_a?(Array) && value.size <= MAX_PARTICIPANTS && value.all? { |participant| valid_participant?(participant, identity_key) }
 
           value.map do |participant|
-            { identity: participant[identity_key], screen_sharing: participant['screenSharing'], mic_muted: participant['micMuted'] == true, deafened: participant['deafened'] == true }
+            { identity: participant[identity_key], screen_sharing: participant['screenSharing'], mic_muted: Sharlayan::VoiceCallFederation.reported_status(participant['micMuted']), deafened: Sharlayan::VoiceCallFederation.reported_status(participant['deafened']) }
           end
         end
 

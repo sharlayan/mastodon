@@ -41,6 +41,36 @@
     }
   }
 
+  &__join {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__join-mic {
+    display: inline-flex;
+    padding: 6px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+
+    .icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    &.active {
+      background: var(--color-bg-brand-softest);
+      color: var(--color-text-error);
+    }
+
+    &:focus-visible {
+      outline: var(--outline-focus-default);
+    }
+  }
+
   &__status {
     display: flex;
     flex-direction: column;
@@ -50,6 +80,12 @@
 
   &__warning {
     color: var(--color-text-warning);
+    font-size: 12px;
+    font-weight: 400;
+  }
+
+  &__provider {
+    color: var(--color-text-secondary);
     font-size: 12px;
     font-weight: 400;
   }
@@ -257,6 +293,11 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+
+    &--focus {
+      flex-flow: row wrap;
+      justify-content: center;
+    }
   }
 
   &__screen {
@@ -275,6 +316,42 @@
     &:fullscreen video {
       max-height: none;
       height: 100%;
+    }
+
+    &--focused {
+      order: -1;
+      flex: 0 0 100%;
+    }
+
+    &--compact {
+      flex: 0 0 auto;
+      width: 160px;
+
+      video {
+        aspect-ratio: 16 / 9;
+      }
+    }
+  }
+
+  &__screen-view {
+    position: relative;
+  }
+
+  &__screen-focus {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: zoom-in;
+
+    &[aria-pressed='true'] {
+      cursor: zoom-out;
+    }
+
+    &:focus-visible {
+      outline: var(--outline-focus-default);
+      outline-offset: -2px;
     }
   }
 
@@ -302,6 +379,7 @@
   bottom: 16px;
   z-index: 100;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   max-width: calc(100vw - 32px);
@@ -336,6 +414,58 @@
   &__status {
     color: var(--color-text-success);
     font-size: 12px;
+  }
+
+  &__line {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  &__mic {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    color: var(--color-text-secondary);
+
+    &--speaking {
+      color: var(--color-text-success);
+    }
+
+    &--muted {
+      color: var(--color-text-error);
+    }
+  }
+
+  &__audio {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+
+    .icon {
+      flex: 0 0 auto;
+      width: 18px;
+      height: 18px;
+    }
+
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  &__settings {
+    position: absolute;
+    inset-inline-end: 0;
+    bottom: calc(100% + 8px);
+    width: min(320px, calc(100vw - 32px));
+    max-height: 60vh;
+    overflow-y: auto;
+    border-radius: 8px;
+    box-shadow: var(--dropdown-shadow);
   }
 
   .chat-voice__controls .icon-button {

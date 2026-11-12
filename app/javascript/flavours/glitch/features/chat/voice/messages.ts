@@ -3,6 +3,10 @@ import { defineMessages } from 'react-intl';
 export const voiceMessages = defineMessages({
   join: { id: 'chat.voice.join', defaultMessage: 'Join call' },
   startCall: { id: 'chat.voice.start', defaultMessage: 'Start a call' },
+  joinMuted: {
+    id: 'chat.voice.join_muted',
+    defaultMessage: 'Join with microphone off',
+  },
   leave: { id: 'chat.voice.leave', defaultMessage: 'Leave call' },
   muteMic: { id: 'chat.voice.mute_mic', defaultMessage: 'Mute microphone' },
   unmuteMic: {
@@ -41,6 +45,10 @@ export const voiceMessages = defineMessages({
     defaultMessage: 'Stop watching',
   },
   fullscreen: { id: 'chat.voice.fullscreen', defaultMessage: 'Full screen' },
+  focusScreen: {
+    id: 'chat.voice.focus_screen',
+    defaultMessage: 'Enlarge screen',
+  },
   pictureInPicture: {
     id: 'chat.voice.picture_in_picture',
     defaultMessage: 'Picture in picture',
@@ -75,6 +83,11 @@ export const voiceMessages = defineMessages({
   },
   you: { id: 'chat.voice.you', defaultMessage: 'You' },
   micMuted: { id: 'chat.voice.mic_muted', defaultMessage: 'Microphone muted' },
+  micOn: { id: 'chat.voice.mic_on', defaultMessage: 'Microphone on' },
+  micSpeaking: {
+    id: 'chat.voice.mic_speaking',
+    defaultMessage: 'Microphone input detected',
+  },
   deafened: { id: 'chat.voice.deafened', defaultMessage: 'Sound turned off' },
   sharingScreen: {
     id: 'chat.voice.sharing_screen',
@@ -123,6 +136,10 @@ export const voiceMessages = defineMessages({
     defaultMessage: 'Share audio with the screen',
   },
   close: { id: 'chat.voice.close', defaultMessage: 'Close' },
+  mediaProvider: {
+    id: 'chat.voice.media_provider',
+    defaultMessage: 'Call server: {host}',
+  },
   mediaNoticeTitle: {
     id: 'chat.voice.media_notice.title',
     defaultMessage: 'Connect to the call server?',

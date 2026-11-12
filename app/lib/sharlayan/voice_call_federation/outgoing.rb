@@ -7,6 +7,7 @@ module Sharlayan
       extend Lockable
 
       MIN_INTERVAL = 10.seconds
+      STATUS_INTERVAL = 30.seconds
       RESEND_INTERVAL = 240.seconds
       STAMP_TTL = 1.hour
       LOCK_AUTORELEASE = 30.seconds
@@ -46,12 +47,14 @@ module Sharlayan
             participants = allocation&.active? ? allocation.participants : []
             entries = Sharlayan::VoiceCallFederation.participant_entries(participants).sort_by { |entry| entry['id'] }
             digest = Digest::SHA256.hexdigest(entries.to_json)
+            presence = Digest::SHA256.hexdigest(entries.map { |entry| entry.slice('id', 'screenSharing') }.to_json)
             last = last_record(conversation.id)
             next if last && last['digest'] == digest && (entries.empty? || Time.now.to_i - last['at'].to_i < RESEND_INTERVAL)
+            next if entries.any? && last && last['presence'] == presence && defer_status(conversation.id, last['at'].to_f)
             next if entries.any? && !open_gate(conversation.id)
 
             deliver(conversation, entries, stamp(conversation.id))
-            redis.set(record_key(conversation.id), { digest:, at: Time.now.to_i }.to_json, ex: (RESEND_INTERVAL * 2).to_i)
+            redis.set(record_key(conversation.id), { digest:, presence:, at: Time.now.to_f }.to_json, ex: (RESEND_INTERVAL * 2).to_i)
           end
         end
 
@@ -90,6 +93,14 @@ module Sharlayan
           wait = redis.pttl(key)
           VoiceCallFederationWorker.perform_in(((wait.positive? ? wait : MIN_INTERVAL.in_milliseconds) / 1000.0) + 0.1, conversation_id)
           false
+        end
+
+        def defer_status(conversation_id, sent_at)
+          wait = sent_at + STATUS_INTERVAL.to_f - Time.now.to_f
+          return false unless wait.positive?
+
+          VoiceCallFederationWorker.perform_in(wait + 0.1, conversation_id, VoiceCallFederationWorker::STATUS_FOLLOW_UP)
+          true
         end
 
         def last_record(conversation_id)

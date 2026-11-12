@@ -939,6 +939,15 @@ const disconnectCurrentRoom = async () => {
 
 export const prepareVoiceCall = () => loadLiveKit();
 
+const mediaProviderOf = (credentials: VoiceCredentials) => {
+  if (credentials.media_provider) return credentials.media_provider;
+  try {
+    return new URL(credentials.url).origin;
+  } catch {
+    return null;
+  }
+};
+
 export const connectVoiceCall = async (
   conversation: VoiceCallConversation,
   credentials: VoiceCredentials,
@@ -955,8 +964,9 @@ export const connectVoiceCall = async (
     status: 'connecting',
     conversation,
     identity: credentials.identity,
-    mediaProvider: credentials.media_provider,
+    mediaProvider: mediaProviderOf(credentials),
     allowScreenShare: credentials.allow_screen_share,
+    micEnabled: options.micEnabled ?? voicePreferences().micEnabled,
   });
 
   let lk: LiveKit;
@@ -1010,9 +1020,12 @@ export const connectVoiceCall = async (
       .switchActiveDevice('audiooutput', outputDeviceId)
       .catch(() => undefined);
 
-  if ((options.micEnabled ?? voicePreferences().micEnabled) && !state.deafened)
+  if (state.micEnabled && !state.deafened) {
     await enableMicrophone(room);
-  else reportStatus(room);
+    return;
+  }
+  setState({ micEnabled: false });
+  reportStatus(room);
 };
 
 export const leaveVoiceCall = async () => {
@@ -1023,6 +1036,15 @@ export const leaveVoiceCall = async () => {
 };
 
 export const setMicEnabled = async (enabled: boolean) => {
+  if (state.status === 'connecting') {
+    updateVoicePreferences({ micEnabled: enabled });
+    if (enabled && state.deafened) {
+      deafenRevision++;
+      setState({ micEnabled: true, deafened: false });
+      if (current != null) applyVolumes(current);
+    } else setState({ micEnabled: enabled });
+    return;
+  }
   const room = current;
   if (room == null) return;
   updateVoicePreferences({ micEnabled: enabled });
@@ -1043,6 +1065,11 @@ export const restartMicrophone = async () => {
 
 export const setDeafened = (deafened: boolean) => {
   deafenRevision++;
+  if (state.status === 'connecting') {
+    setState(deafened ? { deafened, micEnabled: false } : { deafened });
+    if (current != null) applyVolumes(current);
+    return;
+  }
   setState({ deafened });
   const room = current;
   if (room == null) return;
@@ -1101,7 +1128,8 @@ export const selectAudioDevice = async (
 
 export const listAudioDevices = async (kind: 'audioinput' | 'audiooutput') => {
   const lk = await loadLiveKit();
-  return lk.Room.getLocalDevices(kind, false);
+  const devices = await lk.Room.getLocalDevices(kind, false);
+  return devices.filter((device) => device.deviceId !== '');
 };
 
 export const canShareScreen = () => {

@@ -15,7 +15,7 @@ RSpec.describe Sharlayan::VoiceCallFederation::Outgoing do
   end
   let(:participants) do
     [
-      { 'identity' => ActivityPub::TagManager.instance.uri_for(owner), 'user_id' => owner.id.to_s, 'screen_sharing' => true, 'mic_muted' => false, 'deafened' => false },
+      { 'identity' => ActivityPub::TagManager.instance.uri_for(owner), 'user_id' => owner.id.to_s, 'screen_sharing' => true },
       { 'identity' => guest.uri, 'user_id' => guest.id.to_s, 'screen_sharing' => false, 'mic_muted' => true, 'deafened' => false },
     ]
   end
@@ -44,20 +44,27 @@ RSpec.describe Sharlayan::VoiceCallFederation::Outgoing do
     ActivityPub::DeliveryWorker.jobs.map { |job| JSON.parse(job['args'].first) }
   end
 
-  it 'sends the call participants to remote members once per change and stamps them in order' do
+  it 'sends the call participants to remote members once per change, leaving out unknown statuses, and stamps them in order' do
     described_class.publish(room)
 
     payload = delivered_payloads.last
     expect(ActivityPub::DeliveryWorker.jobs.last['args'].drop(1)).to eq [owner.id, guest.inbox_url]
-    expect(payload).to include('type' => 'Update', 'actor' => ActivityPub::TagManager.instance.uri_for(owner))
+    expect(payload).to include(
+      'type' => 'Update', 'actor' => ActivityPub::TagManager.instance.uri_for(owner),
+      '@context' => end_with(a_hash_including('cherrypick' => 'https://kokonect.link/ns#', 'participants' => { '@id' => 'cherrypick:participants', '@container' => '@set' }))
+    )
     expect(payload['object']).to include(
       'id' => "https://cb6e6126.ngrok.io/chat/rooms/#{room.id}/voice", 'type' => 'ChatRoomVoiceState', 'room' => "https://cb6e6126.ngrok.io/chat/rooms/#{room.id}"
     )
     expect(payload['object']['participants']).to contain_exactly(
-      { 'id' => ActivityPub::TagManager.instance.uri_for(owner), 'screenSharing' => true, 'micMuted' => false, 'deafened' => false },
+      { 'id' => ActivityPub::TagManager.instance.uri_for(owner), 'screenSharing' => true },
       { 'id' => guest.uri, 'screenSharing' => false, 'micMuted' => true, 'deafened' => false }
     )
-    expect(payload['@context'].last).to include('cherrypick' => 'https://kokonect.link/ns#')
+
+    expect(described_class.snapshot(room, key: 'identity').first).to contain_exactly(
+      { 'identity' => ActivityPub::TagManager.instance.uri_for(owner), 'screenSharing' => true },
+      { 'identity' => guest.uri, 'screenSharing' => false, 'micMuted' => true, 'deafened' => false }
+    )
 
     described_class.publish(room)
     expect(ActivityPub::DeliveryWorker.jobs.size).to eq 1
@@ -71,6 +78,28 @@ RSpec.describe Sharlayan::VoiceCallFederation::Outgoing do
     described_class.publish(room)
     expect(delivered_payloads.last['object']['participants']).to eq []
     expect(Time.zone.parse(delivered_payloads.last['object']['updated'])).to be > Time.zone.parse(payload['object']['updated'])
+  end
+
+  it 'sends microphone and sound changes at most once per status interval while joins and leaves keep their pace' do
+    described_class.publish(room)
+    redis.del("voice_call:federation:gate:#{room.id}")
+
+    allocation.update!(participants: [participants.first, participants.last.merge('mic_muted' => false)])
+    described_class.publish(room)
+    expect(ActivityPub::DeliveryWorker.jobs.size).to eq 1
+    expect(VoiceCallFederationWorker.jobs.last).to include('args' => [room.id, 'status'], 'at' => be_within(1).of((Time.now.utc + described_class::STATUS_INTERVAL).to_f))
+
+    allocation.update!(participants: [participants.first, participants.last.merge('mic_muted' => false, 'deafened' => true)])
+    travel_to(Time.now.utc + described_class::STATUS_INTERVAL + 1.second) do
+      described_class.publish(room)
+      expect(delivered_payloads.last['object']['participants']).to include({ 'id' => guest.uri, 'screenSharing' => false, 'micMuted' => false, 'deafened' => true })
+
+      redis.del("voice_call:federation:gate:#{room.id}")
+      allocation.update!(participants: participants.first(1))
+      described_class.publish(room)
+      expect(delivered_payloads.last['object']['participants'].pluck('id')).to eq [ActivityPub::TagManager.instance.uri_for(owner)]
+    end
+    expect(ActivityPub::DeliveryWorker.jobs.size).to eq 3
   end
 
   it 'resends an unchanged call after the resend interval and stays quiet when disabled' do

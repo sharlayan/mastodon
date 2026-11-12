@@ -60,6 +60,7 @@ class User < ApplicationRecord
   include User::PamAuthenticable
   include User::SignInToken
   include Sharlayan::UserAccountSwitchRevocation
+  include Sharlayan::UserVoiceCallRevocation
 
   devise :two_factor_authenticatable,
          otp_secret_length: 32

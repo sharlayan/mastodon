@@ -7,6 +7,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 import type { ChangeEvent, FC } from 'react';
+import { flushSync } from 'react-dom';
 
 import { useIntl } from 'react-intl';
 
@@ -65,9 +66,10 @@ import {
   participantVolume,
   updateVoicePreferences,
   useVoicePreferences,
+  voicePreferences,
 } from './preferences';
 import type { ScreenShareQuality } from './preferences';
-import { useStartVoiceCall } from './start';
+import { hostOf, usePendingVoiceCall, useStartVoiceCall } from './start';
 import { useVoiceState } from './states';
 
 export interface VoiceRoom {
@@ -81,8 +83,8 @@ interface CallMember {
   identity: string;
   account: ChatAccount;
   self: boolean;
-  micMuted: boolean;
-  deafened: boolean;
+  micMuted: boolean | null;
+  deafened: boolean | null;
   screenSharing: boolean;
   speaking: boolean;
 }
@@ -154,6 +156,30 @@ export const VoiceCallBadge: FC<{ state: VoiceState | undefined }> = ({
   );
 };
 
+const JoinMicToggle: FC<{ className: string }> = ({ className }) => {
+  const intl = useIntl();
+  const { micEnabled } = useVoicePreferences();
+  const handleClick = useCallback(() => {
+    updateVoicePreferences({ micEnabled: !voicePreferences().micEnabled });
+  }, []);
+  const label = intl.formatMessage(voiceMessages.joinMuted);
+  return (
+    <button
+      type='button'
+      className={classNames(className, { active: !micEnabled })}
+      title={label}
+      aria-label={label}
+      aria-pressed={!micEnabled}
+      onClick={handleClick}
+    >
+      <Icon
+        id={micEnabled ? 'mic' : 'mic-off'}
+        icon={micEnabled ? MicIcon : MicOffIcon}
+      />
+    </button>
+  );
+};
+
 export const VoiceCallHeaderButton: FC<{
   room: VoiceRoom;
   enabled: boolean;
@@ -162,24 +188,32 @@ export const VoiceCallHeaderButton: FC<{
   const state = useVoiceState(room.id, enabled);
   const call = useVoiceCall();
   const start = useStartVoiceCall();
+  const joining = usePendingVoiceCall()?.id === room.id;
   const handleClick = useCallback(() => {
-    start({ id: room.id, title: room.title });
+    start({ id: room.id, title: room.title }, voicePreferences().micEnabled);
   }, [room.id, room.title, start]);
 
   if (!enabled || !state?.available || inThisCall(call, room.id)) return null;
   const label = intl.formatMessage(
     state.active ? voiceMessages.join : voiceMessages.startCall,
   );
+  const panelOffersJoin = state.active && state.participants.length > 0;
+  const title = joining ? intl.formatMessage(voiceMessages.connecting) : label;
   return (
-    <button
-      type='button'
-      className='column-header__button'
-      title={label}
-      aria-label={label}
-      onClick={handleClick}
-    >
-      <Icon id='call' icon={CallIcon} />
-    </button>
+    <>
+      {!panelOffersJoin && <JoinMicToggle className='column-header__button' />}
+      <button
+        type='button'
+        className='column-header__button'
+        title={title}
+        aria-label={title}
+        aria-busy={joining}
+        disabled={joining}
+        onClick={handleClick}
+      >
+        <Icon id='call' icon={CallIcon} />
+      </button>
+    </>
   );
 };
 
@@ -214,18 +248,45 @@ const ScreenVideo: FC<{
   );
 };
 
-const ScreenStage: FC<{ identity: string; member: CallMember | undefined }> = ({
-  identity,
-  member,
-}) => {
+const enterFullscreen = (
+  player: Partial<Pick<HTMLElement, 'requestFullscreen'>>,
+  video: (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null,
+) => {
+  if (player.requestFullscreen) {
+    void player.requestFullscreen().catch(() => undefined);
+    return;
+  }
+  video?.webkitEnterFullscreen?.();
+};
+
+const ScreenStage: FC<{
+  identity: string;
+  member: CallMember | undefined;
+  focusable: boolean;
+  focused: boolean;
+  compact: boolean;
+  onToggleFocus: (identity: string) => void;
+}> = ({ identity, member, focusable, focused, compact, onToggleFocus }) => {
   const intl = useIntl();
   const video = useRef<HTMLVideoElement | null>(null);
   const frame = useRef<HTMLDivElement | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  useEffect(() => {
+    const handleChange = () => {
+      setFullscreen(
+        frame.current != null && document.fullscreenElement === frame.current,
+      );
+    };
+    document.addEventListener('fullscreenchange', handleChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleChange);
+    };
+  }, []);
   const setVideo = useCallback((element: HTMLVideoElement | null) => {
     video.current = element;
   }, []);
   const handleFullscreen = useCallback(() => {
-    void frame.current?.requestFullscreen().catch(() => undefined);
+    if (frame.current) enterFullscreen(frame.current, video.current);
   }, []);
   const handlePictureInPicture = useCallback(() => {
     const element = video.current;
@@ -233,19 +294,52 @@ const ScreenStage: FC<{ identity: string; member: CallMember | undefined }> = ({
     void element.requestPictureInPicture().catch(() => undefined);
   }, []);
   const handleClose = useCallback(() => {
-    unwatchScreenShare(identity);
+    const root = frame.current;
+    const panel = root?.closest<HTMLElement>('.chat-voice');
+    const neighbour =
+      root?.nextElementSibling ?? root?.previousElementSibling ?? null;
+    flushSync(() => {
+      unwatchScreenShare(identity);
+    });
+    const toggle = [
+      ...(panel?.querySelectorAll<HTMLElement>('[data-voice-watch-toggle]') ??
+        []),
+    ].find((element) => element.dataset.voiceWatchToggle === identity);
+    const target = toggle ?? neighbour?.querySelector<HTMLElement>('button');
+    target?.focus({ preventScroll: true });
   }, [identity]);
+  const handleToggleFocus = useCallback(() => {
+    onToggleFocus(identity);
+  }, [identity, onToggleFocus]);
   const pictureInPicture =
-    typeof document !== 'undefined' && 'pictureInPictureEnabled' in document;
+    typeof document !== 'undefined' && document.pictureInPictureEnabled;
 
   return (
-    <div className='chat-voice__screen' ref={frame}>
-      <ScreenVideo identity={identity} videoRef={setVideo} />
+    <div
+      className={classNames('chat-voice__screen', {
+        'chat-voice__screen--focused': focused,
+        'chat-voice__screen--compact': compact,
+      })}
+      ref={frame}
+    >
+      <div className='chat-voice__screen-view'>
+        <ScreenVideo identity={identity} videoRef={setVideo} />
+        {focusable && !fullscreen && (
+          <button
+            type='button'
+            className='chat-voice__screen-focus'
+            title={intl.formatMessage(voiceMessages.focusScreen)}
+            aria-label={intl.formatMessage(voiceMessages.focusScreen)}
+            aria-pressed={focused}
+            onClick={handleToggleFocus}
+          />
+        )}
+      </div>
       <div className='chat-voice__screen-bar'>
         <span className='chat-voice__screen-name'>
           {member && <ChatDisplayName account={member.account} />}
         </span>
-        {pictureInPicture && (
+        {!compact && pictureInPicture && (
           <IconButton
             icon='picture-in-picture'
             iconComponent={PictureInPictureIcon}
@@ -253,18 +347,22 @@ const ScreenStage: FC<{ identity: string; member: CallMember | undefined }> = ({
             onClick={handlePictureInPicture}
           />
         )}
-        <IconButton
-          icon='fullscreen'
-          iconComponent={FullscreenIcon}
-          title={intl.formatMessage(voiceMessages.fullscreen)}
-          onClick={handleFullscreen}
-        />
-        <IconButton
-          icon='close'
-          iconComponent={CloseIcon}
-          title={intl.formatMessage(voiceMessages.stopWatching)}
-          onClick={handleClose}
-        />
+        {!compact && (
+          <>
+            <IconButton
+              icon='fullscreen'
+              iconComponent={FullscreenIcon}
+              title={intl.formatMessage(voiceMessages.fullscreen)}
+              onClick={handleFullscreen}
+            />
+            <IconButton
+              icon='close'
+              iconComponent={CloseIcon}
+              title={intl.formatMessage(voiceMessages.stopWatching)}
+              onClick={handleClose}
+            />
+          </>
+        )}
       </div>
     </div>
   );
@@ -304,6 +402,7 @@ const MemberTile: FC<{
             watching ? voiceMessages.stopWatching : voiceMessages.watch,
           )}
           aria-pressed={watching}
+          data-voice-watch-toggle={member.identity}
           onClick={handleWatch}
         >
           <ScreenVideo identity={member.identity} preview />
@@ -322,14 +421,14 @@ const MemberTile: FC<{
         )}
       </span>
       <span className='chat-voice__member-flags'>
-        {member.micMuted && (
+        {member.micMuted === true && (
           <Icon
             id='mic-off'
             icon={MicOffIcon}
             aria-label={intl.formatMessage(voiceMessages.micMuted)}
           />
         )}
-        {member.deafened && (
+        {member.deafened === true && (
           <Icon
             id='headset-off'
             icon={HeadsetOffIcon}
@@ -559,7 +658,9 @@ const ProcessingToggle: FC<{ name: ProcessingKey; label: string }> = ({
   );
 };
 
-const VoiceSettings: FC<{ screenShare: boolean }> = ({ screenShare }) => {
+export const VoiceSettings: FC<{ screenShare: boolean }> = ({
+  screenShare,
+}) => {
   const intl = useIntl();
   const preferences = useVoicePreferences();
   const handleQuality = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
@@ -629,10 +730,9 @@ const VoiceSettings: FC<{ screenShare: boolean }> = ({ screenShare }) => {
 
 export const VoiceCallControls: FC<{
   call: VoiceCallSnapshot;
-  compact?: boolean;
   settingsOpen?: boolean;
   onToggleSettings?: () => void;
-}> = ({ call, compact = false, settingsOpen = false, onToggleSettings }) => {
+}> = ({ call, settingsOpen = false, onToggleSettings }) => {
   const intl = useIntl();
   const handleMic = useCallback(() => {
     void setMicEnabled(!call.micEnabled);
@@ -646,7 +746,7 @@ export const VoiceCallControls: FC<{
   const handleLeave = useCallback(() => {
     void leaveVoiceCall();
   }, []);
-  const busy = call.status === 'connecting';
+  const connecting = call.status === 'connecting';
   const screenShare = call.allowScreenShare && canShareScreen();
 
   return (
@@ -658,7 +758,6 @@ export const VoiceCallControls: FC<{
           call.micEnabled ? voiceMessages.muteMic : voiceMessages.unmuteMic,
         )}
         active={!call.micEnabled}
-        disabled={busy}
         onClick={handleMic}
       />
       <IconButton
@@ -668,10 +767,9 @@ export const VoiceCallControls: FC<{
           call.deafened ? voiceMessages.undeafen : voiceMessages.deafen,
         )}
         active={call.deafened}
-        disabled={busy}
         onClick={handleDeafen}
       />
-      {!compact && screenShare && (
+      {screenShare && (
         <IconButton
           icon={call.screenSharing ? 'stop-screen-share' : 'screen-share'}
           iconComponent={
@@ -683,11 +781,11 @@ export const VoiceCallControls: FC<{
               : voiceMessages.shareScreen,
           )}
           active={call.screenSharing}
-          disabled={busy}
+          disabled={connecting}
           onClick={handleScreen}
         />
       )}
-      {!compact && onToggleSettings && (
+      {onToggleSettings && (
         <IconButton
           icon='settings'
           iconComponent={SettingsIcon}
@@ -759,25 +857,48 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
   const state = useVoiceState(room.id, enabled);
   const call = useVoiceCall();
   const start = useStartVoiceCall();
+  const joining = usePendingVoiceCall()?.id === room.id;
   const [selection, setSelection] = useState<{
     roomId: string;
     identity: string;
   } | null>(null);
   const [settingsRoomId, setSettingsRoomId] = useState<string | null>(null);
+  const [focus, setFocus] = useState<{
+    roomId: string;
+    identity: string;
+  } | null>(null);
   const selected = selection?.roomId === room.id ? selection.identity : null;
   const settingsOpen = settingsRoomId === room.id;
   const joined = inThisCall(call, room.id);
+  const watching = joined ? call.watchingIdentities : [];
+  const focusedScreen =
+    focus?.roomId === room.id &&
+    watching.length > 1 &&
+    watching.includes(focus.identity)
+      ? focus.identity
+      : null;
+  if (focus != null && focusedScreen == null) setFocus(null);
   const members = useMemo(
     () => membersOf(state, call, room),
     [state, call, room],
   );
 
   const handleJoin = useCallback(() => {
-    start({ id: room.id, title: room.title });
+    start({ id: room.id, title: room.title }, voicePreferences().micEnabled);
   }, [room.id, room.title, start]);
   const handleSelect = useCallback(
     (identity: string) => {
       setSelection((current) =>
+        current?.roomId === room.id && current.identity === identity
+          ? null
+          : { roomId: room.id, identity },
+      );
+    },
+    [room.id],
+  );
+  const handleToggleFocus = useCallback(
+    (identity: string) => {
+      setFocus((current) =>
         current?.roomId === room.id && current.identity === identity
           ? null
           : { roomId: room.id, identity },
@@ -800,7 +921,6 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
   if (!joined && !(state?.active && members.length > 0)) return null;
 
   const selectedMember = members.find((member) => member.identity === selected);
-  const watching = joined ? call.watchingIdentities : [];
 
   return (
     <section
@@ -810,12 +930,20 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
       })}
     >
       {joined && watching.length > 0 && (
-        <div className='chat-voice__stage'>
+        <div
+          className={classNames('chat-voice__stage', {
+            'chat-voice__stage--focus': focusedScreen != null,
+          })}
+        >
           {watching.map((identity) => (
             <ScreenStage
               key={identity}
               identity={identity}
               member={members.find((member) => member.identity === identity)}
+              focusable={watching.length > 1}
+              focused={identity === focusedScreen}
+              compact={focusedScreen != null && identity !== focusedScreen}
+              onToggleFocus={handleToggleFocus}
             />
           ))}
         </div>
@@ -828,6 +956,13 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
             : intl.formatMessage(voiceMessages.inCall, {
                 count: members.length,
               })}
+          {joined && call.mediaProvider && (
+            <span className='chat-voice__provider'>
+              {intl.formatMessage(voiceMessages.mediaProvider, {
+                host: hostOf(call.mediaProvider),
+              })}
+            </span>
+          )}
           {state?.unavailable && (
             <span className='chat-voice__warning'>
               {intl.formatMessage(voiceMessages.callUnavailableNow)}
@@ -835,10 +970,15 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
           )}
         </span>
         {!joined && state?.available && (
-          <Button compact onClick={handleJoin}>
-            <Icon id='call' icon={CallIcon} />
-            {intl.formatMessage(voiceMessages.join)}
-          </Button>
+          <div className='chat-voice__join'>
+            <JoinMicToggle className='chat-voice__join-mic' />
+            <Button compact loading={joining} onClick={handleJoin}>
+              <Icon id='call' icon={CallIcon} />
+              {intl.formatMessage(
+                joining ? voiceMessages.connecting : voiceMessages.join,
+              )}
+            </Button>
+          </div>
         )}
       </div>
 
@@ -847,7 +987,7 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
           <MemberTile
             key={member.identity}
             member={member}
-            canWatch={joined && !member.self}
+            canWatch={joined}
             menu={joined || room.owned}
             watching={watching.includes(member.identity)}
             selected={selected === member.identity}
