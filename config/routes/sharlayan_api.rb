@@ -421,6 +421,8 @@ namespace :api, format: false do
     post 'users/lists/get-memberships', to: 'lists#memberships'
     post 'users/lists/update-membership', to: 'lists#update_membership'
     post 'users/lists/create-from-public', to: 'lists#create_from_public'
+    post 'users/lists/favorite', to: 'lists#favorite'
+    post 'users/lists/unfavorite', to: 'lists#unfavorite'
     post 'notes/user-list-timeline', to: 'lists#timeline'
 
     post 'antennas/list', to: 'antennas#index'
