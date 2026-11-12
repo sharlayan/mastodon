@@ -4,21 +4,24 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
   include Api::AnonymousPageViewLimit
   include Api::PageSearchEngineAccess
   include Api::PagesRoleplayAccessConcern
+  include Redisable
 
   ALLOWED_BLOCK_KEYS = %w(id type text title children fileId noUpscale note detailed url size).freeze
-  AUTHENTICATED_ACTIONS = %i(featured index likes create update destroy like unlike).freeze
+  AUTHENTICATED_ACTIONS = %i(featured index likes create update destroy like unlike push).freeze
   PAGE_ASSOCIATIONS = [:account, { eye_catching_media_attachment: { drive_file: :custom_name } }].freeze
 
-  requires_write_scope :create, :update, :destroy, :like, :unlike
+  requires_write_scope :create, :update, :destroy, :like, :unlike, :push
   requires_misskey_permission 'read:pages', :featured, :index, :show, :by_user
   requires_misskey_permission 'read:page-likes', :likes
   requires_misskey_permission 'write:pages', :create, :update, :destroy
   requires_misskey_permission 'write:page-likes', :like, :unlike
+  requires_misskey_permission 'write:account', :push
 
   before_action :require_pages_enabled!
   before_action :require_user!, only: AUTHENTICATED_ACTIONS
   before_action :require_user_if_authenticated!, only: [:show, :by_user]
-  before_action :set_page, only: [:update, :destroy, :like, :unlike]
+  before_action :require_native_user_token!, only: :push
+  before_action :set_page, only: [:update, :destroy, :like, :unlike, :push]
   before_action :authorize_owner!, only: [:update, :destroy]
 
   rescue_from MisskeyCompat::DriveFileResolver::NoSuchFileError do
@@ -100,6 +103,25 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
     return render_error('You have not liked that page', 'NOT_LIKED', 400) if like.nil?
 
     like.destroy!
+    head 204
+  end
+
+  def push
+    return render_invalid_param('#/properties/event', 'must be a string') unless params[:event].is_a?(String)
+    return if rate_limited?(:misskey_compat_api)
+
+    unless @page.account.blocking?(current_account)
+      MisskeyCompat::Streaming.broadcast_main(redis, @page.account, 'pageEvent') do
+        {
+          pageId: MisskeyCompat::MiId.encode(@page.id),
+          event: params[:event],
+          var: params.to_unsafe_h['var'],
+          userId: MisskeyCompat::MiId.encode(current_account.id),
+          user: MisskeyCompat::UserSerializer.serialize(current_account, detailed: true, viewer: @page.account),
+        }
+      end
+    end
+
     head 204
   end
 
@@ -234,7 +256,7 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
   end
 
   def render_no_such_page
-    render_error('No such page', 'NO_SUCH_PAGE', 404)
+    render_error('No such page', 'NO_SUCH_PAGE', 404, id: action_name == 'push' ? '4a13ad31-6729-46b4-b9af-e86b265c2e74' : nil)
   end
 
   def render_page_rate_limit_error

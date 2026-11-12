@@ -461,6 +461,7 @@ namespace :api, format: false do
     post 'pages/create', to: 'pages#create'
     post 'pages/update', to: 'pages#update'
     post 'pages/delete', to: 'pages#destroy'
+    post 'page-push', to: 'pages#push'
 
     post 'chat/history', to: 'chat#history'
     post 'chat/read-all', to: 'chat#read_all'
