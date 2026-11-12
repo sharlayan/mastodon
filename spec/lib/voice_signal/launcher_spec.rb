@@ -52,14 +52,14 @@ RSpec.describe VoiceSignal::Launcher do
     docker = executable(File.join(bin, 'docker'))
     socket = File.join(root, 'postgresql').tap { |path| FileUtils.mkdir_p(path) }
 
-    command = launcher('auto', SECRET_KEY_BASE: 'top-secret', DB_HOST: socket, DB_PASS: 'db-secret', VOICE_SIGNAL_PORT: '4300').command
+    command = launcher('auto', SECRET_KEY_BASE: 'top-secret', DB_HOST: socket, DB_PASS: 'db-secret', VOICE_SIGNAL_PORT: '4300', http_proxy: 'http://user:proxy-secret@10.0.0.1:8128').command
     expect(command).to eq [
       docker, 'run', '--rm', '--interactive', '--name', 'mastodon-voice-signal-4300', '--pull=missing', '--network', 'host',
       '--user', "#{Process.uid}:#{Process.gid}", '--volume', "#{socket}:#{socket}",
       '--env', 'SECRET_KEY_BASE', '--env', 'DB_HOST', '--env', 'DB_PASS', '--env', 'VOICE_SIGNAL_BIND', '--env', 'VOICE_SIGNAL_PORT', '--env', 'VOICE_SIGNAL_EXIT_ON_STDIN_EOF',
-      "#{described_class::IMAGE_REPOSITORY}:edge"
+      '--env', 'http_proxy', "#{described_class::IMAGE_REPOSITORY}:edge"
     ]
-    expect(command.join(' ')).to_not include('top-secret', 'db-secret')
+    expect(command.join(' ')).to_not include('top-secret', 'db-secret', 'proxy-secret')
     FileUtils.mkdir_p(File.join(root, '.git'))
     File.write(File.join(root, '.git', 'HEAD'), "ref: refs/heads/main\n")
     expect(launcher('docker').command.last).to eq "#{described_class::IMAGE_REPOSITORY}:main"
