@@ -98,4 +98,28 @@ RSpec.describe 'Misskey-compat service worker endpoints' do
       expect(response).to have_http_status(204)
     end
   end
+
+  describe 'POST /api/sw/update-registration' do
+    let(:native_token) { MisskeyCompat::MiAuth.issue_native_token(user).token }
+
+    it 'stores sendReadMessage on the caller subscription and reports it from every registration endpoint' do
+      post '/api/sw/update-registration', params: { i: native_token, endpoint: endpoint, sendReadMessage: true }, as: :json
+      expect(response).to have_http_status(404)
+      expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_REGISTRATION')
+
+      post '/api/sw/register', params: register_params, as: :json
+
+      post '/api/sw/update-registration', params: { i: token.token, endpoint: endpoint, sendReadMessage: true }, as: :json
+      expect(response).to have_http_status(403)
+
+      post '/api/sw/update-registration', params: { i: native_token, endpoint: endpoint, sendReadMessage: true }, as: :json
+      expect(response.parsed_body).to eq({ 'userId' => MisskeyCompat::MiId.encode(account.id), 'endpoint' => endpoint, 'sendReadMessage' => true })
+
+      post '/api/sw/show-registration', params: { i: token.token, endpoint: endpoint }, as: :json
+      expect(response.parsed_body).to include(sendReadMessage: true)
+
+      post '/api/sw/register', params: register_params, as: :json
+      expect(response.parsed_body).to include(state: 'already-subscribed', sendReadMessage: true)
+    end
+  end
 end

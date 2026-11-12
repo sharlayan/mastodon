@@ -36,8 +36,12 @@ module MisskeyCompat
         key: Rails.configuration.x.vapid.public_key.presence,
         userId: MisskeyCompat::MiId.encode(account.id),
         endpoint: subscription.endpoint,
-        sendReadMessage: false,
+        sendReadMessage: send_read_message?(subscription),
       }
+    end
+
+    def send_read_message?(subscription)
+      subscription.data.is_a?(Hash) && subscription.data['send_read_message'] == true
     end
 
     def subscription_data(existing = nil)

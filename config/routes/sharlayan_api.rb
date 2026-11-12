@@ -297,7 +297,7 @@ namespace :api, format: false do
     post 'sw/register', to: 'sw#register'
     post 'sw/unregister', to: 'sw#unregister'
     post 'sw/show-registration', to: 'sw#show_registration'
-    post 'sw/update-registration', to: 'stub#unsupported'
+    post 'sw/update-registration', to: 'sw#update_registration'
 
     post 'notes', to: 'notes#index'
     post 'notes/timeline', to: 'notes#timeline'

@@ -33,7 +33,6 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       i/export-favorites
       i/import-antennas
       reset-db
-      sw/update-registration
     )
   end
 
