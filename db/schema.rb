@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_11_153202) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_12_180700) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1432,6 +1432,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_153202) do
     t.index ["date_key"], name: "index_misskey_retention_aggregations_on_date_key", unique: true
   end
 
+  create_table "misskey_webhooks", id: :bigint, default: -> { "timestamp_id('misskey_webhooks'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "events", default: [], null: false, array: true
+    t.datetime "latest_sent_at"
+    t.integer "latest_status"
+    t.string "name", null: false
+    t.string "secret", default: "", null: false
+    t.datetime "updated_at", null: false
+    t.string "url", null: false
+    t.index ["account_id"], name: "index_misskey_webhooks_on_account_id"
+  end
+
   create_table "mutes", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", precision: nil, null: false
@@ -2470,6 +2484,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_153202) do
   add_foreign_key "mentions", "statuses", on_delete: :cascade
   add_foreign_key "misskey_access_grants", "oauth_access_tokens", column: "access_token_id", on_delete: :cascade
   add_foreign_key "misskey_registry_items", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_webhooks", "accounts", on_delete: :cascade
   add_foreign_key "mutes", "accounts", column: "target_account_id", name: "fk_eecff219ea", on_delete: :cascade
   add_foreign_key "mutes", "accounts", name: "fk_b8d8daf315", on_delete: :cascade
   add_foreign_key "notification_permissions", "accounts", column: "from_account_id", on_delete: :cascade

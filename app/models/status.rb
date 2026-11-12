@@ -173,6 +173,7 @@ class Status < ApplicationRecord
 
   after_create_commit :store_uri, if: :local?
   after_create_commit :update_statistics, if: :local?
+  after_create_commit :trigger_misskey_webhooks
 
   before_validation :prepare_contents, if: :local?
   before_validation :set_reblog
@@ -564,6 +565,10 @@ class Status < ApplicationRecord
 
   def trigger_create_webhooks
     TriggerWebhookWorker.perform_async('status.created', 'Status', id) if local?
+  end
+
+  def trigger_misskey_webhooks
+    MisskeyCompat::WebhookTrigger.status_created(self)
   end
 
   def trigger_update_webhooks

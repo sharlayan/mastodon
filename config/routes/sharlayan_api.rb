@@ -265,6 +265,12 @@ namespace :api, format: false do
     post 'i/registry/keys', to: 'registry#keys'
     post 'i/registry/keys-with-type', to: 'registry#keys_with_type'
     post 'i/registry/scopes-with-domain', to: 'registry#scopes_with_domain'
+    post 'i/webhooks/list', to: 'webhooks#index'
+    post 'i/webhooks/show', to: 'webhooks#show'
+    post 'i/webhooks/create', to: 'webhooks#create'
+    post 'i/webhooks/update', to: 'webhooks#update'
+    post 'i/webhooks/delete', to: 'webhooks#destroy'
+    post 'i/webhooks/test', to: 'webhooks#test'
     post 'miauth/:session/check', to: 'miauth#check'
     post 'signin-flow', to: 'signin#create'
 

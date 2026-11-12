@@ -45,6 +45,11 @@ class RateLimiter
       period: 5.minutes.freeze,
     }.freeze,
 
+    misskey_compat_webhook_test: {
+      limit: 60,
+      period: 15.minutes.freeze,
+    }.freeze,
+
     misskey_compat_account_data: {
       limit: 10,
       period: 1.hour.freeze,
