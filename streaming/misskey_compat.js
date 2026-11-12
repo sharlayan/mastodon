@@ -13,6 +13,10 @@ const REACTION_NOTE_UPDATE_TYPES = new Set(['reacted', 'unreacted']);
 const TIMELINE_CHANNELS = new Set(['homeTimeline', 'localTimeline', 'hybridTimeline', 'globalTimeline']);
 const CHAT_CHANNELS = new Set(['chatUser', 'chatRoom', 'main']);
 const CHAT_EVENTS = new Set(['message', 'updated', 'deleted', 'react', 'unreact', 'roomUpdated', 'membershipStarted', 'membershipEnded', 'roomDeleted']);
+const REVERSI_CHANNELS = new Set(['reversi', 'reversiGame']);
+const REVERSI_ACTIONS = new Set(['ready', 'updateSettings', 'cancel', 'putStone', 'claimTimeIsUp']);
+const REVERSI_ACTION_WINDOW_MS = 1000;
+const REVERSI_ACTIONS_PER_WINDOW = 10;
 
 const MI_ID_TIME2000 = 946684800000;
 
@@ -66,6 +70,8 @@ const extractTag = (params) => {
 const hasScope = (request, ...scopes) => Array.isArray(request.scopes) && scopes.some((scope) => request.scopes.includes(scope));
 
 const canReadStatuses = (request, grantPermissions) => (Array.isArray(grantPermissions) ? grantPermissions.includes('read:account') : hasScope(request, 'read', 'read:statuses'));
+
+const canPlayReversi = (request, grantPermissions) => (Array.isArray(grantPermissions) ? grantPermissions.includes('write:account') : hasScope(request, 'write', 'write:accounts'));
 
 const canReadDrive = (request, grantPermissions) => (Array.isArray(grantPermissions) ? grantPermissions.includes('read:drive') : hasScope(request, 'read', 'read:drive'));
 
@@ -155,10 +161,12 @@ const resolveChannel = (channel, params, request, channelNameToIds) => {
  * @param {Function} deps.isChatEnabled
  * @param {Function} deps.authorizeChatAccess
  * @param {Function} deps.markChatRead
+ * @param {Function} deps.authorizeReversiGame
+ * @param {Function} deps.enqueueReversiAction
  * @param {function(): Promise.<boolean>} deps.isEnabled
  * @param {import('pino').Logger} deps.logger
  */
-const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, channelNameToIds, authorizeStatusAccess, loadExcludedReactionAccountIds, loadExcludedTimelineNote, loadGrantPermissions, loadChatGrantPermissions = loadGrantPermissions, isChatEnabled = async () => false, authorizeChatAccess = async () => false, markChatRead = async () => false, isEnabled, logger }) => {
+const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, channelNameToIds, authorizeStatusAccess, loadExcludedReactionAccountIds, loadExcludedTimelineNote, loadGrantPermissions, loadChatGrantPermissions = loadGrantPermissions, isChatEnabled = async () => false, authorizeChatAccess = async () => false, markChatRead = async () => false, authorizeReversiGame = async () => false, enqueueReversiAction = async () => {}, isEnabled, logger }) => {
   const send = (session, type, body) => {
     const ws = session.websocket;
     if (ws.readyState !== ws.OPEN) return;
@@ -322,8 +330,61 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
     });
   };
 
+  const connectReversi = (session, { channel, id, params = {} }) => {
+    if (!params || typeof params !== 'object' || Array.isArray(params)) return;
+    const gameId = channel === 'reversiGame' ? chatId(params.gameId) : undefined;
+    if (channel === 'reversiGame' && !gameId) return;
+    const channels = store(session).channels;
+    if (channels.has(id) || channels.size >= MAX_CHANNEL_SUBSCRIPTIONS) return;
+    const reservation = {};
+    channels.set(id, reservation);
+
+    isEnabled().then(async (enabled) => {
+      if (!enabled || channels.get(id) !== reservation) return;
+      if (channel === 'reversi' ? !await authorize(session, channel) : !await authorizeReversiGame(gameId)) return;
+      if (channels.get(id) !== reservation) return;
+
+      const channelId = channel === 'reversi' ? `${MISSKEY_PREFIX}reversi:${session.request.accountId}` : `${MISSKEY_PREFIX}reversiGame:${gameId}`;
+      const listener = (json) => {
+        if (!json || json.event !== 'reversi' || !json.payload || typeof json.payload.type !== 'string') return;
+        send(session, 'channel', { id, type: json.payload.type, body: json.payload.body ?? null });
+      };
+      subscribe(channelId, listener);
+      channels.set(id, { channel, gameId, channelIds: [channelId], listeners: [listener], stopHeartbeat: subscriptionHeartbeat([channelId]) });
+    }).catch((err) => logger.error({ err }, 'misskey compat reversi connect failed')).finally(() => {
+      if (channels.get(id) === reservation) channels.delete(id);
+    });
+  };
+
+  const reversiActionAllowed = (session) => {
+    const now = Date.now();
+    const window = session.misskeyReversiActions;
+    if (!window || now - window.startedAt >= REVERSI_ACTION_WINDOW_MS) {
+      session.misskeyReversiActions = { startedAt: now, count: 1 };
+      return true;
+    }
+    window.count += 1;
+    return window.count <= REVERSI_ACTIONS_PER_WINDOW;
+  };
+
+  const reversiAction = (session, subscription, body) => {
+    if (!REVERSI_ACTIONS.has(body.type) || !reversiActionAllowed(session)) return;
+
+    (async () => {
+      if (!await isEnabled()) return;
+      if (!canPlayReversi(session.request, await grantPermissions(session))) return;
+      await enqueueReversiAction(session.request.accountId, subscription.gameId, body.type, body.body ?? null);
+    })().catch((err) => logger.error({ err }, 'misskey compat reversi action failed'));
+  };
+
   const channelMessage = (session, body) => {
-    if (!body || body.type !== 'read' || typeof body.id !== 'string') return;
+    if (!body || typeof body.id !== 'string') return;
+    const reversiSubscription = session.misskey?.channels.get(body.id);
+    if (reversiSubscription?.channel === 'reversiGame' && reversiSubscription.gameId) {
+      reversiAction(session, reversiSubscription, body);
+      return;
+    }
+    if (body.type !== 'read') return;
     const subscription = session.misskey?.channels.get(body.id);
     const messageId = chatId(body.body?.id);
     if (!subscription || !['chatUser', 'chatRoom'].includes(subscription.channel) || !messageId) return;
@@ -348,6 +409,10 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
     if (id.length > MAX_CHANNEL_ID_LENGTH || channel.length > MAX_CHANNEL_NAME_LENGTH) return;
     if (CHAT_CHANNELS.has(channel)) {
       connectChat(session, body);
+      return;
+    }
+    if (REVERSI_CHANNELS.has(channel)) {
+      connectReversi(session, body);
       return;
     }
 

@@ -10,6 +10,9 @@ class MisskeyCompat::ReversiService
   NO_IRREGULAR_RULES_SUFFIX = ':noIrregularRules'
   PENDING_MATCH_WINDOW = 3.minutes
   OUTDATED_GAME_AGE = 10.minutes
+  START_DELAY = 3.seconds
+  BOOLEAN_SETTINGS = { 'isLlotheo' => :llotheo, 'canPutEverywhere' => :can_put_everywhere, 'loopedBoard' => :looped_board }.freeze
+  UPDATE_KEYS = (%w(map bw timeLimitForEachTurn) + BOOLEAN_SETTINGS.keys).freeze
 
   def match_specific_user(account, target, multiple: false)
     clean_outdated_games
@@ -80,6 +83,88 @@ class MisskeyCompat::ReversiService
     end
   end
 
+  def ready(game_id, account, ready)
+    with_game(game_id) do |game|
+      slot = game.slot_of(account)
+      next if game.started? || slot.nil?
+
+      game.update!("account#{slot}_ready" => ready)
+      publish_game(game.id, 'changeReadyStates', { user1: game.account1_ready, user2: game.account2_ready })
+      MisskeyCompatReversiActionWorker.perform_in(START_DELAY, nil, game.id.to_s, 'start') if game.account1_ready && game.account2_ready
+    end
+  end
+
+  def start_game(game_id)
+    with_game(game_id) do |game|
+      next if game.started? || game.ended? || !(game.account1_ready && game.account2_ready)
+
+      black = game.bw == 'random' ? [1, 2].sample : game.bw.to_i
+      engine = MisskeyCompat::ReversiEngine.new(game.map, llotheo: game.llotheo, can_put_everywhere: game.can_put_everywhere, looped_board: game.looped_board)
+      game.update!(started_at: Time.current, black: black, crc32: engine.crc32.to_s)
+
+      if engine.ended?
+        end_game(game, engine.winner.nil? ? nil : game.account_id_for_color(engine.winner))
+      else
+        start_turn_timer(game, engine.turn)
+        publish_game(game.id, 'started', { game: MisskeyCompat::ReversiGameSerializer.detail(game) })
+      end
+    end
+  end
+
+  def update_settings(game_id, account, key, value)
+    return unless valid_setting?(key, value)
+
+    with_game(game_id) do |game|
+      slot = game.slot_of(account)
+      next if game.started? || slot.nil? || game.ready_of?(slot)
+
+      game.update!(setting_attribute(key) => value)
+      publish_game(game.id, 'updateSettings', { userId: MisskeyCompat::MiId.encode(account.id), key: key, value: value })
+    end
+  end
+
+  def put_stone(game_id, account, pos, operation_id = nil)
+    with_game(game_id) do |game|
+      next if !game.started? || game.ended? || !game.participant?(account)
+
+      color = game.color_of(account)
+      engine = game.engine
+      next if engine.turn != color || !engine.can_put?(color, pos)
+
+      engine.put_stone(pos)
+      log = MisskeyCompat::ReversiEngine::Log.new(time: now_ms, player: color, operation: 'put', pos: pos)
+      logs = MisskeyCompat::ReversiEngine.serialize_logs(MisskeyCompat::ReversiEngine.deserialize_logs(game.logs) + [log])
+      game.update!(logs: logs, crc32: engine.crc32.to_s)
+      publish_game(game.id, 'log', log.to_h.merge(id: operation_id))
+
+      if engine.ended?
+        end_game(game, engine.winner.nil? ? nil : game.account_id_for_color(engine.winner))
+      else
+        start_turn_timer(game, engine.turn)
+      end
+    end
+  end
+
+  def check_timeout(game_id)
+    with_game(game_id) do |game|
+      next if !game.started? || game.ended?
+
+      turn = game.engine.turn
+      next if turn.nil? || redis.exists?(turn_timer_key(game.id, turn))
+
+      end_game(game, game.account_id_for_color(!turn), :timeout)
+    end
+  end
+
+  def cancel_game(game_id, account)
+    with_game(game_id) do |game|
+      next if game.started? || !game.participant?(account)
+
+      game.destroy!
+      publish_game(game.id, 'canceled', { userId: MisskeyCompat::MiId.encode(account.id) })
+    end
+  end
+
   def desynced_game(game, crc32)
     crc32.to_s == game.crc32.to_s ? nil : game
   end
@@ -105,10 +190,14 @@ class MisskeyCompat::ReversiService
   end
 
   def with_game(game_id)
+    @deferred_events = []
     MisskeyReversiGame.transaction do
       game = MisskeyReversiGame.lock.find_by(id: game_id)
       yield game if game
     end
+    @deferred_events.each { |event| publish(*event) }
+  ensure
+    @deferred_events = nil
   end
 
   def end_game(game, winner_id, reason = nil)
@@ -122,11 +211,36 @@ class MisskeyCompat::ReversiService
     publish_game(game.id, 'ended', { winnerId: MisskeyCompat::MiId.encode(winner_id), game: MisskeyCompat::ReversiGameSerializer.detail(game) })
   end
 
+  def valid_setting?(key, value)
+    case key
+    when 'map' then MisskeyReversiGame.valid_map?(value)
+    when 'bw' then MisskeyReversiGame::BW_VALUES.include?(value)
+    when 'timeLimitForEachTurn' then value.is_a?(Integer) && value.between?(0, MisskeyReversiGame::MAX_TIME_LIMIT)
+    when *BOOLEAN_SETTINGS.keys then [true, false].include?(value)
+    else false
+    end
+  end
+
+  def setting_attribute(key)
+    BOOLEAN_SETTINGS.fetch(key) { key == 'timeLimitForEachTurn' ? :time_limit_for_each_turn : key.to_sym }
+  end
+
+  def start_turn_timer(game, turn)
+    key = turn_timer_key(game.id, turn)
+    game.time_limit_for_each_turn.positive? ? redis.setex(key, game.time_limit_for_each_turn, '') : redis.del(key)
+  end
+
+  def turn_timer_key(game_id, turn)
+    "misskey:reversi:turn_timer:#{game_id}:#{turn ? 1 : 0}"
+  end
+
   def publish_user(account_id, type, body)
     publish("reversi:#{account_id}", type, body)
   end
 
   def publish_game(game_id, type, body)
+    return @deferred_events << ["reversiGame:#{game_id}", type, body] if @deferred_events
+
     publish("reversiGame:#{game_id}", type, body)
   end
 

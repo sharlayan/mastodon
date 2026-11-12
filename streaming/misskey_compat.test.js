@@ -325,3 +325,78 @@ test('home and antenna channels are not filtered again in streaming', async () =
   assert.deepEqual(home.sent.map(({ body }) => body.body.id), ['home']);
   assert.equal(home.filterCalls.length, 0);
 });
+
+const reversiFixture = ({ permissions, scopes = ['read', 'write'], games = ['9'] } = {}) => {
+  const listeners = new Map();
+  const sent = [];
+  const actions = [];
+  const compat = createMisskeyCompat({
+    subscribe: (channel, listener) => listeners.set(channel, listener),
+    unsubscribe: (channel) => listeners.delete(channel),
+    subscriptionHeartbeat: () => () => {},
+    channelNameToIds: async () => ({ channelIds: [] }),
+    authorizeStatusAccess: async () => true,
+    loadGrantPermissions: async () => permissions,
+    authorizeReversiGame: async (gameId) => games.includes(gameId),
+    enqueueReversiAction: async (...args) => { actions.push(args); },
+    isEnabled: async () => true,
+    logger: { error: () => {}, warn: () => {} },
+  });
+  const session = {
+    request: { accountId: '7', scopes },
+    websocket: { readyState: 1, OPEN: 1, send: (message) => sent.push(JSON.parse(message)) },
+  };
+  const handle = async (type, body) => {
+    compat.handleMessage(session, { type, body });
+    await flush();
+    await flush();
+  };
+
+  return { actions, compat, handle, listeners, sent, session };
+};
+
+test('reversi channels relay invitations and game events and forward game actions as jobs', async () => {
+  const { actions, compat, handle, listeners, sent, session } = reversiFixture();
+  await handle('connect', { id: 'lobby', channel: 'reversi' });
+  await handle('connect', { id: 'game', channel: 'reversiGame', params: { gameId: '0000000000000009' } });
+  await handle('connect', { id: 'missing', channel: 'reversiGame', params: { gameId: '000000000000000a' } });
+  assert.deepEqual([...listeners.keys()], ['misskey:reversi:7', 'misskey:reversiGame:9']);
+
+  listeners.get('misskey:reversi:7')({ event: 'reversi', payload: { type: 'invited', body: { user: { id: 'u' } } } });
+  listeners.get('misskey:reversiGame:9')({ event: 'reversi', payload: { type: 'canceled', body: { userId: 'u' } } });
+  listeners.get('misskey:reversiGame:9')({ event: 'note', payload: {} });
+  assert.deepEqual(sent, [
+    { type: 'channel', body: { id: 'lobby', type: 'invited', body: { user: { id: 'u' } } } },
+    { type: 'channel', body: { id: 'game', type: 'canceled', body: { userId: 'u' } } },
+  ]);
+
+  await handle('ch', { id: 'game', type: 'putStone', body: { pos: 19, id: 'op' } });
+  await handle('ch', { id: 'game', type: 'claimTimeIsUp', body: {} });
+  await handle('ch', { id: 'game', type: 'unknown', body: {} });
+  await handle('ch', { id: 'lobby', type: 'ready', body: true });
+  assert.deepEqual(actions, [['7', '9', 'putStone', { pos: 19, id: 'op' }], ['7', '9', 'claimTimeIsUp', {}]]);
+
+  for (let i = 0; i < 12; i += 1) compat.handleMessage(session, { type: 'ch', body: { id: 'game', type: 'ready', body: true } });
+  await flush();
+  await flush();
+  assert.equal(actions.length < 12, true);
+
+  compat.cleanup(session);
+  assert.equal(listeners.size, 0);
+});
+
+test('reversi game actions require write permission while the lobby requires read:account', async () => {
+  const readOnly = reversiFixture({ permissions: ['read:account'] });
+  await readOnly.handle('connect', { id: 'lobby', channel: 'reversi' });
+  await readOnly.handle('connect', { id: 'game', channel: 'reversiGame', params: { gameId: '0000000000000009' } });
+  await readOnly.handle('ch', { id: 'game', type: 'ready', body: true });
+  assert.deepEqual([...readOnly.listeners.keys()], ['misskey:reversi:7', 'misskey:reversiGame:9']);
+  assert.deepEqual(readOnly.actions, []);
+
+  const noRead = reversiFixture({ permissions: ['write:account'] });
+  await noRead.handle('connect', { id: 'lobby', channel: 'reversi' });
+  await noRead.handle('connect', { id: 'game', channel: 'reversiGame', params: { gameId: '0000000000000009' } });
+  await noRead.handle('ch', { id: 'game', type: 'ready', body: true });
+  assert.deepEqual([...noRead.listeners.keys()], ['misskey:reversiGame:9']);
+  assert.deepEqual(noRead.actions, [['7', '9', 'ready', true]]);
+});
