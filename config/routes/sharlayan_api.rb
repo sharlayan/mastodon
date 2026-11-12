@@ -546,10 +546,10 @@ namespace :api, format: false do
     post 'i/import-user-lists', to: 'account_data#import_user_lists'
     post 'i/claim-achievement', to: 'stub#no_content'
     match 'users/achievements', to: 'stub#empty', via: [:get, :post]
-    post 'invite/create', to: 'stub#noop'
-    post 'invite/delete', to: 'stub#no_content'
-    match 'invite/list', to: 'stub#empty', via: [:get, :post]
-    match 'invite/limit', to: 'stub#invite_limit', via: [:get, :post]
+    post 'invite/create', to: 'invites#create'
+    post 'invite/delete', to: 'invites#destroy'
+    post 'invite/list', to: 'invites#index'
+    post 'invite/limit', to: 'invites#limit'
     match 'fetch-rss', to: 'stub#noop', via: [:get, :post]
     post 'fetch-external-resources', to: 'stub#noop'
     post 'test', to: 'stub#noop'

@@ -14,6 +14,7 @@ module MisskeyCompat::MiAuth
     read:drive write:drive
     read:favorites write:favorites
     read:following write:following
+    read:invite-codes write:invite-codes
     read:mutes write:mutes
     write:notes
     read:notifications write:notifications
