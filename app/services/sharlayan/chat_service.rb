@@ -110,6 +110,7 @@ class Sharlayan::ChatService
     ensure_direct_participants_not_blocked!(account, message.chat_conversation)
     ensure_direct_recipient_not_suspended!(account, message.chat_conversation)
     message.chat_conversation.with_lock do
+      membership!(account, message.chat_conversation)
       ensure_conversation_writable!(message.chat_conversation)
       message.lock!
       raise Error, 'Deleted messages cannot be edited' if message.deleted?
@@ -155,6 +156,7 @@ class Sharlayan::ChatService
     ensure_direct_participants_not_blocked!(account, message.chat_conversation)
     ensure_direct_recipient_not_suspended!(account, message.chat_conversation)
     record = message.chat_conversation.with_lock do
+      membership!(account, message.chat_conversation)
       ensure_conversation_writable!(message.chat_conversation)
       message.lock!
       raise Error, 'Deleted messages cannot receive reactions' if message.deleted?
@@ -175,7 +177,11 @@ class Sharlayan::ChatService
   def unreact(account, message, reaction)
     membership!(account, message.chat_conversation)
     ensure_conversation_writable!(message.chat_conversation)
-    record = message.with_lock { message.reactions.find_by(account: account, reaction: reaction)&.destroy! }
+    record = message.chat_conversation.with_lock do
+      membership!(account, message.chat_conversation)
+      ensure_conversation_writable!(message.chat_conversation)
+      message.with_lock { message.reactions.find_by(account: account, reaction: reaction)&.destroy! }
+    end
     return if record.nil?
 
     broadcast(message.chat_conversation, 'chat.reaction_delete', { message_id: message.id.to_s, account_id: account.id.to_s, reaction: reaction })
@@ -264,15 +270,17 @@ class Sharlayan::ChatService
   end
 
   def leave(account, conversation)
-    membership = membership!(account, conversation)
-    raise Error, 'The owner cannot leave the room' if membership.owner?
+    conversation.with_lock do
+      membership = membership!(account, conversation)
+      raise Error, 'The owner cannot leave the room' if membership.owner?
 
-    raise Error, 'Only group chats can be left' unless conversation.chat_group?
+      raise Error, 'Only group chats can be left' unless conversation.chat_group?
 
-    ensure_owner_reachable!(conversation)
-    deliver_to_conversation(account, conversation, Sharlayan::ChatFederation::Payload.remove(conversation, account))
-    membership.destroy!
-    forget_acceptance(conversation, account)
+      ensure_owner_reachable!(conversation)
+      deliver_to_conversation(account, conversation, Sharlayan::ChatFederation::Payload.remove(conversation, account))
+      membership.destroy!
+      forget_acceptance(conversation, account)
+    end
     remember_room_ending(account, conversation, 'removed')
     broadcast(conversation, 'chat.member_leave', { conversation_id: conversation.id.to_s, account_id: account.id.to_s })
     schedule_abandoned_room_cleanup(conversation)
