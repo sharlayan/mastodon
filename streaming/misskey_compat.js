@@ -81,7 +81,7 @@ const isPureRenote = (note) => note.renoteId != null && note.text == null && not
 
 const isFeedFiltered = (options, note) => (note.user?.host == null ? options?.filterLocal : options?.filterRemote);
 
-const needsViewerFiltering = (sourceChannel) => sourceChannel.startsWith('timeline:public') || sourceChannel.startsWith('timeline:hashtag:');
+const needsViewerFiltering = (sourceChannel) => sourceChannel.startsWith('timeline:public') || sourceChannel.startsWith('timeline:hashtag:') || sourceChannel.startsWith('channel:');
 
 const timelineNoteTargets = (note) => {
   const authors = [note, note.renote].filter(Boolean);
@@ -140,6 +140,10 @@ const resolveChannel = (channel, params, request, channelNameToIds) => {
     return channelNameToIds(request, 'hashtag', { tag: extractTag(params) });
   case 'drive':
     return Promise.resolve({ channelIds: [`drive:${request.accountId}`] });
+  case 'channel': {
+    const channelId = typeof params.channelId === 'string' ? decodeDatabaseId(params.channelId) : undefined;
+    return Promise.resolve({ channelIds: channelId ? [`channel:${channelId}`] : [] });
+  }
   default:
     return Promise.reject(new Error(`Unsupported misskey channel: ${channel}`));
   }

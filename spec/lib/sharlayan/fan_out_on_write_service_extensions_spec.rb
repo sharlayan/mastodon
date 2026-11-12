@@ -60,4 +60,16 @@ RSpec.describe Sharlayan::FanOutOnWriteServiceExtensions do
     expect(PublicFeed.new(fan, local: true, with_reblogs: true).get(10)).to be_empty
     expect(PublicFeed.new(author, local: true, with_reblogs: true).get(10).map(&:id)).to eq([renote.id])
   end
+
+  it 'streams new channel notes to Misskey channel subscribers' do
+    Setting.misskey_compat_enabled = true
+    redis.set("subscribed:misskey:channel:#{channel.id}", '1')
+    status = post_in_channel
+
+    FanOutOnWriteService.new.call(status)
+
+    expect(redis).to have_received(:publish).with("misskey:channel:#{channel.id}", a_string_including(%("channelId":"#{MisskeyCompat::MiId.encode(channel.id)}")))
+  ensure
+    Setting.misskey_compat_enabled = false
+  end
 end

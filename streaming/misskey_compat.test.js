@@ -400,3 +400,22 @@ test('reversi game actions require write permission while the lobby requires rea
   assert.deepEqual([...noRead.listeners.keys()], ['misskey:reversiGame:9']);
   assert.deepEqual(noRead.actions, [['7', '9', 'ready', true]]);
 });
+
+test('channel streams deliver notes of the decoded channel after viewer filtering', async () => {
+  const stream = fixture(undefined, (targets) => targets.authorIds.includes('9'));
+  await stream.connect('channel', { channelId: 'atgz6cms00000wdi' });
+
+  assert.deepEqual([...stream.listeners.keys()], ['misskey:channel:117603019678589926']);
+
+  stream.emit('channel:117603019678589926', note({ id: 'visible', channelId: 'atgz6cms00000wdi' }));
+  stream.emit('channel:117603019678589926', note({ id: 'blocked', userId: '0000000000000009' }));
+  await flush();
+
+  assert.deepEqual(stream.sent.map(({ body }) => [body.id, body.type, body.body.id]), [['channel', 'note', 'visible']]);
+  assert.deepEqual(stream.filterCalls.map(({ viewerAccountId }) => viewerAccountId), ['7', '7']);
+
+  const invalid = fixture();
+  await invalid.connect('channel', { channelId: 42 });
+  assert.equal(invalid.listeners.size, 0);
+  assert.equal(invalid.session.misskey.channels.size, 0);
+});
