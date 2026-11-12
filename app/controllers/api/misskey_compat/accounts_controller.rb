@@ -3,12 +3,12 @@
 class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseController
   requires_write_scope :update_memo, :report_abuse
   requires_misskey_permission 'read:account', :followers, :following, :search, :search_by_username_and_host
-  requires_misskey_permission 'read:account', :index, :notes, :reactions, :featured_notes, :pinned_users
+  requires_misskey_permission 'read:account', :index, :notes, :reactions, :featured_notes, :pinned_users, :frequently_replied_users
   requires_misskey_permission 'write:account', :update_memo
   requires_misskey_permission 'write:report-abuse', :report_abuse
 
   before_action :require_user!, only: [:followers, :following, :search, :search_by_username_and_host, :update_memo, :report_abuse]
-  before_action :require_user_if_authenticated!, only: [:index, :notes, :reactions, :featured_notes, :pinned_users]
+  before_action :require_user_if_authenticated!, only: [:index, :notes, :reactions, :featured_notes, :pinned_users, :frequently_replied_users]
 
   def index
     return if (offset = offset_param).nil?
@@ -143,6 +143,23 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     render_error('No such user', 'NO_SUCH_USER', 404)
   end
 
+  def frequently_replied_users
+    account = Account.without_requested_deletion.find(params[:userId])
+    return if current_account.nil? && rate_limited?(:misskey_compat_api)
+    return render json: [] if collections_hidden?(account, false)
+
+    counts = frequently_replied_account_counts(account)
+    peak = counts.values.max
+    top = counts.first(pagination_limit(default: 10, max: 100))
+    accounts_by_id = Account.where(id: top.map(&:first)).index_by(&:id)
+    accounts = top.filter_map { |id, _| accounts_by_id[id] }
+    serialized = serialize_detailed_accounts(accounts, viewer: current_account)
+
+    render json: accounts.zip(serialized).map { |target, user| { user: user, weight: counts[target.id].fdiv(peak) } }
+  rescue ActiveRecord::RecordNotFound
+    render_error('No such user', 'NO_SUCH_USER', 404)
+  end
+
   def report_abuse
     target = Account.without_requested_deletion.find(params[:userId])
     ReportService.new.call(current_account, target, comment: params[:comment].to_s)
@@ -160,6 +177,18 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
 
   def visible_account_ids
     Account.without_suspended.not_excluded_by_account(current_account).select(:id)
+  end
+
+  def frequently_replied_account_counts(account)
+    scope = account.statuses.where.not(in_reply_to_account_id: nil).where(visibility: [:public, :unlisted])
+    scope = scope.not_local_only if current_account.nil?
+    tally = scope.order(id: :desc).limit(1_000).pluck(:in_reply_to_account_id).tally
+
+    visible = Account.where(id: tally.keys).without_suspended.without_requested_deletion
+    visible = visible.where.not(id: current_account.excluded_from_timeline_account_ids) if current_account
+    visible_ids = tally.keys & visible.pluck(:id)
+
+    tally.slice(*visible_ids).sort_by.with_index { |(_, count), index| [-count, index] }.to_h
   end
 
   def serialize_detailed_accounts(accounts, viewer: nil)

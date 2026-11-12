@@ -62,4 +62,53 @@ RSpec.describe 'Misskey-compat user assist endpoints' do
       expect(response).to have_http_status(400)
     end
   end
+
+  describe 'users/get-frequently-replied-users' do
+    let(:author) { Fabricate(:account) }
+    let(:often)  { Fabricate(:account) }
+    let(:rarely) { Fabricate(:account) }
+    let(:muted)  { Fabricate(:account) }
+
+    def reply_to(target, visibility: :public, local_only: false)
+      parent = Fabricate(:status, account: target)
+      Fabricate(:status, account: author, thread: parent, visibility: visibility, local_only: local_only)
+    end
+
+    before do
+      2.times { reply_to(often) }
+      reply_to(rarely)
+      reply_to(muted)
+      3.times { reply_to(rarely, visibility: :direct) }
+      2.times { reply_to(rarely, visibility: :private) }
+      account.mute!(muted)
+    end
+
+    it 'weights public replies by the most replied account, skipping muted accounts and non-public replies' do
+      post '/api/users/get-frequently-replied-users', params: { i: read_token, userId: MisskeyCompat::MiId.encode(author.id) }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.map { |entry| [entry.dig(:user, :id), entry[:weight]] }).to eq([
+                                                                                                   [MisskeyCompat::MiId.encode(often.id), 1.0],
+                                                                                                   [MisskeyCompat::MiId.encode(rarely.id), 0.5],
+                                                                                                 ])
+      expect(response.parsed_body.first[:user]).to include(:isFollowing)
+
+      post '/api/users/get-frequently-replied-users', params: { userId: MisskeyCompat::MiId.encode(author.id), limit: 2 }, as: :json
+
+      expect(response.parsed_body.map { |entry| entry.dig(:user, :id) }).to eq([often, muted].map { |target| MisskeyCompat::MiId.encode(target.id) })
+    end
+
+    it 'hides local-only replies from anonymous viewers and returns NO_SUCH_USER for unknown users' do
+      3.times { reply_to(muted, local_only: true) }
+
+      post '/api/users/get-frequently-replied-users', params: { userId: MisskeyCompat::MiId.encode(author.id), limit: 1 }, as: :json
+
+      expect(response.parsed_body.map { |entry| entry.dig(:user, :id) }).to eq([MisskeyCompat::MiId.encode(often.id)])
+
+      post '/api/users/get-frequently-replied-users', params: { userId: MisskeyCompat::MiId.encode(1) }, as: :json
+
+      expect(response).to have_http_status(404)
+      expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_USER')
+    end
+  end
 end
