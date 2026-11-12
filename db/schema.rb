@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_12_180700) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1432,6 +1432,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_180700) do
     t.index ["date_key"], name: "index_misskey_retention_aggregations_on_date_key", unique: true
   end
 
+  create_table "misskey_reversi_games", id: :bigint, default: -> { "timestamp_id('misskey_reversi_games'::text)" }, force: :cascade do |t|
+    t.bigint "account1_id", null: false
+    t.boolean "account1_ready", default: false, null: false
+    t.bigint "account2_id", null: false
+    t.boolean "account2_ready", default: false, null: false
+    t.integer "black"
+    t.string "bw", default: "random", null: false
+    t.boolean "can_put_everywhere", default: false, null: false
+    t.string "crc32"
+    t.datetime "created_at", null: false
+    t.datetime "ended_at"
+    t.boolean "llotheo", default: false, null: false
+    t.jsonb "logs", default: [], null: false
+    t.boolean "looped_board", default: false, null: false
+    t.string "map", default: [], null: false, array: true
+    t.boolean "no_irregular_rules", default: false, null: false
+    t.datetime "started_at"
+    t.bigint "surrendered_account_id"
+    t.integer "time_limit_for_each_turn", default: 90, null: false
+    t.bigint "timeout_account_id"
+    t.datetime "updated_at", null: false
+    t.bigint "winner_account_id"
+    t.index ["account1_id"], name: "index_misskey_reversi_games_on_account1_id"
+    t.index ["account2_id"], name: "index_misskey_reversi_games_on_account2_id"
+  end
+
   create_table "misskey_webhooks", id: :bigint, default: -> { "timestamp_id('misskey_webhooks'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.boolean "active", default: true, null: false
@@ -2484,6 +2510,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_180700) do
   add_foreign_key "mentions", "statuses", on_delete: :cascade
   add_foreign_key "misskey_access_grants", "oauth_access_tokens", column: "access_token_id", on_delete: :cascade
   add_foreign_key "misskey_registry_items", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_reversi_games", "accounts", column: "account1_id", on_delete: :cascade
+  add_foreign_key "misskey_reversi_games", "accounts", column: "account2_id", on_delete: :cascade
   add_foreign_key "misskey_webhooks", "accounts", on_delete: :cascade
   add_foreign_key "mutes", "accounts", column: "target_account_id", name: "fk_eecff219ea", on_delete: :cascade
   add_foreign_key "mutes", "accounts", name: "fk_b8d8daf315", on_delete: :cascade
