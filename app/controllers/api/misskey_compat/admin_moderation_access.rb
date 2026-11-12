@@ -41,7 +41,7 @@ module Api::MisskeyCompat::AdminModerationAccess
     elsif !misskey_admin_token_allows?(endpoint)
       render_error('Insufficient token scope', 'PERMISSION_DENIED', 403)
     elsif endpoint.secure && !native_user_token?
-      render_error(I18n.t('errors.403'), 'ACCESS_DENIED', 403, id: ACCESS_DENIED_ID)
+      render_error(I18n.t('errors.403'), 'ACCESS_DENIED', 403, id: self.class::ACCESS_DENIED_ID)
     elsif !Admin::BasePolicy.new(current_account, :base).access?
       render_misskey_role_denied(endpoint)
     end

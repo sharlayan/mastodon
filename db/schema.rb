@@ -1388,6 +1388,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
     t.index ["status_id"], name: "index_mentions_on_status_id"
   end
 
+  create_table "misskey_abuse_report_recipients", id: :bigint, default: -> { "timestamp_id('misskey_abuse_report_recipients'::text)" }, force: :cascade do |t|
+    t.bigint "account_id"
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "delivery_method", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "webhook_id"
+    t.index ["account_id"], name: "index_misskey_abuse_report_recipients_on_account_id"
+    t.index ["webhook_id"], name: "index_misskey_abuse_report_recipients_on_webhook_id"
+  end
+
   create_table "misskey_abuse_report_resolutions", id: :bigint, default: -> { "timestamp_id('misskey_abuse_report_resolutions'::text)" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "report_id", null: false
@@ -2623,6 +2635,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_12_191037) do
   add_foreign_key "media_attachments", "statuses", on_delete: :nullify
   add_foreign_key "mentions", "accounts", name: "fk_970d43f9d1", on_delete: :cascade
   add_foreign_key "mentions", "statuses", on_delete: :cascade
+  add_foreign_key "misskey_abuse_report_recipients", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_abuse_report_recipients", "webhooks", on_delete: :cascade
   add_foreign_key "misskey_abuse_report_resolutions", "reports", on_delete: :cascade
   add_foreign_key "misskey_access_grants", "oauth_access_tokens", column: "access_token_id", on_delete: :cascade
   add_foreign_key "misskey_channel_favorites", "accounts", on_delete: :cascade

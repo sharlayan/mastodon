@@ -511,6 +511,11 @@ namespace :api, format: false do
     post 'channels/mute/delete', to: 'channels#mute_delete'
     post 'channels/mute/list', to: 'channels#mute_list'
 
+    post 'admin/abuse-report/notification-recipient/list', to: 'admin_abuse_report_recipients#index'
+    post 'admin/abuse-report/notification-recipient/show', to: 'admin_abuse_report_recipients#show'
+    post 'admin/abuse-report/notification-recipient/create', to: 'admin_abuse_report_recipients#create'
+    post 'admin/abuse-report/notification-recipient/update', to: 'admin_abuse_report_recipients#update'
+    post 'admin/abuse-report/notification-recipient/delete', to: 'admin_abuse_report_recipients#destroy'
     post 'admin/abuse-user-reports', to: 'admin_reports#index'
     post 'admin/resolve-abuse-user-report', to: 'admin_reports#resolve'
     post 'admin/update-abuse-user-report', to: 'admin_reports#update'
