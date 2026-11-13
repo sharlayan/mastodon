@@ -18,6 +18,7 @@ import {
   sharlayanAccountBioHtml,
   SharlayanFollowedMessage,
 } from '../../sharlayan/account/list_item';
+import { AccountFollowersCount } from '../account_followers_count';
 import { Avatar } from '../avatar';
 import { useAccountHandle } from '../display_name/default';
 import { DisplayNameSimple } from '../display_name/simple';
@@ -124,9 +125,13 @@ export const AccountListItem: React.FC<Props> = ({
                 defaultMessage='Followers'
               />
             }
-            hint={intl.formatNumber(account.followers_count)}
+            hint={
+              account.followers_count < 0
+                ? undefined
+                : intl.formatNumber(account.followers_count)
+            }
           >
-            <ShortNumber value={account.followers_count} />
+            <AccountFollowersCount value={account.followers_count} />
           </NumberFieldsItem>
         )}
         {stats.includes('following') && (

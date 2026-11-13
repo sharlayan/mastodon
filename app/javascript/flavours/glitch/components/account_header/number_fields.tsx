@@ -8,6 +8,7 @@ import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { SharlayanBirthdayNumberField } from '@/flavours/glitch/sharlayan/account/birthday_number_field';
 import { useAppDispatch } from '@/flavours/glitch/store';
 
+import { AccountFollowersCount } from '../account_followers_count';
 import { FormattedDateWrapper } from '../formatted_date';
 import { NumberFields, NumberFieldsItem } from '../number_fields';
 import { ShortNumber } from '../short_number';
@@ -41,10 +42,14 @@ export const AccountNumberFields: FC<{ accountId: string }> = ({
         label={
           <FormattedMessage id='account.followers' defaultMessage='Followers' />
         }
-        hint={intl.formatNumber(account.followers_count)}
+        hint={
+          account.followers_count < 0
+            ? undefined
+            : intl.formatNumber(account.followers_count)
+        }
         link={`/@${account.acct}/followers`}
       >
-        <ShortNumber value={account.followers_count} />
+        <AccountFollowersCount value={account.followers_count} />
       </NumberFieldsItem>
 
       <NumberFieldsItem

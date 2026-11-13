@@ -8,12 +8,10 @@ import { useFetchFamiliarFollowers } from '@/flavours/glitch/components/familiar
 import { fetchAccount } from 'flavours/glitch/actions/accounts';
 import { AccountBio } from 'flavours/glitch/components/account_bio';
 import { AccountFields } from 'flavours/glitch/components/account_fields';
+import { AccountFollowersCount } from 'flavours/glitch/components/account_followers_count';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import { AvatarGroup } from 'flavours/glitch/components/avatar_group';
-import {
-  FollowersCounter,
-  FollowersYouKnowCounter,
-} from 'flavours/glitch/components/counters';
+import { FollowersYouKnowCounter } from 'flavours/glitch/components/counters';
 import { DisplayName } from 'flavours/glitch/components/display_name';
 import { FollowButton } from 'flavours/glitch/components/follow_button';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
@@ -136,9 +134,9 @@ export const HoverCardAccount = forwardRef<
               </div>
 
               <div className='hover-card__numbers'>
-                <ShortNumber
+                <AccountFollowersCount
                   value={account.followers_count}
-                  renderer={FollowersCounter}
+                  withLabel
                 />
                 {shouldDisplayFamiliarFollowers && (
                   <>

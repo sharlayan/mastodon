@@ -19,15 +19,14 @@ import { showAlertForError } from 'flavours/glitch/actions/alerts';
 import { openModal } from 'flavours/glitch/actions/modal';
 import { initMuteModal } from 'flavours/glitch/actions/mutes';
 import { apiFollowAccount } from 'flavours/glitch/api/accounts';
+import { AccountFollowersCount } from 'flavours/glitch/components/account_followers_count';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import { VerifiedBadge } from 'flavours/glitch/components/badge';
 import { Button } from 'flavours/glitch/components/button';
-import { FollowersCounter } from 'flavours/glitch/components/counters';
 import { DisplayName } from 'flavours/glitch/components/display_name';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import { FollowButton } from 'flavours/glitch/components/follow_button';
 import { RelativeTimestamp } from 'flavours/glitch/components/relative_timestamp';
-import { ShortNumber } from 'flavours/glitch/components/short_number';
 import { Skeleton } from 'flavours/glitch/components/skeleton';
 import { useIdentity } from 'flavours/glitch/identity_context';
 import { me } from 'flavours/glitch/initial_state';
@@ -330,9 +329,9 @@ export const Account: React.FC<AccountProps> = ({
                 <div className='account__details'>
                   {account ? (
                     <>
-                      <ShortNumber
+                      <AccountFollowersCount
                         value={account.followers_count}
-                        renderer={FollowersCounter}
+                        withLabel
                       />{' '}
                       {verification} {muteTimeRemaining}
                     </>

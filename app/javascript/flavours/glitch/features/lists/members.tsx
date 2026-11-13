@@ -24,13 +24,12 @@ import {
   apiAddAccountToList,
   apiRemoveAccountFromList,
 } from 'flavours/glitch/api/lists';
+import { AccountFollowersCount } from 'flavours/glitch/components/account_followers_count';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import { VerifiedBadge } from 'flavours/glitch/components/badge';
 import { Button } from 'flavours/glitch/components/button';
-import { FollowersCounter } from 'flavours/glitch/components/counters';
 import { DisplayName } from 'flavours/glitch/components/display_name';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
-import { ShortNumber } from 'flavours/glitch/components/short_number';
 import { useSearchAccounts } from 'flavours/glitch/hooks/useSearchAccounts';
 import { me } from 'flavours/glitch/initial_state';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
@@ -144,9 +143,9 @@ const AccountItem: React.FC<{
             <DisplayName account={account} />
 
             <div className='account__details'>
-              <ShortNumber
+              <AccountFollowersCount
                 value={account.followers_count}
-                renderer={FollowersCounter}
+                withLabel
               />{' '}
               {firstVerifiedField && (
                 <VerifiedBadge link={firstVerifiedField.value} />

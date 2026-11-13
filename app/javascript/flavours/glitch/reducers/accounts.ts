@@ -63,7 +63,7 @@ export const accountsReducer: Reducer<typeof initialState> = (
   ) {
     return state
       .update(action.payload.relationship.id, (account) =>
-        account?.update('followers_count', (n) => n + 1),
+        account?.update('followers_count', (n) => (n < 0 ? n : n + 1)),
       )
       .update(getCurrentUser(), (account) =>
         account?.update('following_count', (n) => n + 1),
@@ -71,7 +71,9 @@ export const accountsReducer: Reducer<typeof initialState> = (
   } else if (unfollowAccountSuccess.match(action))
     return state
       .update(action.payload.relationship.id, (account) =>
-        account?.update('followers_count', (n) => Math.max(0, n - 1)),
+        account?.update('followers_count', (n) =>
+          n < 0 ? n : Math.max(0, n - 1),
+        ),
       )
       .update(getCurrentUser(), (account) =>
         account?.update('following_count', (n) => Math.max(0, n - 1)),

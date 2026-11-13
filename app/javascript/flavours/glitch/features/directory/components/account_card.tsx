@@ -1,6 +1,7 @@
 import { FormattedMessage } from 'react-intl';
 
 import { EmojiHTML } from '@/flavours/glitch/components/emoji/html';
+import { AccountFollowersCount } from 'flavours/glitch/components/account_followers_count';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import { DisplayName } from 'flavours/glitch/components/display_name';
 import { FollowButton } from 'flavours/glitch/components/follow_button';
@@ -60,7 +61,7 @@ export const AccountCard: React.FC<{ accountId: string }> = ({ accountId }) => {
           </div>
 
           <div className='account-card__counters__item'>
-            <ShortNumber value={account.get('followers_count')} />{' '}
+            <AccountFollowersCount value={account.get('followers_count')} />{' '}
             <small>
               <FormattedMessage
                 id='account.followers'
