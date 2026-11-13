@@ -26,7 +26,7 @@
             wrapper: :with_label,
             label: t('admin.settings.content_limits.remote_media_attachments_limit'),
             hint: t('admin.settings.content_limits.remote_media_attachments_limit_hint'),
-            input_html: { min: Status::MEDIA_ATTACHMENTS_LIMIT, max: 16 },
+            input_html: { min: Sharlayan::Status::MediaLimits::MIN_REMOTE_MEDIA_ATTACHMENTS_LIMIT, max: Sharlayan::Status::MediaLimits::MAX_MEDIA_ATTACHMENTS_LIMIT },
             sharlayan_only: true
 
 %h2= t('admin.settings.rate_limit_bypass.title')

@@ -32,6 +32,7 @@ import {
 
 import { changeMediaOrder } from 'flavours/glitch/actions/compose';
 import type { MediaAttachment } from 'flavours/glitch/models/media_attachment';
+import { getUploadGridStyle } from 'flavours/glitch/sharlayan/compose/upload_grid';
 import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
 
 import { SensitiveButton } from './sensitive_button';
@@ -162,6 +163,7 @@ export const UploadForm: React.FC = () => {
       {mediaIds.size > 0 && (
         <div
           className={`compose-form__uploads media-gallery media-gallery--layout-${mediaIds.size}`}
+          style={getUploadGridStyle(mediaIds.size)}
         >
           {mediaIds.size === 1 ? (
             <Upload

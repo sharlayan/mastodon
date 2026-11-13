@@ -156,7 +156,7 @@ module Sharlayan::AdminSettingsExtensions
     validates :chat_delete_window_hours, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, if: -> { defined?(@chat_delete_window_hours) }
     validates :status_character_limit, numericality: { only_integer: true, greater_than_or_equal_to: Sharlayan::SettingExtensions::MIN_STATUS_CHARACTER_LIMIT }, if: -> { defined?(@status_character_limit) }
     validates :profile_fields_limit, numericality: { only_integer: true, in: 0..ActivityPub::ProcessAccountService::MAX_PROFILE_FIELDS }, if: -> { defined?(@profile_fields_limit) }
-    validates :remote_media_attachments_limit, numericality: { only_integer: true, in: Status::MEDIA_ATTACHMENTS_LIMIT..16 }, if: -> { defined?(@remote_media_attachments_limit) }
+    validates :remote_media_attachments_limit, numericality: { only_integer: true, in: Sharlayan::Status::MediaLimits::REMOTE_MEDIA_ATTACHMENTS_LIMIT_RANGE }, if: -> { defined?(@remote_media_attachments_limit) }
     validates :background_opacity, numericality: { only_integer: true, in: 0..100 }, if: -> { defined?(@background_opacity) }
     validates :avatar_decorations_max_count, numericality: { only_integer: true, in: 0..UpdateAccountService::MAX_DECORATIONS }, if: -> { defined?(@avatar_decorations_max_count) }
     validates :theme_color, format: { with: /\A#(?:[0-9a-fA-F]{3}){1,2}\z/ }, if: -> { defined?(@theme_color) }

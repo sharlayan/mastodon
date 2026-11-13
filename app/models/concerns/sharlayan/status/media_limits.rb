@@ -3,6 +3,17 @@
 module Sharlayan::Status::MediaLimits
   extend ActiveSupport::Concern
 
+  MIN_REMOTE_MEDIA_ATTACHMENTS_LIMIT = 4
+  MAX_MEDIA_ATTACHMENTS_LIMIT = 16
+  REMOTE_MEDIA_ATTACHMENTS_LIMIT_RANGE = (MIN_REMOTE_MEDIA_ATTACHMENTS_LIMIT..MAX_MEDIA_ATTACHMENTS_LIMIT)
+  DEFAULT_LOCAL_MEDIA_ATTACHMENTS_LIMIT = 10
+  LOCAL_MEDIA_ATTACHMENTS_LIMIT_RANGE = (1..MAX_MEDIA_ATTACHMENTS_LIMIT)
+
+  def self.local_media_attachments_limit(env = ENV)
+    configured = Integer(env.fetch('MAX_MEDIA_ATTACHMENTS', ''), exception: false)
+    (configured || DEFAULT_LOCAL_MEDIA_ATTACHMENTS_LIMIT).clamp(LOCAL_MEDIA_ATTACHMENTS_LIMIT_RANGE)
+  end
+
   class_methods do
     def remote_media_attachments_limit
       Setting.remote_media_attachments_limit
