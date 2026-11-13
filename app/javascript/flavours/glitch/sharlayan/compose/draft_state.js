@@ -18,6 +18,12 @@ export const reduceStatusDraftCompose = (state, action) => {
         map.set('limited_scope', 'reply');
         map.set('limited_reply_account_ids', params.get('limited_reply_account_ids'));
         if (params.get('local_only')) map.setIn(['advanced_options', 'do_not_federate'], true);
+      } else if (params && state.get('limited_scope') === 'reply' && state.get('in_reply_to') && !params.get('limited_scope') && !params.get('in_reply_to_id') && params.get('visibility') === 'direct') {
+        map.set('in_reply_to', null);
+        map.set('reply_to_limited', false);
+        map.set('privacy', 'direct');
+        map.set('limited_scope', null);
+        map.set('limited_reply_account_ids', null);
       }
     });
   }

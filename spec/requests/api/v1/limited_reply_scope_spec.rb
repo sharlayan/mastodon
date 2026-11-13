@@ -65,6 +65,29 @@ RSpec.describe 'Limited replies API' do
     expect(Status.find(response.parsed_body.fetch(:id)).mentions.pluck(:account_id)).to contain_exactly(author.id, recipient.id)
   end
 
+  it 'saves a reply draft after its scope is left or its parent becomes unavailable' do
+    draft_ids = Array.new(2) do
+      post '/api/v1/status_drafts', headers: headers, params: params
+      response.parsed_body.fetch(:id)
+    end
+
+    put "/api/v1/status_drafts/#{draft_ids.first}", headers: headers, params: { status: 'Now public', in_reply_to_id: parent.id, visibility: 'public' }
+    expect(response).to have_http_status(200), response.body
+    expect(response.parsed_body.fetch(:params)).to include(visibility: 'public', in_reply_to_id: parent.id.to_s).and(not_include(:limited_scope, :limited_reply_account_ids))
+    put "/api/v1/status_drafts/#{draft_ids.first}", headers: headers, params: params
+    expect(response).to have_http_status(200), response.body
+
+    user.account.block!(author)
+    put "/api/v1/status_drafts/#{draft_ids.first}", headers: headers, params: { status: 'A partial update' }
+    expect(response).to have_http_status(200), response.body
+    expect(response.parsed_body.fetch(:params)).to include(visibility: 'direct').and(not_include(:limited_scope, :limited_reply_account_ids, :in_reply_to_id))
+
+    parent.destroy!
+    put "/api/v1/status_drafts/#{draft_ids.last}", headers: headers, params: params
+    expect(response).to have_http_status(200), response.body
+    expect(response.parsed_body.fetch(:params)).to include(status: 'A reply', visibility: 'direct').and(not_include(:limited_scope, :limited_reply_account_ids, :in_reply_to_id))
+  end
+
   it 'rejects a reply draft whose parent is not accessible or limited' do
     private_parent = Fabricate(:status, visibility: :limited)
     public_parent = Fabricate(:status)

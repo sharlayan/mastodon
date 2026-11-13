@@ -206,6 +206,19 @@ describe('compose restoration transitions', () => {
     expect(state.get('draft_save_request')).toBeNull();
   });
 
+  it('narrows a reply scope when the server saves its draft without the unavailable parent', () => {
+    const replying = restore(loadedDraft(), REDRAFT, sourceStatus.merge(fromJS({ visibility: 'private', limited_scope: 'reply', limited_reply_account_ids: ['recipient'] })));
+    const saving = composeReducer(replying, { type: STATUS_DRAFT_SAVE_REQUEST, requestId: 'save-1' });
+    const save = params => composeReducer(saving, { type: STATUS_DRAFT_SAVE_SUCCESS, draft: fromJS({ id: 'saved-draft', params }), requestId: 'save-1' });
+    const narrowed = save({ status: 'A reply', visibility: 'direct' });
+
+    expect(save({ status: 'A reply', visibility: 'private', limited_scope: 'reply', in_reply_to_id: 'parent-status', limited_reply_account_ids: ['recipient'] }).get('limited_scope')).toBe('reply');
+    expect(narrowed.get('in_reply_to')).toBeNull();
+    expect(narrowed.get('limited_scope')).toBeNull();
+    expect(narrowed.get('limited_reply_account_ids')).toBeNull();
+    expect(getSharlayanComposeSubmission({ getState: () => fromJS({}).set('compose', narrowed), effectiveStatusId: null })).toMatchObject({ visibility: 'direct', limitedScope: undefined });
+  });
+
   it('forgets the loaded draft only when that draft is deleted', () => {
     expect(composeReducer(loadedDraft(), { type: STATUS_DRAFT_DELETE_SUCCESS, id: 'other-draft' }).get('draft_id')).toBe('unrelated-draft');
     expect(composeReducer(loadedDraft(), { type: STATUS_DRAFT_DELETE_SUCCESS, id: 'unrelated-draft' }).get('draft_id')).toBeNull();
