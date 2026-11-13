@@ -235,6 +235,41 @@ describe('Drive manager selection', () => {
     ).toEqual(['Alpha', 'Beta', 'Gamma']);
   });
 
+  it('shows item, selection, size and storage in the bottom status bar and the selection actions in the toolbar', async () => {
+    mocks.apiGetDriveUsage.mockResolvedValue({
+      used: 1024 * 1024,
+      limit: 10 * 1024 * 1024,
+      file_count: 3,
+    });
+    await renderManager();
+
+    const statusBar = document.querySelector<HTMLElement>('.drive__status-bar');
+    if (!statusBar) throw new Error('missing status bar');
+
+    expect(statusBar.textContent).toContain('4 items');
+    expect(await screen.findByText('1 MB of 10 MB used')).toBeTruthy();
+    expect(screen.queryByRole('group', { name: 'Selected items' })).toBeNull();
+
+    fireEvent.click(screen.getByTitle('Alpha'));
+    fireEvent.click(screen.getByTitle('Beta'), { ctrlKey: true });
+
+    expect(statusBar.textContent).toContain('2 items selected');
+    expect(statusBar.textContent).toContain('200 B');
+    expect(
+      document
+        .querySelector('.drive__toolbar')
+        ?.contains(screen.getByRole('group', { name: 'Selected items' })),
+    ).toBe(true);
+
+    fireEvent.keyDown(screen.getByTitle('Alpha'), { key: 'a', ctrlKey: true });
+
+    expect(statusBar.textContent).toContain('4 items selected');
+    expect(statusBar.querySelector('.drive__status-bar__size')).toBeNull();
+    expect(statusBar.lastElementChild?.classList.contains('drive__usage')).toBe(
+      true,
+    );
+  });
+
   it('drags every selected file onto a folder and moves them in one bulk request', async () => {
     await renderManager();
 

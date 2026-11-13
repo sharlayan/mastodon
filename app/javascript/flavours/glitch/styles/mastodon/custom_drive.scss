@@ -13,9 +13,12 @@
     pointer-events: none;
   }
 
+  &__toolbar {
+    padding: 12px;
+  }
+
   &__toolbar,
   &__selection {
-    padding: 12px;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -88,13 +91,8 @@
   }
 
   &__selection {
-    padding-top: 0;
-
-    &__count {
-      margin-inline-end: auto;
-      color: var(--color-text-primary);
-      font-weight: 600;
-    }
+    padding-inline-start: 8px;
+    border-inline-start: 1px solid var(--color-border-primary);
   }
 
   &__body {
@@ -152,47 +150,57 @@
     opacity: 1;
   }
 
-  &__hint {
-    font-size: 14px;
-    color: var(--color-text-secondary);
-    padding: 0 12px 12px;
-  }
+  &__status-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+    min-height: 32px;
+    margin-top: auto;
+    padding: 4px 12px;
+    box-sizing: border-box;
+    border-top: 1px solid var(--color-border-primary);
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-size: 12px;
+    line-height: 16px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 
-  &__hint:first-child {
-    padding: 12px 12px 0;
+    &__section {
+      display: inline-flex;
+      gap: 12px;
+    }
+
+    &__section + &__section {
+      padding-inline-start: 12px;
+      border-inline-start: 1px solid var(--color-border-primary);
+    }
   }
 
   &__usage {
-    padding: 0 16px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-inline-start: auto;
 
-    &__label {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 8px;
-      font-size: 13px;
-    }
-
-    &__title {
-      color: var(--color-text-secondary);
-      font-weight: 600;
-    }
-
+    &__title,
     &__value {
-      color: var(--color-text-primary);
-      font-variant-numeric: tabular-nums;
+      color: var(--color-text-secondary);
     }
 
     &__bar {
+      width: 96px;
       height: 6px;
       border-radius: 3px;
       background: var(--color-bg-tertiary);
       overflow: hidden;
 
       &__fill {
+        display: block;
         height: 100%;
         border-radius: inherit;
         background: var(--color-bg-brand-base);
@@ -471,6 +479,10 @@
       flex: 0 0 auto;
     }
   }
+}
+
+.scrollable > .drive {
+  min-height: 100%;
 }
 
 .drive__name-hint {

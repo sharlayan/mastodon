@@ -602,6 +602,17 @@ export const DriveBrowser: React.FC<{
   );
 
   const selectionCount = selected.size;
+  const selectedSize = useMemo(() => {
+    if (selectedItems.folderIds.length > 0) return null;
+    if (selectedItems.fileIds.length === 0) return null;
+
+    const ids = new Set(selectedItems.fileIds);
+
+    return visibleFiles.reduce(
+      (total, file) => (ids.has(file.id) ? total + (file.size ?? 0) : total),
+      0,
+    );
+  }, [selectedItems, visibleFiles]);
   const className = [
     'drive',
     isDropping && 'drive--dropping',
@@ -624,14 +635,7 @@ export const DriveBrowser: React.FC<{
       onKeyDown={handleKeyDown}
       onPointerDownCapture={handlePointerDownCapture}
     >
-      {orphanedOnly ? (
-        <p className='drive__hint'>
-          <FormattedMessage
-            id='drive.unused_hint'
-            defaultMessage='Files across every folder that no post is using. Safe to delete.'
-          />
-        </p>
-      ) : (
+      {!orphanedOnly && (
         <nav className='drive__breadcrumb'>
           <BreadcrumbCrumb
             id={null}
@@ -712,70 +716,42 @@ export const DriveBrowser: React.FC<{
           style={{ display: 'none' }}
           onChange={handleFileInputChange}
         />
+
+        {selectable && selectionCount > 0 && (
+          <div
+            className='drive__selection'
+            role='group'
+            aria-label={intl.formatMessage(messages.selectionToolbar)}
+          >
+            {moveMenu.length > 0 && (
+              <Dropdown items={moveMenu} placement='bottom-start'>
+                <button type='button' className='button button-secondary'>
+                  <Icon id='folder' icon={FolderIcon} />
+                  {intl.formatMessage(messages.moveTo)}
+                </button>
+              </Dropdown>
+            )}
+
+            <button
+              type='button'
+              className='button button-secondary drive__selection__delete'
+              onClick={handleDeleteSelected}
+            >
+              <Icon id='trash' icon={DeleteIcon} />
+              {intl.formatMessage(messages.deleteSelected)}
+            </button>
+
+            <button
+              type='button'
+              className='button button-secondary'
+              onClick={clearSelection}
+            >
+              <Icon id='times' icon={CloseIcon} />
+              {intl.formatMessage(messages.clearSelection)}
+            </button>
+          </div>
+        )}
       </div>
-
-      {selectable && selectionCount > 0 && (
-        <div
-          className='drive__selection'
-          role='toolbar'
-          aria-label={intl.formatMessage(messages.selectionToolbar)}
-        >
-          <span className='drive__selection__count'>
-            <FormattedMessage
-              id='drive.selected_count'
-              defaultMessage='{count, plural, one {# item selected} other {# items selected}}'
-              values={{ count: selectionCount }}
-            />
-          </span>
-
-          {moveMenu.length > 0 && (
-            <Dropdown items={moveMenu} placement='bottom-start'>
-              <button type='button' className='button button-secondary'>
-                <Icon id='folder' icon={FolderIcon} />
-                {intl.formatMessage(messages.moveTo)}
-              </button>
-            </Dropdown>
-          )}
-
-          <button
-            type='button'
-            className='button button-secondary drive__selection__delete'
-            onClick={handleDeleteSelected}
-          >
-            <Icon id='trash' icon={DeleteIcon} />
-            {intl.formatMessage(messages.deleteSelected)}
-          </button>
-
-          <button
-            type='button'
-            className='button button-secondary'
-            onClick={clearSelection}
-          >
-            <Icon id='times' icon={CloseIcon} />
-            {intl.formatMessage(messages.clearSelection)}
-          </button>
-        </div>
-      )}
-
-      {usage && <DriveUsage usage={usage} />}
-
-      {selectable && !orphanedOnly && (
-        <p className='drive__hint'>
-          <FormattedMessage
-            id='drive.select_hint'
-            defaultMessage='Click to select and double-click to open. Hold Ctrl or Shift to select several, or drag across empty space. Drag selected items onto a folder to move them.'
-          />
-        </p>
-      )}
-
-      {managing && !orphanedOnly && (
-        <p className='drive__hint'>
-          <FormattedMessage
-            id='drive.manage_hint'
-            defaultMessage='Drag files and folders to move them. Use the pencil to rename them.'
-          />
-        </p>
-      )}
 
       <div
         ref={bodyRef}
@@ -878,6 +854,14 @@ export const DriveBrowser: React.FC<{
       {!loading && hasMore && (
         <LoadMore onClick={loadMore} loading={loadingMore} />
       )}
+
+      <DriveStatusBar
+        itemCount={itemKeys.length}
+        hasMore={hasMore}
+        selectionCount={selectionCount}
+        selectedSize={selectedSize}
+        usage={usage}
+      />
     </div>
   );
 };
@@ -899,6 +883,50 @@ const formatBytes = (bytes: number) => {
   return `${value.toFixed(digits)} ${units[unit]}`;
 };
 
+const DriveStatusBar: React.FC<{
+  itemCount: number;
+  hasMore: boolean;
+  selectionCount: number;
+  selectedSize: number | null;
+  usage: ApiDriveUsageJSON | null;
+}> = ({ itemCount, hasMore, selectionCount, selectedSize, usage }) => (
+  <div className='drive__status-bar'>
+    <span className='drive__status-bar__section'>
+      {hasMore ? (
+        <FormattedMessage
+          id='drive.status_items_more'
+          defaultMessage='{count}+ items'
+          values={{ count: itemCount }}
+        />
+      ) : (
+        <FormattedMessage
+          id='drive.status_items'
+          defaultMessage='{count, plural, one {# item} other {# items}}'
+          values={{ count: itemCount }}
+        />
+      )}
+    </span>
+
+    {selectionCount > 0 && (
+      <span className='drive__status-bar__section'>
+        <FormattedMessage
+          id='drive.selected_count'
+          defaultMessage='{count, plural, one {# item selected} other {# items selected}}'
+          values={{ count: selectionCount }}
+        />
+
+        {selectedSize !== null && (
+          <span className='drive__status-bar__size'>
+            {formatBytes(selectedSize)}
+          </span>
+        )}
+      </span>
+    )}
+
+    {usage && <DriveUsage usage={usage} />}
+  </div>
+);
+
 const DriveUsage: React.FC<{ usage: ApiDriveUsageJSON }> = ({ usage }) => {
   const unlimited = usage.limit <= 0;
   const percent = unlimited
@@ -906,46 +934,45 @@ const DriveUsage: React.FC<{ usage: ApiDriveUsageJSON }> = ({ usage }) => {
     : Math.min(100, Math.ceil((usage.used / usage.limit) * 1000) / 10);
 
   return (
-    <div className='drive__usage'>
-      <div className='drive__usage__label'>
-        <span className='drive__usage__title'>
-          <FormattedMessage id='drive.storage' defaultMessage='Storage' />
-        </span>
-        <span className='drive__usage__value'>
-          {unlimited ? (
-            <FormattedMessage
-              id='drive.usage_unlimited'
-              defaultMessage='{used} used'
-              values={{ used: formatBytes(usage.used) }}
-            />
-          ) : (
-            <FormattedMessage
-              id='drive.usage'
-              defaultMessage='{used} of {limit} used'
-              values={{
-                used: formatBytes(usage.used),
-                limit: formatBytes(usage.limit),
-              }}
-            />
-          )}
-        </span>
-      </div>
+    <span className='drive__usage'>
+      <span className='drive__usage__title'>
+        <FormattedMessage id='drive.storage' defaultMessage='Storage' />
+      </span>
 
       {!unlimited && (
-        <div
+        <span
           className='drive__usage__bar'
           role='progressbar'
           aria-valuenow={percent}
           aria-valuemin={0}
           aria-valuemax={100}
         >
-          <div
+          <span
             className={`drive__usage__bar__fill${percent >= 90 ? ' drive__usage__bar__fill--full' : ''}`}
             style={{ width: `${percent}%` }}
           />
-        </div>
+        </span>
       )}
-    </div>
+
+      <span className='drive__usage__value'>
+        {unlimited ? (
+          <FormattedMessage
+            id='drive.usage_unlimited'
+            defaultMessage='{used} used'
+            values={{ used: formatBytes(usage.used) }}
+          />
+        ) : (
+          <FormattedMessage
+            id='drive.usage'
+            defaultMessage='{used} of {limit} used'
+            values={{
+              used: formatBytes(usage.used),
+              limit: formatBytes(usage.limit),
+            }}
+          />
+        )}
+      </span>
+    </span>
   );
 };
 
