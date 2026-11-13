@@ -10,7 +10,11 @@ module Sharlayan::PostStatus
 
     def process_mentions!(status, service, attributes:)
       status.assign_attributes(attributes)
-      service.call(status, circle: @circle)
+      if status.limited_visibility? && status.limited_reply?
+        service.call(status, reply_account_ids: @options[:limited_reply_account_ids])
+      else
+        service.call(status, circle: @circle)
+      end
       status.limited_scope = :personal if @circle.present? && status.mentions.empty?
     end
 

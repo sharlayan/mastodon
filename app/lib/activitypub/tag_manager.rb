@@ -169,6 +169,8 @@ class ActivityPub::TagManager
   # Unlisted and private statuses go out primarily to the followers collection
   # Others go out only to the people they mention
   def to(status)
+    return limited_reply_to(status) if status.limited_visibility? && status.limited_reply?
+
     case status.visibility
     when 'public'
       [COLLECTIONS[:public]]
@@ -233,6 +235,17 @@ class ActivityPub::TagManager
     end
 
     cc
+  end
+
+  def limited_reply_to(status)
+    mentions = status.mentions
+    if status.account.silenced?
+      account_ids = mentions.pluck(:account_id)
+      allowed_ids = status.account.followers.where(id: account_ids).pluck(:id) + FollowRequest.where(target_account_id: status.account_id, account_id: account_ids).pluck(:account_id)
+      mentions = mentions.where(account_id: allowed_ids)
+    end
+
+    mentions.includes(:account).filter_map { |mention| uri_for(mention.account) }.uniq
   end
 
   LIMITED_SCOPE_MAP = {

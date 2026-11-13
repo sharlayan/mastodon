@@ -812,6 +812,11 @@ ja:
       voice_relay_provider:
         origin: "リレーのアドレス"
         secret: "シークレット"
+  statuses:
+    errors:
+      invalid_reply_scope: "返信先の公開範囲は限定公開の投稿にのみ使用でき、サークルや他の公開範囲とは併用できません。"
+      reply_scope_quote: "限定された相手への返信には引用を添付できません。"
+      reply_scope_recipients: "元の投稿を受信していない人をこの返信でメンションすることはできません。"
   statuses_cleanup:
     ignore_reactions: リアクションを無視
     interaction_exceptions_explanation: お気に入りやブーストの数が一度でも基準値に逹っした投稿は、その後数が減っても削除されません。

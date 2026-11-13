@@ -130,6 +130,7 @@ class UpdateStatusService < BaseService
     # We raise here to rollback the entire transaction
     raise NoChangesSubmittedError unless significant_changes?
 
+    ProcessMentionsService.new.call(@status, save_status: false) if @status.limited_visibility? && @status.limited_reply?
     @status.edited_at = Time.now.utc
     @status.save!
   end
@@ -143,7 +144,7 @@ class UpdateStatusService < BaseService
 
   def update_metadata!
     ProcessHashtagsService.new.call(@status)
-    ProcessMentionsService.new.call(@status)
+    ProcessMentionsService.new.call(@status) unless @status.limited_visibility? && @status.limited_reply?
     ProcessLinksService.new.call(@status)
   end
 

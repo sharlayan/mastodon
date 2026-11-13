@@ -1,7 +1,9 @@
 export const getSharlayanComposeSubmission = ({ getState, effectiveStatusId, overridePrivacy }) => {
   const privacy = overridePrivacy || getState().getIn(['compose', 'privacy']);
-  const circleId = !overridePrivacy && privacy !== 'direct' && effectiveStatusId === null ? getState().getIn(['compose', 'circle_id']) : null;
-  const visibility = circleId ? 'private' : privacy;
+  const limitedScope = privacy !== 'direct' && effectiveStatusId === null && getState().getIn(['compose', 'limited_scope']) === 'reply' ? 'reply' : undefined;
+  const circleId = !limitedScope && !overridePrivacy && privacy !== 'direct' && effectiveStatusId === null ? getState().getIn(['compose', 'circle_id']) : null;
+  const replyAccountIds = getState().getIn(['compose', 'limited_reply_account_ids']);
+  const visibility = circleId || limitedScope ? 'private' : privacy;
   const rawPoll = getState().getIn(['compose', 'poll'], null);
   const options = rawPoll?.get('options');
   const poll = rawPoll ? {
@@ -13,6 +15,8 @@ export const getSharlayanComposeSubmission = ({ getState, effectiveStatusId, ove
 
   return {
     circleId,
+    limitedScope,
+    limitedReplyAccountIds: limitedScope ? replyAccountIds?.toArray() : undefined,
     visibility,
     clipIds: effectiveStatusId === null ? getState().getIn(['compose', 'clip_ids']).toArray() : undefined,
     poll,

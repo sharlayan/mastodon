@@ -6,9 +6,11 @@ class ProcessMentionsService < BaseService
   # Scan status for mentions and fetch remote mentioned users,
   # and create local mention pointers
   # @param [Status] status
-  def call(status, circle: nil)
+  def call(status, circle: nil, reply_account_ids: nil, save_status: true)
     @status = status
     @circle = circle
+    @reply_account_ids = reply_account_ids
+    @save_status = save_status
 
     return unless @status.local?
 
@@ -17,12 +19,29 @@ class ProcessMentionsService < BaseService
 
     Status.transaction do
       scan_text!
+      process_reply! if @status.limited_visibility? && @status.limited_reply?
       process_circle! if @circle.present?
       assign_mentions!
     end
   end
 
   private
+
+  def process_reply!
+    account_ids = if @status.persisted?
+                    @previous_mentions.map(&:account_id)
+                  else
+                    Array(@reply_account_ids).map(&:to_i)
+                  end
+    account_ids |= [@status.account_id]
+    raise Mastodon::ValidationError, I18n.t('statuses.errors.reply_scope_recipients') if @current_mentions.any? { |mention| !account_ids.include?(mention.account_id) }
+    return if @status.persisted?
+
+    mentioned_account_ids = @current_mentions.map(&:account_id) | [@status.account_id]
+    Account.where(id: account_ids - mentioned_account_ids).find_each do |target_account|
+      @current_mentions << @status.mentions.new(silent: true, account: target_account)
+    end
+  end
 
   def process_circle!
     mentioned_account_ids = @current_mentions.map(&:account_id)
@@ -74,7 +93,7 @@ class ProcessMentionsService < BaseService
       "@#{mentioned_account.acct}"
     end
 
-    @status.save! if @status.persisted?
+    @status.save! if @status.persisted? && @save_status
   end
 
   def assign_mentions!

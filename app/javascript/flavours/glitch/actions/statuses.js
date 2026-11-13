@@ -1,5 +1,7 @@
 import { defineMessages } from 'react-intl';
 
+import { fromJS } from 'immutable';
+
 import { browserHistory } from 'flavours/glitch/components/router';
 
 import api from '../api';
@@ -173,6 +175,8 @@ export function deleteStatus(id, withRedraft = false) {
       dispatch(importFetchedAccount(response.data.account));
 
       if (withRedraft) {
+        const audience = Object.fromEntries(['limited_scope', 'circle_id', 'limited_reply_account_ids'].filter(key => response.data[key] !== undefined).map(key => [key, response.data[key]]));
+        status = status.merge(fromJS(audience));
         dispatch(redraft(status, response.data.text, response.data.content_type));
         ensureComposeIsVisible(getState);
       } else {

@@ -10,6 +10,8 @@ module Sharlayan::StatusReachFinderExtensions
   private
 
   def reached_account_ids
+    return mentioned_account_ids if @status.limited_visibility? && @status.limited_reply?
+
     super - private_mentioned_account_ids
   end
 

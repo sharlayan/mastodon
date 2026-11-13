@@ -924,6 +924,11 @@ en:
       voice_relay_provider:
         origin: "Relay address"
         secret: "Secret"
+  statuses:
+    errors:
+      invalid_reply_scope: "Reply audience requires a limited post and cannot be combined with a circle or another visibility."
+      reply_scope_quote: "Embedded quotes cannot be added to a reply with a limited audience."
+      reply_scope_recipients: "This reply cannot mention people who did not receive the original post."
   statuses_cleanup:
     ignore_reactions: Ignore reactions
     interaction_exceptions_explanation: Posts which temporarily exceed the favorite

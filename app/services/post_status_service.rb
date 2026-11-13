@@ -179,7 +179,11 @@ class PostStatusService < BaseService
 
   def schedule_status!
     status_for_validation = @account.statuses.build(status_attributes)
-    safeguard_private_mention_quote!(status_for_validation)
+    if @options[:limited_scope].to_s == 'reply'
+      @sharlayan_pipeline.prepare_status!(status_for_validation, process_mentions_service) { safeguard_mentions!(status_for_validation) }
+    else
+      safeguard_private_mention_quote!(status_for_validation)
+    end
 
     antispam = Antispam.new(status_for_validation)
     antispam.local_preflight_check!

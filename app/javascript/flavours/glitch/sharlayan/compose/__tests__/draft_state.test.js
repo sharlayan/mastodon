@@ -51,4 +51,16 @@ describe('reduceStatusDraftCompose', () => {
 
     expect(result.get('draft_id')).toBe('99');
   });
+
+  it('applies the saved server audience only while composing the same limited reply', () => {
+    const current = state.merge(fromJS({ limited_scope: 'reply', in_reply_to: 'parent', limited_reply_account_ids: null, draft_save_request: 'saving' }));
+    const action = { type: 'STATUS_DRAFT_SAVE_SUCCESS', requestId: 'saving', draft: fromJS({ id: 'saved', params: { limited_scope: 'reply', in_reply_to_id: 'parent', limited_reply_account_ids: ['author', 'hidden'], local_only: true } }) };
+    const saved = reduceStatusDraftCompose(current, action);
+
+    expect(saved.get('limited_reply_account_ids').toArray()).toEqual(['author', 'hidden']);
+    expect(saved.getIn(['advanced_options', 'do_not_federate'])).toBe(true);
+    expect(reduceStatusDraftCompose(current.set('in_reply_to', 'other'), action).get('limited_reply_account_ids')).toBeNull();
+    expect(reduceStatusDraftCompose(current.set('limited_scope', null), action).get('limited_reply_account_ids')).toBeNull();
+  });
+
 });

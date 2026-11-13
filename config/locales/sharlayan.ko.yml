@@ -847,6 +847,11 @@ ko:
       voice_relay_provider:
         origin: "릴레이 주소"
         secret: "시크릿"
+  statuses:
+    errors:
+      invalid_reply_scope: "답글 대상 공개 범위는 제한 공개 글에만 사용할 수 있으며 서클이나 다른 공개 범위와 함께 선택할 수 없습니다."
+      reply_scope_quote: "제한된 대상에게 보내는 답글에는 인용을 첨부할 수 없습니다."
+      reply_scope_recipients: "원글을 받지 않은 사람은 이 답글에 멘션할 수 없습니다."
   statuses_cleanup:
     ignore_reactions: 반응 무시
     interaction_exceptions_explanation: 즐겨찾기 또는 부스트 기준을 일시적으로 초과한 게시물은 나중에 기준 이하로

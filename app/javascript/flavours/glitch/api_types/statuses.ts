@@ -111,6 +111,7 @@ export interface ApiStatusJSON {
   spoiler_text?: string;
   visibility: StatusVisibility;
   limited_scope?: string;
+  limited_reply_account_ids?: string[];
   language: string;
   uri: string;
   url: string;
