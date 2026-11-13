@@ -96,6 +96,14 @@ class BoardAnnouncement < ApplicationRecord
     update!(published: true, published_at: published_at || Time.now.utc, auto_archive_at: auto_archive_at&.future? ? auto_archive_at : nil)
   end
 
+  def update_with_archive_state(attributes, raise_error: false, republish_expired: false)
+    with_lock do
+      attributes = attributes.except(:published) if !republish_expired && auto_archive_at.present? && auto_archive_at <= Time.current
+      self.published = false unless active?
+      public_send(raise_error ? :update! : :update, attributes)
+    end
+  end
+
   def active?
     published? && (auto_archive_at.nil? || auto_archive_at.future?)
   end

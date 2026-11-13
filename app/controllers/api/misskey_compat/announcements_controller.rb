@@ -19,7 +19,7 @@ class Api::MisskeyCompat::AnnouncementsController < Api::MisskeyCompat::BaseCont
   end
 
   def show
-    announcement = BoardAnnouncement.published.for_account(current_account).includes(:attachments).find(params[:announcementId])
+    announcement = BoardAnnouncement.where.not(published_at: nil).for_account(current_account).includes(:attachments).find(params[:announcementId])
     preload_read_state([announcement])
 
     render json: MisskeyCompat::AnnouncementSerializer.serialize(announcement, current_account: current_account)

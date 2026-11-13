@@ -35,7 +35,7 @@ class Admin::BoardAnnouncementsController < Admin::BaseController
   def update
     authorize :board_announcement, :update?
 
-    if @announcement.update(resource_params)
+    if @announcement.update_with_archive_state(resource_params)
       log_action :update, @announcement
       redirect_to admin_board_announcements_path, notice: I18n.t('admin.board_announcements.updated_msg')
     else

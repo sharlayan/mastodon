@@ -56,7 +56,7 @@ class Api::MisskeyCompat::Admin::AnnouncementsController < Api::MisskeyCompat::A
     return if performed?
 
     BoardAnnouncement.transaction do
-      @announcement.update!(attributes)
+      @announcement.update_with_archive_state(attributes, raise_error: true, republish_expired: true)
       attach_image!(@announcement, image) unless keep_image
     end
     log_action :update, @announcement

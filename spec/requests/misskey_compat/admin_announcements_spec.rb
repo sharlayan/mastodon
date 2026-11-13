@@ -84,10 +84,38 @@ RSpec.describe 'Misskey-compat admin announcements' do
       expect(response.parsed_body.pluck(:id)).to eq([created[:id]])
       post '/api/i', params: { i: token }, as: :json
       expect(response.parsed_body[:hasUnreadAnnouncement]).to be false
+    end
+  end
 
-      api('update', id: created[:id], autoArchiveAt: nil)
+  it 'shows archived announcements without exposing drafts or announcements for older accounts' do
+    archived = BoardAnnouncement.create!(title: 'Archived', text: 'Body', published: true, auto_archive_at: 1.hour.ago)
+    draft = BoardAnnouncement.create!(title: 'Draft', text: 'Private')
+    hidden = BoardAnnouncement.create!(title: 'Hidden', text: 'Old', published: false, published_at: user.account.created_at - 1.day, for_existing_users: true)
+
+    post '/api/announcements/show', params: { i: token, announcementId: MisskeyCompat::MiId.encode(archived.id) }, as: :json
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body[:id]).to eq(MisskeyCompat::MiId.encode(archived.id))
+
+    [draft, hidden].each do |announcement|
+      post '/api/announcements/show', params: { i: token, announcementId: MisskeyCompat::MiId.encode(announcement.id) }, as: :json
+      expect(response).to have_http_status(404)
+    end
+  end
+
+  it 'keeps expired announcements archived when changing their deadline unless explicitly reactivated' do
+    [nil, 1.day.from_now.to_i * 1000].each do |deadline|
+      announcement = BoardAnnouncement.create!(title: 'Expired', text: 'Body', published: true, auto_archive_at: 1.hour.ago)
+      id = MisskeyCompat::MiId.encode(announcement.id)
+      api('update', id: id, autoArchiveAt: deadline)
       expect(response).to have_http_status(204)
-      expect(api('list').sole).to include(autoArchiveAt: nil, isActive: true)
+      expect(announcement.reload).to_not be_active
+      expect(announcement).to_not be_published
+
+      announcement.update!(published: true, auto_archive_at: 1.hour.ago)
+      api('update', id: id, autoArchiveAt: deadline, isActive: true)
+      expect(response).to have_http_status(204)
+      expect(announcement.reload).to be_active
+      announcement.destroy!
     end
   end
 

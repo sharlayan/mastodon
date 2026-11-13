@@ -80,6 +80,7 @@
 .fields-group
   = form.input :published,
                as: :boolean,
+               input_html: { checked: form.object.active? },
                hint: t('admin.board_announcements.publish_hint'),
                wrapper: :with_label
 

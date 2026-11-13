@@ -26,6 +26,18 @@ RSpec.describe BoardAnnouncement do
       expect(announcement).to_not be_valid
       expect(announcement.errors[:auto_archive_at]).to be_present
     end
+
+    it 'keeps an expired announcement archived when editing its deadline until explicitly republished' do
+      [nil, 1.day.from_now].each do |deadline|
+        announcement = described_class.create!(title: 'Expired', text: 'Body', published: true, auto_archive_at: 1.hour.ago)
+        announcement.update_with_archive_state({ auto_archive_at: deadline, published: true }, raise_error: true)
+        expect(announcement.reload).to_not be_active
+        expect(announcement).to_not be_published
+
+        announcement.publish!
+        expect(announcement.reload).to be_active
+      end
+    end
   end
 
   describe '.for_account' do
