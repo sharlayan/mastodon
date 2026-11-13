@@ -25,6 +25,6 @@ module Sharlayan::Status::MediaLimits
   end
 
   def sharlayan_media_attachments_limit
-    local? ? self.class.local_media_attachments_limit : self.class.remote_media_attachments_limit
+    local? ? ::Status::MEDIA_ATTACHMENTS_LIMIT : self.class.remote_media_attachments_limit
   end
 end
