@@ -56,10 +56,10 @@ public sealed class DatabaseAllocationResolver(NpgsqlDataSource dataSource, IMem
           AND (NOT COALESCE(role.require_2fa, everyone.require_2fa, FALSE) OR users.otp_required_for_login
                OR EXISTS (SELECT 1 FROM webauthn_credentials WHERE user_id = users.id))
           AND ((COALESCE(role.permissions, 0) & 1) = 1
-               OR ((COALESCE(role.extra_permissions, 0) | COALESCE(everyone.extra_permissions, 12)) & 4) = 4)
+               OR ((COALESCE(role.extra_permissions, 0) | COALESCE(everyone.extra_permissions, 768)) & 256) = 256)
           AND (NOT $4::boolean OR (
                ((COALESCE(role.permissions, 0) & 1) = 1
-                OR ((COALESCE(role.extra_permissions, 0) | COALESCE(everyone.extra_permissions, 12)) & 8) = 8)
+                OR ((COALESCE(role.extra_permissions, 0) | COALESCE(everyone.extra_permissions, 768)) & 512) = 512)
                AND COALESCE((SELECT value FROM settings WHERE var = 'voice_call_screen_share_enabled'), E'--- true\n') = E'--- true\n'
           ))
           AND owner.domain IS NOT NULL AND owner.suspended_at IS NULL AND owner.requested_deletion_at IS NULL

@@ -15,8 +15,8 @@ module Sharlayan::UserRoleExtensions
   EXTRA_FLAGS = {
     bypass_rate_limit: (1 << 0),
     view_admin_timeline: (1 << 1),
-    join_voice_calls: (1 << 2),
-    share_screens: (1 << 3),
+    join_voice_calls: (1 << 8),
+    share_screens: (1 << 9),
   }.freeze
 
   module ExtraFlags
