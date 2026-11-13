@@ -687,6 +687,8 @@
   "settings.navigation_panel",
   "settings.navigation_panel.drag_handle",
   "settings.navigation_panel.hint",
+  "settings.navigation_panel.mobile_local_timeline",
+  "settings.navigation_panel.mobile_local_timeline.hint",
   "settings.navigation_panel.move_down",
   "settings.navigation_panel.move_up",
   "settings.navigation_panel.reset",

@@ -687,6 +687,8 @@
   "settings.navigation_panel": "ナビゲーションパネル",
   "settings.navigation_panel.drag_handle": "ドラッグして並べ替え",
   "settings.navigation_panel.hint": "ナビゲーションサイドバーのリンクを並べ替えたり非表示にできます。非表示にしたリンクもモバイルレイアウトでは表示されます。",
+  "settings.navigation_panel.mobile_local_timeline": "モバイルのナビゲーションバーで検索の代わりにローカルタイムラインを表示",
+  "settings.navigation_panel.mobile_local_timeline.hint": "検索はナビゲーションメニューから引き続き利用できます。ローカルタイムラインが利用できない場合は検索タブを表示します。",
   "settings.navigation_panel.move_down": "下に移動",
   "settings.navigation_panel.move_up": "上に移動",
   "settings.navigation_panel.reset": "デフォルトに戻す",
