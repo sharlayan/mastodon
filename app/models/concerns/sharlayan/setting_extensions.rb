@@ -15,6 +15,7 @@ module Sharlayan::SettingExtensions
     configured_status_limit = Integer(ENV.fetch('MAX_TOOT_CHARS', ''), exception: false)
     defaults['status_character_limit'] = configured_status_limit if configured_status_limit&.>= MIN_STATUS_CHARACTER_LIMIT
     defaults['profile_fields_limit'] = ENV.fetch('MAX_PROFILE_FIELDS', defaults.fetch('profile_fields_limit')).to_i.clamp(0, ActivityPub::ProcessAccountService::MAX_PROFILE_FIELDS)
+    defaults['local_media_attachments_limit'] = Sharlayan::Status::MediaLimits.default_local_media_attachments_limit
     defaults['remote_media_attachments_limit'] = ENV.fetch('REMOTE_MEDIA_ATTACHMENTS_LIMIT', defaults.fetch('remote_media_attachments_limit')).to_i.clamp(Sharlayan::Status::MediaLimits::REMOTE_MEDIA_ATTACHMENTS_LIMIT_RANGE)
     defaults
   end

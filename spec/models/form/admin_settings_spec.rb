@@ -154,10 +154,11 @@ RSpec.describe Form::AdminSettings do
         .and change(Setting, :drive_allowed_extensions).from('').to('pdf, zip')
     end
 
-    it 'saves the status character, profile field and remote media limits as integers' do
-      expect { described_class.new(status_character_limit: '1000', profile_fields_limit: '12', remote_media_attachments_limit: '8').save }
+    it 'saves the status character, profile field and media limits as integers' do
+      expect { described_class.new(status_character_limit: '1000', profile_fields_limit: '12', local_media_attachments_limit: '6', remote_media_attachments_limit: '8').save }
         .to change(Setting, :status_character_limit).from(500).to(1000)
         .and change(Setting, :profile_fields_limit).from(10).to(12)
+        .and change(Setting, :local_media_attachments_limit).from(10).to(6)
         .and change(Setting, :remote_media_attachments_limit).from(16).to(8)
     end
 

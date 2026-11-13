@@ -21,6 +21,15 @@
             sharlayan_only: true
 
 .fields-group
+  = f.input :local_media_attachments_limit,
+            as: :integer,
+            wrapper: :with_label,
+            label: t('admin.settings.content_limits.local_media_attachments_limit'),
+            hint: t('admin.settings.content_limits.local_media_attachments_limit_hint'),
+            input_html: { min: Sharlayan::Status::MediaLimits::LOCAL_MEDIA_ATTACHMENTS_LIMIT_RANGE.min, max: Sharlayan::Status::MediaLimits::MAX_MEDIA_ATTACHMENTS_LIMIT },
+            sharlayan_only: true
+
+.fields-group
   = f.input :remote_media_attachments_limit,
             as: :integer,
             wrapper: :with_label,

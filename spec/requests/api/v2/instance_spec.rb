@@ -78,7 +78,7 @@ RSpec.describe 'Instances' do
           ),
           statuses: include(
             max_characters: StatusLengthValidator.max_chars,
-            max_media_attachments: Status::MEDIA_ATTACHMENTS_LIMIT
+            max_media_attachments: Status.local_media_attachments_limit
           ),
           media_attachments: include(
             description_limit: MediaAttachment::MAX_DESCRIPTION_LENGTH
