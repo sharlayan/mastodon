@@ -41,6 +41,18 @@ RSpec.describe 'Misskey-compat i/update profile images' do
       expect(account.header_file_name).to be_present
     end
 
+    it 'rejects sensitive Drive files for both profile images without applying profile changes' do
+      drive_file.update!(sensitive: true)
+      id = MisskeyCompat::MiId.encode(drive_file.id)
+
+      { avatarId: 'AVATAR_IS_SENSITIVE', bannerId: 'BANNER_IS_SENSITIVE' }.each do |key, code|
+        update(name: 'Not saved', **{ key => id })
+        expect(response).to have_http_status(400)
+        expect(error[:code]).to eq(code)
+        expect(account.reload.display_name).to_not eq('Not saved')
+      end
+    end
+
     it "rejects a Drive file that is not an image and another account's Drive file" do
       video_file = account.drive_files.create!(file: attachment_fixture('attachment.webm'))
       previous = account.avatar_file_name
@@ -58,6 +70,22 @@ RSpec.describe 'Misskey-compat i/update profile images' do
       expect(response).to have_http_status(400)
       expect(error).to include(code: 'NO_SUCH_BANNER', id: '0d8f5629-f210-41c2-9433-735831a58595')
     end
+  end
+
+  it 'rejects media attachments from sensitive statuses and allows them after the flag is removed' do
+    status = Fabricate(:status, account: account, sensitive: true)
+    media = Fabricate(:media_attachment, account: account, status: status)
+    id = MisskeyCompat::MiId.encode(media.id)
+
+    { avatarId: 'AVATAR_IS_SENSITIVE', bannerId: 'BANNER_IS_SENSITIVE' }.each do |key, code|
+      update(**{ key => id })
+      expect(response).to have_http_status(400)
+      expect(error[:code]).to eq(code)
+    end
+
+    status.update!(sensitive: false)
+    update(avatarId: id, bannerId: id)
+    expect(response).to have_http_status(200)
   end
 
   it 'returns NO_SUCH_AVATAR and NO_SUCH_BANNER for unknown ids without changing anything' do

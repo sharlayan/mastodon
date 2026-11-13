@@ -13,10 +13,12 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     avatarId: {
       missing: ['No such avatar file', 'NO_SUCH_AVATAR', '539f3a45-f215-4f81-a9a8-31293640207f'],
       not_image: ['The file specified as an avatar is not an image', 'AVATAR_NOT_AN_IMAGE', 'f419f9f8-2f4d-46b1-9fb4-49d3a2fd7191'],
+      sensitive: ['The file specified as an avatar is marked as sensitive.', 'AVATAR_IS_SENSITIVE', '71bb5e53-4742-4609-b465-36081e131208'], # rubocop:disable I18n/RailsI18n/DecorateString
     },
     bannerId: {
       missing: ['No such banner file', 'NO_SUCH_BANNER', '0d8f5629-f210-41c2-9433-735831a58595'],
       not_image: ['The file specified as a banner is not an image', 'BANNER_NOT_AN_IMAGE', '75aedb19-2afd-4e6d-87fc-67941256fa60'],
+      sensitive: ['The file specified as a banner is marked as sensitive.', 'BANNER_IS_SENSITIVE', 'e148b34c-9f33-4300-93e0-7817008fb366'], # rubocop:disable I18n/RailsI18n/DecorateString
     },
   }.freeze
 
@@ -273,6 +275,7 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     drive_file = current_account.drive_files.find_by(id: id) if Setting.drive_enabled && current_account.local?
     if drive_file
       raise ProfileImageError.new(key, :not_image) unless Account::Avatar::AVATAR_IMAGE_MIME_TYPES.include?(drive_file.file_content_type)
+      raise ProfileImageError.new(key, :sensitive) if drive_file.sensitive?
 
       return { "#{attachment}_drive_file_id": drive_file.id }
     end
@@ -280,6 +283,7 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     media = current_account.media_attachments.find_by(id: id)
     raise ProfileImageError.new(key, :missing) if media.nil?
     raise ProfileImageError.new(key, :not_image) unless media.image?
+    raise ProfileImageError.new(key, :sensitive) if media.drive_pointer? ? media.drive_file.sensitive? : media.status&.sensitive?
 
     { attachment => media.file }
   end
