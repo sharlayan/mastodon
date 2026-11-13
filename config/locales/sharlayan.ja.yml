@@ -150,6 +150,8 @@ ja:
       update_category: カテゴリを更新
       updated_msg: デコレーションが更新されました
     board_announcements:
+      auto_archive_at: 自動アーカイブ日時
+      auto_archive_at_hint: タイムゾーンを含む日時を入力してください。空欄の場合は自動でアーカイブしません。
       attachments: メディア添付
       attachments_hint: メディアをアップロードし、項目をクリックするとMarkdownがクリップボードにコピーされ、本文に貼り付けられます。
       author: '作成者: %{name}'

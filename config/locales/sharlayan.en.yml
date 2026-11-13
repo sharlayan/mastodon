@@ -153,6 +153,8 @@ en:
       update_category: Update category
       updated_msg: Decoration updated successfully
     board_announcements:
+      auto_archive_at: Automatic archive time
+      auto_archive_at_hint: Enter a date and time with a timezone, or leave blank to keep the announcement active.
       attachments: Media attachments
       attachments_hint: Upload media, then click an item to copy its Markdown into
         the body.

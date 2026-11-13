@@ -82,3 +82,11 @@
                as: :boolean,
                hint: t('admin.board_announcements.publish_hint'),
                wrapper: :with_label
+
+.fields-group
+  = form.input :auto_archive_at,
+               as: :string,
+               label: t('admin.board_announcements.auto_archive_at'),
+               hint: t('admin.board_announcements.auto_archive_at_hint'),
+               input_html: { placeholder: '2026-11-14T12:00:00+09:00' },
+               wrapper: :with_block_label

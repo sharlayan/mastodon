@@ -3,6 +3,31 @@
 require 'rails_helper'
 
 RSpec.describe BoardAnnouncement do
+  describe 'automatic archiving' do
+    it 'switches scopes at the deadline and can be republished without an expired deadline' do
+      freeze_time do
+        announcement = described_class.create!(title: 'Scheduled', text: 'Body', published: true, auto_archive_at: 1.hour.from_now)
+        expect(announcement).to be_active
+        expect(described_class.published).to include(announcement)
+
+        travel 1.hour
+        expect(announcement).to_not be_active
+        expect(described_class.published).to_not include(announcement)
+        expect(described_class.archived).to include(announcement)
+
+        announcement.publish!
+        expect(announcement.reload).to be_active
+        expect(announcement.auto_archive_at).to be_nil
+      end
+    end
+
+    it 'rejects an invalid archive date from the native admin form' do
+      announcement = described_class.new(title: 'Title', text: 'Body', auto_archive_at: 'not a date')
+      expect(announcement).to_not be_valid
+      expect(announcement.errors[:auto_archive_at]).to be_present
+    end
+  end
+
   describe '.for_account' do
     subject(:visible_announcements) { described_class.for_account(account) }
 
