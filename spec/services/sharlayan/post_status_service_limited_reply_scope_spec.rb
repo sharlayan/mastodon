@@ -29,9 +29,12 @@ RSpec.describe PostStatusService do
     expect(status.mentions.find_by(account: recipient)).to be_silent
     expect(status.mentions.find_by(account: remote)).to be_silent
     expect([account, recipient, outsider, nil].map { |viewer| StatusPolicy.new(viewer, status).show? }).to eq([true, true, false, false])
+    remote.update!(shared_inbox_url: 'https://remote.example/inbox')
     expect(StatusReachFinder.new(status).inboxes).to contain_exactly(remote.inbox_url)
-    expect(ActivityPub::TagManager.instance.to(status)).to match_array([author, recipient, remote].map { |target| ActivityPub::TagManager.instance.uri_for(target) })
+    expect(ActivityPub::TagManager.instance.to(status)).to contain_exactly(ActivityPub::TagManager.instance.uri_for(author))
     expect(ActivityPub::TagManager.instance.cc(status)).to be_empty
+    author.update!(suspended_at: Time.now.utc)
+    expect(ActivityPub::TagManager.instance.to(status)).to be_empty
   end
 
   it 'rejects an outside mention and a quote before persisting or distributing a reply' do
@@ -106,7 +109,7 @@ RSpec.describe PostStatusService do
     expect(own_reply).to have_attributes(visibility: 'limited', limited_scope: 'reply')
     expect(own_reply.mentions).to be_empty
     expect(remote_reply.mentions.pluck(:account_id)).to contain_exactly(remote.id, recipient.id)
-    expect(ActivityPub::TagManager.instance.to(remote_reply)).to contain_exactly(ActivityPub::TagManager.instance.uri_for(remote), ActivityPub::TagManager.instance.uri_for(recipient))
+    expect(ActivityPub::TagManager.instance.to(remote_reply)).to contain_exactly(ActivityPub::TagManager.instance.uri_for(remote))
   end
 
   it 'does not expand a group recipient to its followers collection or add interaction inboxes' do

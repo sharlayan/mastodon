@@ -12,5 +12,12 @@ module Sharlayan
       options[:limited_reply_account_ids] = account_ids.map(&:to_s)
       options[:local_only] = true if thread.local_only?
     end
+
+    def self.listed_account_ids(status)
+      account_ids = status.mentions.pluck(:account_id)
+      listed_ids = status.active_mentions.pluck(:account_id) + [status.in_reply_to_account_id]
+      listed_ids += status.thread.active_mentions.pluck(:account_id) if status.thread
+      ::Account.without_suspended.where(id: account_ids & listed_ids.compact).pluck(:id)
+    end
   end
 end

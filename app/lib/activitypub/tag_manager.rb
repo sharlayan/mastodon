@@ -238,14 +238,10 @@ class ActivityPub::TagManager
   end
 
   def limited_reply_to(status)
-    mentions = status.mentions
-    if status.account.silenced?
-      account_ids = mentions.pluck(:account_id)
-      allowed_ids = status.account.followers.where(id: account_ids).pluck(:id) + FollowRequest.where(target_account_id: status.account_id, account_id: account_ids).pluck(:account_id)
-      mentions = mentions.where(account_id: allowed_ids)
-    end
+    account_ids = Sharlayan::LimitedReplyScope.listed_account_ids(status)
+    account_ids = status.account.followers.where(id: account_ids).pluck(:id) + FollowRequest.where(target_account_id: status.account_id, account_id: account_ids).pluck(:account_id) if status.account.silenced?
 
-    mentions.includes(:account).filter_map { |mention| uri_for(mention.account) }.uniq
+    Account.where(id: account_ids).map { |account| uri_for(account) }.uniq
   end
 
   LIMITED_SCOPE_MAP = {
