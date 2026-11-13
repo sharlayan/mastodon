@@ -118,6 +118,28 @@ RSpec.describe 'Antennas' do
       expect(response).to have_http_status(200)
       expect(response.parsed_body.pluck(:id)).to eq([public_status.id.to_s])
     end
+
+    it 'checks visibility of a page with a fixed number of relationship queries' do
+      relationship_queries = lambda do
+        count = 0
+        counter = ->(*, payload) { count += 1 if !payload[:cached] && /FROM "(follows|blocks|mentions)"/.match?(payload[:sql]) }
+        ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') { get "/api/v1/timelines/antenna/#{antenna.id}", headers: headers }
+        count
+      end
+      push_statuses = lambda do |count|
+        Fabricate.times(count, :account).product(%i(public private limited)).each do |author, visibility|
+          user.account.follow!(author)
+          FeedManager.instance.push_to_antenna(antenna, Fabricate(:status, account: author, visibility:))
+        end
+      end
+
+      push_statuses.call(1)
+      single_author = relationship_queries.call
+      push_statuses.call(3)
+
+      expect(relationship_queries.call).to be <= single_author
+      expect(response.parsed_body.size).to eq(8)
+    end
   end
 
   %w(accounts domains tags).each do |condition|

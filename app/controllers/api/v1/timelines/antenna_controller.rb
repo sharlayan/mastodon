@@ -24,7 +24,15 @@ class Api::V1::Timelines::AntennaController < Api::V1::Timelines::BaseController
 
   def set_statuses
     @statuses_page = antenna_statuses.to_a
-    @statuses = preload_collection(@statuses_page, Status).select { |status| StatusPolicy.new(current_account, status).show? }
+    statuses = preload_collection(@statuses_page, Status)
+    preload_visibility_relations!(statuses)
+    @statuses = statuses.select { |status| StatusPolicy.new(current_account, status).show? }
+  end
+
+  def preload_visibility_relations!(statuses)
+    current_account.preload_relations!(statuses.map(&:account_id).uniq)
+    restricted = statuses.reject { |status| status.public_visibility? || status.unlisted_visibility? }
+    ActiveRecord::Associations::Preloader.new(records: restricted, associations: :mentions, scope: Mention.where(account_id: current_account.id)).call
   end
 
   def antenna_statuses
