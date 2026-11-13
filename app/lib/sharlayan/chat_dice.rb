@@ -118,5 +118,10 @@ class Sharlayan::ChatDice
     result
   rescue Sharlayan::Dice::Error => e
     raise Error, e.reason
+  rescue Error
+    raise
+  rescue => e
+    Rails.logger.warn("Dice calculation failed for #{notation.inspect}: #{e.class}: #{e.message}")
+    raise Error, :invalid
   end
 end

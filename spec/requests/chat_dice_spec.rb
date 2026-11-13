@@ -138,6 +138,17 @@ RSpec.describe 'Chat dice rolls' do
       redis.del(user_key, rate_key, *slot_keys)
     end
 
+    it 'reports unexpected calculation failures as invalid notation' do
+      dice = instance_double(Sharlayan::Dice)
+      allow(dice).to receive(:roll).and_raise(NoMethodError)
+      allow(Sharlayan::Dice).to receive(:new).and_return(dice)
+
+      expect { described_class.new.roll(account, 'd6') }.to raise_error(described_class::Error) { |error| expect(error.reason).to eq(:invalid) }
+      expect(redis.get("chat_dice_user:#{account.id}")).to be_nil
+    ensure
+      redis.del("chat_dice_rate:#{account.id}")
+    end
+
     it 'reads only a leading /dice command and defaults to 1d6' do
       expect(described_class.notation('/dice')).to eq('1d6')
       expect(described_class.notation("  /dice\u3000d20 ")).to eq('d20')
