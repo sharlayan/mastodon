@@ -27,7 +27,9 @@ RSpec.describe 'Chat dice rolls' do
     post "/api/v1/chat/conversations/#{room.id}/messages", params: { text: text }, headers: headers, as: :json
   end
 
-  it 'rolls /dice with the Node engine once, keeps the result and makes the message immutable' do
+  it 'rolls /dice in Rails once, keeps the result and makes the message immutable' do
+    allow(Open3).to receive(:popen2).and_raise(Errno::ENOENT)
+
     post_message('/dice 2d6+1')
 
     expect(response).to have_http_status(200)
@@ -112,6 +114,30 @@ RSpec.describe 'Chat dice rolls' do
   end
 
   describe Sharlayan::ChatDice do
+    it 'releases locks after calculation errors and keeps the existing account and server limits' do
+      roller = described_class.new
+      user_key = "chat_dice_user:#{account.id}"
+      slot_keys = Array.new(described_class::SLOTS) { |index| "chat_dice_slot:#{index}" }
+      rate_key = "chat_dice_rate:#{account.id}"
+
+      %w(nope 999d6+999d6).each do |notation|
+        expect { roller.roll(account, notation) }.to raise_error(described_class::Error)
+        expect(redis.mget(user_key, *slot_keys)).to all(be_nil)
+      end
+
+      redis.set(rate_key, described_class::RATE_LIMIT, px: described_class::RATE_PERIOD)
+      expect { roller.roll(account, 'd6') }.to raise_error(described_class::Error) { |error| expect(error.reason).to eq(:busy) }
+      expect(redis.get(user_key)).to be_nil
+
+      redis.del(rate_key)
+      slot_keys.each { |key| redis.set(key, 'other', px: described_class::LOCK_TTL) }
+      expect { roller.roll(account, 'd6') }.to raise_error(described_class::Error) { |error| expect(error.reason).to eq(:busy) }
+      expect(redis.get(user_key)).to be_nil
+      expect(redis.mget(*slot_keys)).to eq(Array.new(described_class::SLOTS, 'other'))
+    ensure
+      redis.del(user_key, rate_key, *slot_keys)
+    end
+
     it 'reads only a leading /dice command and defaults to 1d6' do
       expect(described_class.notation('/dice')).to eq('1d6')
       expect(described_class.notation("  /dice\u3000d20 ")).to eq('d20')

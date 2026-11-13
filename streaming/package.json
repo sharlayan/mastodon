@@ -19,7 +19,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@dice-roller/rpg-dice-roller": "5.5.1",
     "@prometheus-io/client": "^0.16.1",
     "cors": "2.8.6",
     "dotenv": "18.0.5",

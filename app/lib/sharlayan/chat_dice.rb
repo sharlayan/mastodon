@@ -23,24 +23,21 @@ class Sharlayan::ChatDice
     end
   end
 
-  ENGINE = '@dice-roller/rpg-dice-roller'
+  ENGINE = Sharlayan::Dice::ENGINE
   KEYS = %w(version engine engineVersion notation total output).freeze
   ENGINE_VERSION_PATTERN = /\A\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?\z/
   COMMAND_PATTERN = %r{\A/dice(?:[[:space:]]|\z)}
-  IGNORED_DEPTH_PATTERN = %r{/\*.*?\*/|\[[^\]]*\]|(?://|\#)[^\n\r\u2028\u2029]*}m
-  MAX_NOTATION_BYTES = 512
-  MAX_OUTPUT_BYTES = 12_288
-  MAX_RESULT_BYTES = 16_384
-  MAX_REPLY_BYTES = 32_768
-  MAX_DEPTH = 32
-  MAX_SAFE_INTEGER = (2**53) - 1
+  IGNORED_DEPTH_PATTERN = Sharlayan::Dice::IGNORED_DEPTH_PATTERN
+  MAX_NOTATION_BYTES = Sharlayan::Dice::MAX_NOTATION_BYTES
+  MAX_OUTPUT_BYTES = Sharlayan::Dice::MAX_OUTPUT_BYTES
+  MAX_RESULT_BYTES = Sharlayan::Dice::MAX_RESULT_BYTES
+  MAX_DEPTH = Sharlayan::Dice::MAX_DEPTH
+  MAX_SAFE_INTEGER = Sharlayan::Dice::MAX_SAFE_INTEGER
   DEFAULT_NOTATION = '1d6'
-  TIMEOUT = 3
   LOCK_TTL = 10_000
   RATE_LIMIT = 10
   RATE_PERIOD = 60_000
   SLOTS = 2
-  WORKER = Rails.root.join('streaming', 'chat_dice_worker.js')
 
   INCREMENT_SCRIPT = "local n = redis.call('INCR', KEYS[1]); if n == 1 then redis.call('PEXPIRE', KEYS[1], ARGV[1]) end; return n"
   RELEASE_SCRIPT = "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end; return 0"
@@ -106,7 +103,7 @@ class Sharlayan::ChatDice
       slot = Array.new(SLOTS) { |index| "chat_dice_slot:#{index}" }.find { |key| redis.set(key, token, px: LOCK_TTL, nx: true) }
       raise Error, :busy if slot.nil?
 
-      run_worker(notation)
+      calculate(notation)
     ensure
       [user_key, slot].compact.each { |key| redis.eval(RELEASE_SCRIPT, keys: [key], argv: [token]) }
     end
@@ -114,57 +111,12 @@ class Sharlayan::ChatDice
 
   private
 
-  def run_worker(notation)
-    Open3.popen2({ 'PATH' => ENV.fetch('PATH', '') }, node_binary, '--max-old-space-size=128', WORKER.to_s, chdir: WORKER.dirname.to_s, err: File::NULL, unsetenv_others: true) do |stdin, stdout, wait_thread|
-      stdin.write(notation)
-      stdin.close
-      result_of(read_reply(stdout, wait_thread.pid), notation)
-    end
-  rescue SystemCallError, IOError
-    raise Error, :busy
-  end
+  def calculate(notation)
+    result = self.class.parse(Sharlayan::Dice.new(notation).roll)
+    raise Error, :invalid unless result
 
-  def read_reply(io, pid)
-    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + TIMEOUT
-    buffer = +''
-
-    loop do
-      remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      abort_worker!(pid) if remaining <= 0 || !io.wait_readable(remaining)
-
-      chunk = io.read_nonblock(16_384, exception: false)
-      break if chunk.nil?
-      next if chunk == :wait_readable
-
-      buffer << chunk
-      abort_worker!(pid) if buffer.bytesize > MAX_REPLY_BYTES
-    end
-
-    buffer
-  end
-
-  def result_of(output, notation)
-    reply = JSON.parse(output)
-    raise Error, :invalid unless reply.is_a?(Hash)
-
-    result = self.class.parse(reply['result'])
-    return result if result && result['notation'] == notation
-
-    raise Error, reply['error'].in?(%w(limit busy)) ? reply['error'].to_sym : :invalid
-  rescue JSON::ParserError
-    raise Error, :invalid
-  end
-
-  def abort_worker!(pid)
-    begin
-      Process.kill('KILL', pid)
-    rescue Errno::ESRCH
-      nil
-    end
-    raise Error, :limit
-  end
-
-  def node_binary
-    ENV.fetch('CHAT_DICE_NODE_BINARY', 'node')
+    result
+  rescue Sharlayan::Dice::Error => e
+    raise Error, e.reason
   end
 end
