@@ -77,6 +77,18 @@ RSpec.describe UpdateAccountService do
     end
   end
 
+  describe 'unlocking with a follow approval period', :inline_jobs do
+    it 'keeps requests from accounts within the configured period pending' do
+      user = Fabricate(:user, account_attributes: { locked: true }, settings_attributes: { follow_approval_local_seconds: 10.days.to_i })
+      sender = Fabricate(:account, created_at: 8.days.ago)
+      sender.request_follow!(user.account)
+
+      subject.call(user.account, { locked: false })
+      expect(sender.requested?(user.account)).to be true
+      expect(sender.following?(user.account)).to be false
+    end
+  end
+
   describe 'updating avatar decorations' do
     let(:account) { Fabricate(:user).account }
 

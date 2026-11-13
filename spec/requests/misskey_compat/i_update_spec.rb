@@ -56,6 +56,24 @@ RSpec.describe 'Misskey-compat i endpoints' do
       post '/api/i/update', params: params.merge(i: token), as: :json
     end
 
+    it 'round trips nullable follow approval periods and validates them before changing the profile' do
+      update(followApprovalLocalSeconds: 86_400, followApprovalRemoteSeconds: 0)
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to include(followApprovalLocalSeconds: 86_400, followApprovalRemoteSeconds: 0)
+
+      post '/api/i', params: { i: token }, as: :json
+      expect(response.parsed_body).to include(followApprovalLocalSeconds: 86_400, followApprovalRemoteSeconds: 0)
+
+      [-1, 2_592_001, 1.5, '86400', true, []].each do |invalid|
+        update(name: 'Invalid update', followApprovalLocalSeconds: invalid)
+        expect(response).to have_http_status(400)
+        expect(account.reload.display_name).to_not eq('Invalid update')
+      end
+
+      update(followApprovalLocalSeconds: nil, followApprovalRemoteSeconds: 2_592_000)
+      expect(response.parsed_body).to include(followApprovalLocalSeconds: nil, followApprovalRemoteSeconds: 2_592_000)
+    end
+
     it 'rejects a read-only token' do
       post '/api/i/update', params: { i: read_token, name: 'nope' }, as: :json
 

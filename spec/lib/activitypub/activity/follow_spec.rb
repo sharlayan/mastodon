@@ -20,6 +20,18 @@ RSpec.describe ActivityPub::Activity::Follow do
     subject { described_class.new(json, sender) }
 
     context 'with no prior follow' do
+      context 'when the recipient requires approval for recently discovered remote accounts' do
+        let(:sender) { Fabricate(:remote_account, id: Mastodon::Snowflake.id_at(1.day.ago), remote_actor_published_at: 1.year.ago, remote_outbox_total_items: 10) }
+        let(:recipient_user) { Fabricate(:user, settings_attributes: { follow_approval_remote_seconds: 2.days.to_i }) }
+        let(:recipient) { recipient_user.account }
+
+        it 'uses the discovery timestamp rather than the actor age and leaves the request pending' do
+          subject.perform
+          expect(sender.following?(recipient)).to be false
+          expect(sender.requested?(recipient)).to be true
+        end
+      end
+
       context 'with an unlocked account' do
         before do
           subject.perform

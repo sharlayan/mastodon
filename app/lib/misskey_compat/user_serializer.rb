@@ -120,6 +120,8 @@ class MisskeyCompat::UserSerializer
       alwaysMarkNsfw: user.settings['default_sensitive'] || false,
       carefulBot: false,
       autoAcceptFollowed: user.settings['auto_accept_followed'] || false,
+      followApprovalLocalSeconds: user.settings['follow_approval_local_seconds'].presence&.to_i,
+      followApprovalRemoteSeconds: user.settings['follow_approval_remote_seconds'].presence&.to_i,
       noCrawle: user.settings['noindex'] || false,
       preventAiLearning: user.settings['prevent_ai_learning'] || false,
       isExplorable: account.discoverable?,

@@ -34,7 +34,14 @@ module Sharlayan::Account::Interactions
     local? && !other_account.silenced? && user&.setting_auto_accept_followed && following?(other_account)
   end
 
-  def requires_follow_review?
+  def requires_follow_review?(target_account = nil)
+    if target_account&.local?
+      key = local? ? :follow_approval_local_seconds : :follow_approval_remote_seconds
+      seconds = target_account.user&.settings&.[](key).to_i
+      registered_at = local? ? created_at : Mastodon::Snowflake.to_time(id)
+      return true if seconds.positive? && registered_at > seconds.seconds.ago
+    end
+
     created = local? ? created_at : remote_actor_published_at
     return false if created.nil? || created <= FOLLOW_REVIEW_AGE.ago || created > Time.current
     return false if remote? && remote_outbox_total_items != 0

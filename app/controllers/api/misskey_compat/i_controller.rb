@@ -4,6 +4,10 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
   MAX_MUTED_WORDS_BYTES = 64.kilobytes
   MAX_MUTED_INSTANCES = 100
   MAX_MUTED_EMOJIS = 1_000
+  FOLLOW_APPROVAL_SETTINGS = {
+    followApprovalLocalSeconds: :follow_approval_local_seconds,
+    followApprovalRemoteSeconds: :follow_approval_remote_seconds,
+  }.freeze
 
   PROFILE_IMAGE_ERRORS = {
     avatarId: {
@@ -69,11 +73,17 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     return unless object_body!
     return render_invalid_param('#/properties/chatScope', 'must be a chat policy') if params.key?(:chatScope) && %w(everyone followers following mutual none).exclude?(params[:chatScope])
 
-    apply_profile!
-    apply_privacy!
-    apply_muted_words!
-    apply_muted_instances!
-    apply_muted_emojis!
+    approval_settings = follow_approval_settings
+
+    current_user.transaction do
+      approval_settings.each { |key, value| current_user.settings[key] = value }
+      current_user.save! if approval_settings.present?
+      apply_profile!
+      apply_privacy!
+      apply_muted_words!
+      apply_muted_instances!
+      apply_muted_emojis!
+    end
 
     render json: me_json
   end
@@ -133,6 +143,17 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
   end
 
   private
+
+  def follow_approval_settings
+    FOLLOW_APPROVAL_SETTINGS.each_with_object({}) do |(key, setting), settings|
+      next unless params.key?(key)
+
+      value = params[key]
+      raise InvalidParamError.new("#/properties/#{key}", 'must be null or an integer between 0 and 2592000') unless value.nil? || (value.is_a?(Integer) && value.between?(0, 30.days.to_i))
+
+      settings[setting] = value
+    end
+  end
 
   def pinnable_status
     status = Status.find_by(id: params[:noteId])
