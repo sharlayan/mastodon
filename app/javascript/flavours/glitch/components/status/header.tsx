@@ -17,6 +17,7 @@ import HomeIcon from '@/material-icons/400-24px/home.svg?react';
 
 import { Avatar } from '../avatar';
 import { Badge } from '../badge';
+import { CircleVisibilityLabel } from '../circle_visibility_label';
 import { CollapseButton } from '../collapse_button';
 import { DisplayName } from '../display_name';
 import { useAccountHandle } from '../display_name/default';
@@ -51,6 +52,7 @@ interface StatusRedesignHeaderProps {
     | 'mentions'
     | 'local_only'
     | 'limited_scope'
+    | 'circle'
     | 'instance_metadata'
     | 'collapsed'
     | 'language'
@@ -304,8 +306,8 @@ const StatusHeaderIndicators: React.FC<
         <MediaIcon key={icon} icon={icon} className={classes.mediaIcon} />
       ))}
       {settings.get('visibility') &&
-        (status.limited_scope === 'circle' ? (
-          <FormattedMessage id='privacy.circle.short' defaultMessage='Circle' />
+        (status.limited_scope === 'circle' || status.circle ? (
+          <CircleVisibilityLabel title={status.circle?.title} />
         ) : status.limited_scope === 'reply' ? (
           <FormattedMessage
             id='privacy.reply.short'

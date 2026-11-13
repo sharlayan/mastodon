@@ -23,6 +23,7 @@ import HomeIcon from '@/material-icons/400-24px/home.svg?react';
 import { AnimatedNumber } from 'flavours/glitch-classic/components/animated_number';
 import AttachmentList from 'flavours/glitch-classic/components/attachment_list';
 import { Avatar } from 'flavours/glitch-classic/components/avatar';
+import { CircleVisibilityLabel } from 'flavours/glitch-classic/components/circle_visibility_label';
 import { DisplayName } from 'flavours/glitch-classic/components/display_name';
 import { EditedTimestamp } from 'flavours/glitch-classic/components/edited_timestamp';
 import { FormattedDateWrapper } from 'flavours/glitch-classic/components/formatted_date';
@@ -398,9 +399,15 @@ export const DetailedStatus: React.FC<{
     );
   }
 
+  const circleTitle = status.getIn(['circle', 'title']) as string | undefined;
   const visibilityLink = (
     <>
-      ·<VisibilityIcon visibility={status.get('visibility')} />
+      ·
+      {circleTitle ? (
+        <CircleVisibilityLabel title={circleTitle} />
+      ) : (
+        <VisibilityIcon visibility={status.get('visibility')} />
+      )}
     </>
   );
 

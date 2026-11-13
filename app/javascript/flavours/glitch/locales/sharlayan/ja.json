@@ -632,6 +632,7 @@
   "pages.visibility.public": "公開",
   "pages.wide_view": "ワイド表示",
   "pages.youtube.video": "YouTube 動画",
+  "privacy.circle.named": "サークル: {name}",
   "privacy.circle.short": "サークル",
   "privacy.reply.long": "元の投稿の作成者と受信者にのみ公開",
   "privacy.reply.short": "返信先",

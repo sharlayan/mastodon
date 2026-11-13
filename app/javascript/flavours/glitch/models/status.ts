@@ -39,6 +39,7 @@ export interface StatusShape extends Pick<
   ApiStatusJSON,
   | 'local_only'
   | 'limited_scope'
+  | 'circle'
   | 'content_type'
   | 'mfm'
   | 'mfm_text'

@@ -14,6 +14,7 @@ import { shouldShowCollapseButton } from 'flavours/glitch-classic/sharlayan/post
 import { RelativeTimestamp } from '@/flavours/glitch-classic/components/relative_timestamp';
 import { injectIntl } from '@/flavours/glitch-classic/components/intl';
 import { VisibilityIcon } from '@/flavours/glitch-classic/components/visibility_icon';
+import { CircleVisibilityLabel } from '@/flavours/glitch-classic/components/circle_visibility_label';
 
 import { CollapseButton } from '@/flavours/glitch-classic/components/collapse_button';
 import { MediaIcon } from './media_icon';
@@ -90,7 +91,7 @@ class StatusIcons extends PureComponent {
               aria-label={intl.formatMessage(messages.localOnly)}
             />}
           {settings.get('media') && !!mediaIcons && mediaIcons.map(icon => (<MediaIcon key={`media-icon--${icon}`} className='status__media-icon' icon={icon} />))}
-          {settings.get('visibility') && (status.get('limited_scope') === 'reply' ? <FormattedMessage id='privacy.reply.short' defaultMessage='Reply audience' /> : <VisibilityIcon visibility={status.get('visibility')} />)}
+          {settings.get('visibility') && (status.get('limited_scope') === 'reply' ? <FormattedMessage id='privacy.reply.short' defaultMessage='Reply audience' /> : status.getIn(['circle', 'title']) ? <CircleVisibilityLabel title={status.getIn(['circle', 'title'])} /> : <VisibilityIcon visibility={status.get('visibility')} />)}
           {collapsible && shouldShowCollapseButton(status, collapsed, collapseButtonCharacterLimit) && <CollapseButton collapsed={collapsed} setCollapsed={setCollapsed} />}
         </div>
       </div>
