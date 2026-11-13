@@ -227,6 +227,10 @@ function continueThread (state, status) {
       map => map.merge(new ImmutableMap({ do_not_federate: status.local_only })),
     );
     map.set('privacy', status.visibility);
+    map.set('limited_scope', status.limited_scope ? 'reply' : null);
+    map.set('limited_reply_account_ids', null);
+    map.set('reply_to_limited', !!status.limited_scope);
+    if (status.limited_scope) map.set('circle_id', null);
     map.set('sensitive', false);
     map.update('media_attachments', list => list.clear());
     map.set('poll', null);
@@ -431,6 +435,7 @@ export const composeReducer = (state = initialState, action) => {
   if (changeComposeVisibility.match(action)) {
     return state
       .set('privacy', action.payload)
+      .set('limited_scope', null)
       .set('circle_id', null)
       .set('idempotencyKey', uuid());
   } else if (changeUploadCompose.fulfilled.match(action)) {
@@ -586,7 +591,13 @@ export const composeReducer = (state = initialState, action) => {
       map.set('draft_save_request', null);
       map.set('in_reply_to', action.status.get('id'));
       map.set('text', statusToTextMentions(state, action.status, action.statusRebloggedBy));
-      map.set('privacy', privacyPreference(action.status.get('visibility'), state.get('default_privacy')));
+      const limited = !!action.status.get('limited_scope');
+      const privacy = limited ? 'private' : privacyPreference(action.status.get('visibility'), state.get('default_privacy'));
+      map.set('privacy', privacy);
+      map.set('reply_to_limited', limited);
+      map.set('limited_scope', limited ? 'reply' : null);
+      map.set('limited_reply_account_ids', null);
+      if (limited || privacy === 'direct') map.set('circle_id', null);
       map.update(
         'advanced_options',
         map => map.merge(new ImmutableMap({ do_not_federate: !!action.status.get('local_only') })),
@@ -690,6 +701,10 @@ export const composeReducer = (state = initialState, action) => {
       map.update('text', text => [text.trim(), `@${action.account.get('acct')} `].filter((str) => str.length !== 0).join(' '));
       map.setIn(['advanced_options', 'threaded_mode'], false);
       map.set('privacy', 'direct');
+      map.set('limited_scope', null);
+      map.set('limited_reply_account_ids', null);
+      map.set('reply_to_limited', false);
+      map.set('circle_id', null);
       map.set('focusDate', new Date());
       map.set('caretPosition', null);
       map.set('idempotencyKey', uuid());
@@ -708,7 +723,12 @@ export const composeReducer = (state = initialState, action) => {
     return state.set('tagHistory', fromJS(action.tags));
   case timelineDelete.type:
     if (action.payload.statusId === state.get('in_reply_to')) {
-      return state.set('in_reply_to', null);
+      return state
+        .set('in_reply_to', null)
+        .set('reply_to_limited', false)
+        .set('privacy', state.get('limited_scope') === 'reply' ? 'direct' : state.get('privacy'))
+        .set('limited_scope', null)
+        .set('limited_reply_account_ids', null);
     } else if (action.payload.statusId === state.get('id')) {
       return state.set('id', null);
     } else {
@@ -727,7 +747,11 @@ export const composeReducer = (state = initialState, action) => {
       map.set('in_reply_to', action.status.get('in_reply_to_id'));
       const circleId = action.status.get('circle_id') || null;
       map.set('circle_id', circleId);
-      map.set('privacy', action.status.get('limited_scope') && !circleId ? 'direct' : action.status.get('visibility'));
+      const replyScope = action.status.get('limited_scope') === 'reply' && !!action.status.get('in_reply_to_id') && action.status.get('limited_reply_account_ids') != null;
+      map.set('limited_scope', replyScope ? 'reply' : null);
+      map.set('limited_reply_account_ids', replyScope ? action.status.get('limited_reply_account_ids') : null);
+      map.set('reply_to_limited', replyScope);
+      map.set('privacy', action.status.get('limited_scope') && !circleId && !replyScope ? 'direct' : action.status.get('visibility'));
       map.set('media_attachments', action.status.get('media_attachments').map((media) => media.set('unattached', true)));
       map.set('focusDate', new Date());
       map.set('caretPosition', null);
@@ -779,6 +803,8 @@ export const composeReducer = (state = initialState, action) => {
       map.set('content_type', action.content_type || 'text/plain');
       map.set('in_reply_to', action.status.get('in_reply_to_id'));
       map.set('privacy', action.status.get('visibility'));
+      map.set('limited_scope', action.status.get('limited_scope') === 'reply' ? 'reply' : null);
+      map.set('reply_to_limited', action.status.get('limited_scope') === 'reply');
       map.set('media_attachments', action.status.get('media_attachments'));
       map.set('focusDate', new Date());
       map.set('caretPosition', null);

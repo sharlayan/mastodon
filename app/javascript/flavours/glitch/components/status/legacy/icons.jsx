@@ -2,7 +2,7 @@
 import PropTypes from 'prop-types';
 import { PureComponent } from 'react';
 
-import { defineMessages } from 'react-intl';
+import { defineMessages, FormattedMessage } from 'react-intl';
 
 import ImmutablePropTypes from 'react-immutable-proptypes';
 
@@ -90,7 +90,7 @@ class StatusIcons extends PureComponent {
               aria-label={intl.formatMessage(messages.localOnly)}
             />}
           {settings.get('media') && !!mediaIcons && mediaIcons.map(icon => (<MediaIcon key={`media-icon--${icon}`} className='status__media-icon' icon={icon} />))}
-          {settings.get('visibility') && <VisibilityIcon visibility={status.get('visibility')} />}
+          {settings.get('visibility') && (status.get('limited_scope') === 'reply' ? <FormattedMessage id='privacy.reply.short' defaultMessage='Reply audience' /> : <VisibilityIcon visibility={status.get('visibility')} />)}
           {collapsible && shouldShowCollapseButton(status, collapsed, collapseButtonCharacterLimit) && <CollapseButton collapsed={collapsed} setCollapsed={setCollapsed} />}
         </div>
       </div>

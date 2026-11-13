@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class REST::ChatMessageSerializer < ActiveModel::Serializer
-  attributes :id, :conversation_id, :content, :created_at, :edited_at, :deleted_at, :reply_to_id, :remote, :deletes_for_everyone, :editable
+  attributes :id, :conversation_id, :content, :dice, :created_at, :edited_at, :deleted_at, :reply_to_id, :remote, :deletes_for_everyone, :editable
 
   belongs_to :account, serializer: REST::AccountSerializer
   has_many :reactions, serializer: REST::ChatMessageReactionSerializer
@@ -18,6 +18,10 @@ class REST::ChatMessageSerializer < ActiveModel::Serializer
 
   def content
     object.deleted? ? nil : object.text
+  end
+
+  def dice
+    object.deleted? ? nil : object.dice
   end
 
   def emojis
@@ -37,7 +41,7 @@ class REST::ChatMessageSerializer < ActiveModel::Serializer
   end
 
   def editable
-    !object.deleted? && object.within_delete_window?
+    !object.deleted? && object.dice.blank? && object.within_delete_window?
   end
 
   def deletes_for_everyone

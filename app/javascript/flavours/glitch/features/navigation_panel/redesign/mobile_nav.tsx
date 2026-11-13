@@ -11,6 +11,7 @@ import {
   HouseIcon,
   InfoIcon,
   MagnifyingGlassIcon,
+  UsersIcon,
 } from '@phosphor-icons/react';
 import { animated, useSpring } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
@@ -30,6 +31,8 @@ import { ComposeRedesignButton } from '@/flavours/glitch/features/compose/redesi
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useIdentity } from '@/flavours/glitch/identity_context';
 import { trendsEnabled } from '@/flavours/glitch/initial_state';
+import { navigationPanelItemMessages } from '@/flavours/glitch/sharlayan/registry/navigation/items';
+import { useMobileLocalTimeline } from '@/flavours/glitch/sharlayan/registry/navigation/mobile';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 
 import {
@@ -46,6 +49,7 @@ export const RedesignMobileNavigation: React.FC = () => {
   const dispatch = useAppDispatch();
   const { accountId, signedIn } = useIdentity();
   const account = useAccount(accountId);
+  const showLocalTimeline = useMobileLocalTimeline();
 
   const notificationsCount = useNotificationsCount();
 
@@ -61,16 +65,25 @@ export const RedesignMobileNavigation: React.FC = () => {
             <MobileNavLink to='/home' iconComponent={HouseIcon}>
               <FormattedMessage id='tabs_bar.home' defaultMessage='Home' />
             </MobileNavLink>
-            <MobileNavLink
-              to={{
-                pathname: trendsEnabled ? '/explore' : '/search',
-                state: { focusTarget: FOCUS_TARGET.SEARCH },
-              }}
-              iconComponent={MagnifyingGlassIcon}
-              onClick={handleSearchLinkClick}
-            >
-              <FormattedMessage id='tabs_bar.search' defaultMessage='Search' />
-            </MobileNavLink>
+            {showLocalTimeline ? (
+              <MobileNavLink to='/public/local' iconComponent={UsersIcon}>
+                <FormattedMessage {...navigationPanelItemMessages.local} />
+              </MobileNavLink>
+            ) : (
+              <MobileNavLink
+                to={{
+                  pathname: trendsEnabled ? '/explore' : '/search',
+                  state: { focusTarget: FOCUS_TARGET.SEARCH },
+                }}
+                iconComponent={MagnifyingGlassIcon}
+                onClick={handleSearchLinkClick}
+              >
+                <FormattedMessage
+                  id='tabs_bar.search'
+                  defaultMessage='Search'
+                />
+              </MobileNavLink>
+            )}
             <MobileNavLink
               to='/conversations'
               iconComponent={ChatCircleDotsIcon}

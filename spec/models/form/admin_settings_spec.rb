@@ -35,6 +35,22 @@ RSpec.describe Form::AdminSettings do
   end
 
   describe '#save' do
+    it 'saves registration patterns and rejects invalid or oversized replacements atomically' do
+      patterns = { registration_reject_email_pattern: "spam+\n?@example\\.com\\z", registration_reject_username_pattern: '?\Abot\d+\z' }
+
+      expect(described_class.new(patterns).save).to be_truthy
+      expect(Setting.registration_reject_email_pattern).to eq patterns[:registration_reject_email_pattern]
+      expect(Setting.registration_reject_username_pattern).to eq patterns[:registration_reject_username_pattern]
+
+      ['?[', '?', 'a' * 8193, "a\n" * 101].each do |invalid|
+        settings = described_class.new(registration_reject_email_pattern: invalid, registration_reject_username_pattern: '')
+
+        expect(settings.save).to be false
+        expect(settings.errors[:registration_reject_email_pattern]).to be_present
+        expect(Setting.registration_reject_username_pattern).to eq patterns[:registration_reject_username_pattern]
+      end
+    end
+
     it 'saves the authorized fetch mode without boolean typecasting' do
       expect { described_class.new(authorized_fetch: 'actors').save }
         .to change(Setting, :authorized_fetch).to('actors')

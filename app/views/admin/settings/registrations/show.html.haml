@@ -44,5 +44,17 @@
               input_html: { rows: 2 },
               wrapper: :with_block_label
 
+  .fields-group
+    = f.input :registration_reject_email_pattern,
+              as: :text,
+              input_html: { rows: 4, maxlength: Sharlayan::RegistrationRejectionPatterns::MAX_LENGTH },
+              wrapper: :with_block_label
+
+  .fields-group
+    = f.input :registration_reject_username_pattern,
+              as: :text,
+              input_html: { rows: 4, maxlength: Sharlayan::RegistrationRejectionPatterns::MAX_LENGTH },
+              wrapper: :with_block_label
+
   .actions
     = f.button :button, t('generic.save_changes'), type: :submit

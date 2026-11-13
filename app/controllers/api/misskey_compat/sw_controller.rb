@@ -1,11 +1,14 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::SwController < Api::MisskeyCompat::BaseController
-  requires_write_scope :register, :unregister
+  NO_SUCH_REGISTRATION_ID = ' b09d8066-8064-5613-efb6-0e963b21d012'
+
+  requires_write_scope :register, :unregister, :update_registration
   requires_misskey_permission 'read:notifications', :show_registration
-  requires_misskey_permission 'write:notifications', :register, :unregister
+  requires_misskey_permission 'write:notifications', :register, :unregister, :update_registration
 
   before_action :require_user!
+  before_action :require_native_user_token!, only: :update_registration
 
   def register
     endpoint = params[:endpoint].to_s
@@ -38,10 +41,31 @@ class Api::MisskeyCompat::SwController < Api::MisskeyCompat::BaseController
     subscription = Web::PushSubscription.find_by(user_id: current_user.id, endpoint: endpoint) if endpoint.present?
     return render json: nil if subscription.nil?
 
-    render json: {
+    render json: registration_json(subscription)
+  end
+
+  def update_registration
+    return unless object_body!
+
+    endpoint = params[:endpoint]
+    return render_invalid_param('#/properties/endpoint/type', 'must be string') unless endpoint.is_a?(String)
+    return render_invalid_param('#/properties/sendReadMessage/type', 'must be boolean') unless params[:sendReadMessage].nil? || [true, false].include?(params[:sendReadMessage])
+
+    subscription = Web::PushSubscription.find_by(user_id: current_user.id, endpoint: endpoint)
+    return render_error('No such registration.', 'NO_SUCH_REGISTRATION', 404, id: NO_SUCH_REGISTRATION_ID) if subscription.nil? # rubocop:disable I18n/RailsI18n/DecorateString
+
+    subscription.update!(data: (subscription.data || {}).merge('send_read_message' => params[:sendReadMessage])) unless params[:sendReadMessage].nil?
+
+    render json: registration_json(subscription)
+  end
+
+  private
+
+  def registration_json(subscription)
+    {
       userId: MisskeyCompat::MiId.encode(current_account.id),
       endpoint: subscription.endpoint,
-      sendReadMessage: false,
+      sendReadMessage: MisskeyCompat::SwRegistration.send_read_message?(subscription),
     }
   end
 end

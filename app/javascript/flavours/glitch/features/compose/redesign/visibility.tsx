@@ -90,6 +90,17 @@ export const ComposeVisibility: React.FC<{ className?: string }> = ({
 const ComposeVisibilityButtonText: React.FC<{
   privacy: StatusVisibility;
 }> = ({ privacy }) => {
+  const replyScope = useAppSelector(
+    (state) => state.compose.get('limited_scope') === 'reply',
+  );
+  if (replyScope)
+    return (
+      <FormattedMessage
+        id='privacy.reply.short'
+        defaultMessage='Reply audience'
+      />
+    );
+
   if (privacy === 'public') {
     return (
       <FormattedMessage id='privacy.public.short' defaultMessage='Public' />
@@ -120,11 +131,14 @@ const ComposeVisibilityMenu: React.FC = () => {
   );
 
   const isReply = useAppSelector((state) => !!state.compose.get('in_reply_to'));
+  const replyScope = useAppSelector(
+    (state) => state.compose.get('limited_scope') === 'reply',
+  );
 
   const dispatch = useAppDispatch();
   const handlePrivacyChange = useCallback(
     ({ value }: { value: string }) => {
-      if (value === 'private' && privacy !== 'private') {
+      if (value === 'private' && (privacy !== 'private' || replyScope)) {
         dispatch(changeComposeVisibility(value));
       } else if (value === 'public' && privacy === 'private') {
         dispatch(
@@ -138,7 +152,7 @@ const ComposeVisibilityMenu: React.FC = () => {
         );
       }
     },
-    [defaultPrivacy, dispatch, privacy],
+    [defaultPrivacy, dispatch, privacy, replyScope],
   );
 
   const handleSwitchToMessage: React.MouseEventHandler<HTMLButtonElement> =
@@ -169,7 +183,7 @@ const ComposeVisibilityMenu: React.FC = () => {
         <MenuItemRadio
           name='visibility'
           value='private'
-          checked={privacy === 'private'}
+          checked={privacy === 'private' && !replyScope}
           onChange={handlePrivacyChange}
           keepMenuOpenOnClick
         >

@@ -12,7 +12,7 @@ import {
   apiGetDriveFiles,
   apiGetDriveFolders,
   apiGetDriveUsage,
-  apiMoveDriveFile,
+  apiMoveDriveFiles,
   apiMoveDriveFolder,
   apiRenameDriveFile,
   apiTransferDriveFileToPosts,
@@ -26,12 +26,21 @@ import type {
 } from 'flavours/glitch/api_types/drive';
 import { useAppDispatch } from 'flavours/glitch/store';
 
+import type { DriveItems } from './dnd';
+
 export const ROOT_FOLDER_ID = null;
+
+const MOVE_BULK_LIMIT = 100;
 
 const messages = defineMessages({
   attachedFile: {
     id: 'drive.delete_attached_error',
     defaultMessage: 'Files used by a post or page cannot be deleted.',
+  },
+  skippedInUse: {
+    id: 'drive.delete_selected_skipped',
+    defaultMessage:
+      '{count, plural, one {# file is} other {# files are}} used by a post or page and {count, plural, one {was} other {were}} not deleted.',
   },
   transferred: {
     id: 'drive.transfer_to_posts_success',
@@ -171,7 +180,7 @@ export const useDrive = () => {
           const data = new FormData();
           data.append('file', file);
           data.append('name', file.name);
-          if (targetFolderId) data.append('folder_id', targetFolderId);
+          data.append('folder_id', targetFolderId ?? '');
           return apiUploadDriveFile(data);
         }),
       ).then((results) => {
@@ -269,23 +278,198 @@ export const useDrive = () => {
     [dispatch, onError, refreshUsage],
   );
 
-  const moveFile = useCallback(
-    (id: string, folderId: string | null) => {
-      const file = files.find((candidate) => candidate.id === id);
-      if (!file || file.folder_id === folderId) return;
+  const isDescendantOf = useCallback(
+    (folderId: string, maybeAncestorId: string) => {
+      const seen = new Set<string>();
+      let node = folders.find((folder) => folder.id === folderId);
 
-      setFiles((prev) => prev.filter((candidate) => candidate.id !== id));
+      while (node?.parent_id && !seen.has(node.id)) {
+        seen.add(node.id);
+        if (node.parent_id === maybeAncestorId) return true;
+        node = folders.find((folder) => folder.id === node?.parent_id);
+      }
 
-      apiMoveDriveFile(id, folderId).catch((error: unknown) => {
+      return false;
+    },
+    [folders],
+  );
+
+  const canMoveFolderTo = useCallback(
+    (folderId: string, targetId: string | null) => {
+      const folder = folders.find((candidate) => candidate.id === folderId);
+      if (!folder || folder.parent_id === targetId) return false;
+      if (targetId === null) return true;
+
+      return folderId !== targetId && !isDescendantOf(targetId, folderId);
+    },
+    [folders, isDescendantOf],
+  );
+
+  const moveItems = useCallback(
+    (items: DriveItems, targetId: string | null) => {
+      const movingFiles = files.filter(
+        (file) =>
+          items.fileIds.includes(file.id) && file.folder_id !== targetId,
+      );
+      const movingFolderIds = items.folderIds.filter((id) =>
+        canMoveFolderTo(id, targetId),
+      );
+
+      if (movingFiles.length > 0) {
+        const movedIds = new Set(movingFiles.map((file) => file.id));
+        const ids = movingFiles.map((file) => file.id);
+        const chunks: string[][] = [];
+
+        for (let index = 0; index < ids.length; index += MOVE_BULK_LIMIT) {
+          chunks.push(ids.slice(index, index + MOVE_BULK_LIMIT));
+        }
+
+        if (!orphanedOnly) {
+          setFiles((prev) => prev.filter((file) => !movedIds.has(file.id)));
+        }
+
+        Promise.all(chunks.map((chunk) => apiMoveDriveFiles(chunk, targetId)))
+          .then((results) => {
+            const updated = new Map(
+              results.flat().map((file) => [file.id, file]),
+            );
+
+            if (orphanedOnly) {
+              setFiles((prev) =>
+                prev.map((file) => updated.get(file.id) ?? file),
+              );
+            }
+
+            return updated;
+          })
+          .catch((error: unknown) => {
+            if (!orphanedOnly) {
+              setFiles((prev) => {
+                const known = new Set(prev.map((file) => file.id));
+                return [
+                  ...movingFiles.filter((file) => !known.has(file.id)),
+                  ...prev,
+                ];
+              });
+            }
+
+            onError(error);
+          });
+      }
+
+      if (movingFolderIds.length > 0) {
+        void Promise.allSettled(
+          movingFolderIds.map((id) => apiMoveDriveFolder(id, targetId)),
+        ).then((results) => {
+          const updated = new Map<string, ApiDriveFolderJSON>();
+
+          results.forEach((result) => {
+            if (result.status === 'fulfilled') {
+              updated.set(result.value.id, result.value);
+            } else {
+              onError(result.reason);
+            }
+          });
+
+          setFolders((prev) =>
+            prev.map((folder) => updated.get(folder.id) ?? folder),
+          );
+
+          return updated;
+        });
+      }
+    },
+    [files, orphanedOnly, canMoveFolderTo, onError],
+  );
+
+  const deleteItems = useCallback(
+    (items: DriveItems) => {
+      const targets = files.filter((file) => items.fileIds.includes(file.id));
+      const deletable = targets.filter((file) => file.orphaned);
+      const inUse = new Set(
+        targets.filter((file) => !file.orphaned).map((file) => file.id),
+      );
+
+      const requests = [
+        ...deletable.map((file) =>
+          apiDeleteDriveFile(file.id).then(() => ({
+            kind: 'file' as const,
+            id: file.id,
+          })),
+        ),
+        ...items.folderIds.map((id) =>
+          apiDeleteDriveFolder(id).then(() => ({
+            kind: 'folder' as const,
+            id,
+          })),
+        ),
+      ];
+      const requestedIds = [
+        ...deletable.map((file) => ({ kind: 'file' as const, id: file.id })),
+        ...items.folderIds.map((id) => ({ kind: 'folder' as const, id })),
+      ];
+
+      void Promise.allSettled(requests).then((results) => {
+        const deletedFiles = new Set<string>();
+        const deletedFolders = new Set<string>();
+
+        results.forEach((result, index) => {
+          const request = requestedIds[index];
+          if (!request) return;
+
+          if (result.status === 'fulfilled') {
+            (request.kind === 'file' ? deletedFiles : deletedFolders).add(
+              request.id,
+            );
+          } else if (
+            request.kind === 'file' &&
+            result.reason instanceof AxiosError &&
+            result.reason.response?.status === 422
+          ) {
+            inUse.add(request.id);
+          } else {
+            onError(result.reason);
+          }
+        });
+
         setFiles((prev) =>
-          prev.some((candidate) => candidate.id === id)
-            ? prev
-            : [file, ...prev],
+          prev
+            .filter((file) => !deletedFiles.has(file.id))
+            .map((file) =>
+              inUse.has(file.id) ? { ...file, orphaned: false } : file,
+            ),
         );
-        onError(error);
+
+        if (deletedFolders.size > 0) {
+          apiGetDriveFolders()
+            .then((data) => {
+              setFolders(data);
+              return data;
+            })
+            .catch(onError);
+          setCurrentFolderId((prev) =>
+            prev && deletedFolders.has(prev) ? ROOT_FOLDER_ID : prev,
+          );
+          setNext(undefined);
+          setLoading(true);
+          setReloadKey((prev) => prev + 1);
+        }
+
+        if (deletedFiles.size > 0) refreshUsage();
+
+        if (inUse.size > 0) {
+          dispatch(
+            showAlert({
+              message: messages.skippedInUse,
+              values: { count: inUse.size },
+            }),
+          );
+        }
+
+        return results;
       });
     },
-    [files, onError],
+    [files, dispatch, onError, refreshUsage],
   );
 
   const createFolder = useCallback(
@@ -306,22 +490,6 @@ export const useDrive = () => {
   const renameFolder = useCallback(
     (id: string, name: string) => {
       apiUpdateDriveFolder(id, { name })
-        .then((updated) => {
-          setFolders((prev) =>
-            prev.map((folder) => (folder.id === id ? updated : folder)),
-          );
-          return updated;
-        })
-        .catch(onError);
-    },
-    [onError],
-  );
-
-  const moveFolder = useCallback(
-    (id: string, parentId: string | null) => {
-      if (id === parentId) return;
-
-      apiMoveDriveFolder(id, parentId)
         .then((updated) => {
           setFolders((prev) =>
             prev.map((folder) => (folder.id === id ? updated : folder)),
@@ -382,22 +550,6 @@ export const useDrive = () => {
     return trail;
   }, [currentFolder, folders]);
 
-  const isDescendantOf = useCallback(
-    (folderId: string, maybeAncestorId: string) => {
-      const seen = new Set<string>();
-      let node = folders.find((folder) => folder.id === folderId);
-
-      while (node?.parent_id && !seen.has(node.id)) {
-        seen.add(node.id);
-        if (node.parent_id === maybeAncestorId) return true;
-        node = folders.find((folder) => folder.id === node?.parent_id);
-      }
-
-      return false;
-    },
-    [folders],
-  );
-
   return {
     files,
     folders,
@@ -419,12 +571,13 @@ export const useDrive = () => {
     deleteFile,
     renameFile,
     transferFileToPosts,
-    moveFile,
+    moveItems,
+    deleteItems,
     createFolder,
     renameFolder,
-    moveFolder,
     deleteFolder,
     isDescendantOf,
+    canMoveFolderTo,
   };
 };
 

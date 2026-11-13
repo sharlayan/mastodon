@@ -46,6 +46,8 @@ import {
 } from '@/flavours/glitch/sharlayan/roleplay';
 import { useAppDispatch } from '@/flavours/glitch/store';
 
+import LocalSettingsPageItem from '../item';
+
 const NavigationPanelSettingsItem = ({ itemKey, index, length, checked, locked, intl, onToggle, onMove }) => {
   const {
     attributes,
@@ -133,7 +135,8 @@ const NavigationPanelSettings = ({ settings, onChange, intl }) => {
   );
   const order = computeNavigationOrder(settings.getIn(['navigation_panel', 'order'])?.toJS()).filter((key) => availableItems.includes(key));
   const hidden = settings.getIn(['navigation_panel', 'hidden']) ?? ImmutableMap();
-  const usingDefaults = fromJS(order).equals(fromJS(availableItems)) && hidden.isEmpty();
+  const mobileLocalTimeline = settings.getIn(['navigation_panel', 'mobile_local_timeline'], false);
+  const usingDefaults = fromJS(order).equals(fromJS(availableItems)) && hidden.isEmpty() && !mobileLocalTimeline;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -189,7 +192,7 @@ const NavigationPanelSettings = ({ settings, onChange, intl }) => {
         title: intl.formatMessage({ id: 'settings.navigation_panel.reset_confirm', defaultMessage: 'Reset navigation panel settings to their defaults?' }),
         confirm: intl.formatMessage({ id: 'settings.navigation_panel.reset', defaultMessage: 'Use defaults' }),
         onConfirm: () => {
-          onChange(['navigation_panel'], fromJS({ order: [], hidden: {} }));
+          onChange(['navigation_panel'], fromJS({ order: [], hidden: {}, mobile_local_timeline: false }));
         },
       },
     }));
@@ -201,6 +204,16 @@ const NavigationPanelSettings = ({ settings, onChange, intl }) => {
       <p className='hint'>
         <FormattedMessage id='settings.navigation_panel.hint' defaultMessage='Reorder or hide the links in the navigation sidebar. Hidden links still appear on mobile layouts.' />
       </p>
+      <LocalSettingsPageItem
+        settings={settings}
+        item={['navigation_panel', 'mobile_local_timeline']}
+        id='mastodon-settings--navigation_panel-mobile_local_timeline'
+        onChange={onChange}
+        disabled={!localTimelineEnabled}
+      >
+        <FormattedMessage id='settings.navigation_panel.mobile_local_timeline' defaultMessage='Show the local timeline instead of search in the mobile navigation bar' />
+        <span className='hint'><FormattedMessage id='settings.navigation_panel.mobile_local_timeline.hint' defaultMessage='Search remains available from the navigation menu. The search tab is used when the local timeline is unavailable.' /></span>
+      </LocalSettingsPageItem>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}

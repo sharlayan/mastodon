@@ -10,7 +10,8 @@ class TransferDriveFileToMediaAttachmentsService < BaseService
 
     drive_file.with_lock do
       pointers = drive_file.media_attachments.order(:id).lock.to_a
-      raise PageAttachedError if MediaAttachment.where(id: pointers).referenced_by_page.exists?
+      pointer_scope = MediaAttachment.where(id: pointers)
+      raise PageAttachedError if pointer_scope.referenced_by_page.or(pointer_scope.referenced_by_gallery).exists?
 
       attached_ids = MediaAttachment.attached.where(id: pointers).ids.to_set
       attachments = pointers.select { |pointer| attached_ids.include?(pointer.id) }

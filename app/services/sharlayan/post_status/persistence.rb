@@ -10,7 +10,11 @@ module Sharlayan::PostStatus
 
     def process_mentions!(status, service, attributes:)
       status.assign_attributes(attributes)
-      service.call(status, circle: @circle)
+      if status.limited_visibility? && status.limited_reply?
+        service.call(status, reply_account_ids: @options[:limited_reply_account_ids])
+      else
+        service.call(status, circle: @circle)
+      end
       status.limited_scope = :personal if @circle.present? && status.mentions.empty?
     end
 
@@ -20,6 +24,7 @@ module Sharlayan::PostStatus
         yield
         @circle.statuses << status if @circle.present?
         attach_clips!(status)
+        attach_misskey_channel!(status)
         @options[:scheduled_status]&.destroy!
       end
     end
@@ -32,6 +37,12 @@ module Sharlayan::PostStatus
     end
 
     private
+
+    def attach_misskey_channel!(status)
+      return if @options[:misskey_channel_id].blank?
+
+      MisskeyChannelNote.create!(status: status, misskey_channel_id: @options[:misskey_channel_id])
+    end
 
     def attach_clips!(status)
       return unless Setting.clips_enabled

@@ -1,5 +1,19 @@
 # frozen_string_literal: true
 
+# == Schema Information
+#
+# Table name: chat_invitations
+#
+#  id                   :bigint(8)        not null, primary key
+#  ignored              :boolean          default(FALSE), not null
+#  invite_published_at  :datetime
+#  state                :integer          default("pending"), not null
+#  created_at           :datetime         not null
+#  updated_at           :datetime         not null
+#  chat_conversation_id :bigint(8)        not null
+#  invitee_account_id   :bigint(8)        not null
+#  inviter_account_id   :bigint(8)        not null
+#
 class ChatInvitation < ApplicationRecord
   enum :state, { pending: 0, accepted: 1, rejected: 2, cancelled: 3 }
 

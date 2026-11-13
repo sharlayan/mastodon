@@ -1,5 +1,8 @@
+import { randomBytes } from 'node:crypto';
+
 import { createMisskeyCompat } from '../misskey_compat.js';
 import { excludedReactionAccountIds } from '../reaction_account_filter.js';
+import * as Redis from '../redis.js';
 
 import { createDomainTargetsFilter } from './domain_filter.js';
 
@@ -204,6 +207,45 @@ const markChatRead = async (pgPool, channel, targetId, req, messageId, publish) 
   return true;
 };
 
+const authorizeReversiGame = async (pgPool, gameId) => {
+  if (!validChatId(gameId)) return false;
+  const result = await pgPool.query('SELECT 1 FROM misskey_reversi_games WHERE id = $1 LIMIT 1', [gameId]);
+  return result.rows.length > 0;
+};
+
+const SIDEKIQ_REDIS_PREFIX = 'SIDEKIQ_REDIS_';
+
+const sidekiqRedisEnv = (env) => {
+  const configured = env.SIDEKIQ_REDIS_URL || env.SIDEKIQ_REDIS_HOST || (env.SIDEKIQ_REDIS_SENTINELS && env.SIDEKIQ_REDIS_SENTINEL_MASTER);
+  if (!configured) return env;
+
+  return Object.fromEntries(Object.entries(env)
+    .filter(([key]) => key.startsWith(SIDEKIQ_REDIS_PREFIX))
+    .map(([key, value]) => [`REDIS_${key.slice(SIDEKIQ_REDIS_PREFIX.length)}`, value]));
+};
+
+const reversiActionJob = (accountId, gameId, type, body, now = Date.now()) => ({
+  class: 'MisskeyCompatReversiActionWorker',
+  queue: 'default',
+  args: [accountId, gameId, type, body],
+  retry: false,
+  jid: randomBytes(12).toString('hex'),
+  created_at: now,
+  enqueued_at: now,
+});
+
+const createReversiActionEnqueuer = (logger, env = process.env, createClient = Redis.createClient) => {
+  let client;
+
+  return async (accountId, gameId, type, body) => {
+    if (!validChatId(accountId) || !validChatId(gameId)) return false;
+    client ??= createClient(Redis.configFromEnv(sidekiqRedisEnv(env)), logger);
+    const job = reversiActionJob(accountId, gameId, type, body);
+    await client.multi().sadd('queues', job.queue).lpush(`queue:${job.queue}`, JSON.stringify(job)).exec();
+    return true;
+  };
+};
+
 const createMisskeyExtension = (deps) => {
   const isEnabled = createEnabledCheck(deps.pgPool, deps.logger);
   const compat = createMisskeyCompat({
@@ -216,10 +258,12 @@ const createMisskeyExtension = (deps) => {
     isChatEnabled: createChatEnabledCheck(deps.pgPool, deps.logger),
     authorizeChatAccess: (channel, targetId, req, event) => authorizeChatAccess(deps.pgPool, channel, targetId, req, event),
     markChatRead: (channel, targetId, req, messageId) => markChatRead(deps.pgPool, channel, targetId, req, messageId, deps.publish),
+    authorizeReversiGame: (gameId) => authorizeReversiGame(deps.pgPool, gameId),
+    enqueueReversiAction: createReversiActionEnqueuer(deps.logger),
     isEnabled,
   });
 
   return { ...compat, isEnabled };
 };
 
-export { authorizeChatAccess, authorizeStatusAccess, createChatEnabledCheck, createEnabledCheck, createMisskeyExtension, excludedTimelineNote, isChatEnabled, loadGrantPermissions, markChatRead };
+export { authorizeChatAccess, authorizeReversiGame, authorizeStatusAccess, createChatEnabledCheck, createEnabledCheck, createMisskeyExtension, createReversiActionEnqueuer, excludedTimelineNote, isChatEnabled, loadGrantPermissions, markChatRead, sidekiqRedisEnv };

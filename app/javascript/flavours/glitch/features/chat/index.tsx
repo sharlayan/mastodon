@@ -100,6 +100,13 @@ import {
   usesTouchKeyboard,
 } from './use_chat_scroll';
 import { useLongPressOpensToolbar } from './use_message_toolbar';
+import {
+  VoiceCallBadge,
+  VoiceCallHeaderButton,
+  VoiceCallPanel,
+} from './voice/panel';
+import type { VoiceRoom } from './voice/panel';
+import { useVoiceStates } from './voice/states';
 
 type RoomEnding = 'deleted' | 'removed';
 
@@ -113,10 +120,17 @@ interface ChatReaction {
   is_sensitive?: boolean;
 }
 
+interface ChatDice {
+  notation: string;
+  total: number;
+  output: string;
+}
+
 interface ChatMessage {
   id: string;
   conversation_id: string;
   content: string | null;
+  dice?: ChatDice | null;
   created_at: string;
   edited_at: string | null;
   deleted_at: string | null;
@@ -175,6 +189,8 @@ interface ChatSettings {
   federation_enabled: boolean;
   delete_window_hours: number;
   soft_delete: boolean;
+  voice_calls?: boolean;
+  voice_call_screen_share?: boolean;
 }
 
 interface PickedEmoji {
@@ -296,6 +312,16 @@ const isNotFound = (error: unknown) =>
   (error as { response?: { status?: number } }).response?.status === 404;
 const isRefused = (error: unknown) =>
   (error as { response?: { status?: number } }).response?.status === 403;
+const DICE_ERRORS: Record<string, string> = {
+  DICE_INVALID: 'dice_invalid',
+  DICE_LIMIT: 'dice_limit',
+  DICE_BUSY: 'dice_busy',
+};
+export const diceErrorOf = (error: unknown) => {
+  const code = (error as { response?: { data?: { error_code?: unknown } } })
+    .response?.data?.error_code;
+  return typeof code === 'string' ? (DICE_ERRORS[code] ?? null) : null;
+};
 const roomEndingOf = (error: unknown): RoomEnding | null => {
   const reason = (error as { response?: { data?: { reason?: unknown } } })
     .response?.data?.reason;
@@ -589,6 +615,26 @@ const fetchSentInvitations = async (
   const rest = await fetchSentInvitations(conversationId, nextPage, last.id);
   return rest ? [...data, ...rest] : undefined;
 };
+
+const ChatDiceResult: React.FC<{ dice: ChatDice }> = ({ dice }) => (
+  <div className='chat-native__dice'>
+    <div className='chat-native__dice-total'>
+      <span>
+        <FormattedMessage id='chat.dice_total' defaultMessage='Total' />
+      </span>{' '}
+      <strong>{dice.total}</strong>
+    </div>
+    <details className='chat-native__dice-details'>
+      <summary>
+        <FormattedMessage
+          id='chat.dice_details'
+          defaultMessage='Roll details'
+        />
+      </summary>
+      <pre>{dice.output}</pre>
+    </details>
+  </div>
+);
 
 const ChatMessageMedia: React.FC<{
   attachments: ChatMedia[];
@@ -2595,6 +2641,23 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const isManagingRoom =
     (roomView === 'members' && conversation?.type === 'group') ||
     (roomView === 'settings' && isGroupOwner);
+  const voiceEnabled = chatSettings?.voice_calls === true;
+  const voiceRoom = useMemo<VoiceRoom | null>(
+    () =>
+      conversation
+        ? {
+            id: conversation.id,
+            title: conversationName(conversation),
+            owned: conversation.current_role === 'owner',
+            accounts: conversation.accounts,
+          }
+        : null,
+    [conversation],
+  );
+  const listVoiceStates = useVoiceStates(
+    visibleConversations.map((item) => item.id),
+    voiceEnabled && !conversationId,
+  );
   const jumpTargetLoaded = Boolean(
     jumpTargetId && messagesById.has(jumpTargetId),
   );
@@ -2830,7 +2893,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       }
       setReplyToId((current) => (current === sentReply ? null : current));
     } catch (sendError) {
-      setSendError(isRefused(sendError) ? 'refused' : 'send');
+      setSendError(
+        isRefused(sendError) ? 'refused' : (diceErrorOf(sendError) ?? 'send'),
+      );
     } finally {
       setLoading(false);
     }
@@ -3889,6 +3954,21 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             id='chat.error_copy'
             defaultMessage='The message could not be copied.'
           />
+        ) : visibleError === 'dice_invalid' ? (
+          <FormattedMessage
+            id='chat.error_dice_invalid'
+            defaultMessage='The dice notation could not be read. Check the syntax and edit your message.'
+          />
+        ) : visibleError === 'dice_limit' ? (
+          <FormattedMessage
+            id='chat.error_dice_limit'
+            defaultMessage='The roll exceeded the execution limits. Reduce the number of dice or repetitions.'
+          />
+        ) : visibleError === 'dice_busy' ? (
+          <FormattedMessage
+            id='chat.error_dice_busy'
+            defaultMessage='Dice rolling is busy. Wait a moment and send your message again.'
+          />
         ) : visibleError === 'too_many_attachments' ? (
           <FormattedMessage
             id='chat.error_too_many_attachments'
@@ -3961,20 +4041,28 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               </Link>
             </>
           ) : conversation && !isManagingRoom ? (
-            <Dropdown
-              scrollKey='chat-room'
-              items={roomMenu}
-              title={intl.formatMessage(messages.more)}
-            >
-              <button
-                type='button'
-                className='column-header__button'
+            <>
+              {voiceRoom && (
+                <VoiceCallHeaderButton
+                  room={voiceRoom}
+                  enabled={voiceEnabled}
+                />
+              )}
+              <Dropdown
+                scrollKey='chat-room'
+                items={roomMenu}
                 title={intl.formatMessage(messages.more)}
-                aria-label={intl.formatMessage(messages.more)}
               >
-                <Icon id='ellipsis-h' icon={MoreHorizIcon} />
-              </button>
-            </Dropdown>
+                <button
+                  type='button'
+                  className='column-header__button'
+                  title={intl.formatMessage(messages.more)}
+                  aria-label={intl.formatMessage(messages.more)}
+                >
+                  <Icon id='ellipsis-h' icon={MoreHorizIcon} />
+                </button>
+              </Dropdown>
+            </>
           ) : undefined
         }
       >
@@ -4055,6 +4143,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           </div>
         )}
       </ColumnHeader>
+
+      {voiceRoom && !isManagingRoom && !conversationMissing && (
+        <VoiceCallPanel room={voiceRoom} enabled={voiceEnabled} />
+      )}
 
       <div className='scrollable chat-native' onPaste={pastePlainText}>
         {conversationId && conversationMissing ? (
@@ -4328,6 +4420,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                                 />
                               )}
                             </p>
+                            {message.dice && !message.deleted_at && (
+                              <ChatDiceResult dice={message.dice} />
+                            )}
                             <ChatMessageMedia
                               attachments={message.media_attachments}
                               onOpenMedia={handleOpenMedia}
@@ -4861,6 +4956,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     <span className='conversation__content'>
                       <span className='conversation__content__info'>
                         <span className='conversation__content__relative-time'>
+                          <VoiceCallBadge
+                            state={listVoiceStates.get(item.id)}
+                          />
                           {item.unread && (
                             <span
                               className='conversation__unread'

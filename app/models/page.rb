@@ -17,6 +17,7 @@
 #  is_main                          :boolean          default(FALSE), not null
 #  likes_count                      :integer          default(0), not null
 #  name                             :string           not null
+#  referenced_media_attachment_ids  :bigint(8)        default([]), not null, is an Array
 #  series_position                  :integer          default(0), not null
 #  summary                          :text
 #  text_characters_count            :integer
@@ -27,7 +28,6 @@
 #  account_id                       :bigint(8)        not null
 #  eye_catching_media_attachment_id :bigint(8)
 #  page_series_id                   :bigint(8)
-#  referenced_media_attachment_ids  :bigint(8)        default([]), not null, is an Array
 #
 
 class Page < ApplicationRecord

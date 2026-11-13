@@ -47,11 +47,18 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     render_invalid_param(e.param, e.reason)
   end
 
-  requires_write_scope :update, :read_announcement, :pin, :unpin
+  include Api::MisskeyCompat::CredentialConfirmation
+
+  UPDATE_EMAIL_INCORRECT_PASSWORD_ID = 'e54c1d7e-e7d6-4103-86b6-0a95069b4ad3'
+  EMAIL_UNAVAILABLE_ID = 'a2defefb-f220-8849-0af6-17f816099323'
+  EMAIL_REQUIRED_ID = '324c7a88-59f2-492f-903f-89134f93e47e'
+
+  requires_write_scope :update, :read_announcement, :pin, :unpin, :change_password, :update_email
   requires_misskey_permission 'read:account', :show
-  requires_misskey_permission 'write:account', :update, :read_announcement, :pin, :unpin
+  requires_misskey_permission 'write:account', :update, :read_announcement, :pin, :unpin, :change_password, :update_email
 
   before_action :require_user!
+  before_action :require_native_user_token!, only: [:change_password, :update_email]
   before_action :reject_compound_id_params!
 
   def show
@@ -67,6 +74,29 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     apply_muted_words!
     apply_muted_instances!
     apply_muted_emojis!
+
+    render json: me_json
+  end
+
+  def change_password
+    return unless object_body! && require_string_params!(:currentPassword, :newPassword, optional: [:token])
+    return render_invalid_param('#/properties/newPassword/minLength', 'must NOT have fewer than 1 characters') if params[:newPassword].empty?
+    return unless confirm_credentials!(params[:currentPassword])
+
+    current_user.update!(password: params[:newPassword], password_confirmation: params[:newPassword])
+    current_user.session_activations.destroy_all
+
+    head 204
+  end
+
+  def update_email
+    return unless object_body! && require_string_params!(:password, optional: [:email, :token])
+    return if rate_limited?(:misskey_compat_email_request)
+    return unless confirm_credentials!(params[:password], incorrect_password_id: UPDATE_EMAIL_INCORRECT_PASSWORD_ID)
+    return render_error('Email address is required.', 'EMAIL_REQUIRED', 400, id: EMAIL_REQUIRED_ID) if params[:email].nil? # rubocop:disable I18n/RailsI18n/DecorateString
+
+    current_user.email = params[:email].strip
+    return render_error('Unavailable email address.', 'UNAVAILABLE', 400, id: EMAIL_UNAVAILABLE_ID) unless current_user.save # rubocop:disable I18n/RailsI18n/DecorateString
 
     render json: me_json
   end
@@ -120,7 +150,16 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     data = MisskeyCompat::UserSerializer.serialize(current_account, detailed: true, me_user: current_user)
     data[:hasUnreadAnnouncement] = unread_announcement?
     data[:policies] = compat_policies
+    data.merge!(MisskeyCompat::UserSerializer.secret_fields(current_user)) if native_user_token?
     data
+  end
+
+  def birthday_param
+    value = params[:birthday]
+    return if value.nil?
+    raise InvalidParamError.new('#/properties/birthday', 'must match YYYY-MM-DD') unless value.is_a?(String) && value.match?(/\A\d{4}-\d{2}-\d{2}\z/)
+
+    value
   end
 
   def apply_profile!
@@ -129,7 +168,7 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     attrs[:note] = params[:description].to_s if params.key?(:description)
     attrs[:followed_message] = params[:followedMessage].to_s.presence if params.key?(:followedMessage)
     attrs[:location] = params[:location].to_s.presence if params.key?(:location)
-    attrs[:birthday] = params[:birthday].to_s.presence if params.key?(:birthday)
+    attrs[:birthday] = birthday_param if params.key?(:birthday)
     attrs[:is_cat] = boolean_param(params[:isCat]) if params.key?(:isCat)
     attrs[:locked] = boolean_param(params[:isLocked]) if params.key?(:isLocked)
     attrs[:discoverable] = boolean_param(params[:isExplorable]) if params.key?(:isExplorable)

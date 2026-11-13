@@ -28,7 +28,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   RELATED_NOTE_SCAN_LIMIT = 1_000
   PARTIAL_BULK_MAX_IDS = 100
   SCALAR_ID_PARAMS = %i(noteId replyId renoteId draftId).freeze
-  OPTIONAL_AUTHENTICATION_ACTIONS = %i(show show_partial_bulk children replies conversation renotes note_reactions featured clips).freeze
+  OPTIONAL_AUTHENTICATION_ACTIONS = %i(index show show_partial_bulk children replies conversation renotes note_reactions featured clips).freeze
 
   requires_write_scope :unrenote, :thread_muting_create, :thread_muting_delete,
                        :reactions_create, :reactions_delete, :create, :update,
@@ -66,6 +66,13 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   rescue_from InvalidParamError do |e|
     render_invalid_param(e.param, e.reason)
+  end
+
+  def index
+    return if current_account.nil? && rate_limited?(:misskey_compat_api)
+
+    feed = public_feed(local: ActiveModel::Type::Boolean.new.cast(params[:local]), only_media: timeline_with_files?)
+    render_notes(filtered_timeline([feed], timeline_pagination_limit) { |status| global_note_filters_match?(status) })
   end
 
   def timeline
@@ -229,9 +236,10 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     poll = poll_param
     return render_invalid_param('#/properties/poll', 'poll expiration is required') if poll && poll[:expiredAfter].blank? && poll[:expiresAt].blank?
 
+    @note_channel = MisskeyCompat::ChannelNoteTarget.resolve(channel_id: params[:channelId], reply: reply_status, renote: renote_id.present? ? renote_target.proper : nil)
     status = if renote_id.present? && pure_renote_request?
                reaction_acceptance_option if params.key?(:reactionAcceptance)
-               ReblogService.new.call(current_account, reblog_target)
+               @note_channel ? MisskeyCompat::ChannelRenoteService.new.call(current_account, reblog_target, @note_channel) : ReblogService.new.call(current_account, reblog_target)
              else
                with_resolved_media_ids do |media_ids|
                  PostStatusService.new.call(current_account, post_options.merge(media_ids: media_ids))
@@ -241,6 +249,10 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     return render json: { scheduledNoteId: MisskeyCompat::MiId.encode(status.id) } if status.is_a?(ScheduledStatus)
 
     render json: { createdNote: serialize(status) }
+  rescue MisskeyCompat::ChannelNoteTarget::NoSuchChannelError
+    render_error('No such channel', 'NO_SUCH_CHANNEL', 404, id: 'b1653923-5453-4edc-b786-7c4f39bb0bbb')
+  rescue MisskeyCompat::ChannelNoteTarget::RenoteOutsideChannelError
+    render_error('Cannot renote outside of channel', 'CANNOT_RENOTE_OUTSIDE_OF_CHANNEL', 400, id: '33510210-8452-094c-6227-4a6c05d99f00')
   rescue NoSuchReplyTargetError
     render_error('No such reply target', 'NO_SUCH_REPLY_TARGET', 404)
   rescue CannotReplyToSpecifiedVisibilityNoteError
@@ -415,6 +427,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def favorites_create
     FavouriteService.new.call(current_account, @note)
+    MisskeyAchievement.unlock!(@note.account, 'myNoteFavorited1') unless @note.account_id == current_account.id
     head 204
   end
 
@@ -634,7 +647,14 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       poll: post_poll_options,
       scheduled_at: scheduled_at_option,
       reaction_acceptance: reaction_acceptance_option,
-    }.compact
+    }.compact.merge(channel_post_options(quoted))
+  end
+
+  def channel_post_options(quoted)
+    return { visibility: 'public', local_only: true, misskey_channel_id: @note_channel.id } if @note_channel
+    return { local_only: true } if quoted&.local_only?
+
+    {}
   end
 
   def update_options
@@ -983,6 +1003,15 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     end
   end
 
+  def global_note_filters_match?(status)
+    {
+      reply: -> { status.in_reply_to_id.present? },
+      renote: -> { status.reblog? || status.quote&.accepted? || false },
+      withFiles: -> { status.ordered_media_attachments.any? },
+      poll: -> { status.poll_id.present? },
+    }.all? { |key, matches| params[key].nil? || ActiveModel::Type::Boolean.new.cast(params[key]) == matches.call }
+  end
+
   def filtered_timeline(feeds, limit, filter_replies: false)
     forward = timeline_min_id.present?
     states = feeds.map { |feed| { feed: feed, buffer: [], cursor: forward ? timeline_min_id : timeline_until_id, scanned: 0, exhausted: false } }
@@ -1000,6 +1029,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       next if timeline_with_files? && status.ordered_media_attachments.empty?
       next if !timeline_with_renotes? && pure_timeline_renote?(status)
       next if filter_replies && !timeline_with_replies? && status.in_reply_to_account_id.present? && status.in_reply_to_account_id != status.account_id
+      next if block_given? && !yield(status)
 
       results << status
     end

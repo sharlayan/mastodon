@@ -407,6 +407,19 @@ RSpec.describe 'Drive files API' do
       expect(page_pointer.reload.drive_file_id).to eq(drive_file.id)
     end
 
+    it 'rejects a Drive file used by a Misskey gallery post even when it is also attached to a post' do
+      drive_file.build_pointer(user.account).tap { |media| media.update!(status: status) }
+      gallery_pointer = drive_file.build_pointer(user.account).tap(&:save!)
+      MisskeyGalleryPost.create!(account: user.account, title: 'Gallery', media_attachment_ids: [gallery_pointer.id])
+
+      expect do
+        post "/api/v1/drive/files/#{drive_file.id}/transfer_to_posts", headers: headers
+      end.to not_change(DriveFile, :count).and not_change(MediaAttachment, :count)
+
+      expect(response).to have_http_status(422)
+      expect(response.parsed_body[:code]).to eq('PAGE_ATTACHED')
+    end
+
     it 'does not expose another account file' do
       foreign_file = Fabricate(:account).drive_files.create!(file: attachment_fixture('attachment.jpg'))
 

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 
 import { FormattedMessage, useIntl } from 'react-intl';
 
@@ -11,6 +11,7 @@ import {
   CalendarIcon,
   ChatCircleDotsIcon,
   CirclesFourIcon,
+  CloudIcon,
   EyeSlashIcon,
   FileTextIcon,
   FloppyDiskIcon,
@@ -191,9 +192,13 @@ export const SharlayanRedesignPrimaryNavigation: React.FC<{
 };
 
 export const SharlayanRedesignExtensions: React.FC = () => {
+  const dispatch = useAppDispatch();
   const useMyArchive = useAppSelector(
     (state) => state.local_settings.get('use_my_archive', false) as boolean,
   );
+  const handleOpenDrive = useCallback(() => {
+    dispatch(openModal({ modalType: 'DRIVE_MANAGER', modalProps: {} }));
+  }, [dispatch]);
 
   return (
     <ListSection
@@ -238,6 +243,16 @@ export const SharlayanRedesignExtensions: React.FC = () => {
       {pagesEnabled && (
         <NavigationLink to='/pages' iconComponent={FileTextIcon}>
           <FormattedMessage id='navigation_bar.pages' defaultMessage='Pages' />
+        </NavigationLink>
+      )}
+      {driveEnabled && (
+        <NavigationLink
+          as='button'
+          type='button'
+          iconComponent={CloudIcon}
+          onClick={handleOpenDrive}
+        >
+          <FormattedMessage id='navigation_bar.drive' defaultMessage='Drive' />
         </NavigationLink>
       )}
       {circlesEnabled && (
@@ -345,12 +360,8 @@ export const SharlayanRedesignAccountMenuItems: React.FC = () => {
     },
   ];
 
-  extendSharlayanMoreMenuItems(
-    items,
-    intl.formatMessage,
-    () =>
-      dispatch(openModal({ modalType: 'ACCOUNT_SWITCHER', modalProps: {} })),
-    driveEnabled,
+  extendSharlayanMoreMenuItems(items, intl.formatMessage, () =>
+    dispatch(openModal({ modalType: 'ACCOUNT_SWITCHER', modalProps: {} })),
   );
 
   return <LegacyDropdownMenuItems items={items} />;

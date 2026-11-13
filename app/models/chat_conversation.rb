@@ -1,5 +1,22 @@
 # frozen_string_literal: true
 
+# == Schema Information
+#
+# Table name: chat_conversations
+#
+#  id                :bigint(8)        not null, primary key
+#  archived_at       :datetime
+#  conversation_type :integer          default("direct"), not null
+#  description       :text
+#  direct_key        :string
+#  state_updated_at  :datetime
+#  title             :string
+#  uri               :string
+#  created_at        :datetime         not null
+#  updated_at        :datetime         not null
+#  last_message_id   :bigint(8)
+#  owner_account_id  :bigint(8)
+#
 class ChatConversation < ApplicationRecord
   enum :conversation_type, { direct: 0, group: 1 }, prefix: :chat
 
@@ -13,6 +30,9 @@ class ChatConversation < ApplicationRecord
   has_many :roster_states, class_name: 'ChatRosterState', dependent: :delete_all, inverse_of: :chat_conversation
 
   before_destroy :schedule_message_media_removal, prepend: true
+  before_destroy :remember_voice_call_allocations
+  after_destroy_commit :end_voice_calls
+  after_update_commit :end_voice_calls_when_archived, if: -> { saved_change_to_archived_at? && archived? }
 
   validates :direct_key, presence: true, uniqueness: true, if: :chat_direct?
   validates :direct_key, absence: true, if: :chat_group?
@@ -47,6 +67,19 @@ class ChatConversation < ApplicationRecord
   end
 
   private
+
+  def remember_voice_call_allocations
+    @voice_call_allocation_ids = VoiceCallAllocation.unfinished.where(chat_conversation_id: id).pluck(:id)
+  end
+
+  def end_voice_calls
+    allocation_ids = @voice_call_allocation_ids || VoiceCallAllocation.unfinished.where(chat_conversation_id: id).pluck(:id)
+    allocation_ids.each { |allocation_id| VoiceCallEndWorker.perform_async(allocation_id) }
+  end
+
+  def end_voice_calls_when_archived
+    end_voice_calls
+  end
 
   def schedule_message_media_removal
     media_ids = ChatMessageMediaAttachment.where(chat_message_id: ChatMessage.where(chat_conversation_id: id).select(:id)).pluck(:media_attachment_id)

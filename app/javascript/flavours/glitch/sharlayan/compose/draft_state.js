@@ -10,7 +10,22 @@ export const reduceStatusDraftCompose = (state, action) => {
   if (action.type === 'STATUS_DRAFT_SAVE_SUCCESS') {
     if (state.get('draft_save_request') !== action.requestId) return state;
 
-    return state.set('draft_id', action.draft.get('id')).set('draft_save_request', null);
+    const params = action.draft.get('params');
+    return state.withMutations(map => {
+      map.set('draft_id', action.draft.get('id'));
+      map.set('draft_save_request', null);
+      if (params?.get('limited_scope') === 'reply' && state.get('limited_scope') === 'reply' && String(params.get('in_reply_to_id')) === String(state.get('in_reply_to'))) {
+        map.set('limited_scope', 'reply');
+        map.set('limited_reply_account_ids', params.get('limited_reply_account_ids'));
+        if (params.get('local_only')) map.setIn(['advanced_options', 'do_not_federate'], true);
+      } else if (params && state.get('limited_scope') === 'reply' && state.get('in_reply_to') && !params.get('limited_scope') && !params.get('in_reply_to_id') && params.get('visibility') === 'direct') {
+        map.set('in_reply_to', null);
+        map.set('reply_to_limited', false);
+        map.set('privacy', 'direct');
+        map.set('limited_scope', null);
+        map.set('limited_reply_account_ids', null);
+      }
+    });
   }
 
   if (action.type === 'STATUS_DRAFT_SAVE_FAIL') {
@@ -50,6 +65,9 @@ export const reduceStatusDraftCompose = (state, action) => {
     map.set('content_type', params.get('content_type') || 'text/plain');
     map.set('privacy', params.get('visibility') || 'public');
     map.set('circle_id', params.get('circle_id') || null);
+    map.set('limited_scope', params.get('limited_scope') === 'reply' ? 'reply' : null);
+    map.set('limited_reply_account_ids', params.get('limited_reply_account_ids') || null);
+    map.set('reply_to_limited', params.get('limited_scope') === 'reply');
     map.set('clip_ids', ImmutableList(params.get('clip_ids') || []));
     map.set('in_reply_to', params.get('in_reply_to_id') || null);
     map.set('quoted_status_id', params.get('quoted_status_id') || null);

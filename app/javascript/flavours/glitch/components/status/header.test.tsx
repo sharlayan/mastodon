@@ -202,6 +202,7 @@ describe('redesign detailed status scope', () => {
   it('renders Circle and unlisted scope separately from local-only', () => {
     const cases = [
       ['direct', 'circle', 'Circle'],
+      ['private', 'reply', 'Reply audience'],
       ['unlisted', undefined, 'Quiet public'],
     ] as const;
 

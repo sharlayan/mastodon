@@ -80,3 +80,37 @@ test('chat setting is read once per interval across a fan-out and fails closed',
   assert.equal(queries, 2);
   assert.equal(errors.length, 1);
 });
+
+test('reversi game authorization validates IDs before querying', async () => {
+  const calls = [];
+  const pool = { query: async (sql, params) => { calls.push(params); return { rows: params[0] === '9' ? [{}] : [] }; } };
+  assert.equal(await misskey.authorizeReversiGame(pool, 'bad'), false);
+  assert.equal(calls.length, 0);
+  assert.equal(await misskey.authorizeReversiGame(pool, '8'), false);
+  assert.equal(await misskey.authorizeReversiGame(pool, '9'), true);
+});
+
+test('reversi actions are pushed as sidekiq jobs to the sidekiq redis', async () => {
+  const commands = [];
+  const configs = [];
+  const client = { multi: () => { const chain = { sadd: (...args) => { commands.push(['sadd', ...args]); return chain; }, lpush: (...args) => { commands.push(['lpush', ...args]); return chain; }, exec: async () => [] }; return chain; } };
+  const enqueue = misskey.createReversiActionEnqueuer({}, { REDIS_URL: 'redis://main/0', SIDEKIQ_REDIS_URL: 'redis://jobs/1' }, (config) => { configs.push(config); return client; });
+
+  assert.equal(await enqueue('7', 'bad', 'ready', true), false);
+  assert.equal(await enqueue('7', '9', 'putStone', { pos: 3, id: 'op' }), true);
+  await enqueue('7', '9', 'ready', true);
+
+  assert.equal(configs.length, 1);
+  assert.equal(configs[0].url, 'redis://jobs/1');
+  assert.deepEqual(commands[0], ['sadd', 'queues', 'default']);
+  assert.equal(commands[1][1], 'queue:default');
+  const job = JSON.parse(commands[1][2]);
+  assert.equal(job.class, 'MisskeyCompatReversiActionWorker');
+  assert.deepEqual(job.args, ['7', '9', 'putStone', { pos: 3, id: 'op' }]);
+  assert.equal(job.retry, false);
+  assert.match(job.jid, /^[0-9a-f]{24}$/);
+  assert.equal(Number.isInteger(job.enqueued_at), true);
+
+  assert.equal(misskey.sidekiqRedisEnv({ REDIS_URL: 'redis://main/0' }).REDIS_URL, 'redis://main/0');
+  assert.deepEqual(misskey.sidekiqRedisEnv({ REDIS_HOST: 'main', SIDEKIQ_REDIS_HOST: 'jobs', SIDEKIQ_REDIS_DB: '2' }), { REDIS_HOST: 'jobs', REDIS_DB: '2' });
+});

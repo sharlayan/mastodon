@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class PublicFeed
+  prepend Sharlayan::PublicFeedExtensions
+
   # @param [Account] account
   # @param [Hash] options
   # @option [Boolean] :with_replies

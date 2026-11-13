@@ -1,0 +1,17 @@
+- content_for :page_title do
+  = @auth_session.application.name
+
+.form-container.simple_form
+  .oauth-prompt
+    %h3= @auth_session.application.name
+
+    %p= t('misskey_compat.authorization.access_request_html', app: content_tag(:strong, @auth_session.application.name), account: content_tag(:strong, "@#{current_account.username}"))
+
+    - if @auth_session.application.misskey_app.description.present?
+      %p= @auth_session.application.misskey_app.description
+
+    %p= t('misskey_compat.authorization.permission_notice')
+
+    .actions
+      = form_with url: misskey_auth_session_path(@auth_session.token), method: :post do |form|
+        = form.button t('misskey_compat.authorization.approve'), type: :submit, class: 'btn button'

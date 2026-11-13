@@ -4,12 +4,14 @@ module Sharlayan::StatusReachFinderExtensions
   extend ActiveSupport::Concern
 
   def inboxes
-    (super + private_mention_inboxes).uniq
+    (super + private_mention_inboxes + hidden_reply_recipient_inboxes).uniq
   end
 
   private
 
   def reached_account_ids
+    return listed_reply_recipient_ids if limited_reply?
+
     super - private_mentioned_account_ids
   end
 
@@ -17,6 +19,20 @@ module Sharlayan::StatusReachFinderExtensions
     return super unless @status.private_visibility?
 
     individual_inboxes_for(followers_scope)
+  end
+
+  def limited_reply?
+    @status.limited_visibility? && @status.limited_reply?
+  end
+
+  def listed_reply_recipient_ids
+    @listed_reply_recipient_ids ||= Sharlayan::LimitedReplyScope.listed_account_ids(@status)
+  end
+
+  def hidden_reply_recipient_inboxes
+    return [] unless limited_reply?
+
+    individual_inboxes_for(Account.where(id: mentioned_account_ids - listed_reply_recipient_ids))
   end
 
   def private_mention_inboxes

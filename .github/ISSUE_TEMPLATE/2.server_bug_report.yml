@@ -60,6 +60,6 @@ body:
       value: |
         자체 Mastodon 서버에서 발생한 경우 다음 항목을 작성해 주세요:
         - Ruby 버전: (`ruby --version`에서 확인, 예: v4.0.9)
-        - Node.js 버전: (`node --version`에서 확인, 예: v22.16.0)
+        - Node.js 버전: (`node --version`에서 확인, 예: v26.13.1)
     validations:
       required: false

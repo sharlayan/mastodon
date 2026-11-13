@@ -161,6 +161,14 @@
             sharlayan_only: true
 
 .fields-group
+  = f.input :link_preview_direct_hosts,
+            as: :text,
+            label: t('admin.settings.link_preview_direct_hosts.title'),
+            hint: t('admin.settings.link_preview_direct_hosts.hint'),
+            input_html: { rows: 4, autocomplete: 'off', placeholder: "youtube.com\ngoogle.com" },
+            sharlayan_only: true
+
+.fields-group
   = f.input :auto_quote_from_url,
             as: :boolean,
             wrapper: :with_label,

@@ -52,6 +52,19 @@ RSpec.describe Sharlayan::FeedManagerExtensions do
     expect(antenna_feed_ids).to contain_exactly(other.id)
   end
 
+  it 'does not reinsert private statuses when a queued insertion runs after unfollow cleanup' do
+    owner.follow!(author)
+    status = Fabricate(:status, account: author, visibility: :private)
+    push(status)
+
+    UnfollowService.new.call(owner, author)
+    expect(antenna_feed_ids).to be_empty
+
+    FeedInsertWorker.new.perform(status.id, antenna.id, 'antenna')
+
+    expect(antenna_feed_ids).to be_empty
+  end
+
   it 'removes only private statuses after the follow ends' do
     owner.follow!(author)
     private_status = Fabricate(:status, account: author, visibility: :private)

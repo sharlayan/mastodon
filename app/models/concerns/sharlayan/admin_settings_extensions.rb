@@ -4,6 +4,8 @@ module Sharlayan::AdminSettingsExtensions
   extend ActiveSupport::Concern
 
   KEYS = %i(
+    registration_reject_email_pattern
+    registration_reject_username_pattern
     theme_color
     background_color
     background_opacity
@@ -57,6 +59,12 @@ module Sharlayan::AdminSettingsExtensions
     chat_delete_window_hours
     chat_max_group_members
     chat_max_attachments
+    voice_call_enabled
+    voice_call_max_participants
+    voice_call_screen_share_enabled
+    voice_call_federation_host_enabled
+    voice_call_remote_join_enabled
+    link_preview_direct_hosts
     status_character_limit
     profile_fields_limit
     remote_media_attachments_limit
@@ -76,6 +84,7 @@ module Sharlayan::AdminSettingsExtensions
     chat_delete_window_hours
     chat_max_group_members
     chat_max_attachments
+    voice_call_max_participants
   ).freeze
 
   BOOLEAN_KEYS = %i(
@@ -118,16 +127,32 @@ module Sharlayan::AdminSettingsExtensions
     chat_enabled
     chat_federation_enabled
     chat_soft_delete_enabled
+    voice_call_enabled
+    voice_call_screen_share_enabled
+    voice_call_federation_host_enabled
+    voice_call_remote_join_enabled
     user_themes_enabled
   ).freeze
 
+  module VoiceCallSettingsHook
+    def save
+      remote_join_was_enabled = Sharlayan::VoiceCallFederation.remote_join_enabled?
+      super.tap do |saved|
+        VoiceCallMirrorClearWorker.perform_async if saved && remote_join_was_enabled && !Sharlayan::VoiceCallFederation.remote_join_enabled?
+      end
+    end
+  end
+
   included do
+    prepend VoiceCallSettingsHook
+
     validates :local_account_statuses_access, inclusion: { in: Form::AdminSettings::FEED_ACCESS_MODES }, if: -> { defined?(@local_account_statuses_access) }
     validates :local_status_page_access, inclusion: { in: Form::AdminSettings::FEED_ACCESS_MODES }, if: -> { defined?(@local_status_page_access) }
     validates :drive_quota, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, if: -> { defined?(@drive_quota) }
     validates :drive_max_file_size, numericality: { only_integer: true, greater_than: 0 }, if: -> { defined?(@drive_max_file_size) }
     validates :chat_max_group_members, numericality: { only_integer: true, in: 2..200 }, if: -> { defined?(@chat_max_group_members) }
     validates :chat_max_attachments, numericality: { only_integer: true, in: 0..4 }, if: -> { defined?(@chat_max_attachments) }
+    validates :voice_call_max_participants, numericality: { only_integer: true, in: 2..100 }, if: -> { defined?(@voice_call_max_participants) }
     validates :chat_delete_window_hours, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, if: -> { defined?(@chat_delete_window_hours) }
     validates :status_character_limit, numericality: { only_integer: true, greater_than_or_equal_to: Sharlayan::SettingExtensions::MIN_STATUS_CHARACTER_LIMIT }, if: -> { defined?(@status_character_limit) }
     validates :profile_fields_limit, numericality: { only_integer: true, in: 0..ActivityPub::ProcessAccountService::MAX_PROFILE_FIELDS }, if: -> { defined?(@profile_fields_limit) }
@@ -139,10 +164,21 @@ module Sharlayan::AdminSettingsExtensions
     validates :user_theme_catalog, :user_theme_defaults, length: { maximum: 65_536 }, if: -> { defined?(@user_theme_catalog) || defined?(@user_theme_defaults) }
     validate :validate_drive_allowed_extensions, if: -> { defined?(@drive_allowed_extensions) }
     validate :validate_misskey_signin_origins, if: -> { defined?(@misskey_compat_signin_flow_allowed_origins) }
+    validate :validate_link_preview_direct_hosts, if: -> { defined?(@link_preview_direct_hosts) }
     validate :validate_roleplay_forced_skin, if: -> { defined?(@roleplay_forced_skin) }
+    validate :validate_registration_rejection_patterns
   end
 
   private
+
+  def validate_registration_rejection_patterns
+    %i(registration_reject_email_pattern registration_reject_username_pattern).each do |key|
+      next unless instance_variable_defined?(:"@#{key}")
+      next if Sharlayan::RegistrationRejectionPatterns.valid?(instance_variable_get(:"@#{key}"))
+
+      errors.add(key, I18n.t('admin.settings.registration_rejection_patterns_invalid', max_length: Sharlayan::RegistrationRejectionPatterns::MAX_LENGTH, max_patterns: Sharlayan::RegistrationRejectionPatterns::MAX_PATTERNS))
+    end
+  end
 
   def validate_drive_allowed_extensions
     extensions = DriveFile.parse_extensions(@drive_allowed_extensions)
@@ -156,6 +192,13 @@ module Sharlayan::AdminSettingsExtensions
     return if rejected.empty?
 
     errors.add(:misskey_compat_signin_flow_allowed_origins, I18n.t('admin.settings.misskey_compat.signin_flow_allowed_origins_invalid', origins: rejected.join(', ')))
+  end
+
+  def validate_link_preview_direct_hosts
+    rejected = Sharlayan::LinkPreviewDirectHosts.invalid_entries(@link_preview_direct_hosts)
+    return if rejected.empty?
+
+    errors.add(:link_preview_direct_hosts, I18n.t('admin.settings.link_preview_direct_hosts.invalid', hosts: rejected.join(', ')))
   end
 
   def validate_roleplay_forced_skin

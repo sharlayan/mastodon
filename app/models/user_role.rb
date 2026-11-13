@@ -144,7 +144,7 @@ class UserRole < ApplicationRecord
     UserRole.find(EVERYONE_ROLE_ID)
   rescue ActiveRecord::RecordNotFound
     default_permissions = ENV['OC_ROLEPLAY_OPTION'] == 'true' ? Flags::NONE : Flags::DEFAULT
-    UserRole.create!(id: EVERYONE_ROLE_ID, permissions: default_permissions)
+    UserRole.create!(id: EVERYONE_ROLE_ID, permissions: default_permissions, extra_permissions: ExtraFlags::DEFAULT)
   end
 
   def self.that_can(*any_of_privileges)

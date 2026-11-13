@@ -8,12 +8,18 @@ class UnreactService < BaseService
   def call(account, status, emoji)
     name, domain = emoji.to_s.split('@')
     custom_emoji = CustomEmoji.find_by(shortcode: name, domain: domain)
-    reaction = StatusReaction.find_by!(account: account, status: status, name: name, custom_emoji: custom_emoji)
-    reaction.destroy!
-    distribute_undo_reaction(reaction)
-    BroadcastStatusUpdateWorker.perform_async(status.id)
-    MisskeyCompat::Streaming.broadcast_reaction(redis, status, reaction, account, 'unreacted')
-    reaction
+    StatusReaction.with_account_status_lock(account, status) do
+      reaction = StatusReaction.find_by!(account: account, status: status, name: name, custom_emoji: custom_emoji)
+      reaction.destroy!
+
+      ActiveRecord.after_all_transactions_commit do
+        distribute_undo_reaction(reaction)
+        BroadcastStatusUpdateWorker.perform_async(status.id)
+        MisskeyCompat::Streaming.broadcast_reaction(redis, status, reaction, account, 'unreacted')
+      end
+
+      reaction
+    end
   end
 
   private

@@ -81,7 +81,7 @@ class FetchOEmbedService
   def fetch!
     return if @endpoint_url.blank?
 
-    body = Request.new(:get, @endpoint_url).perform do |res|
+    body = Request.new(:get, @endpoint_url, route: :link_preview).perform do |res|
       res.code == 200 ? res.body_with_limit : nil
     end
 
@@ -106,7 +106,7 @@ class FetchOEmbedService
   def html
     return @html if defined?(@html)
 
-    @html = @options[:html] || Request.new(:get, @url).add_headers('Accept' => 'text/html').perform do |res|
+    @html = @options[:html] || Request.new(:get, @url, route: :link_preview).add_headers('Accept' => 'text/html').perform do |res|
       res.code != 200 || res.mime_type != 'text/html' ? nil : res.body_with_limit
     end
   end

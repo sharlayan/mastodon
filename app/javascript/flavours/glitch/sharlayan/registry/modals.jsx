@@ -28,6 +28,10 @@ export const sharlayanModalComponents = {
     import('@/flavours/glitch/features/drive_modal').then((module) => ({
       default: module.DriveModal,
     })),
+  DRIVE_MANAGER: () =>
+    import('@/flavours/glitch/features/drive/components/drive_manager_modal').then(
+      (module) => ({ default: module.DriveManagerModal }),
+    ),
   DRIVE_FOLDER_NAME: () =>
     import('@/flavours/glitch/features/drive/components/name_modal').then(
       (module) => ({ default: module.DriveFolderNameModal }),
@@ -53,4 +57,8 @@ export const sharlayanModalComponents = {
     })),
   ACCOUNT_EDIT_DECORATION: accountEditModal('DecorationModal'),
   ACCOUNT_EDIT_FOLLOW_MESSAGE: accountEditModal('FollowMessageModal'),
+  ACCOUNT_EDIT_BIRTHDAY: () =>
+    import('@/flavours/glitch/sharlayan/account/birthday_modal').then((module) => ({
+      default: module.BirthdayModal,
+    })),
 };

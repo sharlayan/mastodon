@@ -58,6 +58,13 @@ en:
           attributes:
             drive_quota:
               own_role: cannot be changed with your current role
+        voice_relay_provider:
+          attributes:
+            origin:
+              own_origin: "cannot be this server's own address"
+              unfinished_calls: "cannot be changed while calls on this relay are still open"
+          provider_limit: "You can register up to %{count} voice relays"
+          unfinished_calls: "This relay still has open calls. Disable it and wait for the calls to end before deleting it."
   admin:
     accounts:
       block_avatar_decorations: Block avatar decorations
@@ -74,15 +81,24 @@ en:
         create_avatar_decoration_html: "%{name} created avatar decoration %{target}"
         create_avatar_decoration_domain_block_html: "%{name} blocked avatar decorations from %{target}"
         create_board_announcement_html: "%{name} created board announcement %{target}"
+        create_misskey_ad_html: "%{name} created Misskey ad %{target}"
         destroy_avatar_decoration_domain_block_html: "%{name} unblocked avatar decorations from %{target}"
         destroy_avatar_decoration_html: "%{name} deleted avatar decoration %{target}"
         destroy_board_announcement_html: "%{name} deleted board announcement %{target}"
         destroy_drive_file_html: "%{name} deleted drive file %{target}"
+        destroy_misskey_ad_html: "%{name} deleted Misskey ad %{target}"
         update_account_html: "%{name} updated account %{target}"
         update_avatar_decoration_html: "%{name} updated avatar decoration %{target}"
         update_board_announcement_html: "%{name} updated board announcement %{target}"
+        update_misskey_ad_html: "%{name} updated Misskey ad %{target}"
         destroy_chat_conversation_html: "%{name} deleted chat conversation %{target}"
         update_collection_html: "%{name} updated collection by %{target}"
+        create_voice_relay_provider_html: "%{name} added voice relay %{target}"
+        destroy_voice_relay_provider_html: "%{name} deleted voice relay %{target}"
+        disable_voice_relay_provider_html: "%{name} disabled voice relay %{target}"
+        enable_voice_relay_provider_html: "%{name} enabled voice relay %{target}"
+        update_voice_relay_provider_html: "%{name} updated voice relay %{target}"
+        end_voice_call_allocation_html: "%{name} ended voice call %{target}"
     avatar_decoration_domain_blocks:
       added_at: Added
       block: Block domain
@@ -306,6 +322,7 @@ en:
       extra_categories:
         api: API
         moderation: Moderation
+        voice_calls: Voice calls
       extra_privileges:
         bypass_rate_limit: Bypass API rate limits
         bypass_rate_limit_description: When API rate limit bypass is enabled in server
@@ -316,10 +333,15 @@ en:
         view_followers_admin_timeline: Remove visibility restrictions for followers' posts
         view_followers_admin_timeline_description: >-
           In community (roleplay) mode, users with this permission can view management-timeline-eligible posts from local accounts that follow them regardless of visibility. Direct conversations involving an owner account remain hidden.
+        join_voice_calls: Join voice calls
+        join_voice_calls_description: Allows users to join voice calls in chat rooms they belong to
+        share_screens: Share screens in voice calls
+        share_screens_description: Allows users to share their screen while in a voice call. Screen sharing also has to be enabled in the server settings
       privileges:
         invite_bypass_approval_description: Allows people invited to the server by
           these users to bypass moderation approval
     settings:
+      registration_rejection_patterns_invalid: "Use valid regular expressions, at most %{max_patterns} non-empty lines and %{max_length} characters in total."
       user_themes:
         catalog: Server theme catalog JSON
         catalog_example: 'Short light/dark example:'
@@ -432,6 +454,16 @@ en:
         soft_delete_enabled_hint: Never delete messages for other participants. A deletion only hides the message from its sender while retaining it for participants and authorized moderation.
         soft_delete_roleplay_hint: Always enabled in OC roleplay mode so authorized owners can audit local chat messages.
         title: Chat
+        voice_call_enabled: "Enable voice calls in chat rooms"
+        voice_call_enabled_hint: "Let room members start voice calls and share their screens through a voice relay registered under Voice call relays. Requires native chat and an approved relay."
+        voice_call_federation_host_enabled: "Provide calls to members on other servers"
+        voice_call_federation_host_enabled_hint: "Let members from other servers join calls in rooms owned on this server. Their calls use this server's voice relay slots, and the relay sees their IP addresses. Requires chat federation."
+        voice_call_max_participants: "Maximum participants per voice call"
+        voice_call_max_participants_hint: "Between 2 and 100. The relay reserves this many slots for each call, so a smaller number lets more rooms call at the same time. One-on-one rooms always reserve 2."
+        voice_call_remote_join_enabled: "Allow joining calls hosted on other servers"
+        voice_call_remote_join_enabled_hint: "Let local accounts join calls in rooms owned on other servers. The server that owns the room and its call server see the participant's IP address. Requires chat federation."
+        voice_call_screen_share_enabled: "Allow screen sharing in voice calls"
+        voice_call_screen_share_enabled_hint: "Screen sharing also requires the relay to allow it for this server."
       community_mode:
         soft_hide_deletion: Keep deleted posts for the owner
         soft_hide_deletion_hint: When a post is deleted, hide it instead of destroying
@@ -492,6 +524,10 @@ en:
           federated instances. When disabled, the bar is hidden and no instance metadata
           is fetched.
         title: Instance Information Bar
+      link_preview_direct_hosts:
+        hint: When an outgoing HTTP proxy is configured, link previews (cards and oEmbed) for these hosts and their subdomains connect directly instead of through the proxy. Every other link, and any redirect to a host not listed here, goes through the proxy. Enter one domain per line. Listed sites learn the server's own IP address, so add only sites you trust. IP addresses are not accepted.
+        invalid: 'These entries are not valid domains: %{hosts}'
+        title: Hosts for direct link preview connections
       misskey_compat:
         enabled: Enable the Misskey-compatible API layer
         enabled_hint: When enabled, this server also answers a subset of the Misskey
@@ -557,6 +593,63 @@ en:
       no_username_block_selected: No username rules were changed as none were selected
       not_permitted: Not permitted
       updated_msg: Successfully updated username rule
+    system_checks:
+      voice_relay_revoked_check:
+        action: "Manage voice relays"
+        message_html: "Voice relay %{value} no longer accepts this server. Voice calls on it cannot start until the relay operator restores access or the secret is updated."
+      voice_relay_unavailable_check:
+        action: "Manage voice relays"
+        message_html: "Voice calls are enabled, but no approved voice relay is available."
+    voice_relay_providers:
+      add_new: "Add relay"
+      approved: "Approved"
+      call_end_failed_msg: "Could not end the call (%{code})."
+      call_ended_msg: "The call ended."
+      call_participant_count: "%{participants} / %{slots}"
+      call_participants: "Participants"
+      call_relay: "Relay"
+      call_room: "Room"
+      call_room_deleted: "Deleted room"
+      call_room_direct: "Direct chat #%{id}"
+      call_room_group: "Group #%{id}"
+      call_state:
+        active: "In progress"
+        ending: "Ending"
+        pending: "Starting"
+      call_unavailable: "The relay could not be reached at the last check"
+      call_updated_at: "Last updated"
+      calls_hint: "Calls that hold a reservation on a relay. Ending a call disconnects everyone in it; members can start a new one."
+      calls_title: "Calls in progress"
+      capacity: "Capacity"
+      check: "Check connection and approval"
+      check_disabled_msg: "The relay responded, but this server is disabled there."
+      check_failed_msg: "Connection check failed (%{code})."
+      check_succeeded_msg: "The relay approved this server."
+      created_msg: "Voice relay added. Check the connection to confirm approval."
+      delete: "Delete"
+      description_html: "Voice calls and screen sharing in chat rooms run on an external <a href=\"https://github.com/chalkpe/fediverse-voice-relay\" target=\"_blank\" rel=\"noopener\">voice relay</a>. Ask a relay operator to register this server, then enter the relay address and the issued secret here. This server's origin is <code>%{origin}</code>."
+      destroyed_msg: "Voice relay deleted."
+      disable: "Disable"
+      disabled: "Disabled"
+      edit: "Edit relay"
+      enable: "Enable"
+      end_call: "End call"
+      end_call_confirm: "Disconnect everyone in this call?"
+      last_checked: "Last checked"
+      last_error: "Last error: %{code}"
+      never_checked: "Not checked yet"
+      no_calls: "No calls are in progress."
+      not_approved: "Not approved"
+      origin: "Relay address"
+      origin_unavailable: "This server must use HTTPS to connect to a voice relay."
+      revoked: "Approval revoked"
+      revoked_hint: "The relay rejected this server at %{time}. Ask the relay operator, or update the secret and check again."
+      screen_share_allowed: "Screen sharing allowed"
+      screen_share_not_allowed: "Screen sharing not allowed"
+      slots: "%{reserved} of %{max} slots reserved, %{rooms} more rooms available"
+      status: "Status"
+      title: "Voice call relays"
+      updated_msg: "Voice relay updated."
   antennas:
     errors:
       limit: You have reached the maximum number of antennas
@@ -573,6 +666,7 @@ en:
     customized: Customized - Emojis
     misskey_flavour: Customized - Misskey Flavour
   auth:
+    registration_rejected: "Sign-up is not allowed with this email address or username."
     disable_custom_css: Disable custom CSS
     progress:
       list: Sign up progress
@@ -631,6 +725,16 @@ en:
     types:
       clips: Clips
   misskey_compat:
+    authorization:
+      access_request_html: "%{app} is requesting access to your account %{account}."
+      access_request_unnamed_html: An application is requesting access to your account %{account}.
+      approve: Approve
+      done_automatic: Authorization is complete. Returning you to the app automatically.
+      done_fallback: If you are not returned to the app, press the button below.
+      done_manual: Authorization is complete. Please return to the app.
+      done_title: Authorization complete
+      permission_notice: If you approve, this application will be able to post, react, check notifications and more on your behalf.
+      return_to_app: Return to the app
     scratchpad:
       code_label: AiScript code
       description: Paste the code shown in your Misskey-compatible app below and run
@@ -746,6 +850,8 @@ en:
           quote, software other than Mastodon, maybe quoted if they don't accept the
           FEP-044f (Fediverse Enhancement Proposals)<br>%{instance} default is 'Nobody'"
       form_admin_settings:
+        registration_reject_email_pattern: "One case-sensitive substring per line. Start a line with ? to use a regular expression (use (?i) for case-insensitive matching). Blank lines are ignored. Applies to new sign-ups, including invitations; existing accounts are unaffected."
+        registration_reject_username_pattern: "One case-sensitive substring per line. Start a line with ? to use a regular expression (use (?i) for case-insensitive matching). Blank lines are ignored. Applies to new sign-ups, including invitations; existing accounts are unaffected."
         theme_color: The accent color used by browsers for the address bar and app
           UI.
       user_role:
@@ -753,6 +859,9 @@ en:
           Leave blank to use the server default. Set to 0 for unlimited.
         extra_permissions_as_keys: Additional Custodon-specific permissions granted
           to this role
+      voice_relay_provider:
+        origin: "The relay's public HTTPS address, for example https://voice.example.org"
+        secret: "The secret the relay operator issued for this server, at least 32 characters. Leave blank to keep the current secret."
     labels:
       defaults:
         custom_css_text: Custom CSS
@@ -808,12 +917,22 @@ en:
           does not prevent software that does not support FEP-044f from quoting.<br>The
           default on %{instance} is 'Nobody'."
       form_admin_settings:
+        registration_reject_email_pattern: "Email patterns to reject at sign-up"
+        registration_reject_username_pattern: "Username patterns to reject at sign-up"
         local_account_statuses_access: Access to local account feeds
         local_status_page_access: Access to individual status pages
         theme_color: Theme color
       user_role:
         drive_quota: Drive quota per user (MB)
         extra_permissions_as_keys: Additional permissions
+      voice_relay_provider:
+        origin: "Relay address"
+        secret: "Secret"
+  statuses:
+    errors:
+      invalid_reply_scope: "Reply audience requires a limited post and cannot be combined with a circle or another visibility."
+      reply_scope_quote: "Embedded quotes cannot be added to a reply with a limited audience."
+      reply_scope_recipients: "This reply cannot mention people who did not receive the original post."
   statuses_cleanup:
     ignore_reactions: Ignore reactions
     interaction_exceptions_explanation: Posts which temporarily exceed the favorite

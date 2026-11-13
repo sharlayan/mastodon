@@ -183,6 +183,21 @@ RSpec.describe Auth::RegistrationsController do
       end
     end
 
+    it 'rejects email and username patterns and handles missing account attributes' do
+      Setting.registrations_mode = 'open'
+      Setting.registration_reject_email_pattern = 'spam+'
+      Setting.registration_reject_username_pattern = '?\Abot\d+\z'
+
+      [{ username: 'alice', email: 'spam+123@example.com' }, { username: 'bot123', email: 'real@example.com' }, { email: 'real@example.com' }].each do |attributes|
+        user_params = { email: attributes[:email], password: '12345678', password_confirmation: '12345678', agreement: 'true' }
+        user_params[:account_attributes] = { username: attributes[:username] } if attributes[:username]
+
+        expect { post :create, params: { user: user_params } }.to not_change(User, :count).and not_change(Account, :count)
+        expect(response).to have_http_status(:success)
+        expect(response.body).to include(I18n.t('auth.registration_rejected')) if attributes[:username]
+      end
+    end
+
     context 'when an accept language is present in headers' do
       subject do
         Setting.registrations_mode = 'open'

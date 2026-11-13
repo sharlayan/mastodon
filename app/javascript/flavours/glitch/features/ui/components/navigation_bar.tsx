@@ -5,7 +5,11 @@ import { useIntl, defineMessages, FormattedMessage } from 'react-intl';
 import classNames from 'classnames';
 import { NavLink, useRouteMatch } from 'react-router-dom';
 
+import { navigationPanelItemMessages } from '@/flavours/glitch/sharlayan/registry/navigation/items';
+import { useMobileLocalTimeline } from '@/flavours/glitch/sharlayan/registry/navigation/mobile';
 import AddIcon from '@/material-icons/400-24px/add.svg?react';
+import PeopleActiveIcon from '@/material-icons/400-24px/group-fill.svg?react';
+import PeopleIcon from '@/material-icons/400-24px/group.svg?react';
 import HomeActiveIcon from '@/material-icons/400-24px/home-fill.svg?react';
 import HomeIcon from '@/material-icons/400-24px/home.svg?react';
 import MenuIcon from '@/material-icons/400-24px/menu.svg?react';
@@ -188,6 +192,7 @@ export const NavigationBar: React.FC = () => {
   const { signedIn } = useIdentity();
   const dispatch = useAppDispatch();
   const open = useAppSelector((state) => state.navigation.open);
+  const showLocalTimeline = useMobileLocalTimeline();
   const intl = useIntl();
 
   const handleClick = useCallback(() => {
@@ -211,11 +216,20 @@ export const NavigationBar: React.FC = () => {
               icon={<Icon id='' icon={HomeIcon} />}
               activeIcon={<Icon id='' icon={HomeActiveIcon} />}
             />
-            <IconLabelButton
-              title={intl.formatMessage(messages.search)}
-              to='/explore'
-              icon={<Icon id='' icon={SearchIcon} />}
-            />
+            {showLocalTimeline ? (
+              <IconLabelButton
+                title={intl.formatMessage(navigationPanelItemMessages.local)}
+                to='/public/local'
+                icon={<Icon id='' icon={PeopleIcon} />}
+                activeIcon={<Icon id='' icon={PeopleActiveIcon} />}
+              />
+            ) : (
+              <IconLabelButton
+                title={intl.formatMessage(messages.search)}
+                to='/explore'
+                icon={<Icon id='' icon={SearchIcon} />}
+              />
+            )}
             <PublishButton />
             <NotificationsButton />
           </>

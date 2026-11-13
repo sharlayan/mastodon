@@ -60,7 +60,7 @@ build_app() {
     export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
     case \$(yarn --version 2>/dev/null || true) in
       4.*) ;;
-      *) echo 'Yarn 4 is required: run corepack enable, or npm install -g corepack first on Node.js 25+' >&2; exit 1 ;;
+      *) echo 'Yarn 4 is required: run npm install -g corepack, then corepack enable' >&2; exit 1 ;;
     esac
     export RAILS_ENV=production NODE_ENV=production MAKEFLAGS=-j1 CMAKE_BUILD_PARALLEL_LEVEL=1
     bundle config set --local deployment true

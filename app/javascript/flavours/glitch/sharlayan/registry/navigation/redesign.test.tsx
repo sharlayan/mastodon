@@ -9,9 +9,12 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 import { fetchAntennas } from '@/flavours/glitch/actions/antennas';
 import { fetchBoardAnnouncementsUnreadCount } from '@/flavours/glitch/actions/board_announcements';
+import { RedesignMobileNavigation } from '@/flavours/glitch/features/navigation_panel/redesign/mobile_nav';
+import { NavigationBar } from '@/flavours/glitch/features/ui/components/navigation_bar';
 import {
   EXTRA_PERMISSION_VIEW_ADMIN_TIMELINE,
   EXTRA_PERMISSION_VIEW_FOLLOWERS_ADMIN_TIMELINE,
+  PEMRISSION_VIEW_FEEDS,
   PERMISSION_ADMINISTRATOR,
   PERMISSION_VIEW_DASHBOARD,
 } from '@/flavours/glitch/permissions';
@@ -29,6 +32,7 @@ const context = vi.hoisted(() => ({
   signedIn: true,
   permissions: 0,
   extraPermissions: 0,
+  searchClick: vi.fn(),
   flags: {
     antennaEnabled: true,
     boardAnnouncementsEnabled: true,
@@ -54,10 +58,12 @@ let state: {
   local_settings: ImmutableMap<string, unknown>;
   boardAnnouncements: { unreadCount: number };
   antennas: ImmutableMap<string, unknown>;
+  navigation: { open: boolean };
 } = {
   local_settings: fromJS({}),
   boardAnnouncements: { unreadCount: 3 },
   antennas: fromJS({}),
+  navigation: { open: false },
 };
 
 vi.mock('@/flavours/glitch/initial_state', () => context.flags);
@@ -104,6 +110,9 @@ vi.mock('@/flavours/glitch/actions/board_announcements', () => ({
     type: 'FETCH_ANNOUNCEMENTS',
   })),
 }));
+vi.mock('@/flavours/glitch/actions/server', () => ({
+  fetchServer: vi.fn(() => ({ type: 'FETCH_SERVER' })),
+}));
 vi.mock('@/flavours/glitch/actions/modal', () => ({
   openModal: (payload: unknown) => ({ type: 'OPEN_MODAL', payload }),
 }));
@@ -121,6 +130,9 @@ vi.mock(
   }),
 );
 vi.mock('@/flavours/glitch/components/menu', () => ({
+  Menu: ({ children }: { children: React.ReactNode }) => children,
+  MenuList: ({ children }: { children: React.ReactNode }) => children,
+  MenuTrigger: () => null,
   LegacyDropdownMenuItems: ({
     items,
   }: {
@@ -145,6 +157,34 @@ vi.mock('@/flavours/glitch/components/menu', () => ({
         </a>
       );
     }),
+}));
+
+vi.mock('@/flavours/glitch/features/navigation_panel/redesign', () => ({
+  RedesignNavigationPanel: () => null,
+  useNotificationsCount: () => 0,
+  handleSearchLinkClick: context.searchClick,
+}));
+vi.mock(
+  '@/flavours/glitch/features/navigation_panel/redesign/account_card_and_menu',
+  () => ({ AccountMenuItems: () => null }),
+);
+vi.mock('@/flavours/glitch/features/navigation_panel/redesign/header', () => ({
+  LogoLockup: () => null,
+}));
+vi.mock('@/flavours/glitch/features/compose/redesign/trigger', () => ({
+  ComposeRedesignButton: () => null,
+}));
+vi.mock(
+  '@/flavours/glitch/features/ui/hooks/use_confirm_draft_before_publish',
+  () => ({
+    useConfirmDraftBeforePublish: () => vi.fn(),
+  }),
+);
+vi.mock('@/flavours/glitch/selectors/notifications', () => ({
+  selectUnreadNotificationGroupsCount: () => 0,
+}));
+vi.mock('@/flavours/glitch/components/avatar', () => ({
+  Avatar: () => null,
 }));
 
 const renderNavigation = (element: React.ReactNode) =>
@@ -177,16 +217,113 @@ describe('Sharlayan redesign navigation', () => {
       driveEnabled: true,
       federatedTimelineEnabled: true,
       localTimelineEnabled: true,
+      localLiveFeedAccess: 'public',
+      trendsEnabled: true,
       pagesEnabled: true,
     });
     state = {
       local_settings: fromJS({ notifications: { tab_badge: true } }),
       boardAnnouncements: { unreadCount: 3 },
       antennas: fromJS({}),
+      navigation: { open: false },
     };
   });
 
   afterEach(cleanup);
+
+  it('replaces only the mobile search tab and preserves local labels and active links in both interfaces', () => {
+    for (const Component of [RedesignMobileNavigation, NavigationBar]) {
+      const view = render(
+        <MemoryRouter initialEntries={['/public/local']}>
+          <IntlProvider locale='en'>
+            <Component />
+          </IntlProvider>
+        </MemoryRouter>,
+      );
+      expect(
+        screen.getByRole('link', { name: 'Search' }).getAttribute('href'),
+      ).toBe('/explore');
+      expect(screen.queryByRole('link', { name: 'Local' })).toBeNull();
+
+      state.local_settings = fromJS({
+        navigation_panel: {
+          mobile_local_timeline: true,
+          order: ['notifications', 'home'],
+          hidden: { local: true },
+        },
+      });
+      view.rerender(
+        <MemoryRouter initialEntries={['/public/local']}>
+          <IntlProvider locale='en'>
+            <Component />
+          </IntlProvider>
+        </MemoryRouter>,
+      );
+
+      const local = screen.getByRole('link', { name: 'Local' });
+      expect(local.getAttribute('href')).toBe('/public/local');
+      expect(local.getAttribute('aria-current')).toBe('page');
+      expect(local.querySelector('svg')).not.toBeNull();
+      expect(screen.queryByRole('link', { name: 'Search' })).toBeNull();
+      fireEvent.click(local);
+      expect(context.searchClick).not.toHaveBeenCalled();
+      view.unmount();
+      state.local_settings = fromJS({});
+    }
+  });
+
+  it('falls back to search when local access is disabled and retains the redesign search focus behavior', () => {
+    state.local_settings = fromJS({
+      navigation_panel: { mobile_local_timeline: true },
+    });
+    for (const Component of [RedesignMobileNavigation, NavigationBar]) {
+      for (const gate of ['feature', 'permission']) {
+        context.flags.localTimelineEnabled = gate !== 'feature';
+        context.flags.localLiveFeedAccess =
+          gate === 'permission' ? 'disabled' : 'public';
+        const view = render(
+          <MemoryRouter>
+            <IntlProvider locale='en'>
+              <Component />
+            </IntlProvider>
+          </MemoryRouter>,
+        );
+        expect(
+          screen.getByRole('link', { name: 'Search' }).getAttribute('href'),
+        ).toBe('/explore');
+        expect(screen.queryByRole('link', { name: 'Local' })).toBeNull();
+        view.unmount();
+      }
+    }
+
+    context.permissions = PEMRISSION_VIEW_FEEDS;
+    const authorized = render(
+      <MemoryRouter>
+        <IntlProvider locale='en'>
+          <RedesignMobileNavigation />
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+    expect(
+      screen.getByRole('link', { name: 'Local' }).getAttribute('href'),
+    ).toBe('/public/local');
+    authorized.unmount();
+
+    context.permissions = 0;
+    context.flags.trendsEnabled = false;
+    const fallback = render(
+      <MemoryRouter>
+        <IntlProvider locale='en'>
+          <RedesignMobileNavigation />
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+    const search = screen.getByRole('link', { name: 'Search' });
+    expect(search.getAttribute('href')).toBe('/search');
+    fireEvent.click(search);
+    expect(context.searchClick).toHaveBeenCalledOnce();
+    fallback.unmount();
+  });
 
   it('preserves saved ordering and hidden items while keeping announcements visible', () => {
     state.local_settings = fromJS({
@@ -354,6 +491,12 @@ describe('Sharlayan redesign navigation', () => {
       '/pages',
       '/circles',
     ]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Drive' }));
+    expect(context.dispatch).toHaveBeenLastCalledWith({
+      type: 'OPEN_MODAL',
+      payload: { modalType: 'DRIVE_MANAGER', modalProps: {} },
+    });
   });
 
   it('does not fetch antennas when disabled', () => {
@@ -375,11 +518,10 @@ describe('Sharlayan redesign navigation', () => {
     expect(paths()).toEqual(['/antennas', '/antennas/two', '/antennas/one']);
   });
 
-  it('connects Drive, custom mute screens, account switching, and app settings', () => {
+  it('connects custom mute screens, account switching, and app settings', () => {
     renderNavigation(<SharlayanRedesignAccountMenuItems />);
 
     expect(paths()).toEqual([
-      '/drive',
       '/mutes',
       '/custom_emoji_mutes',
       '/reaction_mutes',
@@ -399,10 +541,10 @@ describe('Sharlayan redesign navigation', () => {
     });
   });
 
-  it('hides Drive when its feature gate is off', () => {
+  it('hides the Drive button when its feature gate is off', () => {
     context.flags.driveEnabled = false;
-    renderNavigation(<SharlayanRedesignAccountMenuItems />);
+    renderNavigation(<SharlayanRedesignExtensions />);
 
-    expect(paths()).not.toContain('/drive');
+    expect(screen.queryByRole('button', { name: 'Drive' })).toBeNull();
   });
 });

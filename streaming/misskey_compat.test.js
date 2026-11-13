@@ -153,7 +153,41 @@ test('chat channels tell the server that the viewer has a compatible client', as
   await chat.connect('chatRoom', { roomId: '9' });
   await chat.connect('main');
 
-  assert.deepEqual(chat.heartbeats, [['misskey:chatRoom:7:9', 'misskey:chatClient:7'], ['misskey:chatMain:7', 'misskey:chatClient:7']]);
+  assert.deepEqual(chat.heartbeats.filter((channels) => channels.length > 1), [['misskey:chatRoom:7:9', 'misskey:chatClient:7'], ['misskey:chatMain:7', 'misskey:chatClient:7']]);
+});
+
+test('main channel delivers main stream events without chat and stops after disconnect', async () => {
+  const chat = chatFixture();
+  chat.state.enabled = false;
+  await chat.connect('main', {}, 'main-1');
+  const emitMain = async (payload) => {
+    for (const listener of chat.listeners.get('misskey:main:7') ?? []) listener({ event: 'main', payload });
+    await chat.flush();
+  };
+  await emitMain({ type: 'notification', body: { id: 'n1', type: 'app', body: 'hello' } });
+  await emitMain({ type: 'pageEvent', body: { pageId: 'p1', event: 'clicked' } });
+  for (const listener of chat.listeners.get('misskey:main:7') ?? []) listener({ event: 'chat', payload: { type: 'notification' } });
+  chat.compat.handleMessage(chat.session, { type: 'disconnect', body: { id: 'main-1' } });
+  await emitMain({ type: 'notification', body: { id: 'n2' } });
+
+  assert.deepEqual(chat.sent.map(({ body }) => [body.id, body.type, body.body.id ?? body.body.pageId]), [['main-1', 'notification', 'n1'], ['main-1', 'pageEvent', 'p1']]);
+  assert.deepEqual(chat.heartbeats, [['misskey:main:7']]);
+  assert.equal(chat.session.misskeyMain.size, 0);
+});
+
+test('main channel events need read:account from a Misskey grant or broad OAuth read', async () => {
+  const subscribed = async (grants, scopes) => {
+    const chat = chatFixture();
+    chat.state.grants = grants;
+    chat.session.request.scopes = scopes;
+    await chat.connect('main');
+    return chat.listeners.get('misskey:main:7')?.size ?? 0;
+  };
+
+  assert.equal(await subscribed(['read:chat'], ['read']), 0);
+  assert.equal(await subscribed(undefined, ['read:statuses']), 0);
+  assert.equal(await subscribed(['read:account'], []), 1);
+  assert.equal(await subscribed(undefined, ['read:notifications']), 1);
 });
 
 test('chatUser and chatRoom deliver viewer-specific message and mutation envelopes', async () => {
@@ -324,4 +358,98 @@ test('home and antenna channels are not filtered again in streaming', async () =
 
   assert.deepEqual(home.sent.map(({ body }) => body.body.id), ['home']);
   assert.equal(home.filterCalls.length, 0);
+});
+
+const reversiFixture = ({ permissions, scopes = ['read', 'write'], games = ['9'] } = {}) => {
+  const listeners = new Map();
+  const sent = [];
+  const actions = [];
+  const compat = createMisskeyCompat({
+    subscribe: (channel, listener) => listeners.set(channel, listener),
+    unsubscribe: (channel) => listeners.delete(channel),
+    subscriptionHeartbeat: () => () => {},
+    channelNameToIds: async () => ({ channelIds: [] }),
+    authorizeStatusAccess: async () => true,
+    loadGrantPermissions: async () => permissions,
+    authorizeReversiGame: async (gameId) => games.includes(gameId),
+    enqueueReversiAction: async (...args) => { actions.push(args); },
+    isEnabled: async () => true,
+    logger: { error: () => {}, warn: () => {} },
+  });
+  const session = {
+    request: { accountId: '7', scopes },
+    websocket: { readyState: 1, OPEN: 1, send: (message) => sent.push(JSON.parse(message)) },
+  };
+  const handle = async (type, body) => {
+    compat.handleMessage(session, { type, body });
+    await flush();
+    await flush();
+  };
+
+  return { actions, compat, handle, listeners, sent, session };
+};
+
+test('reversi channels relay invitations and game events and forward game actions as jobs', async () => {
+  const { actions, compat, handle, listeners, sent, session } = reversiFixture();
+  await handle('connect', { id: 'lobby', channel: 'reversi' });
+  await handle('connect', { id: 'game', channel: 'reversiGame', params: { gameId: '0000000000000009' } });
+  await handle('connect', { id: 'missing', channel: 'reversiGame', params: { gameId: '000000000000000a' } });
+  assert.deepEqual([...listeners.keys()], ['misskey:reversi:7', 'misskey:reversiGame:9']);
+
+  listeners.get('misskey:reversi:7')({ event: 'reversi', payload: { type: 'invited', body: { user: { id: 'u' } } } });
+  listeners.get('misskey:reversiGame:9')({ event: 'reversi', payload: { type: 'canceled', body: { userId: 'u' } } });
+  listeners.get('misskey:reversiGame:9')({ event: 'note', payload: {} });
+  assert.deepEqual(sent, [
+    { type: 'channel', body: { id: 'lobby', type: 'invited', body: { user: { id: 'u' } } } },
+    { type: 'channel', body: { id: 'game', type: 'canceled', body: { userId: 'u' } } },
+  ]);
+
+  await handle('ch', { id: 'game', type: 'putStone', body: { pos: 19, id: 'op' } });
+  await handle('ch', { id: 'game', type: 'claimTimeIsUp', body: {} });
+  await handle('ch', { id: 'game', type: 'unknown', body: {} });
+  await handle('ch', { id: 'lobby', type: 'ready', body: true });
+  assert.deepEqual(actions, [['7', '9', 'putStone', { pos: 19, id: 'op' }], ['7', '9', 'claimTimeIsUp', {}]]);
+
+  for (let i = 0; i < 12; i += 1) compat.handleMessage(session, { type: 'ch', body: { id: 'game', type: 'ready', body: true } });
+  await flush();
+  await flush();
+  assert.equal(actions.length < 12, true);
+
+  compat.cleanup(session);
+  assert.equal(listeners.size, 0);
+});
+
+test('reversi game actions require write permission while the lobby requires read:account', async () => {
+  const readOnly = reversiFixture({ permissions: ['read:account'] });
+  await readOnly.handle('connect', { id: 'lobby', channel: 'reversi' });
+  await readOnly.handle('connect', { id: 'game', channel: 'reversiGame', params: { gameId: '0000000000000009' } });
+  await readOnly.handle('ch', { id: 'game', type: 'ready', body: true });
+  assert.deepEqual([...readOnly.listeners.keys()], ['misskey:reversi:7', 'misskey:reversiGame:9']);
+  assert.deepEqual(readOnly.actions, []);
+
+  const noRead = reversiFixture({ permissions: ['write:account'] });
+  await noRead.handle('connect', { id: 'lobby', channel: 'reversi' });
+  await noRead.handle('connect', { id: 'game', channel: 'reversiGame', params: { gameId: '0000000000000009' } });
+  await noRead.handle('ch', { id: 'game', type: 'ready', body: true });
+  assert.deepEqual([...noRead.listeners.keys()], ['misskey:reversiGame:9']);
+  assert.deepEqual(noRead.actions, [['7', '9', 'ready', true]]);
+});
+
+test('channel streams deliver notes of the decoded channel after viewer filtering', async () => {
+  const stream = fixture(undefined, (targets) => targets.authorIds.includes('9'));
+  await stream.connect('channel', { channelId: 'atgz6cms00000wdi' });
+
+  assert.deepEqual([...stream.listeners.keys()], ['misskey:channel:117603019678589926']);
+
+  stream.emit('channel:117603019678589926', note({ id: 'visible', channelId: 'atgz6cms00000wdi' }));
+  stream.emit('channel:117603019678589926', note({ id: 'blocked', userId: '0000000000000009' }));
+  await flush();
+
+  assert.deepEqual(stream.sent.map(({ body }) => [body.id, body.type, body.body.id]), [['channel', 'note', 'visible']]);
+  assert.deepEqual(stream.filterCalls.map(({ viewerAccountId }) => viewerAccountId), ['7', '7']);
+
+  const invalid = fixture();
+  await invalid.connect('channel', { channelId: 42 });
+  assert.equal(invalid.listeners.size, 0);
+  assert.equal(invalid.session.misskey.channels.size, 0);
 });

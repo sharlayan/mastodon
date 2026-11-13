@@ -223,7 +223,10 @@ export const quoteComposeByStatus = createAppThunk(
 
     if (composeState.get('id')) {
       dispatch(showAlert({ message: messages.quoteErrorEdit }));
-    } else if (composeState.get('privacy') === 'direct') {
+    } else if (
+      composeState.get('privacy') === 'direct' ||
+      composeState.get('limited_scope') === 'reply'
+    ) {
       dispatch(showAlert({ message: messages.quoteErrorPrivateMention }));
     } else if (composeState.get('poll')) {
       dispatch(showAlert({ message: messages.quoteErrorPoll }));
@@ -286,7 +289,8 @@ const composeStateForbidsLink = (composeState: RootState['compose']) => {
     composeState.get('poll') ||
     composeState.get('is_uploading') ||
     composeState.get('id') ||
-    composeState.get('privacy') === 'direct'
+    composeState.get('privacy') === 'direct' ||
+    composeState.get('limited_scope') === 'reply'
   );
 };
 
@@ -346,6 +350,14 @@ export const setDragUploadEnabled = createAction<boolean>(
 
 export const changeComposeCircle = createAction<string | null>(
   'compose/circle_change',
+);
+
+export const changeComposeReplyScope = createAppThunk(
+  'compose/reply_scope_change',
+  (enabled: boolean, { dispatch }) => {
+    if (enabled) dispatch(quoteComposeCancel());
+    return enabled;
+  },
 );
 
 export const toggleComposeClip = createAction<string>('compose/clip_toggle');

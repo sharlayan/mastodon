@@ -7,7 +7,6 @@ import { openModal } from 'flavours/glitch/actions/modal';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import { Icon } from 'flavours/glitch/components/icon';
 import { useIdentity } from 'flavours/glitch/identity_context';
-import { driveEnabled } from 'flavours/glitch/initial_state';
 import type { MenuItem } from 'flavours/glitch/models/dropdown_menu';
 import {
   canManageReports,
@@ -113,12 +112,8 @@ export const MoreLink: React.FC = () => {
       action: handleLogoutClick,
     });
 
-    extendSharlayanMoreMenuItems(
-      arr,
-      intl.formatMessage,
-      () =>
-        dispatch(openModal({ modalType: 'ACCOUNT_SWITCHER', modalProps: {} })),
-      driveEnabled,
+    extendSharlayanMoreMenuItems(arr, intl.formatMessage, () =>
+      dispatch(openModal({ modalType: 'ACCOUNT_SWITCHER', modalProps: {} })),
     );
 
     return arr;

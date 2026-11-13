@@ -79,6 +79,28 @@ RSpec.describe RemoveStatusService, :inline_jobs do
     end
   end
 
+  context 'when preserved media include shared Drive pointers', inline_jobs: false do
+    it 'privatizes owned attachments while leaving the shared Drive file accessible' do
+      drive_file = alice.drive_files.create!(file: attachment_fixture('attachment.jpg'))
+      deleted_status = Fabricate(:status, account: alice)
+      kept_status = Fabricate(:status, account: alice)
+      deleted_pointer = drive_file.build_pointer(alice).tap { |pointer| pointer.update!(status: deleted_status) }
+      kept_pointer = drive_file.build_pointer(alice).tap { |pointer| pointer.update!(status: kept_status) }
+      attachment = Fabricate(:media_attachment, account: alice, status: deleted_status)
+      page = Fabricate(:page, account: alice, content: [{ 'id' => 'image', 'type' => 'image', 'fileId' => kept_pointer.id.to_s }])
+      changed_paths = []
+      allow(FileUtils).to receive(:chmod) { |_mask, path| changed_paths << path }
+
+      subject.call(deleted_status, preserve: true)
+
+      expect(changed_paths).to include(attachment.file.path(:original))
+      expect(changed_paths).to_not include(drive_file.file.path(:original), drive_file.file.path(:small))
+      expect(deleted_pointer.reload.drive_file).to eq(drive_file)
+      expect(kept_pointer.reload.status).to eq(kept_status)
+      expect(page.reload.attached_media).to include(kept_pointer)
+    end
+  end
+
   context 'when removed status is a private self-reblog' do
     let!(:original_status) { Fabricate(:status, account: alice, text: 'Hello ThisIsASecret', visibility: :private) }
     let!(:status) { ReblogService.new.call(alice, original_status) }

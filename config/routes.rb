@@ -155,6 +155,9 @@ Rails.application.routes.draw do
   scope module: :activitypub, defaults: { format: :json } do
     get '/chat/messages/:id', to: 'chat_messages#show', as: :chat_message
     get '/chat/rooms/:id', to: 'chat_rooms#show', as: :chat_room
+    get '/livekit/federation/token', to: 'voice_federation#capability', as: :voice_federation_token
+    post '/livekit/federation/token', to: 'voice_federation#token'
+    post '/livekit/federation/status', to: 'voice_federation#status', as: :voice_federation_status
   end
 
   draw(:sharlayan_web)

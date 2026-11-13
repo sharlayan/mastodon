@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class FanOutOnWriteService < BaseService
+  prepend Sharlayan::FanOutOnWriteServiceExtensions
   include Redisable
 
   # Push a status into home and mentions feeds

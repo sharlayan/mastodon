@@ -51,6 +51,7 @@ class Api::V1::StatusesController < Api::BaseController
       **(status_params.key?(:reaction_acceptance) ? { reaction_acceptance: status_params[:reaction_acceptance] } : {}),
       allowed_mentions: status_params[:allowed_mentions],
       circle_id: status_params[:circle_id],
+      **status_params.slice(:limited_scope, :limited_reply_account_ids).to_h.symbolize_keys,
       clip_ids: status_params[:clip_ids],
       idempotency: request.headers['Idempotency-Key'],
       with_rate_limit: true
@@ -156,6 +157,8 @@ class Api::V1::StatusesController < Api::BaseController
       :local_only,
       :reaction_acceptance,
       :circle_id,
+      :limited_scope,
+      limited_reply_account_ids: [],
       allowed_mentions: [],
       clip_ids: [],
       media_ids: [],

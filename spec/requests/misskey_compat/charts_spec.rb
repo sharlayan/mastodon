@@ -203,4 +203,31 @@ RSpec.describe 'Misskey-compat charts' do
       Setting.misskey_compat_expose_follow_graph = false
     end
   end
+
+  it 'counts profile views from compat users/show per Misskey: unique viewers and visitors, never the owner' do
+    owner = user.account
+    viewer = Fabricate(:user)
+    viewer_token = Fabricate(:accessible_access_token, resource_owner_id: viewer.id, scopes: 'read').token
+    show = ->(params, headers = {}) { post '/api/users/show', params: params.merge(userId: MisskeyCompat::MiId.encode(owner.id)), headers: headers, as: :json }
+
+    travel_to(Time.utc(2026, 7, 24, 11, 5)) { show.call({}, { 'REMOTE_ADDR' => '198.51.100.1' }) }
+    show.call({ i: viewer_token })
+    show.call({ i: viewer_token })
+    show.call({ i: token })
+    show.call({}, { 'REMOTE_ADDR' => '198.51.100.1' })
+    show.call({}, { 'REMOTE_ADDR' => '198.51.100.2' })
+    post '/api/users/show', params: { userId: MisskeyCompat::MiId.encode(Fabricate(:account, domain: 'remote.example').id) }, as: :json
+
+    expect(MisskeyUserPageView.where(visitor: true).pluck(:viewer_key)).to all(match(/\A\h{64}\z/))
+
+    post '/api/charts/user/pv', params: { i: token, userId: MisskeyCompat::MiId.encode(owner.id), span: 'hour', limit: 2 }, as: :json
+
+    expect(response.parsed_body).to eq(
+      'upv' => { 'user' => [1, 0], 'visitor' => [2, 1] },
+      'pv' => { 'user' => [2, 0], 'visitor' => [2, 1] }
+    )
+
+    post '/api/charts/user/pv', params: { i: token, userId: MisskeyCompat::MiId.encode(owner.id), span: 'day', limit: 1 }, as: :json
+    expect(response.parsed_body).to eq('upv' => { 'user' => [1], 'visitor' => [2] }, 'pv' => { 'user' => [2], 'visitor' => [3] })
+  end
 end

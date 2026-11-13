@@ -20,16 +20,15 @@ import {
   apiAddAccountToCircle,
   apiRemoveAccountFromCircle,
 } from 'flavours/glitch/api/circles';
+import { AccountFollowersCount } from 'flavours/glitch/components/account_followers_count';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import { VerifiedBadge } from 'flavours/glitch/components/badge';
 import { Button } from 'flavours/glitch/components/button';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { ColumnSearchHeader } from 'flavours/glitch/components/column/search_header';
-import { FollowersCounter } from 'flavours/glitch/components/counters';
 import { DisplayName } from 'flavours/glitch/components/display_name';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
-import { ShortNumber } from 'flavours/glitch/components/short_number';
 import { useSearchAccounts } from 'flavours/glitch/hooks/useSearchAccounts';
 import { me } from 'flavours/glitch/initial_state';
 import { selectUserListWithoutMe } from 'flavours/glitch/selectors/user_lists';
@@ -118,9 +117,9 @@ const AccountItem: React.FC<{
             <DisplayName account={account} />
 
             <div className='account__details'>
-              <ShortNumber
+              <AccountFollowersCount
                 value={account.followers_count}
-                renderer={FollowersCounter}
+                withLabel
               />{' '}
               {firstVerifiedField && (
                 <VerifiedBadge link={firstVerifiedField.value} />

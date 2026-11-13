@@ -5,6 +5,9 @@
 # Table name: misskey_access_grants
 #
 #  id                :bigint(8)        not null, primary key
+#  description       :text
+#  icon_url          :string
+#  name              :string
 #  native_user_token :boolean          default(FALSE), not null
 #  permissions       :string           default([]), not null, is an Array
 #  created_at        :datetime         not null

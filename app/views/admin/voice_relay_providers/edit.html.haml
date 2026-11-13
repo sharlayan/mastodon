@@ -1,0 +1,8 @@
+- content_for :page_title do
+  = t('admin.voice_relay_providers.edit')
+
+= simple_form_for [:admin, @provider] do |form|
+  = render form
+
+  .actions
+    = form.button :button, t('generic.save_changes'), type: :submit

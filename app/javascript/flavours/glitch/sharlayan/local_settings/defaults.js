@@ -54,6 +54,7 @@ export const sharlayanLocalSettingsDefaults = ImmutableMap({
     show_report: true,
   }),
   navigation_panel: ImmutableMap({
+    mobile_local_timeline: false,
     order: ImmutableList(),
     hidden: ImmutableMap(),
   }),

@@ -45,13 +45,88 @@ class RateLimiter
       period: 5.minutes.freeze,
     }.freeze,
 
+    misskey_compat_webhook_test: {
+      limit: 60,
+      period: 15.minutes.freeze,
+    }.freeze,
+
     misskey_compat_account_data: {
       limit: 10,
       period: 1.hour.freeze,
     }.freeze,
 
+    misskey_compat_following_update_all: {
+      limit: 10,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_compat_fetch_rss: {
+      limit: 60,
+      period: 10.minutes.freeze,
+    }.freeze,
+
+    misskey_compat_external_resources: {
+      limit: 50,
+      period: 1.hour.freeze,
+    }.freeze,
+
     misskey_compat_ap_get: {
       limit: 30,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_compat_channel_create: {
+      limit: 10,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_compat_email_request: {
+      limit: 3,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_compat_signup_check: {
+      limit: 60,
+      period: 5.minutes.freeze,
+    }.freeze,
+
+    misskey_compat_notifications_create: {
+      limit: 10,
+      period: 1.minute.freeze,
+    }.freeze,
+
+    misskey_compat_test_notification: {
+      limit: 10,
+      period: 1.minute.freeze,
+    }.freeze,
+
+    misskey_compat_bubble_game: {
+      limit: 120,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_compat_bubble_game_interval: {
+      limit: 1,
+      period: 30.seconds.freeze,
+    }.freeze,
+
+    misskey_compat_export_antennas: {
+      limit: 1,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_compat_import_antennas: {
+      limit: 1,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_compat_export_favorites: {
+      limit: 1,
+      period: 24.hours.freeze,
+    }.freeze,
+
+    misskey_compat_export_custom_emojis: {
+      limit: 1,
       period: 1.hour.freeze,
     }.freeze,
 
@@ -82,6 +157,26 @@ class RateLimiter
 
     misskey_users_show: {
       limit: 100,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_gallery_post_create: {
+      limit: 20,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_gallery_post_update: {
+      limit: 300,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_flash_create: {
+      limit: 10,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_flash_update: {
+      limit: 300,
       period: 1.hour.freeze,
     }.freeze,
 
@@ -128,6 +223,16 @@ class RateLimiter
     chat_writes: {
       limit: 120,
       period: 5.minutes.freeze,
+    }.freeze,
+
+    voice_calls: {
+      limit: 30,
+      period: 1.minute.freeze,
+    }.freeze,
+
+    voice_call_statuses: {
+      limit: 120,
+      period: 1.minute.freeze,
     }.freeze,
 
     misskey_hashtags: {

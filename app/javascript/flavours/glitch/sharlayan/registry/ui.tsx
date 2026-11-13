@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { BoardAnnouncementBanner } from 'flavours/glitch/features/board_announcements/banner';
+import { VoiceCallBar } from 'flavours/glitch/features/chat/voice/bar';
 import { isWithinDriveDropzone } from 'flavours/glitch/features/drive/dnd';
 import { InlineComposeShell } from 'flavours/glitch/features/ui/components/inline_compose_shell';
 import { ContentFontSize } from 'flavours/glitch/sharlayan/local_settings/content_font_size';
@@ -15,6 +16,7 @@ export const SharlayanUiExtensions = (): ReactNode => (
     <ContentFontSize />
     <SensitiveEmojiDisplay />
     <BoardAnnouncementBanner />
+    <VoiceCallBar />
   </>
 );
 

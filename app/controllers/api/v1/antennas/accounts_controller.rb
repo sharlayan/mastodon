@@ -15,7 +15,7 @@ class Api::V1::Antennas::AccountsController < Api::BaseController
   end
 
   def create
-    ApplicationRecord.transaction do
+    @antenna.with_lock do
       validate_limit!
 
       account_ids.each do |account_id|

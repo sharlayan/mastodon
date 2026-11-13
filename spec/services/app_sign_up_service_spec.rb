@@ -12,6 +12,17 @@ RSpec.describe AppSignUpService do
   describe '#call' do
     let(:params) { good_params }
 
+    it 'enforces registration patterns for invited sign-ups without affecting existing users' do
+      invite = Fabricate(:invite)
+      existing_user = invite.user
+      Setting.registrations_mode = 'open'
+      Setting.registration_reject_email_pattern = '?@'
+
+      expect { subject.call(app, remote_ip, good_params.merge(invite_code: invite.code)) }.to raise_error(ActiveRecord::RecordInvalid)
+      expect(existing_user.update(locale: 'ja')).to be true
+      expect(existing_user.reload.locale).to eq 'ja'
+    end
+
     shared_examples 'successful registration' do
       it 'creates an unconfirmed user with access token and the app\'s scope', :aggregate_failures do
         access_token = subject.call(app, remote_ip, params)

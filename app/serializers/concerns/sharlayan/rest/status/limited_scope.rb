@@ -6,10 +6,23 @@ module Sharlayan::REST::Status::LimitedScope
   included do
     attribute :limited_scope, if: :limited_scope?
     attribute :circle_id, if: :source_circle?
+    attribute :limited_reply_account_ids, if: :source_reply?
   end
 
   def limited_scope?
-    object.limited_visibility? && object.limited_scope.present?
+    object.limited_visibility?
+  end
+
+  def limited_scope
+    object.limited_scope || 'none'
+  end
+
+  def limited_reply_account_ids
+    object.mentions.pluck(:account_id).map(&:to_s)
+  end
+
+  def source_reply?
+    instance_options[:source_requested] && object.limited_visibility? && object.limited_reply?
   end
 
   def circle_id

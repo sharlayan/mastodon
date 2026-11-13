@@ -32,6 +32,11 @@ export const StatusMeta: React.FC<{
     () =>
       status.limited_scope === 'circle' ? (
         <FormattedMessage id='privacy.circle.short' defaultMessage='Circle' />
+      ) : status.limited_scope === 'reply' ? (
+        <FormattedMessage
+          id='privacy.reply.short'
+          defaultMessage='Reply audience'
+        />
       ) : (
         statusVisibilityText(status.visibility)
       ),

@@ -1,6 +1,12 @@
 import { IntlProvider } from 'react-intl';
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 
 import type { ApiDriveFileJSON } from '@/flavours/glitch/api_types/drive';
 
@@ -13,10 +19,19 @@ const mocks = vi.hoisted(() => ({
   apiGetDriveFiles: vi.fn(),
   apiGetDriveFolders: vi.fn(),
   apiGetDriveUsage: vi.fn(),
+  apiDeleteDriveFile: vi.fn(),
+  apiDeleteDriveFolder: vi.fn(),
+  apiMoveDriveFiles: vi.fn(),
+  apiMoveDriveFolder: vi.fn(),
 }));
 
 vi.mock('@/flavours/glitch/store', () => ({
   useAppDispatch: () => mocks.dispatch,
+  useAppSelector: (
+    selector: (state: {
+      dropdownMenu: { openId: null; keyboard: boolean };
+    }) => unknown,
+  ) => selector({ dropdownMenu: { openId: null, keyboard: false } }),
 }));
 
 vi.mock('@/flavours/glitch/api/drive', () => ({
@@ -24,10 +39,11 @@ vi.mock('@/flavours/glitch/api/drive', () => ({
   apiGetDriveFolders: mocks.apiGetDriveFolders,
   apiGetDriveUsage: mocks.apiGetDriveUsage,
   apiCreateDriveFolder: vi.fn(),
-  apiDeleteDriveFile: vi.fn(),
-  apiDeleteDriveFolder: vi.fn(),
+  apiDeleteDriveFile: mocks.apiDeleteDriveFile,
+  apiDeleteDriveFolder: mocks.apiDeleteDriveFolder,
   apiMoveDriveFile: vi.fn(),
-  apiMoveDriveFolder: vi.fn(),
+  apiMoveDriveFiles: mocks.apiMoveDriveFiles,
+  apiMoveDriveFolder: mocks.apiMoveDriveFolder,
   apiRenameDriveFile: vi.fn(),
   apiTransferDriveFileToPosts: vi.fn(),
   apiUpdateDriveFolder: vi.fn(),
@@ -136,5 +152,164 @@ describe('Drive file card keyboard handling', () => {
     fireEvent.keyDown(screen.getByTitle('Portrait'), { key: 'Enter' });
 
     expect(onSelect).toHaveBeenCalledWith(file);
+  });
+});
+
+const folder = (id: string, parentId: string | null = null) => ({
+  id,
+  name: id,
+  parent_id: parentId,
+  files_count: 0,
+  folders_count: 0,
+  created_at: '2026-10-22T00:00:00Z',
+});
+
+const Manager = ({
+  onSelectFile,
+}: {
+  onSelectFile: (file: ApiDriveFileJSON) => void;
+}) => (
+  <DriveBrowser drive={useDrive()} manageable onSelectFile={onSelectFile} />
+);
+
+const checkbox = (name: string) =>
+  screen.getByRole<HTMLInputElement>('checkbox', { name: `Select ${name}` });
+
+const renderManager = async (onSelectFile = vi.fn()) => {
+  render(
+    <IntlProvider locale='en'>
+      <Manager onSelectFile={onSelectFile} />
+    </IntlProvider>,
+  );
+  await screen.findByTitle('Gamma');
+
+  return onSelectFile;
+};
+
+describe('Drive manager selection', () => {
+  beforeEach(() => {
+    mocks.apiGetDriveFolders.mockResolvedValue([folder('Album')]);
+    mocks.apiGetDriveFiles.mockResolvedValue({
+      files: ['Alpha', 'Beta', 'Gamma'].map((id) => makeFile(id, 'image')),
+      links: { refs: [] },
+    });
+    mocks.apiDeleteDriveFile.mockResolvedValue({});
+    mocks.apiDeleteDriveFolder.mockResolvedValue({});
+    mocks.apiMoveDriveFiles.mockResolvedValue([]);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('selects with click, Shift and Ctrl, opens on double-click, and deletes the selection with the Delete key', async () => {
+    const onSelectFile = await renderManager();
+
+    fireEvent.click(screen.getByTitle('Alpha'));
+    fireEvent.click(screen.getByTitle('Gamma'), { shiftKey: true });
+    expect(
+      ['Alpha', 'Beta', 'Gamma'].map((name) => checkbox(name).checked),
+    ).toEqual([true, true, true]);
+
+    fireEvent.click(screen.getByTitle('Beta'), { ctrlKey: true });
+    expect(checkbox('Beta').checked).toBe(false);
+    expect(screen.getByText('2 items selected')).toBeTruthy();
+    expect(onSelectFile).not.toHaveBeenCalled();
+
+    fireEvent.doubleClick(screen.getByTitle('Beta'));
+    expect(onSelectFile).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'Beta' }),
+    );
+
+    fireEvent.keyDown(screen.getByTitle('Alpha'), { key: 'a', ctrlKey: true });
+    expect(checkbox('Album').checked).toBe(true);
+
+    fireEvent.keyDown(screen.getByTitle('Alpha'), { key: 'Delete' });
+
+    await waitFor(() => {
+      expect(mocks.apiDeleteDriveFolder).toHaveBeenCalledWith('Album');
+    });
+    expect(
+      mocks.apiDeleteDriveFile.mock.calls.map(([id]) => id as string),
+    ).toEqual(['Alpha', 'Beta', 'Gamma']);
+  });
+
+  it('drags every selected file onto a folder and moves them in one bulk request', async () => {
+    await renderManager();
+
+    fireEvent.click(screen.getByTitle('Alpha'));
+    fireEvent.click(screen.getByTitle('Beta'), { ctrlKey: true });
+
+    const data = new Map<string, string>();
+    const dataTransfer = {
+      types: [] as string[],
+      setData: (type: string, value: string) => {
+        data.set(type, value);
+        dataTransfer.types.push(type);
+      },
+      getData: (type: string) => data.get(type) ?? '',
+      effectAllowed: '',
+      dropEffect: '',
+    };
+
+    fireEvent.dragStart(screen.getByTitle('Beta'), { dataTransfer });
+    const target = screen.getByTitle('Album');
+    fireEvent.dragOver(target, { dataTransfer });
+    fireEvent.drop(target, { dataTransfer });
+
+    expect(mocks.apiMoveDriveFiles).toHaveBeenCalledWith(
+      ['Alpha', 'Beta'],
+      'Album',
+    );
+    await waitFor(() => {
+      expect(screen.queryByTitle('Alpha')).toBeNull();
+    });
+    expect(screen.getByTitle('Gamma')).toBeTruthy();
+  });
+
+  it('selects the items under a rubber band dragged across empty space', async () => {
+    await renderManager();
+
+    const rects: Record<string, [number, number]> = {
+      'folder:Album': [0, 0],
+      'file:Alpha': [0, 100],
+      'file:Beta': [200, 100],
+      'file:Gamma': [400, 100],
+    };
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: HTMLElement) {
+        const [left, top] = rects[
+          this.getAttribute('data-drive-item') ?? ''
+        ] ?? [0, 0];
+        const size = this.classList.contains('drive__body') ? 1000 : 50;
+        return {
+          left,
+          top,
+          width: size,
+          height: size,
+          right: left + size,
+          bottom: top + size,
+          x: left,
+          y: top,
+          toJSON: () => ({}),
+        };
+      },
+    );
+    HTMLElement.prototype.setPointerCapture = vi.fn();
+    HTMLElement.prototype.hasPointerCapture = vi.fn(() => true);
+    HTMLElement.prototype.releasePointerCapture = vi.fn();
+
+    const body = document.querySelector<HTMLElement>('.drive__body');
+    if (!body) throw new Error('missing drive body');
+    const pointer = { pointerId: 1, pointerType: 'mouse', button: 0 };
+
+    fireEvent.pointerDown(body, { ...pointer, clientX: 150, clientY: 90 });
+    fireEvent.pointerMove(body, { ...pointer, clientX: 260, clientY: 160 });
+    fireEvent.pointerUp(body, { ...pointer, clientX: 260, clientY: 160 });
+
+    expect(
+      ['Album', 'Alpha', 'Beta', 'Gamma'].map((name) => checkbox(name).checked),
+    ).toEqual([false, false, true, false]);
   });
 });

@@ -1,5 +1,17 @@
 # frozen_string_literal: true
 
+# == Schema Information
+#
+# Table name: chat_message_reactions
+#
+#  id              :bigint(8)        not null, primary key
+#  reaction        :string           not null
+#  uri             :string
+#  created_at      :datetime         not null
+#  updated_at      :datetime         not null
+#  account_id      :bigint(8)        not null
+#  chat_message_id :bigint(8)        not null
+#
 class ChatMessageReaction < ApplicationRecord
   CUSTOM_EMOJI_RE = /\A:([a-zA-Z0-9_+-]+):\z/
 

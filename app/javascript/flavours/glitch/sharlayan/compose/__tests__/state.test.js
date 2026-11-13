@@ -30,6 +30,9 @@ describe('Sharlayan compose state', () => {
 
     expect(sharlayanComposeInitialState.toJS()).toEqual({
       circle_id: null,
+      limited_scope: null,
+      limited_reply_account_ids: null,
+      reply_to_limited: false,
       clip_ids: [],
       scheduled_at: null,
       draft_id: null,
@@ -39,6 +42,9 @@ describe('Sharlayan compose state', () => {
     });
     expect(resetSharlayanComposeState(state).toJS()).toEqual({
       circle_id: null,
+      limited_scope: null,
+      limited_reply_account_ids: null,
+      reply_to_limited: false,
       clip_ids: [],
       scheduled_at: null,
       draft_id: null,

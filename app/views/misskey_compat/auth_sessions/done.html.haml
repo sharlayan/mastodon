@@ -1,0 +1,19 @@
+- content_for :page_title do
+  = @auth_session.application.name
+
+- if @callback.present?
+  - content_for :header_tags do
+    %meta{ 'http-equiv' => 'refresh', 'content' => "0; url=#{@callback}" }/
+
+.form-container.simple_form
+  .oauth-prompt
+    %h3= t('misskey_compat.authorization.done_title')
+
+    - if @callback.present?
+      %p= t('misskey_compat.authorization.done_automatic')
+      %p= t('misskey_compat.authorization.done_fallback')
+
+      .actions
+        = link_to t('misskey_compat.authorization.return_to_app'), @callback, class: 'btn button'
+    - else
+      %p= t('misskey_compat.authorization.done_manual')

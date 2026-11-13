@@ -21,7 +21,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   MAX_COMPAT_ID = (2**63) - 1
   COMPAT_TIME_RANGE = (Time.utc(1)..Time.utc(9999, 12, 31, 23, 59, 59))
 
-  MI_ID_SCALAR_PARAMS = %i(untilId sinceId userId noteId roleId clipId pageId replyId renoteId listId antennaId announcementId avatarId bannerId folderId parentId fileId eyeCatchingImageId channelId draftId).freeze
+  MI_ID_SCALAR_PARAMS = %i(untilId sinceId userId noteId roleId clipId pageId replyId renoteId listId antennaId announcementId avatarId bannerId folderId parentId fileId eyeCatchingImageId channelId draftId webhookId gameId inviteId postId flashId reportId appId tokenId).freeze
   MI_ID_ARRAY_PARAMS = %i(fileIds visibleUserIds userIds noteIds).freeze
   PAGINATION_ID_PARAMS = %i(untilId sinceId).freeze
   SCALAR_PARAM_TYPES = %i(limit offset untilDate sinceDate).index_with('integer').merge(MI_ID_SCALAR_PARAMS.index_with('string')).freeze
@@ -165,6 +165,10 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     render_error(I18n.t('errors.403'), 'ACCESS_DENIED', 403, id: ACCESS_DENIED_ID)
   end
 
+  def prohibit_moved_account!
+    render_error('You have moved your account', 'YOUR_ACCOUNT_MOVED', 403, id: '56f20ec9-fd06-4fa5-841b-edd6d7d4fa31', kind: 'permission') if current_account&.moved?
+  end
+
   def current_misskey_grant
     return @current_misskey_grant if defined?(@current_misskey_grant)
 
@@ -297,6 +301,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
       ltlAvailable: true,
       canPublicNote: true,
       canInitiateConversation: true,
+      canCreateChannel: true,
       canCreateContent: true,
       canUpdateContent: true,
       canDeleteContent: true,
@@ -313,11 +318,12 @@ class Api::MisskeyCompat::BaseController < ApplicationController
       canImportBlocking: Setting.drive_enabled,
       canImportMuting: Setting.drive_enabled,
       canImportUserLists: Setting.drive_enabled,
-      canImportAntennas: false,
+      canImportAntennas: Setting.drive_enabled && Setting.antenna_enabled && !RoleplayModeHelper.roleplay_mode?,
       canHideAds: false,
       canScheduleNote: true,
       scheduleNoteMax: ScheduledStatus::TOTAL_LIMIT,
       scheduleNoteMaxDays: 0,
+      webhookLimit: MisskeyWebhook::LIMIT,
       avatarDecorationLimit: avatar_decoration_limit,
     }
   end

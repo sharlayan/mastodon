@@ -272,11 +272,6 @@
 
     &--continued {
       margin-block-start: -8px;
-
-      .chat-native__bubble {
-        border-start-start-radius: 4px;
-        border-end-start-radius: 4px;
-      }
     }
 
     &--mine {
@@ -297,8 +292,12 @@
       outline-offset: 1px;
     }
 
-    &--mine#{&}--continued .chat-native__bubble {
-      border-radius: 14px 4px 4px 14px;
+    &--continued .chat-native__bubble {
+      border-start-start-radius: 4px;
+    }
+
+    &:has(+ .chat-native__message--continued) .chat-native__bubble {
+      border-end-start-radius: 4px;
     }
   }
 
@@ -438,6 +437,50 @@
     margin-inline-start: 6px;
     color: var(--color-text-secondary);
     font-size: 11px;
+  }
+
+  &__dice {
+    min-width: 0;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--color-border-primary);
+  }
+
+  &__dice-total {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+
+    > span {
+      color: var(--color-text-secondary);
+      font-size: 12px;
+    }
+
+    > strong {
+      color: var(--color-text-primary);
+      font-size: 22px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &__dice-details {
+    margin-top: 4px;
+    font-size: 12px;
+
+    > summary {
+      width: fit-content;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+    }
+
+    > pre {
+      margin: 8px 0 0;
+      font-family: var(--font-monospace);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
   }
 
   &__actions-rail {

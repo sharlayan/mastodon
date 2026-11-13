@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FC } from 'react';
 
 import { defineMessages, useIntl } from 'react-intl';
@@ -65,6 +65,14 @@ export const DraftButton: FC<DraftButtonProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [showList, setShowList] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const loadRequestId = useRef(0);
+
+  useEffect(
+    () => () => {
+      loadRequestId.current += 1;
+    },
+    [],
+  );
   const visible = useAppSelector(
     (state) => state.local_settings.get('show_draft_button', false) as boolean,
   );
@@ -82,14 +90,21 @@ export const DraftButton: FC<DraftButtonProps> = ({
   );
 
   const handleClose = useCallback(() => {
+    loadRequestId.current += 1;
+    setIsLoading(false);
     setIsOpen(false);
     setShowList(false);
   }, []);
 
   const handleToggle = useCallback(() => {
+    if (isOpen) {
+      handleClose();
+      return;
+    }
+
     setShowList(false);
-    setIsOpen((prev) => !prev);
-  }, []);
+    setIsOpen(true);
+  }, [isOpen, handleClose]);
 
   const handleSave = useCallback(() => {
     onSaveDraft();
@@ -116,6 +131,8 @@ export const DraftButton: FC<DraftButtonProps> = ({
   );
 
   const handleLoad = useCallback(() => {
+    const requestId = ++loadRequestId.current;
+    const composeAtLoad = dispatch((_dispatch, getState) => getState().compose);
     setIsLoading(true);
 
     (
@@ -124,6 +141,16 @@ export const DraftButton: FC<DraftButtonProps> = ({
       ) as Promise<ImmutableList<StatusDraft> | null>
     )
       .then((items) => {
+        if (requestId !== loadRequestId.current) return items;
+        if (
+          !dispatch(
+            (_dispatch, getState) => getState().compose === composeAtLoad,
+          )
+        ) {
+          handleClose();
+          return items;
+        }
+
         setIsLoading(false);
 
         if (!items) {
@@ -137,6 +164,8 @@ export const DraftButton: FC<DraftButtonProps> = ({
         return items;
       })
       .catch(() => {
+        if (requestId !== loadRequestId.current) return;
+
         setIsLoading(false);
         handleClose();
       });
@@ -190,7 +219,7 @@ export const DraftButton: FC<DraftButtonProps> = ({
                         <button
                           type='button'
                           onClick={handleLoad}
-                          aria-disabled={isLoading}
+                          disabled={isLoading}
                         >
                           {intl.formatMessage(messages.load)}
                         </button>

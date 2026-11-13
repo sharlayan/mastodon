@@ -80,6 +80,8 @@ class CavageSignatureFeature < HTTP::Feature
 end
 
 class Request
+  prepend Sharlayan::RequestExtensions
+
   # We enforce a 5s timeout on DNS resolving, 5s timeout on socket opening
   # and 5s timeout on the TLS handshake, meaning the worst case should take
   # about 15s in total

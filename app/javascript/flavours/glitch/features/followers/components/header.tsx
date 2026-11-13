@@ -30,7 +30,7 @@ export const AccountListHeader: FC<{
           })}
         </h1>
       )}
-      {!!total && (
+      {total !== undefined && total > 0 && (
         <h2 className={classes.subtitle}>
           <FormattedMessage
             id='account_list.total'

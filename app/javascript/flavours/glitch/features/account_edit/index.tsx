@@ -263,6 +263,8 @@ export const AccountEdit: FC = () => {
         <SharlayanAccountEditSections
           followedMessage={profile.followedMessage}
           decorationCount={profile.avatarDecorations.length}
+          birthday={profile.birthday}
+          showBirthday={profile.showBirthday}
         />
 
         <AccountEditSection

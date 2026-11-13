@@ -58,6 +58,13 @@ ja:
           attributes:
             drive_quota:
               own_role: 現在のロールでは変更できません
+        voice_relay_provider:
+          attributes:
+            origin:
+              own_origin: "このサーバー自身のアドレスは使用できません"
+              unfinished_calls: "このリレーの通話がまだ開いているため変更できません"
+          provider_limit: "音声リレーは最大%{count}件まで登録できます"
+          unfinished_calls: "このリレーにはまだ開いている通話があります。無効にして通話が終わってから削除してください。"
   admin:
     accounts:
       block_avatar_decorations: アバターデコレーションをブロック
@@ -73,15 +80,24 @@ ja:
         create_avatar_decoration_html: "%{name} さんがアバターデコレーション %{target} を作成しました"
         create_avatar_decoration_domain_block_html: "%{name} さんが %{target} のアバターデコレーションをブロックしました"
         create_board_announcement_html: "%{name} さんが掲示板型お知らせ %{target} を作成しました"
+        create_misskey_ad_html: "%{name} さんがMisskey広告 %{target} を作成しました"
         destroy_avatar_decoration_domain_block_html: "%{name} さんが %{target} のアバターデコレーションのブロックを解除しました"
         destroy_avatar_decoration_html: "%{name} さんがアバターデコレーション %{target} を削除しました"
         destroy_board_announcement_html: "%{name} さんが掲示板型お知らせ %{target} を削除しました"
         destroy_drive_file_html: "%{name} さんがドライブファイル %{target} を削除しました"
+        destroy_misskey_ad_html: "%{name} さんがMisskey広告 %{target} を削除しました"
         update_account_html: "%{name} さんがアカウント %{target} を更新しました"
         update_avatar_decoration_html: "%{name} さんがアバターデコレーション %{target} を更新しました"
         update_board_announcement_html: "%{name} さんが掲示板型お知らせ %{target} を更新しました"
+        update_misskey_ad_html: "%{name} さんがMisskey広告 %{target} を更新しました"
         destroy_chat_conversation_html: "%{name} さんがチャットの会話 %{target} を削除しました"
         update_collection_html: "%{name} さんが %{target} によるコレクションを更新しました"
+        create_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を追加しました"
+        destroy_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を削除しました"
+        disable_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を無効にしました"
+        enable_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を有効にしました"
+        update_voice_relay_provider_html: "%{name} さんが音声リレー %{target} を更新しました"
+        end_voice_call_allocation_html: "%{name}さんが音声通話%{target}を終了しました"
     avatar_decoration_domain_blocks:
       added_at: 追加日
       block: ドメインをブロック
@@ -289,6 +305,7 @@ ja:
       extra_categories:
         api: API
         moderation: モデレーション
+        voice_calls: 音声通話
       extra_privileges:
         bypass_rate_limit: APIレート制限のバイパス
         bypass_rate_limit_description: サーバー設定でAPIレート制限のバイパスが有効な場合、この権限を持つユーザーはAPIレート制限を受けません
@@ -298,9 +315,14 @@ ja:
         view_followers_admin_timeline: フォロワーの投稿の閲覧制限を解除
         view_followers_admin_timeline_description: >-
           コミュニティ（ロールプレイ）モードで、自分をフォローしているローカルアカウントの管理タイムライン対象投稿を公開範囲にかかわらず閲覧できます。オーナー（最高管理者）アカウントが参加しているダイレクトの会話は非表示になります。
+        join_voice_calls: 音声通話への参加
+        join_voice_calls_description: 所属するチャットルームの音声通話に参加できます
+        share_screens: 音声通話での画面共有
+        share_screens_description: 音声通話中に画面を共有できます。サーバー設定で画面共有が有効になっている必要もあります
       privileges:
         invite_bypass_approval_description: これらの利用者が招待した人が、モデレーターの承認を経ずに登録できるようにします
     settings:
+      registration_rejection_patterns_invalid: "有効な正規表現を使用し、空行を除いて%{max_patterns}行、全体で%{max_length}文字以内にしてください。"
       user_themes:
         catalog: サーバーテーマカタログJSON
         catalog_example: 'ライト／ダークテーマの短い例：'
@@ -399,6 +421,16 @@ ja:
         soft_delete_enabled_hint: 他の参加者からメッセージを削除しません。削除操作は送信者本人からのみ非表示にし、参加者と権限を持つ管理者のために保持します。
         soft_delete_roleplay_hint: OCロールプレイモードでは、権限を持つオーナーがローカルチャットを監査できるよう常に有効になります。
         title: チャット
+        voice_call_enabled: "チャットルームの音声通話を有効にする"
+        voice_call_enabled_hint: "ルームのメンバーが、音声通話リレーに登録したリレーを通じて音声通話と画面共有を行えるようにします。ネイティブチャットと承認済みのリレーが必要です。"
+        voice_call_federation_host_enabled: "他のサーバーのメンバーに通話を提供する"
+        voice_call_federation_host_enabled_hint: "このサーバーが所有するルームの通話に、他のサーバーのメンバーも参加できるようにします。このサーバーの音声リレーの枠を使い、リレーにはその参加者のIPアドレスが見えます。チャットの連合が有効である必要があります。"
+        voice_call_max_participants: "通話あたりの最大参加人数"
+        voice_call_max_participants_hint: "2～100人です。リレーは通話ごとにこの数のスロットを予約するため、小さくするほど多くのルームが同時に通話できます。1対1のルームは常に2スロットを予約します。"
+        voice_call_remote_join_enabled: "他のサーバーが開く通話への参加を許可する"
+        voice_call_remote_join_enabled_hint: "ローカルのアカウントが、他のサーバーが所有するルームの通話に参加できるようにします。ルームを所有するサーバーの通話サーバーに参加者のIPアドレスが見えます。チャットの連合が有効である必要があります。"
+        voice_call_screen_share_enabled: "音声通話で画面共有を許可する"
+        voice_call_screen_share_enabled_hint: "リレー側でもこのサーバーの画面共有が許可されている必要があります。"
       community_mode:
         soft_hide_deletion: 削除された投稿をオーナーのために保存する
         soft_hide_deletion_hint: 投稿を削除するとき、実際には破棄せず非表示にします。非表示になった投稿と添付メディアはすべてのタイムライン・検索インデックス・公開ページから消え、オーナーだけが管理タイムラインで閲覧できます。非表示の投稿をもう一度削除すると、復元できないように完全に削除されます。
@@ -439,6 +471,10 @@ ja:
         enabled_hint: >-
           有効にすると、他のサーバーの投稿にサーバー情報バー（名前・テーマカラー・ファビコン）が表示され、連合インスタンスのメタデータを収集します。無効にするとバーは非表示になり、インスタンスのメタデータを取得しません。
         title: サーバー情報バー
+      link_preview_direct_hosts:
+        hint: 外部リクエスト用のHTTPプロキシを設定している場合、ここに挙げたホストとそのサブドメインのリンクプレビュー（カード・oEmbed）だけをプロキシを通さずに直接接続します。一覧にないリンクと、一覧にないホストへリダイレクトされるリクエストはプロキシを通します。1行に1つずつドメインを入力してください。直接接続したサイトにはサーバーの実際のIPアドレスが知られるため、信頼できるサイトだけを追加してください。IPアドレスは入力できません。
+        invalid: '有効なドメインではない項目があります: %{hosts}'
+        title: リンクプレビューを直接接続するホスト
       misskey_compat:
         enabled: Misskey互換APIレイヤーを有効化
         enabled_hint: >-
@@ -494,6 +530,63 @@ ja:
       no_username_block_selected: 何も選択されていなかったため、ユーザー名ルールは変更されませんでした
       not_permitted: 権限がありません
       updated_msg: ユーザー名ルールを更新しました
+    system_checks:
+      voice_relay_revoked_check:
+        action: "音声リレーの管理"
+        message_html: "音声リレー%{value}はこのサーバーを受け付けなくなりました。リレーの運営者がアクセスを戻すかシークレットを更新するまで、そのリレーでは通話を開始できません。"
+      voice_relay_unavailable_check:
+        action: "音声リレーの管理"
+        message_html: "音声通話が有効ですが、承認された音声リレーがありません。"
+    voice_relay_providers:
+      add_new: "リレーを追加"
+      approved: "承認済み"
+      call_end_failed_msg: "通話を終了できませんでした (%{code})。"
+      call_ended_msg: "通話を終了しました。"
+      call_participant_count: "%{participants} / %{slots}"
+      call_participants: "参加者"
+      call_relay: "リレー"
+      call_room: "ルーム"
+      call_room_deleted: "削除されたルーム"
+      call_room_direct: "1対1チャット #%{id}"
+      call_room_group: "グループ #%{id}"
+      call_state:
+        active: "進行中"
+        ending: "終了処理中"
+        pending: "開始処理中"
+      call_unavailable: "最後の確認でリレーに接続できませんでした"
+      call_updated_at: "最終更新"
+      calls_hint: "リレーに枠を予約している通話です。通話を終了すると参加者全員の接続が切れ、メンバーは新しい通話を開始できます。"
+      calls_title: "進行中の通話"
+      capacity: "収容量"
+      check: "接続・承認を確認"
+      check_disabled_msg: "リレーは応答しましたが、このサーバーはリレー側で無効になっています。"
+      check_failed_msg: "接続の確認に失敗しました (%{code})。"
+      check_succeeded_msg: "リレーがこのサーバーを承認しました。"
+      created_msg: "音声リレーを追加しました。接続・承認を確認して承認状態を確かめてください。"
+      delete: "削除"
+      description_html: "チャットルームの音声通話と画面共有は外部の<a href=\"https://github.com/chalkpe/fediverse-voice-relay\" target=\"_blank\" rel=\"noopener\">音声リレー</a>で動作します。リレー運営者にこのサーバーの登録を依頼し、リレーのアドレスと発行されたシークレットをここに入力してください。このサーバーのoriginは<code>%{origin}</code>です。"
+      destroyed_msg: "音声リレーを削除しました。"
+      disable: "無効にする"
+      disabled: "無効"
+      edit: "リレーを編集"
+      enable: "有効にする"
+      end_call: "通話を終了"
+      end_call_confirm: "この通話の参加者全員の接続を切りますか？"
+      last_checked: "最終確認"
+      last_error: "最後のエラー: %{code}"
+      never_checked: "未確認"
+      no_calls: "進行中の通話はありません。"
+      not_approved: "未承認"
+      origin: "リレーのアドレス"
+      origin_unavailable: "音声リレーに接続するには、このサーバーがHTTPSを使用している必要があります。"
+      revoked: "承認取り消し"
+      revoked_hint: "リレーが%{time}にこのサーバーを拒否しました。リレーの運営者に問い合わせるか、シークレットを更新してからもう一度確認してください。"
+      screen_share_allowed: "画面共有可"
+      screen_share_not_allowed: "画面共有不可"
+      slots: "%{max}スロット中%{reserved}スロット予約済み、あと%{rooms}ルーム作成可能"
+      status: "状態"
+      title: "音声通話リレー"
+      updated_msg: "音声リレーを更新しました。"
   antennas:
     errors:
       limit: アンテナの上限数に達しています
@@ -508,6 +601,7 @@ ja:
     customized: カスタマイズ - 絵文字
     misskey_flavour: カスタマイズ - Misskeyフレーバー
   auth:
+    registration_rejected: "このメールアドレスまたはユーザー名では登録できません。"
     disable_custom_css: カスタムCSSを無効にする
     progress:
       list: 登録の進捗
@@ -560,6 +654,16 @@ ja:
     types:
       clips: クリップ
   misskey_compat:
+    authorization:
+      access_request_html: "%{app} があなたのアカウント %{account} へのアクセスを求めています。"
+      access_request_unnamed_html: アプリケーションがあなたのアカウント %{account} へのアクセスを求めています。
+      approve: 承認
+      done_automatic: 認証が完了しました。自動的にアプリに戻ります。
+      done_fallback: アプリに戻らない場合は、下のボタンを押してください。
+      done_manual: 認証が完了しました。アプリに戻ってください。
+      done_title: 承認完了
+      permission_notice: 承認すると、このアプリケーションはあなたの代わりに投稿、リアクション、通知の確認などを行えるようになります。
+      return_to_app: アプリに戻る
     scratchpad:
       code_label: AiScript コード
       description: Misskey 互換アプリに表示されたコードを下に貼り付けて実行すると、プッシュ通知が登録されます。完了したら結果をコピーしてアプリに貼り付けてください。
@@ -644,10 +748,15 @@ ja:
         warn_quote_policy_html: >-
           <strong>注意:</strong><br>引用できる相手を制限しても、FEP-044f (Fediverse Enhancement Proposals) に対応していないMastodon以外のソフトウェアからは引用される可能性があります。<br>%{instance}の既定値は「誰にも許可しない」です。
       form_admin_settings:
+        registration_reject_email_pattern: "大文字・小文字を区別する部分文字列を1行に1つ入力してください。?で始まる行は正規表現として扱います（大文字・小文字を区別しない場合は(?i)を使用）。空行は無視します。招待を含む新規登録に適用され、既存のアカウントには影響しません。"
+        registration_reject_username_pattern: "大文字・小文字を区別する部分文字列を1行に1つ入力してください。?で始まる行は正規表現として扱います（大文字・小文字を区別しない場合は(?i)を使用）。空行は無視します。招待を含む新規登録に適用され、既存のアカウントには影響しません。"
         theme_color: ブラウザのアドレスバーやアプリUIで使われるアクセントカラー。
       user_role:
         drive_quota: このロールを持つユーザーごとのドライブライブラリ最大容量をMB単位で指定します。空欄の場合はサーバーの既定値、0の場合は無制限です。
         extra_permissions_as_keys: このロールに付与されるCustodon独自の追加権限
+      voice_relay_provider:
+        origin: "リレーの公開HTTPSアドレスです。例: https://voice.example.org"
+        secret: "リレー運営者がこのサーバー用に発行したシークレットです。32文字以上必要です。空欄のままにすると現在のシークレットを維持します。"
     labels:
       defaults:
         custom_css_text: カスタムCSS
@@ -696,12 +805,22 @@ ja:
         warn_quote_policy_html: >-
           <strong>注意:</strong><br>引用できる相手を制限しても、FEP-044fに対応していないソフトウェアからの引用は防げません。<br>%{instance}の既定値は「誰にも許可しない」です。
       form_admin_settings:
+        registration_reject_email_pattern: "登録を拒否するメールアドレスのパターン"
+        registration_reject_username_pattern: "登録を拒否するユーザー名のパターン"
         local_account_statuses_access: ローカルアカウントの投稿一覧へのアクセス
         local_status_page_access: 個別投稿ページへのアクセス
         theme_color: テーマカラー
       user_role:
         drive_quota: ユーザーごとのドライブ容量 (MB)
         extra_permissions_as_keys: 追加権限
+      voice_relay_provider:
+        origin: "リレーのアドレス"
+        secret: "シークレット"
+  statuses:
+    errors:
+      invalid_reply_scope: "返信先の公開範囲は限定公開の投稿にのみ使用でき、サークルや他の公開範囲とは併用できません。"
+      reply_scope_quote: "限定された相手への返信には引用を添付できません。"
+      reply_scope_recipients: "元の投稿を受信していない人をこの返信でメンションすることはできません。"
   statuses_cleanup:
     ignore_reactions: リアクションを無視
     interaction_exceptions_explanation: お気に入りやブーストの数が一度でも基準値に逹っした投稿は、その後数が減っても削除されません。

@@ -39,11 +39,14 @@ import { getOrderedCircles } from '@/flavours/glitch/selectors/circles';
 import { getOrderedAccountClips } from '@/flavours/glitch/selectors/clips';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 
+import { ReplyScopeButton } from '../components/reply_scope_button';
+
 import { ComposeScheduleButton } from './schedule';
 import classes from './styles.module.scss';
 
 export const ComposeCustomControls: React.FC = () => (
   <div className={classes.customControls}>
+    <ReplyScopeButton redesign />
     <ComposeCircleButton />
     <ComposeClipButton />
     <ComposeScheduleButton />

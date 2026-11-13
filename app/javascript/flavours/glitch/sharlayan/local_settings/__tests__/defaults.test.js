@@ -48,7 +48,7 @@ describe('sharlayan local_settings defaults', () => {
     expect(state.getIn(['media', 'letterbox'])).toBe(true);
     expect(state.getIn(['media', 'pop_in_position'])).toBe('right');
     expect(state.get('navigation_panel')).toEqual(
-      ImmutableMap({ order: ImmutableList(), hidden: ImmutableMap() }),
+      ImmutableMap({ order: ImmutableList(), hidden: ImmutableMap(), mobile_local_timeline: false }),
     );
     expect(state.get('status_action_bar')).toEqual(
       ImmutableMap({
@@ -74,10 +74,11 @@ describe('sharlayan local_settings defaults', () => {
   it('applies LOCAL_SETTING_IMPORT via the Sharlayan reducer branch', () => {
     const state = localSettings(initial(), {
       type: 'LOCAL_SETTING_IMPORT',
-      settings: { use_publish_toot: true, media: { no_autoplay_gifv: true } },
+      settings: { use_publish_toot: true, media: { no_autoplay_gifv: true }, navigation_panel: { mobile_local_timeline: true } },
     });
 
     expect(state.get('use_publish_toot')).toBe(true);
+    expect(state.getIn(['navigation_panel', 'mobile_local_timeline'])).toBe(true);
     expect(state.getIn(['media', 'no_autoplay_gifv'])).toBe(true);
     expect(state.getIn(['media', 'letterbox'])).toBe(true);
   });
@@ -110,10 +111,11 @@ describe('sharlayan local_settings defaults', () => {
     const storedValue = showInstanceInfo !== true;
     const state = localSettings(initial(), {
       type: 'STORE_HYDRATE',
-      state: fromJS({ local_settings: { show_instance_info: storedValue } }),
+      state: fromJS({ local_settings: { show_instance_info: storedValue, navigation_panel: { mobile_local_timeline: true } } }),
     });
 
     expect(state.get('show_instance_info')).toBe(storedValue);
+    expect(state.getIn(['navigation_panel', 'mobile_local_timeline'])).toBe(true);
   });
 
   it('prefers the account archive preference over a stored browser value', () => {
