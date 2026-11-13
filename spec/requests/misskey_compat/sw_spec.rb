@@ -69,6 +69,43 @@ RSpec.describe 'Misskey-compat service worker endpoints' do
   end
 
   describe 'POST /api/sw/unregister' do
+    it 'checks both subscription keys and removes all matching accounts only without credentials' do
+      other_user = Fabricate(:user)
+      other_token = Fabricate(:accessible_access_token, resource_owner_id: other_user.id, scopes: 'read write')
+      post '/api/sw/register', params: register_params, as: :json
+      post '/api/sw/register', params: register_params(i: other_token.token), as: :json
+      keys = register_params.except(:i)
+
+      [keys.except(:auth), keys.merge(auth: []), keys.merge(publickey: nil)].each do |invalid|
+        post '/api/sw/unregister', params: invalid, as: :json
+        expect(response).to have_http_status(400)
+      end
+
+      [keys.merge(auth: 'wrong'), keys.merge(publickey: 'wrong')].each do |invalid|
+        expect { post '/api/sw/unregister', params: invalid, as: :json }.to_not change(Web::PushSubscription, :count)
+        expect(response).to have_http_status(204)
+      end
+
+      post '/api/sw/unregister', params: keys.merge(i: 'invalid'), as: :json
+      expect(response).to have_http_status(401)
+
+      expect { post '/api/sw/unregister', params: keys.merge(i: token.token), as: :json }
+        .to change { Web::PushSubscription.where(user_id: user.id).count }.from(1).to(0)
+        .and(not_change { Web::PushSubscription.where(user_id: other_user.id).count })
+
+      expect { post '/api/sw/unregister', params: keys, as: :json }
+        .to change { Web::PushSubscription.where(user_id: other_user.id).count }.from(1).to(0)
+      expect(response).to have_http_status(204)
+    end
+
+    it 'limits anonymous subscription removal attempts' do
+      limiter = instance_double(RateLimiter)
+      allow(RateLimiter).to receive(:new).with(anything, family: :misskey_compat_push_unregister).and_return(limiter)
+      allow(limiter).to receive(:record!).and_raise(Mastodon::RateLimitExceededError)
+      post '/api/sw/unregister', params: register_params.except(:i), as: :json
+      expect(response).to have_http_status(429)
+    end
+
     it 'removes the subscription for the current session without an endpoint' do
       other_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read write')
       other_endpoint = 'https://ntfy.example/upOTHER?up=1'

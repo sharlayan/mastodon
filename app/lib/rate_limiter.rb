@@ -40,6 +40,11 @@ class RateLimiter
       period: 5.minutes.freeze,
     }.freeze,
 
+    misskey_compat_push_unregister: {
+      limit: 30,
+      period: 1.hour.freeze,
+    }.freeze,
+
     misskey_compat_signin: {
       limit: 25,
       period: 5.minutes.freeze,
