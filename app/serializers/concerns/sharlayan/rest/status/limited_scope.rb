@@ -25,7 +25,7 @@ module Sharlayan::REST::Status::LimitedScope
   end
 
   def source_reply?
-    instance_options[:source_requested] && object.limited_visibility? && object.limited_reply?
+    instance_options[:source_requested] && object.limited_visibility? && object.limited_reply? && owner_view?
   end
 
   def circle_id
@@ -33,7 +33,7 @@ module Sharlayan::REST::Status::LimitedScope
   end
 
   def source_circle?
-    instance_options[:source_requested] && object.limited_visibility? && owned_circle.present?
+    instance_options[:source_requested] && object.limited_visibility? && owner_view? && owned_circle.present?
   end
 
   def circle

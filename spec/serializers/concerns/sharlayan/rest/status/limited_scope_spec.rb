@@ -34,6 +34,15 @@ RSpec.describe Sharlayan::REST::Status::LimitedScope do
       expect(serialized_record_json(status.reload, REST::StatusSerializer, options: { scope: current_user, scope_name: :current_user })).to include('limited_scope' => 'none')
     end
 
+    it 'does not include the source audience when another account requests the source' do
+      source = ->(record) { serialized_record_json(record, REST::StatusSerializer, options: { scope: current_user, scope_name: :current_user, source_requested: true }) }
+      expect(source.call(status)).to_not include('circle_id')
+
+      reply = Fabricate(:status, account: owner.account, visibility: :limited, limited_scope: :reply, thread: status)
+      reply.mentions.create!(account: Fabricate(:account), silent: true)
+      expect(source.call(reply)).to_not include('limited_reply_account_ids')
+    end
+
     it 'keeps the reply audience scope' do
       status.update!(limited_scope: :reply)
 
