@@ -35,7 +35,7 @@ class ReactService < BaseService
   private
 
   def create_reaction(account, status, name, custom_emoji)
-    account.with_lock do
+    StatusReaction.with_account_status_lock(account, status) do
       reaction = StatusReaction.find_by(account: account, status: status, name: name, custom_emoji: custom_emoji)
       next reaction if reaction
 

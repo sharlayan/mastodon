@@ -51,6 +51,21 @@ RSpec.describe ReactService, use_transactional_tests: false do
     expect(status.reload.reactions_count).to eq(1)
   end
 
+  it 'does not lock the account row while a reaction is being created' do
+    first = start_reaction('👍')
+    Timeout.timeout(5) { first_prepared.pop }
+
+    Account.transaction do
+      Account.connection.execute("SET LOCAL lock_timeout = '2s'")
+      Account.where(id: account.id).update_all(note: 'updated')
+    end
+    release_first << true
+    first.value
+
+    expect(account.reload.note).to eq('updated')
+    expect(StatusReaction.where(account: account, status: status).pluck(:name)).to eq(['👍'])
+  end
+
   def start_reaction(emoji, track_connection: false)
     reaction_threads << Thread.new do
       ApplicationRecord.connection_pool.with_connection do |connection|

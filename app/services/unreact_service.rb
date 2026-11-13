@@ -8,7 +8,7 @@ class UnreactService < BaseService
   def call(account, status, emoji)
     name, domain = emoji.to_s.split('@')
     custom_emoji = CustomEmoji.find_by(shortcode: name, domain: domain)
-    account.with_lock do
+    StatusReaction.with_account_status_lock(account, status) do
       reaction = StatusReaction.find_by!(account: account, status: status, name: name, custom_emoji: custom_emoji)
       reaction.destroy!
 
