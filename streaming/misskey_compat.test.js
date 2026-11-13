@@ -11,6 +11,78 @@ const note = (overrides = {}) => ({
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
+test('a pending clip update cannot discard a queued deletion', async () => {
+  for (const deletionAllowed of [true, false]) {
+    const listeners = new Map();
+    const sent = [];
+    const checks = new Map();
+    let heartbeatStops = 0;
+    const compat = createMisskeyCompat({
+      subscribe: (channel, listener) => listeners.set(channel, listener),
+      unsubscribe: (channel) => listeners.delete(channel),
+      subscriptionHeartbeat: () => () => { heartbeatStops += 1; },
+      loadChatGrantPermissions: async () => ['read:account'],
+      authorizeClipAccess: async (_id, _request, event) => event ? new Promise((resolve) => checks.set(event.type, resolve)) : true,
+      isEnabled: async () => true,
+      logger: { error: () => {}, warn: () => {} },
+    });
+    const session = {
+      request: { accountId: '7', scopes: ['read:lists'] },
+      websocket: { readyState: 1, OPEN: 1, send: (message) => sent.push(JSON.parse(message)) },
+    };
+    compat.handleMessage(session, { type: 'connect', body: { channel: 'clip', id: 'clip', params: { clipId: '0000000000000009' } } });
+    await flush();
+    for (const type of ['updated', 'deleted']) listeners.get('misskey:clip:9')({ event: 'clip', payload: { clipId: '9', type } });
+    await flush();
+    checks.get('updated')(false);
+    await flush();
+    checks.get('deleted')(deletionAllowed);
+    await flush();
+
+    assert.deepEqual(sent, deletionAllowed ? [{ type: 'channel', body: { id: 'clip', type: 'deleted', body: null } }] : []);
+    assert.equal(listeners.size, 0);
+    assert.equal(heartbeatStops, 1);
+  }
+});
+
+test('missing clips wait briefly for deletion and release their subscriptions on timeout or disconnect', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  for (const outcome of ['deleted', 'timeout', 'disconnect']) {
+    const listeners = new Map();
+    const sent = [];
+    let heartbeatStops = 0;
+    const compat = createMisskeyCompat({
+      subscribe: (channel, listener) => listeners.set(channel, listener),
+      unsubscribe: (channel) => listeners.delete(channel),
+      subscriptionHeartbeat: () => () => { heartbeatStops += 1; },
+      loadChatGrantPermissions: async () => ['read:account'],
+      authorizeClipAccess: async (_id, _request, event) => event?.type === 'updated' ? 'missing' : true,
+      isEnabled: async () => true,
+      logger: { error: () => {}, warn: () => {} },
+    });
+    const session = {
+      request: { accountId: '7', scopes: ['read:lists'] },
+      websocket: { readyState: 1, OPEN: 1, send: (message) => sent.push(JSON.parse(message)) },
+    };
+    compat.handleMessage(session, { type: 'connect', body: { channel: 'clip', id: 'clip', params: { clipId: '0000000000000009' } } });
+    await flush();
+    const listener = listeners.get('misskey:clip:9');
+    listener({ event: 'clip', payload: { clipId: '9', type: 'updated' } });
+    await flush();
+    assert.equal(listeners.size, 1);
+    assert.deepEqual(sent, []);
+
+    if (outcome === 'disconnect') compat.cleanup(session);
+    if (outcome === 'timeout') t.mock.timers.tick(5_000);
+    listener({ event: 'clip', payload: { clipId: '9', type: 'deleted', accountId: '8', public: true } });
+    await flush();
+    t.mock.timers.tick(5_000);
+    assert.deepEqual(sent, outcome === 'deleted' ? [{ type: 'channel', body: { id: 'clip', type: 'deleted', body: null } }] : []);
+    assert.equal(listeners.size, 0);
+    assert.equal(heartbeatStops, 1);
+  }
+});
+
 test('clip subscriptions recheck permissions and visibility and send only invalidation events', async () => {
   const listeners = new Map();
   const sent = [];

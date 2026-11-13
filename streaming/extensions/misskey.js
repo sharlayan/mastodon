@@ -219,7 +219,7 @@ const authorizeClipAccess = async (pgPool, clipId, req, event) => {
   if (deleted && (event.clipId !== clipId || !validChatId(event.accountId) || typeof event.public !== 'boolean')) return false;
 
   const result = await pgPool.query(`
-    SELECT 1 FROM accounts
+    SELECT EXISTS (SELECT 1 FROM accounts
     ${deleted ? '' : 'INNER JOIN clips ON clips.account_id = accounts.id'}
     WHERE ${deleted ? 'accounts.id = $1' : 'clips.id = $1'}
       AND accounts.suspended_at IS NULL
@@ -231,9 +231,11 @@ const authorizeClipAccess = async (pgPool, clipId, req, event) => {
           SELECT 1 FROM blocks WHERE account_id = accounts.id AND target_account_id = $2
         )
       )
-    LIMIT 1
+    LIMIT 1) AS allowed,
+    ${deleted ? 'false' : 'NOT EXISTS (SELECT 1 FROM clips WHERE id = $1)'} AS missing
   `, deleted ? [event.accountId, req.accountId, event.public] : [clipId, req.accountId]);
-  return result.rows.length > 0;
+  if (result.rows[0]?.allowed === true) return true;
+  return event?.type === 'updated' && result.rows[0]?.missing === true ? 'missing' : false;
 };
 
 const SIDEKIQ_REDIS_PREFIX = 'SIDEKIQ_REDIS_';

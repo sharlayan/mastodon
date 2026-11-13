@@ -351,25 +351,41 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
       && await authorizeClipAccess(clipId, session.request, event);
 
     (async () => {
-      if (!await permitted(undefined) || channels.get(id) !== reservation) return;
+      if (await permitted(undefined) !== true || channels.get(id) !== reservation) return;
       const channelId = `${MISSKEY_PREFIX}clip:${clipId}`;
       const subscription = { channelIds: [channelId], listeners: [], stopHeartbeat: () => {} };
+      let terminating = false;
+      let deletionTimeout;
       const listener = (json) => {
         const event = json?.payload;
-        if (json?.event !== 'clip' || event?.clipId !== clipId || !['updated', 'deleted'].includes(event?.type)) return;
+        if (terminating || json?.event !== 'clip' || event?.clipId !== clipId || !['updated', 'deleted'].includes(event?.type)) return;
+        const deleted = event.type === 'deleted';
+        terminating = deleted;
+        if (deleted) clearTimeout(deletionTimeout);
         permitted(event).then((allowed) => {
-          if (channels.get(id) !== subscription) return;
-          if (allowed) send(session, 'channel', { id, type: event.type, body: null });
-          if (!allowed || event.type === 'deleted') teardown(channels, id);
+          if (channels.get(id) !== subscription || terminating && !deleted) return;
+          if (allowed === 'missing') {
+            deletionTimeout ??= setTimeout(() => {
+              if (channels.get(id) === subscription) teardown(channels, id);
+            }, 5_000);
+            deletionTimeout.unref();
+            return;
+          }
+          if (allowed === true) send(session, 'channel', { id, type: event.type, body: null });
+          if (!allowed || deleted) teardown(channels, id);
         }).catch((err) => {
-          if (channels.get(id) === subscription) teardown(channels, id);
+          if (channels.get(id) === subscription && (!terminating || deleted)) teardown(channels, id);
           logger.error({ err }, 'misskey compat clip event failed');
         });
       };
       subscription.listeners.push(listener);
       channels.set(id, subscription);
       subscribe(channelId, listener);
-      subscription.stopHeartbeat = subscriptionHeartbeat([channelId]);
+      const stopHeartbeat = subscriptionHeartbeat([channelId]);
+      subscription.stopHeartbeat = () => {
+        clearTimeout(deletionTimeout);
+        stopHeartbeat();
+      };
     })().catch((err) => logger.error({ err }, 'misskey compat clip connect failed')).finally(() => {
       if (channels.get(id) === reservation) channels.delete(id);
     });
