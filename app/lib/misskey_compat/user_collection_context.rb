@@ -59,7 +59,7 @@ class MisskeyCompat::UserCollectionContext
     @pinned_notes = {}
     return if @account_ids.empty?
 
-    hidden_account_ids = @accounts.select(&:unavailable?).map(&:id)
+    hidden_account_ids = @accounts.select { |account| account.unavailable? || !Sharlayan::LocalContentAccess.account_statuses_accessible?(account, @viewer&.user) }.map(&:id)
     hidden_account_ids |= Block.where(account_id: @account_ids, target_account_id: @viewer.id).pluck(:account_id) if @viewer
     pins = StatusPin.where(account_id: @account_ids - hidden_account_ids).includes(:status).order(:account_id, created_at: :desc).to_a
     statuses_by_account = Hash.new { |hash, key| hash[key] = [] }

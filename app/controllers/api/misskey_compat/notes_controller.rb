@@ -63,6 +63,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   before_action :enforce_status_draft_rate_limit!, only: %i(drafts_list drafts_count drafts_create drafts_update drafts_delete)
   before_action :reject_compound_id_params!
   before_action :set_note, only: [:show, :children, :replies, :conversation, :renotes, :unrenote, :destroy, :state, :translate, :reactions_create, :reactions_delete, :note_reactions, :thread_muting_create, :thread_muting_delete, :favorites_create, :favorites_delete, :polls_vote, :clips]
+  before_action :require_note_page_access!, only: [:show, :children, :replies, :conversation, :renotes, :note_reactions, :clips]
 
   rescue_from InvalidParamError do |e|
     render_invalid_param(e.param, e.reason)
@@ -116,6 +117,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     statuses = Status.where(id: ids.grep(/\A\d+\z/).uniq).includes(:account, :mentions, :media_attachments).to_a
     context = MisskeyCompat::SerializationContext.new(current_account: current_account).prime_relations(statuses)
     statuses.select! { |status| context.visible?(status) }
+    statuses = filter_local_status_page_access(statuses)
     context.prime_reactions(statuses)
 
     render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize_reaction_diff(status, context: context) }
@@ -145,7 +147,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
     limit = pagination_limit(default: 10, max: 100)
     statuses = @note.ancestors(limit + offset, current_account).reverse
-    statuses = statuses.drop(offset).first(limit)
+    statuses = filter_local_status_page_access(statuses.drop(offset).first(limit))
     render json: serialize_collection(statuses)
   end
 
@@ -517,7 +519,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       ActiveRecord::Associations::Preloader.new(records: page, associations: [:account, :mentions]).call
       relations = MisskeyCompat::SerializationContext.new(current_account: current_account).prime_relations(page)
       page.each do |status|
-        statuses << status if relations.visible?(status)
+        statuses << status if relations.visible?(status) && (!status.local? || local_status_page_accessible?)
         break if statuses.size >= limit
       end
 
@@ -538,7 +540,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   def render_visible_notes(scope)
     candidates = scope.to_a
     relations = MisskeyCompat::SerializationContext.new(current_account: current_account).prime_relations(candidates)
-    statuses = candidates.select { |status| relations.visible?(status) }
+    statuses = filter_local_status_page_access(candidates.select { |status| relations.visible?(status) })
     render json: serialize_collection(statuses)
   end
 
@@ -810,6 +812,10 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     authorize @note, :show?
   rescue ActiveRecord::RecordNotFound, Mastodon::NotPermittedError
     render_error('No such note', 'NO_SUCH_NOTE', 404)
+  end
+
+  def require_note_page_access!
+    require_misskey_local_content_access!(!@note.local? || local_status_page_accessible?, 'Status')
   end
 
   def public_feed(**options)

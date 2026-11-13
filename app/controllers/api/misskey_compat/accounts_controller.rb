@@ -21,6 +21,8 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
 
   def notes
     account = Account.without_requested_deletion.find(params[:userId])
+    return require_misskey_local_content_access!(false, 'Account') unless Sharlayan::LocalContentAccess.account_statuses_accessible?(account, current_user)
+
     filter = AccountStatusesFilter.new(account, current_account, statuses_filter_params)
     scope = MisskeyChannelNote.filter_user_notes(apply_compat_date_range(filter.results), owner: account, viewer: current_account, with_channel_notes: ActiveModel::Type::Boolean.new.cast(params[:withChannelNotes]))
     statuses = scope.to_a_paginated_by_id(pagination_limit, max_id: params[:untilId].presence, since_id: params[:sinceId].presence).to_a
@@ -125,6 +127,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
 
   def featured_notes
     account = Account.without_requested_deletion.find(params[:userId])
+    return require_misskey_local_content_access!(false, 'Account') unless Sharlayan::LocalContentAccess.account_statuses_accessible?(account, current_user)
     return render json: [] if collections_hidden?(account, false)
 
     scope = account.statuses

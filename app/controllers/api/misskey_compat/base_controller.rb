@@ -4,6 +4,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   include Authorization
   include CustomEmojiResponseFilteringConcern
   include RoutingHelper
+  include Sharlayan::LocalStatusPageAccess
 
   wrap_parameters false
 
@@ -149,6 +150,14 @@ class Api::MisskeyCompat::BaseController < ApplicationController
 
   def require_user_if_authenticated!
     require_user! if bearer_token.present? || params[:i].present?
+  end
+
+  def require_misskey_local_content_access!(accessible, model)
+    return if accessible
+    return require_user! if current_user.nil?
+
+    message, code = NOT_FOUND_CODES.fetch(model)
+    render_error(message, code, 404)
   end
 
   def native_user_token?
