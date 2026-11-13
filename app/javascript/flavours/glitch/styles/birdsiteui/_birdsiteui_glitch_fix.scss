@@ -139,6 +139,7 @@ html {
   .column-link .icon-group,
   .column-link .icon-users,
   .column-link .icon-description,
+  .column-link .icon-cloud,
   .column-link .icon-radar,
   .column-link .icon-chat {
     background-image: none;
@@ -205,6 +206,10 @@ html {
 
   .column-link .icon-description {
     @include icons.icon-glyph(pages);
+  }
+
+  .column-link .icon-cloud {
+    @include icons.icon-glyph(cloud);
   }
 
   .column-link .icon-chat {
