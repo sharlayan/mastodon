@@ -1,0 +1,95 @@
+import { useCallback } from 'react';
+
+import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
+
+import { GearIcon } from '@phosphor-icons/react';
+
+import { Button } from '@/flavours/glitch-classic/components/button/redesign';
+import { messages as columnHeaderMessages } from '@/flavours/glitch-classic/components/column/header';
+import { useAppDispatch } from '@/flavours/glitch-classic/store';
+import { isRedesignEnabled } from '@/flavours/glitch-classic/utils/environment';
+import CloseIcon from '@/material-icons/400-24px/close.svg?react';
+import UnfoldMoreIcon from '@/material-icons/400-24px/unfold_more.svg?react';
+import { requestBrowserPermission } from 'flavours/glitch-classic/actions/notifications';
+import { changeSetting } from 'flavours/glitch-classic/actions/settings';
+import { Button as LegacyButton } from 'flavours/glitch-classic/components/button';
+import { Icon } from 'flavours/glitch-classic/components/icon';
+import { IconButton } from 'flavours/glitch-classic/components/icon_button';
+
+const messages = defineMessages({
+  close: { id: 'lightbox.close', defaultMessage: 'Close' },
+  settings: {
+    id: 'notifications.settings',
+    defaultMessage: 'Notification Settings',
+  },
+});
+
+const NotificationsPermissionBanner: React.FC = () => {
+  const intl = useIntl();
+  const dispatch = useAppDispatch();
+
+  const handleClick = useCallback(() => {
+    dispatch(requestBrowserPermission());
+  }, [dispatch]);
+
+  const handleClose = useCallback(() => {
+    dispatch(changeSetting(['notifications', 'dismissPermissionBanner'], true));
+  }, [dispatch]);
+
+  return (
+    <div className='notifications-permission-banner'>
+      <div className='notifications-permission-banner__close'>
+        <IconButton
+          icon='times'
+          iconComponent={CloseIcon}
+          onClick={handleClose}
+          title={intl.formatMessage(messages.close)}
+        />
+      </div>
+
+      <h2>
+        <FormattedMessage
+          id='notifications_permission_banner.title'
+          defaultMessage='Never miss a thing'
+        />
+      </h2>
+      <p>
+        <FormattedMessage
+          id='notifications_permission_banner.how_to_control'
+          defaultMessage="To receive notifications when Mastodon isn't open, enable desktop notifications. You can control precisely which types of interactions generate desktop notifications through the {icon} button above once they're enabled."
+          values={{
+            icon: (
+              <Icon
+                id='sliders'
+                icon={isRedesignEnabled() ? GearIcon : UnfoldMoreIcon}
+                aria-label={intl.formatMessage(
+                  isRedesignEnabled()
+                    ? messages.settings
+                    : columnHeaderMessages.show,
+                )}
+              />
+            ),
+          }}
+        />
+      </p>
+      {isRedesignEnabled() ? (
+        <Button onClick={handleClick} variant='solid' color='accent' size='sm'>
+          <FormattedMessage
+            id='notifications_permission_banner.enable'
+            defaultMessage='Enable desktop notifications'
+          />
+        </Button>
+      ) : (
+        <LegacyButton onClick={handleClick}>
+          <FormattedMessage
+            id='notifications_permission_banner.enable'
+            defaultMessage='Enable desktop notifications'
+          />
+        </LegacyButton>
+      )}
+    </div>
+  );
+};
+
+// eslint-disable-next-line import/no-default-export
+export default NotificationsPermissionBanner;

@@ -1,0 +1,57 @@
+import { useEffect } from 'react';
+
+import { FormattedMessage } from 'react-intl';
+
+import { Link } from 'react-router-dom';
+
+import type { List as ImmutableList, Map as ImmutableMap } from 'immutable';
+
+import { fetchTrendingHashtags } from 'flavours/glitch-classic/actions/trends';
+import { ImmutableHashtag as Hashtag } from 'flavours/glitch-classic/components/hashtag';
+import { showTrends } from 'flavours/glitch-classic/initial_state';
+import { useAppSelector, useAppDispatch } from 'flavours/glitch-classic/store';
+
+export const Trends: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const trends = useAppSelector(
+    (state) =>
+      state.trends.getIn(['tags', 'items']) as ImmutableList<
+        ImmutableMap<string, unknown>
+      >,
+  );
+
+  useEffect(() => {
+    dispatch(fetchTrendingHashtags());
+
+    const refreshInterval = setInterval(() => {
+      dispatch(fetchTrendingHashtags());
+    }, 900 * 1000);
+
+    return () => {
+      clearInterval(refreshInterval);
+    };
+  }, [dispatch]);
+
+  if (!showTrends || trends.isEmpty()) {
+    return null;
+  }
+
+  return (
+    <aside className='navigation-panel__portal'>
+      <div className='getting-started__trends'>
+        <h2 className='getting-started__trends-heading'>
+          <Link to={'/explore/tags'}>
+            <FormattedMessage
+              id='trends.trending_now'
+              defaultMessage='Trending now'
+            />
+          </Link>
+        </h2>
+
+        {trends.take(4).map((hashtag) => (
+          <Hashtag key={hashtag.get('name') as string} hashtag={hashtag} />
+        ))}
+      </div>
+    </aside>
+  );
+};

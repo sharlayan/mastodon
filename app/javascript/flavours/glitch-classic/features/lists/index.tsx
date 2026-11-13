@@ -1,0 +1,201 @@
+import { useEffect, useMemo, useCallback } from 'react';
+
+import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
+
+import { Link } from 'react-router-dom';
+
+import { PlusIcon } from '@phosphor-icons/react';
+import { Helmet } from '@unhead/react/helmet';
+
+import { Column } from '@/flavours/glitch-classic/components/column';
+import { ColumnHeader as LegacyColumnHeader } from '@/flavours/glitch-classic/components/column/header';
+import {
+  ColumnHeader,
+  ColumnHeaderButton,
+} from '@/flavours/glitch-classic/components/column_header';
+import { NotSignedInIndicator } from '@/flavours/glitch-classic/components/not_signed_in_indicator';
+import { useIdentity } from '@/flavours/glitch-classic/identity_context';
+import { isRedesignEnabled } from '@/flavours/glitch-classic/utils/environment';
+import AddIcon from '@/material-icons/400-24px/add.svg?react';
+import ListAltIcon from '@/material-icons/400-24px/list_alt.svg?react';
+import MoreHorizIcon from '@/material-icons/400-24px/more_horiz.svg?react';
+import SquigglyArrow from '@/svg-icons/squiggly_arrow.svg?react';
+import { fetchLists } from 'flavours/glitch-classic/actions/lists';
+import { openModal } from 'flavours/glitch-classic/actions/modal';
+import { Dropdown } from 'flavours/glitch-classic/components/dropdown_menu';
+import { Icon } from 'flavours/glitch-classic/components/icon';
+import ScrollableList from 'flavours/glitch-classic/components/scrollable_list';
+import { getOrderedLists } from 'flavours/glitch-classic/selectors/lists';
+import { useAppSelector, useAppDispatch } from 'flavours/glitch-classic/store';
+
+const messages = defineMessages({
+  heading: { id: 'column.lists', defaultMessage: 'Lists' },
+  heading_redesign: {
+    id: 'column.custom_feeds',
+    defaultMessage: 'Custom Feeds',
+  },
+  create: { id: 'lists.create_list', defaultMessage: 'Create list' },
+  create_redesign: { id: 'custom_feeds.create', defaultMessage: 'Create' },
+  edit: { id: 'lists.edit', defaultMessage: 'Edit list' },
+  delete: { id: 'lists.delete', defaultMessage: 'Delete list' },
+  more: { id: 'status.more', defaultMessage: 'More' },
+});
+
+const ListItem: React.FC<{
+  id: string;
+  title: string;
+}> = ({ id, title }) => {
+  const dispatch = useAppDispatch();
+  const intl = useIntl();
+
+  const handleDeleteClick = useCallback(() => {
+    dispatch(
+      openModal({
+        modalType: 'CONFIRM_DELETE_LIST',
+        modalProps: {
+          listId: id,
+        },
+      }),
+    );
+  }, [dispatch, id]);
+
+  const menu = useMemo(
+    () => [
+      { text: intl.formatMessage(messages.edit), to: `/lists/${id}/edit` },
+      { text: intl.formatMessage(messages.delete), action: handleDeleteClick },
+    ],
+    [intl, id, handleDeleteClick],
+  );
+
+  return (
+    <div className='lists__item'>
+      <Link to={`/lists/${id}`} className='lists__item__title'>
+        <Icon id='list-ul' icon={ListAltIcon} />
+        <span>{title}</span>
+      </Link>
+
+      <Dropdown
+        scrollKey='lists'
+        items={menu}
+        icon='ellipsis-h'
+        iconComponent={MoreHorizIcon}
+        title={intl.formatMessage(messages.more)}
+      />
+    </div>
+  );
+};
+
+const Lists: React.FC<{
+  multiColumn?: boolean;
+}> = ({ multiColumn }) => {
+  const dispatch = useAppDispatch();
+  const intl = useIntl();
+  const lists = useAppSelector((state) => getOrderedLists(state));
+  const { signedIn } = useIdentity();
+
+  useEffect(() => {
+    if (signedIn) {
+      void dispatch(fetchLists());
+    }
+  }, [signedIn, dispatch]);
+
+  const emptyMessage = (
+    <>
+      {isRedesignEnabled() ? (
+        <span>
+          <FormattedMessage
+            id='custom_feeds.no_custom_feeds_yet'
+            defaultMessage='No custom feeds yet.'
+          />
+          <br />
+          <FormattedMessage
+            id='custom_feeds.create_a_list_to_organize'
+            defaultMessage='Create a new custom feed to organize your Following feed.'
+          />
+        </span>
+      ) : (
+        <span>
+          <FormattedMessage
+            id='lists.no_lists_yet'
+            defaultMessage='No lists yet.'
+          />
+          <br />
+          <FormattedMessage
+            id='lists.create_a_list_to_organize'
+            defaultMessage='Create a new list to organize your Home feed'
+          />
+        </span>
+      )}
+
+      <SquigglyArrow className='empty-column-indicator__arrow' />
+    </>
+  );
+
+  const title = intl.formatMessage(
+    isRedesignEnabled() ? messages.heading_redesign : messages.heading,
+  );
+
+  return (
+    <Column bindToDocument={!multiColumn} label={title}>
+      {isRedesignEnabled() ? (
+        <ColumnHeader
+          withBackButton
+          title={title}
+          extraButtons={
+            <ColumnHeaderButton
+              showTextOnDesktop
+              variant='solid'
+              color='accent'
+              icon={PlusIcon}
+              as='link'
+              to='/lists/new'
+            >
+              {intl.formatMessage(messages.create_redesign)}
+            </ColumnHeaderButton>
+          }
+        />
+      ) : (
+        <LegacyColumnHeader
+          title={title}
+          icon='list-ul'
+          iconComponent={ListAltIcon}
+          multiColumn={multiColumn}
+          extraButton={
+            signedIn && (
+              <Link
+                to='/lists/new'
+                className='column-header__button'
+                title={intl.formatMessage(messages.create)}
+                aria-label={intl.formatMessage(messages.create)}
+              >
+                <Icon id='plus' icon={AddIcon} />
+              </Link>
+            )
+          }
+        />
+      )}
+
+      <ScrollableList
+        scrollKey='lists'
+        emptyMessage={emptyMessage}
+        bindToDocument={!multiColumn}
+      >
+        {signedIn ? (
+          lists.map((list) => (
+            <ListItem key={list.id} id={list.id} title={list.title} />
+          ))
+        ) : (
+          <NotSignedInIndicator />
+        )}
+      </ScrollableList>
+
+      <Helmet>
+        <title>{title}</title>
+        <meta name='robots' content='noindex' />
+      </Helmet>
+    </Column>
+  );
+};
+
+// eslint-disable-next-line import/no-default-export
+export default Lists;

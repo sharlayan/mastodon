@@ -1,0 +1,249 @@
+import { Map as ImmutableMap, fromJS } from 'immutable';
+
+import { timelineDelete } from 'flavours/glitch-classic/actions/timelines_typed';
+import { createAccountFromStreamingReactionJSON } from 'flavours/glitch-classic/models/account';
+
+import { STATUS_IMPORT, STATUS_REACTIONS_IMPORT, STATUSES_IMPORT } from '../actions/importer';
+import { CONVERSATION_READ_RECEIPTS_UPDATE } from '../actions/conversations';
+import { normalizeStatusTranslation } from '../actions/importer/normalizer';
+import {
+  FAVOURITE_REQUEST,
+  FAVOURITE_FAIL,
+  UNFAVOURITE_REQUEST,
+  UNFAVOURITE_FAIL,
+  BOOKMARK_REQUEST,
+  BOOKMARK_FAIL,
+  UNBOOKMARK_REQUEST,
+  UNBOOKMARK_FAIL,
+  REACTION_ADD_FAIL,
+  REACTION_REMOVE_FAIL,
+  REACTION_ADD_REQUEST,
+  REACTION_REMOVE_REQUEST,
+} from '../actions/interactions';
+import {
+  reblog,
+  unreblog,
+} from '../actions/interactions_typed';
+import {
+  STATUS_MUTE_SUCCESS,
+  STATUS_UNMUTE_SUCCESS,
+  STATUS_REVEAL,
+  STATUS_HIDE,
+  STATUS_COLLAPSE,
+  STATUS_TRANSLATE_REQUEST,
+  STATUS_TRANSLATE_SUCCESS,
+  STATUS_TRANSLATE_UNDO,
+  STATUS_FETCH_REQUEST,
+  STATUS_FETCH_FAIL,
+} from '../actions/statuses';
+import { setStatusQuotePolicy } from '../actions/statuses_typed';
+
+const importStatus = (state, status) => state.set(status.id, fromJS(status));
+
+const importStatuses = (state, statuses) =>
+  state.withMutations(mutable => statuses.forEach(status => importStatus(mutable, status)));
+
+const normalizeReactionUser = user => {
+  return createAccountFromStreamingReactionJSON(user.toJS());
+};
+
+const importStatusReactions = (state, status) => {
+  const currentStatus = state.get(status.id);
+  if (!currentStatus) {
+    return state;
+  }
+
+  const currentReactions = currentStatus.get('reactions');
+  const reactions = fromJS(status.reactions).map(reaction => {
+    const users = reaction.get('users');
+    const normalized = users ? reaction.set('users', users.map(normalizeReactionUser)) : reaction;
+    const currentReaction = currentReactions?.find(item => item.get('name') === normalized.get('name'));
+    return !normalized.has('me') && currentReaction?.get('me') ? normalized.set('me', true) : normalized;
+  });
+
+  return state
+    .setIn([status.id, 'reactions'], reactions)
+    .setIn([status.id, 'reactions_count'], status.reactions_count);
+};
+
+const deleteStatus = (state, id, references) => {
+  references.forEach(ref => {
+    state = deleteStatus(state, ref, []);
+  });
+
+  return state.delete(id);
+};
+
+const addReaction = (state, id, name, url) => updateReaction(
+  state,
+  id,
+  name,
+  x => x.set('me', true)
+    .update('count', n => n + 1)
+    .update('url', old => old ? old : url)
+    .update('static_url', old => old ? old : url),
+);
+
+const removeReaction = (state, id, name) => updateReaction(
+  state,
+  id,
+  name,
+  x => x.set('me', false).update('count', n => n - 1),
+);
+
+const updateReaction = (state, id, name, updater) => state.update(
+  id,
+  status => status.update(
+    'reactions',
+    reactions => {
+      const index = reactions.findIndex(reaction => reaction.get('name') === name);
+      if (index > -1) {
+        return reactions.update(index, reaction => updater(reaction));
+      } else {
+        return reactions.push(updater(fromJS({ name, count: 0 })));
+      }
+    },
+  ),
+);
+
+const statusTranslateSuccess = (state, id, translation) => {
+  return state.withMutations(map => {
+    map.setIn([id, 'translation'], fromJS(normalizeStatusTranslation(translation, map.get(id))).set('isLoading', false));
+
+    const list = map.getIn([id, 'media_attachments']);
+    if (translation.media_attachments && list) {
+      translation.media_attachments.forEach(item => {
+        const index = list.findIndex(i => i.get('id') === item.id);
+        map.setIn([id, 'media_attachments', index, 'translation'], fromJS({ description: item.description }));
+      });
+    }
+  });
+};
+
+const statusTranslateUndo = (state, id) => {
+  return state.withMutations(map => {
+    map.deleteIn([id, 'translation']);
+    map.getIn([id, 'media_attachments']).forEach((item, index) => map.deleteIn([id, 'media_attachments', index, 'translation']));
+  });
+};
+
+const removeStatusStub = (state, id) => {
+  return state.getIn([id, 'id']) ? state.deleteIn([id, 'isLoading']) : state.delete(id);
+}
+
+
+/** @type {ImmutableMap<string, import('flavours/glitch-classic/models/status').Status>} */
+const initialState = ImmutableMap();
+
+/** @type {import('@reduxjs/toolkit').Reducer<typeof initialState>} */
+export default function statuses(state = initialState, action) {
+  if (setStatusQuotePolicy.pending.match(action)) {
+    const status = state.get(action.meta.arg.statusId);
+    if (status) {
+      return state.setIn([action.meta.arg.statusId, 'isSavingQuotePolicy'], true);
+    }
+  } else if (setStatusQuotePolicy.fulfilled.match(action)) {
+    const status = state.get(action.payload.id);
+    if (status) {
+      return state
+        .setIn([action.payload.id, 'quote_approval'], action.payload.quote_approval)
+        .deleteIn([action.payload.id, 'isSavingQuotePolicy']);
+    }
+  } else if (setStatusQuotePolicy.rejected.match(action)) {
+    return state.deleteIn([action.meta.arg.statusId, 'isSavingQuotePolicy']);
+  }
+
+  switch(action.type) {
+  case STATUS_FETCH_REQUEST:
+    return state.setIn([action.id, 'isLoading'], true);
+  case STATUS_FETCH_FAIL: {
+    if (action.parentQuotePostId && action.error.status === 404) {
+      return removeStatusStub(state, action.id)
+        .setIn([action.parentQuotePostId, 'quote', 'state'], 'deleted')
+    } else {
+      return removeStatusStub(state, action.id);
+    }
+  }
+  case STATUS_IMPORT:
+    return importStatus(state, action.status);
+  case STATUSES_IMPORT:
+    return importStatuses(state, action.statuses);
+  case STATUS_REACTIONS_IMPORT:
+    return importStatusReactions(state, action.status);
+  case CONVERSATION_READ_RECEIPTS_UPDATE:
+    return state.withMutations(mutable => {
+      action.receipt.status_ids.forEach(statusId => {
+        if (!mutable.has(statusId)) return;
+
+        const receipts = mutable.getIn([statusId, 'read_receipts'], fromJS([]));
+        const nextReceipt = fromJS({ account_id: action.receipt.account_id, read_at: action.receipt.read_at });
+        const index = receipts.findIndex(receipt => receipt.get('account_id') === action.receipt.account_id);
+
+        mutable.setIn([statusId, 'read_receipts'], index === -1 ? receipts.push(nextReceipt) : receipts.set(index, nextReceipt));
+      });
+    });
+  case FAVOURITE_REQUEST:
+    return state.setIn([action.status.get('id'), 'favourited'], true);
+  case FAVOURITE_FAIL:
+    return state.get(action.status.get('id')) === undefined ? state : state.setIn([action.status.get('id'), 'favourited'], false);
+  case UNFAVOURITE_REQUEST:
+    return state.setIn([action.status.get('id'), 'favourited'], false);
+  case UNFAVOURITE_FAIL:
+    return state.get(action.status.get('id')) === undefined ? state : state.setIn([action.status.get('id'), 'favourited'], true);
+  case BOOKMARK_REQUEST:
+    return state.get(action.status.get('id')) === undefined ? state : state.setIn([action.status.get('id'), 'bookmarked'], true);
+  case BOOKMARK_FAIL:
+    return state.get(action.status.get('id')) === undefined ? state : state.setIn([action.status.get('id'), 'bookmarked'], false);
+  case UNBOOKMARK_REQUEST:
+    return state.get(action.status.get('id')) === undefined ? state : state.setIn([action.status.get('id'), 'bookmarked'], false);
+  case UNBOOKMARK_FAIL:
+    return state.get(action.status.get('id')) === undefined ? state : state.setIn([action.status.get('id'), 'bookmarked'], true);
+  case REACTION_ADD_REQUEST:
+  case REACTION_REMOVE_FAIL:
+    return addReaction(state, action.id, action.name, action.url);
+  case REACTION_REMOVE_REQUEST:
+  case REACTION_ADD_FAIL:
+    return removeReaction(state, action.id, action.name);
+  case STATUS_MUTE_SUCCESS:
+    return state.setIn([action.id, 'muted'], true);
+  case STATUS_UNMUTE_SUCCESS:
+    return state.setIn([action.id, 'muted'], false);
+  case STATUS_REVEAL:
+    return state.withMutations(map => {
+      action.ids.forEach(id => {
+        if (!(state.get(id) === undefined)) {
+          map.setIn([id, 'hidden'], false);
+        }
+      });
+    });
+  case STATUS_HIDE:
+    return state.withMutations(map => {
+      action.ids.forEach(id => {
+        if (!(state.get(id) === undefined)) {
+          map.setIn([id, 'hidden'], true);
+        }
+      });
+    });
+  case STATUS_COLLAPSE:
+    return state.setIn([action.id, 'collapsed'], action.isCollapsed);
+  case timelineDelete.type:
+    return deleteStatus(state, action.payload.statusId, action.payload.references);
+  case STATUS_TRANSLATE_REQUEST:
+    return state.setIn([action.id, 'translation', 'isLoading'], true);
+  case STATUS_TRANSLATE_SUCCESS:
+    return statusTranslateSuccess(state, action.id, action.translation);
+  case STATUS_TRANSLATE_UNDO:
+    return statusTranslateUndo(state, action.id);
+  default:
+    if(reblog.pending.match(action))
+      return state.setIn([action.meta.arg.statusId, 'reblogged'], true);
+    else if(reblog.rejected.match(action))
+      return state.get(action.meta.arg.statusId) === undefined ? state : state.setIn([action.meta.arg.statusId, 'reblogged'], false);
+    else if(unreblog.pending.match(action))
+      return state.setIn([action.meta.arg.statusId, 'reblogged'], false);
+    else if(unreblog.rejected.match(action))
+      return state.get(action.meta.arg.statusId) === undefined ? state : state.setIn([action.meta.arg.statusId, 'reblogged'], true);
+    else
+      return state;
+  }
+}

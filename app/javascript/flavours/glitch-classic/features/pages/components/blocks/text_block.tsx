@@ -1,0 +1,26 @@
+import type { ApiPageTextBlock } from 'flavours/glitch-classic/api_types/pages';
+import { MfmRenderer } from 'flavours/glitch-classic/components/mfm';
+
+import { Spoiler } from './spoiler';
+
+const TextContent: React.FC<{ block: ApiPageTextBlock }> = ({ block }) => (
+  <div className='page__block page__block--text'>
+    {block.format === 'markdown' ? (
+      <div
+        className='page__block__markdown'
+        dangerouslySetInnerHTML={{ __html: block.html ?? '' }}
+      />
+    ) : (
+      <MfmRenderer text={block.text} />
+    )}
+  </div>
+);
+
+export const TextBlock: React.FC<{ block: ApiPageTextBlock }> = ({ block }) =>
+  block.spoiler ? (
+    <Spoiler className='page__block page__block--text-spoiler'>
+      <TextContent block={block} />
+    </Spoiler>
+  ) : (
+    <TextContent block={block} />
+  );

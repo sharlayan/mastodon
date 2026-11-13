@@ -1,0 +1,253 @@
+export const USER_THEME_VARIABLE_GROUPS = [
+  {
+    id: 'text',
+    variables: [
+      { name: '--color-text-primary', type: 'color' },
+      { name: '--color-text-secondary', type: 'color' },
+      { name: '--color-text-brand', type: 'color' },
+    ],
+  },
+  {
+    id: 'backgrounds',
+    variables: [
+      { name: '--color-bg-primary', type: 'color' },
+      { name: '--color-bg-secondary', type: 'color' },
+      { name: '--color-bg-tertiary', type: 'color' },
+      { name: '--color-bg-brand-base', type: 'color' },
+      { name: '--color-bg-brand-soft', type: 'color' },
+      { name: '--color-bg-brand-softest', type: 'color' },
+    ],
+  },
+  {
+    id: 'borders',
+    variables: [
+      { name: '--color-border-primary', type: 'color' },
+      { name: '--color-border-strong', type: 'color' },
+      { name: '--color-border-brand', type: 'color' },
+    ],
+  },
+  {
+    id: 'spacing',
+    variables: [
+      { name: '--space-3xs', type: 'length' },
+      { name: '--space-2xs', type: 'length' },
+      { name: '--space-xs', type: 'length' },
+      { name: '--space-sm', type: 'length' },
+      { name: '--space-md', type: 'length' },
+      { name: '--space-lg', type: 'length' },
+      { name: '--space-xl', type: 'length' },
+      { name: '--space-2xl', type: 'length' },
+      { name: '--space-3xl', type: 'length' },
+      { name: '--space-4xl', type: 'length' },
+      { name: '--space-5xl', type: 'length' },
+    ],
+  },
+  {
+    id: 'corners',
+    variables: [
+      { name: '--radius-xs', type: 'length' },
+      { name: '--radius-sm', type: 'length' },
+      { name: '--radius-md', type: 'length' },
+      { name: '--radius-lg', type: 'length' },
+      { name: '--radius-xl', type: 'length' },
+    ],
+  },
+];
+
+export const USER_THEME_VARIABLES = USER_THEME_VARIABLE_GROUPS.flatMap(group => group.variables.map(variable => variable.name));
+
+const SCHEMES = ['light', 'dark'];
+const VARIABLE_SET = new Set(USER_THEME_VARIABLES);
+const VARIABLE_TYPES = new Map(USER_THEME_VARIABLE_GROUPS.flatMap(group => group.variables.map(variable => [variable.name, variable.type])));
+const REFERENCE_FUNCTION = /(?:url|src|image-set|cross-fade|element|paint|var|env)\s*\(/i;
+
+export const BIRDSITEUI_USER_THEME = {
+  id: 'sharlayan-birdsiteui',
+  name: 'BirdSiteUI',
+  variables: {
+    light: {
+      '--color-text-primary': '#1f1b23',
+      '--color-text-secondary': '#9388a6',
+      '--color-text-brand': '#6364ff',
+      '--color-bg-primary': '#fff',
+      '--color-bg-secondary': 'rgb(0 0 0 / 5%)',
+      '--color-bg-tertiary': 'rgb(0 0 0 / 8%)',
+      '--color-bg-brand-base': '#6364ff',
+      '--color-bg-brand-soft': 'rgb(99 100 255 / 15%)',
+      '--color-border-primary': '#e6e1ed',
+    },
+    dark: {
+      '--color-text-primary': '#fff',
+      '--color-text-secondary': '#717c9b',
+      '--color-text-brand': '#858afa',
+      '--color-bg-primary': '#1e2028',
+      '--color-bg-secondary': 'rgb(255 255 255 / 5%)',
+      '--color-bg-tertiary': 'rgb(255 255 255 / 10%)',
+      '--color-bg-brand-base': '#6364ff',
+      '--color-bg-brand-soft': 'rgb(99 100 255 / 15%)',
+      '--color-border-primary': '#38384d',
+    },
+  },
+};
+
+export const encodeUserThemeStorage = (value) => {
+  return typeof value === 'string' ? value : JSON.stringify(value);
+};
+
+export const decodeUserThemeStorage = (value) => {
+  if (typeof value !== 'string' || value.length === 0) return '{}';
+  if (value.trimStart().startsWith('{')) return value;
+
+  try {
+    const binary = window.atob(value);
+    const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return '{}';
+  }
+};
+
+export const isSafeUserThemeValue = (variable, value) => {
+  if (typeof value !== 'string' || value.length > 256 || REFERENCE_FUNCTION.test(value)) return false;
+  const type = VARIABLE_TYPES.get(variable);
+  if (!type) return false;
+  if (typeof CSS !== 'undefined' && typeof CSS.supports === 'function') {
+    const property = type === 'color' ? 'color' : variable.startsWith('--radius-') ? 'border-radius' : 'margin';
+    return CSS.supports(property, value);
+  }
+  return true;
+};
+
+export const containsUnsafeUserThemeValue = (value) => {
+  const parsed = parseObject(value);
+  return SCHEMES.some(scheme => Object.entries(parseObject(parsed[scheme]?.variables)).some(([name, candidate]) => VARIABLE_SET.has(name) && !isSafeUserThemeValue(name, candidate)));
+};
+
+const parseObject = (value) => {
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const normalizeVariables = (variables) => Object.fromEntries(
+  Object.entries(parseObject(variables)).filter(([name, value]) => VARIABLE_SET.has(name) && isSafeUserThemeValue(name, value)),
+);
+
+const normalizeScheme = (scheme) => {
+  const parsed = parseObject(scheme);
+  return {
+    theme: typeof parsed.theme === 'string' ? parsed.theme : 'default',
+    variables: normalizeVariables(parsed.variables),
+  };
+};
+
+export const parseUserThemeCatalog = (value) => {
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.filter(theme => theme && typeof theme.id === 'string' && typeof theme.name === 'string').map(theme => ({
+      id: theme.id,
+      name: theme.name,
+      variables: {
+        light: normalizeVariables(theme.variables?.light),
+        dark: normalizeVariables(theme.variables?.dark),
+      },
+    }));
+  } catch {
+    return [];
+  }
+};
+
+export const isBirdSiteUIActive = (root = document) => {
+  if (root.body?.classList.contains('skin-birdsiteui')) return true;
+
+  return Array.from(root.querySelectorAll('link[rel~="stylesheet"]')).some(link =>
+    /(?:^|\/)skins\/glitch-classic\/birdsiteui(?:\/|[-.])/.test(link.href),
+  );
+};
+
+export const userThemeCatalogForActiveSkin = (value, root = document) => {
+  const catalog = parseUserThemeCatalog(value);
+  if (!isBirdSiteUIActive(root)) return catalog;
+
+  return [
+    ...catalog.filter(theme => theme.id !== BIRDSITEUI_USER_THEME.id),
+    BIRDSITEUI_USER_THEME,
+  ];
+};
+
+export const resolveUserThemeConfig = (userValue, defaultValue) => {
+  const user = parseObject(typeof userValue === 'string' ? decodeUserThemeStorage(userValue) : userValue);
+  const defaults = parseObject(defaultValue);
+
+  return Object.fromEntries(SCHEMES.map(scheme => [
+    scheme,
+    {
+      theme: typeof user[scheme]?.theme === 'string' ? user[scheme].theme : normalizeScheme(defaults[scheme]).theme,
+      variables: {
+        ...normalizeScheme(defaults[scheme]).variables,
+        ...normalizeVariables(user[scheme]?.variables),
+      },
+    },
+  ]));
+};
+
+export const parseUserThemeOverrides = (value) => {
+  const parsed = parseObject(typeof value === 'string' ? decodeUserThemeStorage(value) : value);
+
+  return Object.fromEntries(SCHEMES.flatMap(scheme => {
+    const source = parseObject(parsed[scheme]);
+    const variables = normalizeVariables(source.variables);
+    const entry = {};
+    if (typeof source.theme === 'string') entry.theme = source.theme;
+    if (Object.keys(variables).length > 0) entry.variables = variables;
+    return Object.keys(entry).length > 0 ? [[scheme, entry]] : [];
+  }));
+};
+
+export const portableUserThemeConfig = (config, catalog) => Object.fromEntries(SCHEMES.map(scheme => {
+  const selected = normalizeScheme(config?.[scheme]);
+  const theme = catalog.find(candidate => candidate.id === selected.theme);
+  return [scheme, {
+    theme: 'default',
+    variables: { ...(theme?.variables?.[scheme] ?? {}), ...selected.variables },
+  }];
+}));
+
+export const applyUserTheme = (config, catalog, enabled = true) => {
+  const root = document.documentElement;
+  USER_THEME_VARIABLES.forEach(variable => root.style.removeProperty(variable));
+  root.style.removeProperty('--color-bg-desktop');
+  if (!enabled) return;
+
+  const scheme = root.dataset.colorScheme === 'light' ? 'light' : 'dark';
+  const selected = normalizeScheme(config?.[scheme]);
+  const theme = catalog.find(candidate => candidate.id === selected.theme);
+  const variables = { ...(theme?.variables?.[scheme] ?? {}), ...selected.variables };
+
+  Object.entries(variables).forEach(([name, value]) => {
+    if (VARIABLE_SET.has(name)) root.style.setProperty(name, value);
+  });
+
+  if (variables['--color-bg-primary']) {
+    root.style.setProperty(
+      '--color-bg-desktop',
+      scheme === 'light'
+        ? 'color-mix(in srgb, var(--color-bg-primary), var(--color-grey-950) 4%)'
+        : 'color-mix(in srgb, var(--color-bg-primary), var(--color-black) 30%)',
+    );
+  }
+};
+
+let colorSchemeObserver;
+
+export const watchUserTheme = (config, catalog, enabled = true) => {
+  colorSchemeObserver?.disconnect();
+  applyUserTheme(config, catalog, enabled);
+  colorSchemeObserver = new MutationObserver(() => applyUserTheme(config, catalog, enabled));
+  colorSchemeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-color-scheme'] });
+};

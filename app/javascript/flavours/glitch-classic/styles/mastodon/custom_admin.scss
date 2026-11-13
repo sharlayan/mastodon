@@ -1,0 +1,286 @@
+@use 'sass:color';
+@use 'variables' as *;
+
+html {
+  .admin-wrapper {
+    .metadata-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--color-border-primary);
+
+      & > div {
+        flex-grow: 1;
+      }
+
+      .instance-favicon-large {
+        width: 48px;
+        height: 48px;
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 15%);
+        background: var(--color-bg-primary);
+        padding: 4px;
+      }
+
+      .instance-name {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--color-text-primary);
+      }
+
+      .instance-domain {
+        margin: 4px 0 0;
+        color: var(--color-text-secondary);
+        font-size: 13px;
+        font-family: var(--font-monospace);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .metadata-refresh-link {
+        font-size: 12px;
+        color: var(--color-text-brand);
+        text-decoration: none;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+
+    .metadata-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 8px;
+    }
+
+    .metadata-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: var(--color-bg-primary);
+      padding: 12px;
+      border-radius: 4px;
+      border: 1px solid var(--color-border-primary);
+
+      .metadata-label {
+        font-weight: 600;
+        font-size: 11px;
+        text-transform: uppercase;
+        color: var(--color-text-secondary);
+        letter-spacing: 0.5px;
+      }
+
+      .metadata-value {
+        font-size: 13px;
+        color: var(--color-text-primary);
+      }
+
+      .software-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 12px;
+        color: var(--color-text-primary);
+        font-weight: 600;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 20%);
+        font-size: 12px;
+
+        .badge-hint {
+          opacity: 0.85;
+          font-weight: 400;
+          font-size: 10px;
+          margin-left: 4px;
+        }
+      }
+
+      .version-code {
+        padding: 3px 6px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-family: var(--font-monospace);
+        display: inline-block;
+      }
+
+      code {
+        padding: 3px 6px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-family: var(--font-monospace);
+      }
+
+      .color-preview {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+
+        .color-swatch {
+          width: 32px;
+          height: 32px;
+          border-radius: 4px;
+          border: 1px solid var(--color-border-primary);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 10%);
+          background: var(--color-bg-primary);
+        }
+      }
+
+      .muted-hint {
+        color: var(--color-text-tertiary);
+        font-style: italic;
+        font-size: 12px;
+      }
+    }
+
+    .metadata-warning {
+      margin-top: 16px;
+      padding: 10px 14px;
+      border: 1px solid var(--color-text-warning);
+      color: var(--color-text-warning);
+      border-radius: 4px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .fa {
+        flex-shrink: 0;
+      }
+    }
+  }
+}
+
+.bulk-edit-list {
+  border: 1px solid var(--color-border-primary);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  overflow: hidden;
+}
+
+.batch-table__form {
+  display: block;
+  padding: 8px 16px;
+  background: var(--color-bg-primary);
+  border-block-start: 1px solid var(--color-border-primary);
+}
+
+.avatar-decoration-category-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  &__select,
+  &__input {
+    flex: 1 1 240px;
+    min-width: 0;
+    box-sizing: border-box;
+    height: 36px;
+    padding: 6px 10px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--color-text-primary);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-primary);
+    border-radius: 4px;
+    resize: none;
+  }
+}
+
+.bulk-edit-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-block-end: 1px solid var(--color-border-primary);
+  background: var(--color-bg-primary);
+
+  &:last-child {
+    border-block-end: none;
+    border-radius: 0 0 4px 4px;
+  }
+
+  &:hover {
+    background: var(--color-bg-secondary);
+  }
+
+  &__emoji {
+    flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    img.emojione {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+    }
+  }
+
+  &__info {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__shortcode {
+    font-size: 0.9em;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__fields {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+}
+
+.bulk-edit-input,
+.bulk-edit-select {
+  flex: 1 1 140px;
+  min-width: 0;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 0.85em;
+  line-height: 1.4;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 4px;
+  padding: 4px 8px;
+  height: auto;
+  outline: var(--outline-focus-default);
+  outline-color: transparent;
+  transition:
+    outline-color 0.15s ease-out,
+    border-color 0.15s ease-out;
+
+  &:focus,
+  &:focus-visible {
+    outline-color: var(--color-border-brand);
+    border-color: var(--color-border-brand);
+  }
+
+  &::placeholder {
+    color: var(--color-text-disabled);
+  }
+}
+
+.bulk-edit-select {
+  appearance: none;
+  padding-inline-end: 24px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23666' d='M1.41 0L6 4.58 10.59 0 12 1.41l-6 6-6-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  cursor: pointer;
+}

@@ -1,0 +1,317 @@
+import type { ApiAnnualReportState } from './api/annual_report';
+import type { ApiAccountJSON } from './api_types/accounts';
+import { canViewFeed } from './permissions';
+import { readSharlayanInitialState } from './sharlayan/initial_state';
+import type {
+  SharlayanInitialState,
+  SharlayanInitialStateMeta,
+} from './sharlayan/initial_state';
+import { isPageBlogViewPath } from './utils/page_blog_theme';
+
+export type {
+  ApiCustomEmojiMuteJSON,
+  ApiReactionMuteJSON,
+} from './sharlayan/initial_state';
+
+export type InitialStateLanguage = [
+  code: string,
+  name: string,
+  localName: string,
+];
+
+interface InitialStateMeta extends SharlayanInitialStateMeta {
+  access_token: string;
+  advanced_layout?: boolean;
+  auto_play_gif: boolean;
+  activity_api_enabled: boolean;
+  admin: string;
+  boost_modal?: boolean;
+  quick_boosting?: boolean;
+  favourite_modal?: boolean;
+  crop_images: boolean;
+  delete_modal?: boolean;
+  missing_alt_text_modal?: boolean;
+  disable_swiping?: boolean;
+  disable_hover_cards?: boolean;
+  disabled_account_id?: string;
+  display_media: string;
+  domain: string;
+  expand_spoilers?: boolean;
+  limited_federation_mode: boolean;
+  locale: string;
+  background_image?: string;
+  background_color?: string;
+  background_opacity: number;
+  background_on_settings_pages: boolean;
+  glitch_mascots: (string | null)[];
+  mascot: string | null;
+  me?: string;
+  moved_to_account_id?: string;
+  owner?: string;
+  profile_directory: boolean;
+  registrations_open: boolean;
+  reduce_motion: boolean;
+  repository: string;
+  search_enabled: boolean;
+  trends_enabled: boolean;
+  single_user_mode: boolean;
+  source_url: string;
+  streaming_api_base_url: string;
+  local_live_feed_access: 'public' | 'authenticated' | 'disabled';
+  remote_live_feed_access: 'public' | 'authenticated' | 'disabled';
+  local_topic_feed_access: 'public' | 'authenticated';
+  remote_topic_feed_access: 'public' | 'authenticated' | 'disabled';
+  title: string;
+  custom_app_icon: string | null;
+  show_trends: boolean;
+  landing_page: 'about' | 'trends' | 'local_feed';
+  use_blurhash: boolean;
+  use_pending_items?: boolean;
+  version: string;
+  sso_redirect: string;
+  status_page_url: string;
+  terms_of_service_enabled: boolean;
+  emoji_style?: string;
+  wrapstodon?: InitialStateWrapstodon | null;
+  default_content_type: string;
+}
+
+interface IntialStateRole {
+  id: string;
+  name: string;
+  permissions: string;
+  color: string;
+  highlighted: boolean;
+  collection_limit: number;
+  page_limit: number;
+}
+
+interface PollLimits {
+  max_options: number;
+  max_option_chars: number;
+  min_expiration: number;
+  max_expiration: number;
+}
+
+interface InitialStateWrapstodon {
+  year: number;
+  state: ApiAnnualReportState;
+}
+
+interface InitialStateCompose {
+  text: string;
+  default_privacy?: string;
+  default_sensitive?: boolean;
+  default_language?: string;
+  default_quote_policy?: string;
+  default_reaction_acceptance?: string | null;
+  me?: string;
+}
+
+export interface InitialState extends SharlayanInitialState {
+  accounts: Record<string, ApiAccountJSON>;
+  languages: InitialStateLanguage[];
+  compose: InitialStateCompose;
+  critical_updates_pending?: boolean;
+  meta: InitialStateMeta;
+  role?: IntialStateRole;
+  features: string[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  local_settings: any;
+  max_feed_hashtags: number;
+  poll_limits: PollLimits;
+}
+
+const element = document.getElementById('initial-state');
+export const initialState: InitialState | undefined = element?.textContent
+  ? (JSON.parse(element.textContent) as InitialState)
+  : undefined;
+
+const initialPath: string =
+  document
+    .querySelector('head meta[name=initialPath]')
+    ?.getAttribute('content') ?? '';
+export const hasMultiColumnPath: boolean =
+  initialPath === '/' ||
+  initialPath === '/getting-started' ||
+  initialPath === '/home' ||
+  initialPath.startsWith('/deck');
+
+export const pageBlogViewAccount = document
+  .querySelector('head meta[name=pageBlogViewAccount]')
+  ?.getAttribute('content');
+export const pageBlogViewSkin = document
+  .querySelector('head meta[name=pageBlogViewSkin]')
+  ?.getAttribute('content');
+export const pageBlogViewViewerSkin = document
+  .querySelector('head meta[name=pageBlogViewViewerSkin]')
+  ?.getAttribute('content');
+export const pageBlogViewColorSchemes = document
+  .querySelector('head meta[name=pageBlogViewColorSchemes]')
+  ?.getAttribute('content')
+  ?.split(' ')
+  .filter(Boolean) ?? ['auto', 'light', 'dark'];
+
+export const isServerPageBlogViewPath = (pathname: string): boolean =>
+  isPageBlogViewPath(pathname, pageBlogViewAccount);
+
+// Glitch-soc-specific “local settings”
+if (initialState) {
+  try {
+    const initialStateString = localStorage.getItem('mastodon-settings');
+    if (initialStateString) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      initialState.local_settings = JSON.parse(initialStateString);
+    }
+  } catch {
+    initialState.local_settings = {};
+  }
+}
+
+function getMeta<K extends keyof InitialStateMeta>(
+  prop: K,
+): InitialStateMeta[K] | undefined {
+  return initialState?.meta[prop];
+}
+
+export const activityApiEnabled = getMeta('activity_api_enabled');
+export const autoPlayGif = getMeta('auto_play_gif');
+export const boostModal = getMeta('boost_modal');
+export const quickBoosting = getMeta('quick_boosting');
+export const deleteModal = getMeta('delete_modal');
+export const missingAltTextModal = getMeta('missing_alt_text_modal');
+export const disableSwiping = getMeta('disable_swiping');
+export const disableHoverCards = getMeta('disable_hover_cards');
+export const disabledAccountId = getMeta('disabled_account_id');
+export const displayMedia = getMeta('display_media');
+export const domain = getMeta('domain');
+export const emojiStyle = getMeta('emoji_style') ?? 'auto';
+export let expandSpoilers = getMeta('expand_spoilers') ?? false;
+export const setExpandSpoilers = (value: boolean) => {
+  expandSpoilers = value;
+};
+export const forceSingleColumn = !getMeta('advanced_layout');
+export const limitedFederationMode = getMeta('limited_federation_mode');
+export const glitchMascots = getMeta('glitch_mascots') ?? [];
+export const mascot = getMeta('mascot');
+export const backgroundImage = getMeta('background_image');
+export const backgroundColor = getMeta('background_color');
+export const backgroundOpacity = getMeta('background_opacity');
+export const me = getMeta('me');
+export const movedToAccountId = getMeta('moved_to_account_id');
+export const owner = getMeta('owner');
+export const profile_directory = getMeta('profile_directory');
+export const reduceMotion = getMeta('reduce_motion');
+export const registrationsOpen = getMeta('registrations_open');
+export const repository = getMeta('repository');
+export const searchEnabled = getMeta('search_enabled');
+export const trendsEnabled = getMeta('trends_enabled');
+export const showTrends = getMeta('show_trends');
+export const singleUserMode = getMeta('single_user_mode');
+export const source_url = getMeta('source_url');
+export const localLiveFeedAccess = getMeta('local_live_feed_access');
+export const remoteLiveFeedAccess = getMeta('remote_live_feed_access');
+export const localTopicFeedAccess = getMeta('local_topic_feed_access');
+export const remoteTopicFeedAccess = getMeta('remote_topic_feed_access');
+export const title = getMeta('title');
+export const customAppIcon = getMeta('custom_app_icon');
+export const landingPage = getMeta('landing_page');
+export const useBlurhash = getMeta('use_blurhash');
+export const usePendingItems = getMeta('use_pending_items');
+export const version = getMeta('version');
+export const criticalUpdatesPending = initialState?.critical_updates_pending;
+export const statusPageUrl = getMeta('status_page_url');
+export const sso_redirect = getMeta('sso_redirect');
+export const termsOfServiceEnabled = getMeta('terms_of_service_enabled');
+export const wrapstodon = getMeta('wrapstodon');
+export const {
+  colorScheme,
+  contrast,
+  maxReactions,
+  localAccountStatusesAccess,
+  localStatusPageAccess,
+  forceLocalOnly,
+  roleplayMode,
+  collectionsEnabled,
+  circlesEnabled,
+  clipsEnabled,
+  pagesEnabled,
+  pagesDriveOnly,
+  antennaEnabled,
+  driveEnabled,
+  chatEnabled,
+  boardAnnouncementsEnabled,
+  visibleReactions,
+  showInstanceInfo,
+  customEmojiSize,
+  customEmojiMutes,
+  customEmojiMuteHidden,
+  ignoreOthersPagesView,
+  reactionMutes,
+  inlineComposeTabs,
+  reactionCustomEmojiSize,
+  reactionLocalEmojiOnly,
+  reactionsEnabled,
+  mfmEnabled,
+  mfmAllowComposition,
+  mfmAnimations,
+  mfmFoldMode,
+  avatarDecorationsEnabled,
+  avatarDecorationsFederationEnabled,
+  avatarDecorationsLocalOnlyView,
+  showAvatarDecorations,
+  showFederatedAvatarDecorations,
+  avatarDecorationShape,
+  forceRoundAvatar,
+  adminTimelineOwnerViewer,
+  softHideDeletion,
+  catEnabled,
+  catFederationEnabled,
+  showCat,
+  showCatSpeak,
+  showFederatedCat,
+  userThemesEnabled,
+  serverStoredAccountSwitchingEnabled,
+  userThemeCatalog,
+  userThemeDefaults,
+  useMyArchive,
+  userTheme,
+} = readSharlayanInitialState(initialState, Boolean(me));
+
+const rolePermissions = Number(initialState?.role?.permissions ?? 0);
+export const localTimelineEnabled =
+  canViewFeed(Boolean(me), rolePermissions, localLiveFeedAccess) &&
+  getMeta('roleplay_disable_local_timeline') !== true &&
+  getMeta('roleplay_hide_public_timelines_from_admins') !== true;
+export const federatedTimelineEnabled =
+  canViewFeed(Boolean(me), rolePermissions, remoteLiveFeedAccess) &&
+  getMeta('roleplay_hide_public_timelines_from_admins') !== true;
+
+const displayNames =
+  // Intl.DisplayNames can be undefined in old browsers
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  Intl.DisplayNames &&
+  (new Intl.DisplayNames(getMeta('locale'), {
+    type: 'language',
+    fallback: 'none',
+    languageDisplay: 'standard',
+  }) as Intl.DisplayNames | undefined);
+
+export const languages = initialState?.languages.map((lang) => {
+  // zh-YUE is not a valid CLDR unicode_language_id
+  return [
+    lang[0],
+    displayNames?.of(lang[0].replace('zh-YUE', 'yue')) ?? lang[1],
+    lang[2],
+  ] as InitialStateLanguage;
+});
+
+// Glitch-soc-specific settings
+export const maxFeedHashtags = initialState?.max_feed_hashtags ?? 4;
+export const favouriteModal = getMeta('favourite_modal');
+export const pollLimits = initialState?.poll_limits;
+export const defaultContentType = getMeta('default_content_type');
+
+export function getAccessToken(): string | undefined {
+  return getMeta('access_token');
+}

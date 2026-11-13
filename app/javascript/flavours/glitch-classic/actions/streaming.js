@@ -1,0 +1,278 @@
+// @ts-check
+
+import { getLocale } from '../locales';
+import { createAntennaStreamConnector, handleSharlayanStreamingEvent } from '../sharlayan/compose/streaming';
+import { connectStream } from '../stream';
+
+import {
+  fetchAnnouncements,
+  updateAnnouncements,
+  updateReaction as updateAnnouncementsReaction,
+  deleteAnnouncement,
+} from './announcements';
+import { updateConversations, updateConversationReadReceipts } from './conversations';
+import { emitChatStreamEvent, handleChatStreamConnected, handleChatStreamDisconnected, handleChatStreamPolled, showChatDesktopNotification } from '../features/chat/stream';
+import { processNewNotificationForGroups, refreshStaleNotificationGroups, pollRecentNotifications as pollRecentGroupNotifications } from './notification_groups';
+import { updateNotifications } from './notifications';
+import { updateStatus } from './statuses';
+import {
+  updateTimeline,
+  deleteFromTimelines,
+  expandHomeTimeline,
+  connectTimeline,
+  disconnectTimeline,
+  fillHomeTimelineGaps,
+  fillPublicTimelineGaps,
+  fillCommunityTimelineGaps,
+  fillListTimelineGaps,
+} from './timelines';
+
+/**
+ * @param {number} max
+ * @returns {number}
+ */
+const randomUpTo = max =>
+  Math.floor(Math.random() * Math.floor(max));
+
+/**
+ * @typedef {import('flavours/glitch-classic/store').AppDispatch} Dispatch
+ * @typedef {import('flavours/glitch-classic/store').GetState} GetState
+ * @typedef {import('redux').UnknownAction} UnknownAction
+ * @typedef {(dispatch: Dispatch, getState: GetState) => Promise<void>} FallbackFunction
+ */
+
+/**
+ * @typedef {(dispatch: Dispatch, getState: GetState) => () => void} StreamThunk
+ */
+
+/**
+ * @param {string} timelineId
+ * @param {string} channelName
+ * @param {Object.<string, string>} params
+ * @param {Object} options
+ * @param {FallbackFunction} [options.fallback]
+ * @param {() => UnknownAction} [options.fillGaps]
+ * @param {(status: object) => boolean} [options.accept]
+ * @returns {StreamThunk}
+ */
+export const connectTimelineStream = (timelineId, channelName, params = {}, options = {}) => {
+  const { messages } = getLocale();
+
+  // Public streams are currently not returning personalized quote policies
+  const bogusQuotePolicy = channelName.startsWith('public') || channelName.startsWith('hashtag');
+
+  return connectStream(channelName, params, (dispatch, getState) => {
+    // @ts-ignore
+    const locale = getState().getIn(['meta', 'locale']);
+
+    // @ts-expect-error
+    let pollingId;
+    let isConnected = false;
+    let isDisconnectPending = false;
+
+    /**
+     * @param {FallbackFunction} fallback
+     */
+
+    const useFallback = async fallback => {
+      if (channelName === 'user') {
+        handleChatStreamPolled();
+      }
+
+      await fallback(dispatch, getState);
+
+      // @ts-expect-error
+      if (isConnected || pollingId) {
+        return;
+      }
+
+      pollingId = setTimeout(() => {
+        pollingId = null;
+        // eslint-disable-next-line react-hooks/rules-of-hooks -- this is not a react hook
+        useFallback(fallback);
+      }, 20000 + randomUpTo(20000));
+    };
+
+    return {
+      onConnect() {
+        isConnected = true;
+        dispatch(connectTimeline(timelineId));
+
+        // @ts-expect-error
+        if (pollingId) {
+          // @ts-ignore
+          clearTimeout(pollingId); pollingId = null;
+        }
+
+        if (isDisconnectPending && options.fallback) {
+          isDisconnectPending = false;
+          options.fallback(dispatch, getState).catch(() => {});
+        }
+
+        if (options.fillGaps) {
+          dispatch(options.fillGaps());
+        }
+      },
+
+      ...(channelName === 'user' ? { onSubscribed: handleChatStreamConnected } : {}),
+
+      onDisconnect() {
+        const { fallback } = options;
+
+        isConnected = false;
+
+        if (channelName === 'user') {
+          handleChatStreamDisconnected();
+        }
+
+        if (fallback) {
+          isDisconnectPending = true;
+          pollingId = setTimeout(() => {
+            pollingId = null;
+            isDisconnectPending = false;
+            dispatch(disconnectTimeline({ timeline: timelineId }));
+            useFallback(fallback);
+          }, randomUpTo(40000));
+        } else {
+          dispatch(disconnectTimeline({ timeline: timelineId }));
+        }
+      },
+
+      onReceive(data) {
+        try {
+          if (handleSharlayanStreamingEvent({ bogusQuotePolicy, data, dispatch, getState, messages })) return;
+          if (data.event.startsWith('chat.')) {
+            const payload = typeof data.payload === 'string' ? JSON.parse(data.payload) : data.payload;
+            emitChatStreamEvent({ event: data.event, payload });
+            if (data.event === 'chat.notification') showChatDesktopNotification(payload, messages['chat.title']);
+            return;
+          }
+
+          switch (data.event) {
+          case 'update':
+            // @ts-expect-error
+            dispatch(updateTimeline(timelineId, JSON.parse(data.payload), { accept: options.accept, bogusQuotePolicy }));
+            break;
+          case 'status.update':
+            // @ts-expect-error
+            dispatch(updateStatus(JSON.parse(data.payload), { bogusQuotePolicy }));
+            break;
+          case 'delete':
+            dispatch(deleteFromTimelines(data.payload));
+            break;
+          case 'notification': {
+            // @ts-expect-error
+            const notificationJSON = JSON.parse(data.payload);
+            dispatch(updateNotifications(notificationJSON, messages, locale));
+            dispatch(processNewNotificationForGroups(notificationJSON));
+            break;
+          }
+          case 'notifications_merged': {
+            dispatch(refreshStaleNotificationGroups());
+            break;
+          }
+          case 'conversation':
+            // @ts-expect-error
+            dispatch(updateConversations(JSON.parse(data.payload)));
+            break;
+          case 'conversation.read':
+            // @ts-expect-error
+            dispatch(updateConversationReadReceipts(JSON.parse(data.payload)));
+            break;
+          case 'announcement':
+            // @ts-expect-error
+            dispatch(updateAnnouncements(JSON.parse(data.payload)));
+            break;
+          case 'announcement.reaction':
+            // @ts-expect-error
+            dispatch(updateAnnouncementsReaction(JSON.parse(data.payload)));
+            break;
+          case 'announcement.delete':
+            dispatch(deleteAnnouncement(data.payload));
+            break;
+          }
+        } catch (e) {
+          console.error(`Failed to process streaming event '${data.event}':`, e);
+        }
+      },
+    };
+  });
+};
+
+/**
+ * @param {Dispatch} dispatch
+ */
+async function refreshHomeTimelineAndNotification(dispatch) {
+  await dispatch(expandHomeTimeline());
+
+  // TODO: polling for merged notifications
+  try {
+    await dispatch(pollRecentGroupNotifications());
+  } catch {
+    // TODO
+  }
+
+  await dispatch(fetchAnnouncements());
+}
+
+/**
+ * @returns {StreamThunk}
+ */
+export const connectUserStream = () =>
+  connectTimelineStream('home', 'user', {}, {
+    fallback: refreshHomeTimelineAndNotification,
+    // @ts-expect-error
+    fillGaps: fillHomeTimelineGaps
+  });
+
+/**
+ * @param {Object} options
+ * @param {boolean} [options.onlyMedia]
+ * @returns {StreamThunk}
+ */
+export const connectCommunityStream = ({ onlyMedia } = {}) =>
+  connectTimelineStream(`community${onlyMedia ? ':media' : ''}`, `public:local${onlyMedia ? ':media' : ''}`, {}, {
+    // @ts-expect-error
+    fillGaps: () => (fillCommunityTimelineGaps({ onlyMedia }))
+  });
+
+/**
+ * @param {Object} options
+ * @param {boolean} [options.onlyMedia]
+ * @param {boolean} [options.onlyRemote]
+ * @param {boolean} [options.allowLocalOnly]
+ * @returns {StreamThunk}
+ */
+export const connectPublicStream = ({ onlyMedia, onlyRemote, allowLocalOnly } = {}) =>
+  connectTimelineStream(`public${onlyRemote ? ':remote' : (allowLocalOnly ? ':allow_local_only' : '')}${onlyMedia ? ':media' : ''}`, `public${onlyRemote ? ':remote' : (allowLocalOnly ? ':allow_local_only' : '')}${onlyMedia ? ':media' : ''}`, {}, {
+    // @ts-expect-error
+    fillGaps: () => fillPublicTimelineGaps({ onlyMedia, onlyRemote, allowLocalOnly })
+  });
+
+/**
+ * @param {string} columnId
+ * @param {string} tagName
+ * @param {boolean} onlyLocal
+ * @param {(status: object) => boolean} accept
+ * @returns {StreamThunk}
+ */
+export const connectHashtagStream = (columnId, tagName, onlyLocal, accept) =>
+  connectTimelineStream(`hashtag:${columnId}${onlyLocal ? ':local' : ''}`, `hashtag${onlyLocal ? ':local' : ''}`, { tag: tagName }, { accept });
+
+/**
+ * @returns {StreamThunk}
+ */
+export const connectDirectStream = () =>
+  connectTimelineStream('direct', 'direct');
+
+/**
+ * @param {string} listId
+ * @returns {StreamThunk}
+ */
+export const connectListStream = listId =>
+  connectTimelineStream(`list:${listId}`, 'list', { list: listId }, {
+    // @ts-expect-error
+    fillGaps: () => fillListTimelineGaps(listId)
+  });
+
+export const connectAntennaStream = createAntennaStreamConnector({ connectTimeline: connectTimelineStream });

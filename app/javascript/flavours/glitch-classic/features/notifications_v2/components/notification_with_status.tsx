@@ -1,0 +1,161 @@
+import { useCallback, useMemo, useState } from 'react';
+
+import classNames from 'classnames';
+
+import type { Map as ImmutableMap } from 'immutable';
+
+import { replyComposeById } from '@/flavours/glitch-classic/actions/compose_typed';
+import { LinkedDisplayName } from '@/flavours/glitch-classic/components/display_name';
+import { isRedesignEnabled } from '@/flavours/glitch-classic/utils/environment';
+import {
+  toggleReblog,
+  toggleFavourite,
+} from 'flavours/glitch-classic/actions/interactions';
+import {
+  navigateToStatus,
+  navigateToStatusOrConversation,
+  toggleStatusSpoilers,
+} from 'flavours/glitch-classic/actions/statuses';
+import { Hotkeys } from 'flavours/glitch-classic/components/hotkeys';
+import type { IconProp } from 'flavours/glitch-classic/components/icon';
+import { Icon } from 'flavours/glitch-classic/components/icon';
+import { Status } from 'flavours/glitch-classic/components/status';
+import { getStatusHidden } from 'flavours/glitch-classic/selectors/filters';
+import { shouldAutoCollapseNotification } from 'flavours/glitch-classic/sharlayan/post_collapsing';
+import { useAppSelector, useAppDispatch } from 'flavours/glitch-classic/store';
+
+import type { LabelRenderer } from './notification_group_with_status';
+
+export const NotificationWithStatus: React.FC<{
+  type: string;
+  icon: IconProp;
+  iconId: string;
+  accountIds: string[];
+  statusId: string | undefined;
+  count: number;
+  labelRenderer: LabelRenderer;
+  labelSeeMoreHref?: string | undefined;
+  unread: boolean;
+  collapsed?: boolean;
+  openAsConversation?: boolean;
+}> = ({
+  icon,
+  iconId,
+  accountIds,
+  statusId,
+  count,
+  labelRenderer,
+  labelSeeMoreHref,
+  type,
+  unread,
+  collapsed = true,
+  openAsConversation,
+}) => {
+  const dispatch = useAppDispatch();
+  const [wasUnreadOnMount] = useState(unread);
+  const autoCollapseEnabled = useAppSelector((state) =>
+    shouldAutoCollapseNotification(
+      state.local_settings.getIn(['collapsed', 'auto']) as ImmutableMap<
+        string,
+        unknown
+      >,
+      wasUnreadOnMount,
+    ),
+  );
+
+  const account = useAppSelector((state) =>
+    state.accounts.get(accountIds.at(0) ?? ''),
+  );
+  const label = useMemo(
+    () =>
+      labelRenderer(
+        <LinkedDisplayName displayProps={{ account, variant: 'simple' }} />,
+        count,
+        labelSeeMoreHref ?? '',
+      ),
+    [labelRenderer, account, count, labelSeeMoreHref],
+  );
+
+  const isPrivateMention = useAppSelector(
+    (state) => state.statuses.getIn([statusId, 'visibility']) === 'direct',
+  );
+
+  const isFiltered = useAppSelector(
+    (state) =>
+      statusId &&
+      getStatusHidden(state, { id: statusId, contextType: 'notifications' }),
+  );
+
+  const opensConversation = openAsConversation ?? isPrivateMention;
+
+  const handleOpen = useCallback(() => {
+    if (opensConversation) {
+      dispatch(navigateToStatusOrConversation(statusId));
+    } else {
+      dispatch(navigateToStatus(statusId));
+    }
+  }, [dispatch, statusId, opensConversation]);
+
+  const handlers = useMemo(
+    () => ({
+      open: () => {
+        handleOpen();
+      },
+
+      reply: () => {
+        dispatch(replyComposeById({ statusId }));
+      },
+
+      boost: () => {
+        dispatch(toggleReblog(statusId));
+      },
+
+      favourite: () => {
+        dispatch(toggleFavourite(statusId));
+      },
+
+      toggleHidden: () => {
+        // TODO: glitch-soc is different and needs different handling of CWs
+        dispatch(toggleStatusSpoilers(statusId));
+      },
+    }),
+    [dispatch, statusId, handleOpen],
+  );
+
+  if (!statusId || isFiltered) return null;
+
+  return (
+    <Hotkeys handlers={handlers}>
+      <div
+        role='button'
+        className={classNames(
+          `notification-ungrouped focusable notification-ungrouped--${type}`,
+          {
+            'notification-ungrouped--unread': unread,
+            'notification-ungrouped--direct': isPrivateMention,
+            'notification-ungrouped--redesign': isRedesignEnabled(),
+          },
+        )}
+        tabIndex={0}
+      >
+        <h2 className='notification-ungrouped__header'>
+          <div className='notification-ungrouped__header__icon'>
+            <Icon icon={icon} id={iconId} />
+          </div>
+          <span>{label}</span>
+        </h2>
+
+        <Status
+          id={statusId}
+          contextType='notifications'
+          withDismiss
+          skipPrepend
+          avatarSize={40}
+          unfocusable
+          collapsed={autoCollapseEnabled && collapsed}
+          onOpen={opensConversation ? handleOpen : undefined}
+        />
+      </div>
+    </Hotkeys>
+  );
+};

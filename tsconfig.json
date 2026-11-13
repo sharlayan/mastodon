@@ -21,6 +21,10 @@
       "locales": ["./app/javascript/locales"],
       "flavours/glitch": ["./app/javascript/flavours/glitch"],
       "flavours/glitch/*": ["./app/javascript/flavours/glitch/*"],
+      "flavours/glitch-classic": ["./app/javascript/flavours/glitch-classic"],
+      "flavours/glitch-classic/*": [
+        "./app/javascript/flavours/glitch-classic/*"
+      ],
       "images/*": ["./app/javascript/images/*"],
       "styles/*": ["./app/javascript/styles/*"]
     }

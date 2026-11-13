@@ -1,0 +1,23 @@
+import type { FC } from 'react';
+
+import { LinkedDisplayName } from '@/flavours/glitch-classic/components/display_name';
+import { Avatar } from 'flavours/glitch-classic/components/avatar';
+import { useAppSelector } from 'flavours/glitch-classic/store';
+
+export const AuthorLink: FC<{ accountId: string }> = ({ accountId }) => {
+  const account = useAppSelector((state) => state.accounts.get(accountId));
+
+  if (!account) {
+    return null;
+  }
+
+  return (
+    <LinkedDisplayName
+      displayProps={{ account, variant: 'simple' }}
+      className='story__details__shared__author-link'
+      reference='author_attribution'
+    >
+      <Avatar account={account} size={16} />
+    </LinkedDisplayName>
+  );
+};

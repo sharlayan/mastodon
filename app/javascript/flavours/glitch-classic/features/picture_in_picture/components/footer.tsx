@@ -1,0 +1,127 @@
+import { useCallback, useMemo } from 'react';
+
+import { defineMessages, useIntl } from 'react-intl';
+
+import { useHistory } from 'react-router-dom';
+
+import { replyComposeById } from '@/flavours/glitch-classic/actions/compose_typed';
+import { useStatusIcons } from '@/flavours/glitch-classic/components/status/hooks';
+import { BoostButton } from '@/flavours/glitch-classic/components/status/legacy/boost_button';
+import OpenInNewIcon from '@/material-icons/400-24px/open_in_new.svg?react';
+import { openModal } from 'flavours/glitch-classic/actions/modal';
+import { IconButton } from 'flavours/glitch-classic/components/icon_button';
+import { useIdentity } from 'flavours/glitch-classic/identity_context';
+import type { Account } from 'flavours/glitch-classic/models/account';
+import type { Status } from 'flavours/glitch-classic/models/status';
+import { makeGetStatus } from 'flavours/glitch-classic/selectors';
+import type { RootState } from 'flavours/glitch-classic/store';
+import { useAppSelector, useAppDispatch } from 'flavours/glitch-classic/store';
+
+const messages = defineMessages({
+  reply: { id: 'status.reply', defaultMessage: 'Reply' },
+  replyAll: { id: 'status.replyAll', defaultMessage: 'Reply to thread' },
+  open: { id: 'status.open', defaultMessage: 'Expand this status' },
+});
+
+type GetStatusSelector = (
+  state: RootState,
+  props: { id?: string | null; contextType?: string },
+) => Status | null;
+
+export const Footer: React.FC<{
+  statusId: string;
+  withOpenButton?: boolean;
+  onClose: (arg0?: boolean) => void;
+}> = ({ statusId, withOpenButton, onClose }) => {
+  const { signedIn } = useIdentity();
+  const intl = useIntl();
+  const history = useHistory();
+  const dispatch = useAppDispatch();
+  const getStatus = useMemo(() => makeGetStatus(), []) as GetStatusSelector;
+  const status = useAppSelector((state) => getStatus(state, { id: statusId }));
+  const account = status?.get('account') as Account | undefined;
+  const showReplyCount = useAppSelector(
+    (state) => state.local_settings.get('show_reply_count', false) as boolean,
+  );
+
+  const handleReplyClick = useCallback(() => {
+    if (!status) {
+      return;
+    }
+
+    if (signedIn) {
+      onClose(true);
+
+      dispatch(replyComposeById({ statusId: status.get('id') as string }));
+    } else {
+      dispatch(
+        openModal({
+          modalType: 'INTERACTION',
+          modalProps: {
+            intent: 'reply',
+            accountId: status.getIn(['account', 'id']),
+            url: status.get('uri'),
+          },
+        }),
+      );
+    }
+  }, [status, signedIn, onClose, dispatch]);
+
+  const handleOpenClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.button !== 0 || !status) {
+        return;
+      }
+
+      onClose();
+
+      history.push(`/@${account?.acct}/${status.get('id') as string}`);
+    },
+    [history, status, account, onClose],
+  );
+
+  const { reply, like } = useStatusIcons(statusId);
+
+  if (!status) {
+    return null;
+  }
+
+  return (
+    <div className='picture-in-picture__footer'>
+      <IconButton
+        className='status__action-bar-button'
+        title={reply.title}
+        active={reply.active}
+        icon='reply'
+        iconComponent={reply.icon}
+        onClick={handleReplyClick}
+        counter={showReplyCount ? reply.counter : undefined}
+        obfuscateCount={!showReplyCount}
+      />
+
+      <BoostButton counters statusId={statusId} />
+
+      <IconButton
+        className='status__action-bar-button star-icon'
+        animate
+        active={like.active}
+        title={like.title}
+        icon='star'
+        iconComponent={like.icon}
+        onClick={like.action}
+        counter={like.counter}
+      />
+
+      {withOpenButton && (
+        <IconButton
+          className='status__action-bar-button'
+          title={intl.formatMessage(messages.open)}
+          icon='external-link'
+          iconComponent={OpenInNewIcon}
+          onClick={handleOpenClick}
+          href={status.get('url') as string}
+        />
+      )}
+    </div>
+  );
+};

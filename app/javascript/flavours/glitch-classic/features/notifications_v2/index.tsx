@@ -1,0 +1,416 @@
+import { useCallback, useEffect, useMemo } from 'react';
+
+import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
+
+import {
+  ChecksIcon,
+  GearIcon,
+  NewspaperIcon,
+  TrashIcon,
+} from '@phosphor-icons/react';
+import { Helmet } from '@unhead/react/helmet';
+import { isEqual } from 'lodash';
+import { useDebouncedCallback } from 'use-debounce';
+
+import { toggleShowAnnouncements } from '@/flavours/glitch-classic/actions/announcements';
+import {
+  addColumn,
+  removeColumn,
+  moveColumn,
+} from '@/flavours/glitch-classic/actions/columns';
+import { submitMarkers } from '@/flavours/glitch-classic/actions/markers';
+import { openModal } from '@/flavours/glitch-classic/actions/modal';
+import { Column } from '@/flavours/glitch-classic/components/column';
+import { ColumnHeader as LegacyColumnHeader } from '@/flavours/glitch-classic/components/column/header';
+import {
+  ColumnHeader,
+  ColumnHeaderButton,
+  ColumnSettingsMenu,
+} from '@/flavours/glitch-classic/components/column_header';
+import { MultiColumnMenuItems } from '@/flavours/glitch-classic/components/column_header/multicolumn_settings';
+import { LoadGap } from '@/flavours/glitch-classic/components/load_gap';
+import {
+  MenuItem,
+  MenuItemDivider,
+} from '@/flavours/glitch-classic/components/menu';
+import ScrollableList from '@/flavours/glitch-classic/components/scrollable_list';
+import { isRedesignEnabled } from '@/flavours/glitch-classic/utils/environment';
+import DoneAllIcon from '@/material-icons/400-24px/done_all.svg?react';
+import NotificationsIcon from '@/material-icons/400-24px/notifications-fill.svg?react';
+import {
+  fetchNotificationsGap,
+  updateScrollPosition,
+  loadPending,
+  markNotificationsAsRead,
+  mountNotifications,
+  unmountNotifications,
+} from 'flavours/glitch-classic/actions/notification_groups';
+import { compareId } from 'flavours/glitch-classic/compare_id';
+import { Icon } from 'flavours/glitch-classic/components/icon';
+import { NotSignedInIndicator } from 'flavours/glitch-classic/components/not_signed_in_indicator';
+import { useIdentity } from 'flavours/glitch-classic/identity_context';
+import type { NotificationGap } from 'flavours/glitch-classic/reducers/notification_groups';
+import {
+  selectUnreadNotificationGroupsCount,
+  selectPendingNotificationGroupsCount,
+  selectAnyPendingNotification,
+  selectNotificationGroups,
+} from 'flavours/glitch-classic/selectors/notifications';
+import {
+  selectNeedsNotificationPermission,
+  selectSettingsNotificationsShowUnread,
+} from 'flavours/glitch-classic/selectors/settings';
+import { useAppDispatch, useAppSelector } from 'flavours/glitch-classic/store';
+
+import { Announcements } from '../announcements';
+import { useHasAnnouncements } from '../announcements/hooks';
+import {
+  FilteredNotificationsBanner,
+  FilteredNotificationsIconButton,
+} from '../notifications/components/filtered_notifications_banner';
+import NotificationsPermissionBanner from '../notifications/components/notifications_permission_banner';
+import ColumnSettingsContainer from '../notifications/containers/column_settings_container';
+
+import { FollowRequestsBanner } from './components/follow_requests_banner';
+import { NotificationGroup } from './components/notification_group';
+import { FilterBar } from './filter_bar';
+import classes from './styles.module.scss';
+
+const messages = defineMessages({
+  title: { id: 'column.notifications', defaultMessage: 'Notifications' },
+  markAsRead: {
+    id: 'notifications.mark_as_read',
+    defaultMessage: 'Mark every notification as read',
+  },
+  markAsReadRedesign: {
+    id: 'notifications.mark_all_as_read',
+    defaultMessage: 'Mark all as read',
+  },
+});
+
+export const Notifications: React.FC<{
+  columnId?: string;
+  multiColumn?: boolean;
+}> = ({ columnId, multiColumn }) => {
+  const intl = useIntl();
+  const notifications = useAppSelector(selectNotificationGroups, isEqual);
+  const dispatch = useAppDispatch();
+  const isLoading = useAppSelector((s) => s.notificationGroups.isLoading);
+  const hasMore = notifications.at(-1)?.type === 'gap';
+
+  const lastReadId = useAppSelector((s) =>
+    selectSettingsNotificationsShowUnread(s)
+      ? s.notificationGroups.readMarkerId
+      : '0',
+  );
+
+  const numPending = useAppSelector(selectPendingNotificationGroupsCount);
+
+  const unreadNotificationsCount = useAppSelector(
+    selectUnreadNotificationGroupsCount,
+  );
+
+  const anyPendingNotification = useAppSelector(selectAnyPendingNotification);
+
+  const needsReload = useAppSelector(
+    (state) => state.notificationGroups.mergedNotifications === 'needs-reload',
+  );
+
+  const isUnread = unreadNotificationsCount > 0 || needsReload;
+
+  const canMarkAsRead =
+    useAppSelector(selectSettingsNotificationsShowUnread) &&
+    anyPendingNotification;
+
+  const needsNotificationPermission = useAppSelector(
+    selectNeedsNotificationPermission,
+  );
+
+  // Keep track of mounted components for unread notification handling
+  useEffect(() => {
+    void dispatch(mountNotifications());
+
+    return () => {
+      dispatch(unmountNotifications());
+      void dispatch(updateScrollPosition({ top: false }));
+    };
+  }, [dispatch]);
+
+  const handleLoadGap = useCallback(
+    (gap: NotificationGap) => {
+      void dispatch(fetchNotificationsGap({ gap }));
+    },
+    [dispatch],
+  );
+
+  const handleLoadOlder = useDebouncedCallback(
+    () => {
+      const gap = notifications.at(-1);
+      if (gap?.type === 'gap') void dispatch(fetchNotificationsGap({ gap }));
+    },
+    300,
+    { leading: true },
+  );
+
+  const handleLoadPending = useCallback(() => {
+    dispatch(loadPending());
+  }, [dispatch]);
+
+  const handleScrollToTop = useDebouncedCallback(() => {
+    void dispatch(updateScrollPosition({ top: true }));
+  }, 100);
+
+  const handleScroll = useDebouncedCallback(() => {
+    void dispatch(updateScrollPosition({ top: false }));
+  }, 100);
+
+  useEffect(() => {
+    return () => {
+      handleLoadOlder.cancel();
+      handleScrollToTop.cancel();
+      handleScroll.cancel();
+    };
+  }, [handleLoadOlder, handleScrollToTop, handleScroll]);
+
+  const handlePin = useCallback(() => {
+    if (columnId) {
+      dispatch(removeColumn(columnId));
+    } else {
+      dispatch(addColumn('NOTIFICATIONS', {}));
+    }
+  }, [columnId, dispatch]);
+
+  const handleMove = useCallback(
+    (dir: unknown) => {
+      dispatch(moveColumn(columnId, dir));
+    },
+    [dispatch, columnId],
+  );
+
+  const openSettingsModal = useCallback(() => {
+    dispatch(
+      openModal({
+        modalType: 'NOTIFICATION_SETTINGS',
+        modalProps: {},
+      }),
+    );
+  }, [dispatch]);
+
+  const handleMarkAsRead = useCallback(() => {
+    dispatch(markNotificationsAsRead());
+    void dispatch(submitMarkers({ immediate: true }));
+  }, [dispatch]);
+
+  const handleToggleAnnouncements = useCallback(() => {
+    dispatch(toggleShowAnnouncements());
+  }, [dispatch]);
+
+  const handleClearNotifications = useCallback(() => {
+    dispatch(
+      openModal({ modalType: 'CONFIRM_CLEAR_NOTIFICATIONS', modalProps: {} }),
+    );
+  }, [dispatch]);
+
+  const pinned = !!columnId;
+  const emptyMessage = (
+    <FormattedMessage
+      id='empty_column.notifications'
+      defaultMessage="You don't have any notifications yet. When other people interact with you, you will see it here."
+    />
+  );
+
+  const { signedIn } = useIdentity();
+
+  const filterBar = signedIn ? <FilterBar /> : null;
+
+  const scrollableContent = useMemo(() => {
+    if (notifications.length === 0 && !hasMore) return null;
+
+    return notifications.map((item) =>
+      item.type === 'gap' ? (
+        <LoadGap
+          key={`${item.maxId}-${item.sinceId}`}
+          disabled={isLoading}
+          param={item}
+          onClick={handleLoadGap}
+        />
+      ) : (
+        <NotificationGroup
+          key={item.group_key}
+          notificationGroupId={item.group_key}
+          unread={
+            lastReadId !== '0' &&
+            !!item.page_max_id &&
+            compareId(item.page_max_id, lastReadId) > 0
+          }
+        />
+      ),
+    );
+  }, [notifications, isLoading, hasMore, lastReadId, handleLoadGap]);
+
+  const { hasAnnouncements, shouldShowAnnouncements } = useHasAnnouncements({
+    fetch: isRedesignEnabled(),
+  });
+
+  const prepend = (
+    <>
+      {needsNotificationPermission && <NotificationsPermissionBanner />}
+      {isRedesignEnabled() && shouldShowAnnouncements && <Announcements />}
+      {isRedesignEnabled() ? (
+        <div className={classes.topLinks}>
+          <FollowRequestsBanner />
+          <FilteredNotificationsBanner />
+        </div>
+      ) : (
+        <FilteredNotificationsBanner />
+      )}
+    </>
+  );
+
+  const scrollContainer = signedIn ? (
+    <ScrollableList
+      scrollKey={`notifications-${columnId}`}
+      trackScroll={!pinned}
+      isLoading={isLoading}
+      showLoading={isLoading && notifications.length === 0}
+      hasMore={hasMore}
+      numPending={numPending}
+      prepend={prepend}
+      alwaysPrepend
+      emptyMessage={emptyMessage}
+      onLoadMore={handleLoadOlder}
+      onLoadPending={handleLoadPending}
+      onScrollToTop={handleScrollToTop}
+      onScroll={handleScroll}
+      bindToDocument={!multiColumn}
+    >
+      {scrollableContent}
+    </ScrollableList>
+  ) : (
+    <NotSignedInIndicator />
+  );
+
+  const extraButton = (
+    <>
+      <FilteredNotificationsIconButton className='column-header__button' />
+      {canMarkAsRead && (
+        <button
+          aria-label={intl.formatMessage(messages.markAsRead)}
+          title={intl.formatMessage(messages.markAsRead)}
+          onClick={handleMarkAsRead}
+          className='column-header__button'
+          type='button'
+        >
+          <Icon id='done-all' icon={DoneAllIcon} />
+        </button>
+      )}
+    </>
+  );
+
+  return (
+    <Column
+      bindToDocument={!multiColumn}
+      label={intl.formatMessage(messages.title)}
+      className='notifications'
+    >
+      {isRedesignEnabled() ? (
+        <ColumnHeader
+          title={intl.formatMessage(messages.title)}
+          withUnreadMarker={isUnread}
+          withBackButton={multiColumn && !pinned && 'auto'}
+          extraButtons={
+            <>
+              <ColumnHeaderButton icon={GearIcon} onClick={openSettingsModal}>
+                <FormattedMessage
+                  id='notifications.open_settings'
+                  defaultMessage='Open notification settings'
+                />
+              </ColumnHeaderButton>
+              <ColumnSettingsMenu
+                label={
+                  <FormattedMessage
+                    id='notifications.more_options'
+                    defaultMessage='More options'
+                  />
+                }
+              >
+                <MenuItem
+                  disabled={!canMarkAsRead}
+                  onClick={handleMarkAsRead}
+                  icon={ChecksIcon}
+                >
+                  {intl.formatMessage(messages.markAsReadRedesign)}
+                </MenuItem>
+                {hasAnnouncements && (
+                  <MenuItem
+                    onClick={handleToggleAnnouncements}
+                    icon={NewspaperIcon}
+                  >
+                    {shouldShowAnnouncements ? (
+                      <FormattedMessage
+                        id='notifications.hide_server_announcements'
+                        defaultMessage='Hide server announcements'
+                      />
+                    ) : (
+                      <FormattedMessage
+                        id='notifications.show_server_announcements'
+                        defaultMessage='Show server announcements'
+                      />
+                    )}
+                  </MenuItem>
+                )}
+                <MenuItemDivider />
+                <MenuItem
+                  destructive
+                  icon={TrashIcon}
+                  onClick={handleClearNotifications}
+                >
+                  <FormattedMessage
+                    id='notifications.clear'
+                    defaultMessage='Clear notifications'
+                  />
+                </MenuItem>
+                {multiColumn && (
+                  <MultiColumnMenuItems
+                    withDivider
+                    pinned={pinned}
+                    onPin={handlePin}
+                    onMove={handleMove}
+                  />
+                )}
+              </ColumnSettingsMenu>
+            </>
+          }
+          extraStickyContent={filterBar}
+        />
+      ) : (
+        <LegacyColumnHeader
+          icon='bell'
+          iconComponent={NotificationsIcon}
+          active={isUnread}
+          title={intl.formatMessage(messages.title)}
+          onPin={handlePin}
+          onMove={handleMove}
+          pinned={pinned}
+          multiColumn={multiColumn}
+          extraButton={extraButton}
+          scrollTopOnClick
+        >
+          <ColumnSettingsContainer />
+        </LegacyColumnHeader>
+      )}
+
+      {!isRedesignEnabled() && filterBar}
+
+      {scrollContainer}
+
+      <Helmet>
+        <title>{intl.formatMessage(messages.title)}</title>
+        <meta name='robots' content='noindex' />
+      </Helmet>
+    </Column>
+  );
+};
+
+// eslint-disable-next-line import/no-default-export
+export default Notifications;

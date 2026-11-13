@@ -22,6 +22,7 @@
     // Vendored CSS
     "app/javascript/styles/mastodon/reset.scss",
     "app/javascript/flavours/glitch/styles/reset.scss",
+    "app/javascript/flavours/glitch-classic/styles/reset.scss",
 
     // Automatically generated
     "/app/javascript/mastodon/features/emoji/emoji_map.json",
@@ -35,6 +36,9 @@
     "/app/javascript/flavours/glitch/features/emoji/emoji_map.json",
     "/app/javascript/flavours/glitch/features/emoji/emoji_data.json",
     "/app/javascript/flavours/glitch/locales/*.json",
+    "/app/javascript/flavours/glitch-classic/features/emoji/emoji_map.json",
+    "/app/javascript/flavours/glitch-classic/features/emoji/emoji_data.json",
+    "/app/javascript/flavours/glitch-classic/locales/*.json",
     "/config/locales-glitch",
 
     // do not reformat JS files as this will change too many files and cause merge conflicts with open PRs and forks
@@ -92,7 +96,12 @@
       },
       {
         "groupName": "mastodon-internals",
-        "elementNamePattern": ["mastodon/**", "flavours/glitch/**", "@/**"]
+        "elementNamePattern": [
+          "mastodon/**",
+          "flavours/glitch/**",
+          "flavours/glitch-classic/**",
+          "@/**"
+        ]
       }
     ]
   }

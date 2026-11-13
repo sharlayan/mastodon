@@ -9,11 +9,8 @@ const state = vi.hoisted(() => ({
 vi.mock('../initial_state', () => state);
 
 describe('redesign feature gates', () => {
-  const originalUserFlavour = document.documentElement.dataset.userFlavour;
-
   beforeEach(() => {
     state.initialState = { features: [] };
-    document.documentElement.dataset.userFlavour = 'glitch';
     window.localStorage.removeItem('experiments');
   });
 
@@ -21,12 +18,6 @@ describe('redesign feature gates', () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     window.localStorage.removeItem('experiments');
-
-    if (originalUserFlavour === undefined) {
-      delete document.documentElement.dataset.userFlavour;
-    } else {
-      document.documentElement.dataset.userFlavour = originalUserFlavour;
-    }
   });
 
   it('enables the redesign when the server requests it', () => {
@@ -93,36 +84,6 @@ describe('redesign feature gates', () => {
 
     expect(isRedesignEnabled()).toBe(true);
     expect(getItem).not.toHaveBeenCalled();
-  });
-
-  it('keeps Glitch Legacy on the legacy UI without reading client experiments', () => {
-    document.documentElement.dataset.userFlavour = 'glitch-classic';
-    const getItem = vi.spyOn(Storage.prototype, 'getItem');
-    const combinations = [
-      { server: false, client: false },
-      { server: true, client: false },
-      { server: false, client: true },
-      { server: true, client: true },
-    ];
-
-    expect(
-      combinations.map(({ server, client }) => {
-        window.localStorage.removeItem('experiments');
-        state.initialState = { features: server ? ['redesign'] : [] };
-        if (client) {
-          window.localStorage.setItem('experiments', 'redesign');
-        }
-        return isRedesignEnabled();
-      }),
-    ).toEqual(combinations.map(() => false));
-    expect(getItem).not.toHaveBeenCalled();
-  });
-
-  it('uses the normal feature flags without a flavour attribute', () => {
-    delete document.documentElement.dataset.userFlavour;
-    state.initialState = { features: ['redesign'] };
-
-    expect(isRedesignEnabled()).toBe(true);
   });
 
   it('can use the server feature flag without a document', () => {
