@@ -19,6 +19,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
     private static readonly TimeSpan KeepAliveTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan ReadmissionInterval = TimeSpan.FromSeconds(5);
+    private const int MaxReadmissionFailures = 3;
     private static readonly string[] ForwardedHeaders = ["Accept", "User-Agent"];
 
     private readonly SemaphoreSlim connections = new(options.MaxConnections, options.MaxConnections);
@@ -453,6 +454,7 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
 
     private async Task MonitorAdmissionAsync(Func<CancellationToken, Task<bool>> readmission, CancellationToken cancellationToken)
     {
+        var failures = 0;
         while (!cancellationToken.IsCancellationRequested)
         {
             await Task.Delay(ReadmissionInterval, cancellationToken);
@@ -462,11 +464,16 @@ public sealed class RtcProxy(SignalOptions options, IAllocationResolver resolver
                 {
                     return;
                 }
+
+                failures = 0;
             }
             catch (DbException exception)
             {
                 logger.LogError(exception, "Could not recheck the remote voice call session");
-                return;
+                if (++failures >= MaxReadmissionFailures)
+                {
+                    return;
+                }
             }
         }
     }

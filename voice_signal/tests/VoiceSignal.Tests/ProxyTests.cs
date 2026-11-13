@@ -234,6 +234,25 @@ public sealed class ProxyTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Unauthorized, (await http.GetAsync($"{proxyAddress}/voice-signal/remote/7/rtc/validate?access_token={token}", deadline.Token)).StatusCode);
     }
 
+    [Fact]
+    public async Task KeepsAnOpenRemoteSignalThroughATransientAdmissionLookupFailure()
+    {
+        var token = TokenHintTests.RemoteToken(new { sub = "https://social.example/users/me", video = new { room = "room-1" } });
+        using var socket = new ClientWebSocket();
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        await socket.ConnectAsync(new Uri($"{proxyAddress.Replace("http", "ws")}/voice-signal/remote/7/rtc?access_token={token}"), deadline.Token);
+
+        Interlocked.Exchange(ref resolver.RemoteLookupFailures, 1);
+        await Task.Delay(TimeSpan.FromSeconds(7), deadline.Token);
+        Assert.Equal(0, Volatile.Read(ref resolver.RemoteLookupFailures));
+
+        await socket.SendAsync("ping"u8.ToArray(), WebSocketMessageType.Binary, true, deadline.Token);
+        var buffer = new byte[64];
+        var echoed = await socket.ReceiveAsync(buffer, deadline.Token);
+        Assert.Equal("ping", Encoding.UTF8.GetString(buffer, 0, echoed.Count));
+        Assert.Equal(WebSocketState.Open, socket.State);
+    }
+
     [Theory]
     [InlineData("screen_share")]
     [InlineData("screen_share_audio")]
@@ -453,11 +472,20 @@ public sealed class ProxyTests : IAsyncLifetime
     {
         public volatile bool AllowRemoteCalls = true;
         public volatile bool AllowScreenSharing = true;
+        public int RemoteLookupFailures;
 
         public Task<bool> IsAdmittedAsync(TokenHint hint, CancellationToken cancellationToken) => Task.FromResult(hint.UserId == 1);
 
-        public Task<string?> ResolveRemoteOriginAsync(long sessionId, TokenClaims claims, CancellationToken cancellationToken) =>
-            Task.FromResult(AllowRemoteCalls && (!claims.CanPublishScreenShare || AllowScreenSharing) && sessionId == 7 && claims is { Identity: "https://social.example/users/me", Room: "room-1" } ? origin : null);
+        public Task<string?> ResolveRemoteOriginAsync(long sessionId, TokenClaims claims, CancellationToken cancellationToken)
+        {
+            if (Interlocked.Decrement(ref RemoteLookupFailures) >= 0)
+            {
+                throw new FakeDbException();
+            }
+
+            Interlocked.Exchange(ref RemoteLookupFailures, 0);
+            return Task.FromResult(AllowRemoteCalls && (!claims.CanPublishScreenShare || AllowScreenSharing) && sessionId == 7 && claims is { Identity: "https://social.example/users/me", Room: "room-1" } ? origin : null);
+        }
 
         public Task<Upstream?> ResolveAsync(TokenHint hint, CancellationToken cancellationToken)
         {
