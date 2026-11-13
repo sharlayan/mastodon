@@ -5,14 +5,15 @@ class MisskeyCompat::FederationInstanceSerializer
 
   Context = Struct.new(:suspended, :silenced, :media_silenced, :unavailable, keyword_init: true)
 
-  def self.build_context(domains)
+  def self.build_context(domains, domain_blocks_visible: true)
     domains = domains.compact.uniq
     InstanceMetadata.preload_domains(domains)
+    blocks = domain_blocks_visible ? DomainBlock.where(domain: domains) : DomainBlock.none
 
     Context.new(
-      suspended: DomainBlock.where(domain: domains, severity: :suspend).pluck(:domain).to_set,
-      silenced: DomainBlock.where(domain: domains, severity: :silence).pluck(:domain).to_set,
-      media_silenced: DomainBlock.where(domain: domains, reject_media: true).pluck(:domain).to_set,
+      suspended: blocks.where(severity: :suspend).pluck(:domain).to_set,
+      silenced: blocks.where(severity: :silence).pluck(:domain).to_set,
+      media_silenced: blocks.where(reject_media: true).pluck(:domain).to_set,
       unavailable: UnavailableDomain.where(domain: domains).pluck(:domain).to_set
     )
   end

@@ -22,6 +22,23 @@ RSpec.describe 'Misskey-compat federation' do
       expect(body.first).to include(host: 'big.example', usersCount: 10)
     end
 
+    it 'shows domain block status only when domain blocks are published' do
+      Fabricate(:misskey_federation_instance_stat, domain: 'blocked.example')
+      Fabricate(:misskey_federation_instance_stat, domain: 'open.example')
+      DomainBlock.create!(domain: 'blocked.example', severity: :suspend)
+
+      Setting.show_domain_blocks = 'disabled'
+      post '/api/federation/instances', params: { i: token, suspended: true }, as: :json
+      expect(response.parsed_body).to eq([])
+      post '/api/federation/show-instance', params: { i: token, host: 'blocked.example' }, as: :json
+      expect(response.parsed_body).to include(isSuspended: false, isBlocked: false, suspensionState: 'none')
+
+      Setting.show_domain_blocks = 'users'
+      post '/api/federation/instances', params: { i: token, suspended: true }, as: :json
+      expect(response.parsed_body.pluck(:host)).to eq(['blocked.example'])
+      expect(response.parsed_body.first).to include(isSuspended: true)
+    end
+
     it 'rejects unauthenticated read requests and offsets above the query budget' do
       post '/api/federation/instances', params: {}, as: :json
 

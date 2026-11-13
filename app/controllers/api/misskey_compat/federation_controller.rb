@@ -164,7 +164,7 @@ class Api::MisskeyCompat::FederationController < Api::MisskeyCompat::BaseControl
   end
 
   def serialize_instances(stats)
-    context = MisskeyCompat::FederationInstanceSerializer.build_context(stats.map(&:domain))
+    context = MisskeyCompat::FederationInstanceSerializer.build_context(stats.map(&:domain), domain_blocks_visible: domain_blocks_visible?)
     stats.map { |stat| MisskeyCompat::FederationInstanceSerializer.serialize(stat, context: context) }
   end
 
@@ -172,12 +172,16 @@ class Api::MisskeyCompat::FederationController < Api::MisskeyCompat::BaseControl
     ActiveModel::Type::Boolean.new.cast(value)
   end
 
+  def domain_blocks_visible?
+    Setting.show_domain_blocks != 'disabled'
+  end
+
   def suspended_domains
-    @suspended_domains ||= DomainBlock.where(severity: :suspend).pluck(:domain)
+    @suspended_domains ||= domain_blocks_visible? ? DomainBlock.where(severity: :suspend).pluck(:domain) : []
   end
 
   def silenced_domains
-    @silenced_domains ||= DomainBlock.where(severity: :silence).pluck(:domain)
+    @silenced_domains ||= domain_blocks_visible? ? DomainBlock.where(severity: :silence).pluck(:domain) : []
   end
 
   def unavailable_domains
