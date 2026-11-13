@@ -1,6 +1,6 @@
 import { fromJS } from 'immutable';
 
-import { COMPOSE_DIRECT, COMPOSE_REPLY, COMPOSE_RESET, COMPOSE_SET_STATUS, COMPOSE_SUBMIT_SUCCESS } from '../../actions/compose';
+import { COMPOSE_DIRECT, COMPOSE_REPLY, COMPOSE_REPLY_CANCEL, COMPOSE_RESET, COMPOSE_SET_STATUS, COMPOSE_SUBMIT_SUCCESS } from '../../actions/compose';
 import { changeComposeCircle, changeComposeVisibility } from '../../actions/compose_typed';
 import { STATUS_DRAFT_DELETE_SUCCESS, STATUS_DRAFT_SAVE_REQUEST, STATUS_DRAFT_SAVE_SUCCESS } from '../../actions/status_drafts';
 import { REDRAFT } from '../../actions/statuses';
@@ -165,6 +165,32 @@ describe('compose restoration transitions', () => {
     expect(state.get('limited_scope')).toBeNull();
     expect(state.get('reply_to_limited')).toBe(true);
     expect(submission).toMatchObject({ circleId: 'source-circle', visibility: 'private', limitedScope: undefined });
+  });
+
+  it('returns to the reply audience instead of followers when the selected circle is cleared', () => {
+    const replying = composeReducer(undefined, {
+      type: COMPOSE_REPLY,
+      status: sourceStatus.merge(fromJS({ visibility: 'private', limited_scope: 'circle', circle: { id: 'source-circle', title: 'Friends' }, account: { id: 'me', acct: 'me' }, mentions: [] })),
+    });
+    const state = composeReducer(replying, changeComposeCircle(null));
+    const submission = getSharlayanComposeSubmission({
+      getState: () => fromJS({}).set('compose', state),
+      effectiveStatusId: null,
+    });
+
+    expect(submission).toMatchObject({ circleId: null, visibility: 'private', limitedScope: 'reply' });
+  });
+
+  it('forgets an automatically selected circle once the reply ends but keeps an explicit one', () => {
+    const ownCircleReply = { type: COMPOSE_REPLY, status: sourceStatus.merge(fromJS({ visibility: 'private', limited_scope: 'circle', circle: { id: 'source-circle', title: 'Friends' }, account: { id: 'me', acct: 'me' }, mentions: [] })) };
+    const publicReply = { type: COMPOSE_REPLY, status: sourceStatus.merge(fromJS({ id: 'public-status', visibility: 'public', account: { id: 'other', acct: 'other' }, mentions: [] })) };
+    const automatic = composeReducer(undefined, ownCircleReply);
+
+    expect(composeReducer(automatic, publicReply).get('circle_id')).toBeNull();
+    expect(composeReducer(automatic, { type: COMPOSE_REPLY_CANCEL }).get('circle_id')).toBeNull();
+
+    const explicit = composeReducer(automatic, changeComposeCircle('chosen-circle'));
+    expect(composeReducer(explicit, { type: COMPOSE_RESET }).get('circle_id')).toBe('chosen-circle');
   });
 
   it('keeps the circle when continuing a circle thread', () => {

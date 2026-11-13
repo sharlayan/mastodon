@@ -7,6 +7,7 @@ import { reduceStatusDraftCompose } from './draft_state';
 
 export const sharlayanComposeInitialState = ImmutableMap({
   circle_id: null,
+  reply_circle_id: null,
   limited_scope: null,
   limited_reply_account_ids: null,
   reply_to_limited: false,
@@ -29,6 +30,12 @@ export const replyCircleId = (status) => {
   const id = ImmutableMap.isMap(status) ? status.getIn(['circle', 'id']) : status.circle?.id;
   return id ? String(id) : null;
 };
+
+export const isUntouchedReplyCircle = (state) =>
+  !!state.get('reply_circle_id') && state.get('circle_id') === state.get('reply_circle_id');
+
+export const clearReplyCircle = (state) =>
+  (isUntouchedReplyCircle(state) ? state.set('circle_id', null) : state).set('reply_circle_id', null);
 
 export const resetScheduledComposeState = (state) =>
   state.set('scheduled_at', null)
@@ -61,11 +68,14 @@ export const reduceSharlayanCompose = (
   if (draftState) return draftState;
 
   if (action.type === 'compose/circle_change') {
+    const restoreReplyScope = !action.payload && !state.get('id') && !!state.get('in_reply_to') && !!state.get('reply_to_limited');
+
     return state
       .set('circle_id', action.payload)
-      .set('limited_scope', action.payload ? null : state.get('limited_scope'))
+      .set('reply_circle_id', null)
+      .set('limited_scope', action.payload ? null : restoreReplyScope ? 'reply' : state.get('limited_scope'))
       .set('limited_reply_account_ids', action.payload ? null : state.get('limited_reply_account_ids'))
-      .update('privacy', privacy => action.payload && privacy === 'direct' ? 'private' : privacy)
+      .update('privacy', privacy => (action.payload && privacy === 'direct') || restoreReplyScope ? 'private' : privacy)
       .set('idempotencyKey', createIdempotencyKey());
   }
 
