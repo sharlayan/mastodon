@@ -8,7 +8,7 @@ class Api::MisskeyCompat::SwController < Api::MisskeyCompat::BaseController
   requires_misskey_permission 'write:notifications', :register, :unregister, :update_registration
 
   before_action :require_user!, except: :unregister
-  before_action :require_user_if_authenticated!, only: :unregister
+  before_action :require_unregister_user!, only: :unregister
   before_action :require_native_user_token!, only: :update_registration
 
   def register
@@ -36,7 +36,7 @@ class Api::MisskeyCompat::SwController < Api::MisskeyCompat::BaseController
     subscriptions = Web::PushSubscription.all
     subscriptions = subscriptions.where(user_id: current_user.id) if current_user
 
-    if current_user.nil? || params.key?(:auth) || params.key?(:publickey)
+    if key_based_unregister?
       %i(endpoint auth publickey).each do |key|
         return render_invalid_param("#/properties/#{key}", 'must be a non-empty string') unless params[key].is_a?(String) && params[key].present?
       end
@@ -74,6 +74,17 @@ class Api::MisskeyCompat::SwController < Api::MisskeyCompat::BaseController
   end
 
   private
+
+  def key_based_unregister?
+    current_user.nil? || params.key?(:auth) || params.key?(:publickey)
+  end
+
+  def require_unregister_user!
+    return unless bearer_token.present? || params[:i].present?
+    return if current_user&.functional? && key_based_unregister?
+
+    require_user!
+  end
 
   def registration_json(subscription)
     {
