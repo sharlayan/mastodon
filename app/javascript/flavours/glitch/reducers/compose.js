@@ -728,8 +728,7 @@ export const composeReducer = (state = initialState, action) => {
         .set('reply_to_limited', false)
         .set('privacy', state.get('limited_scope') === 'reply' ? 'direct' : state.get('privacy'))
         .set('limited_scope', null)
-        .set('limited_reply_account_ids', null)
-        .set('circle_id', null);
+        .set('limited_reply_account_ids', null);
     } else if (action.payload.statusId === state.get('id')) {
       return state.set('id', null);
     } else {

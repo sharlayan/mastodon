@@ -271,7 +271,7 @@ describe('compose restoration transitions', () => {
   });
 
 
-  it('narrows a reply to direct and clears its controls when its parent is deleted', () => {
+  it('narrows a reply scope to direct but keeps a selected circle when the parent is deleted', () => {
     const state = restore(loadedDraft(), REDRAFT, sourceStatus.merge(fromJS({ visibility: 'private', limited_scope: 'reply', limited_reply_account_ids: ['recipient'] })));
     const deleted = composeReducer(state, timelineDelete({ statusId: 'parent-status' }));
     const submission = getSharlayanComposeSubmission({ getState: () => fromJS({}).set('compose', deleted), effectiveStatusId: null });
@@ -282,6 +282,17 @@ describe('compose restoration transitions', () => {
     expect(deleted.get('limited_reply_account_ids')).toBeNull();
     expect(deleted.get('circle_id')).toBeNull();
     expect(submission).toMatchObject({ visibility: 'direct', limitedScope: undefined, circleId: null });
+
+    const circleReply = composeReducer(
+      composeReducer(undefined, { type: COMPOSE_REPLY, status: sourceStatus.merge(fromJS({ id: 'public-parent', visibility: 'public', account: { id: 'recipient', acct: 'alice' }, mentions: [] })) }),
+      changeComposeCircle('chosen-circle'),
+    );
+    const circleDeleted = composeReducer(circleReply, timelineDelete({ statusId: 'public-parent' }));
+    const circleSubmission = getSharlayanComposeSubmission({ getState: () => fromJS({}).set('compose', circleDeleted), effectiveStatusId: null });
+
+    expect(circleDeleted.get('in_reply_to')).toBeNull();
+    expect(circleDeleted.get('circle_id')).toBe('chosen-circle');
+    expect(circleSubmission).toMatchObject({ visibility: 'private', circleId: 'chosen-circle' });
   });
 
 });
