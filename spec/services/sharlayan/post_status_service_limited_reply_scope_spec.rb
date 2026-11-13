@@ -82,6 +82,17 @@ RSpec.describe PostStatusService do
     expect(status.mentions.find_by(account: author)).to be_silent
   end
 
+  it 'does not resolve unknown remote accounts while editing a reply inside its transaction' do
+    status = service.call(account, **options)
+    recipient_ids = status.mentions.pluck(:account_id)
+
+    UpdateStatusService.new.call(status, account.id, text: '@ghost@unknown.example edited')
+
+    expect(a_request(:any, /unknown\.example/)).to_not have_been_made
+    expect(status.reload.text).to eq('@ghost@unknown.example edited')
+    expect(status.mentions.pluck(:account_id)).to match_array(recipient_ids)
+  end
+
   it 'freezes scheduled recipients and inherits local-only through publication' do
     parent.update!(local_only: true)
     scheduled = service.call(account, **options.merge(local_only: false, scheduled_at: 2.hours.from_now))

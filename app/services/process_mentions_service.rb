@@ -43,6 +43,10 @@ class ProcessMentionsService < BaseService
     end
   end
 
+  def editing_limited_reply?
+    @status.persisted? && @status.limited_visibility? && @status.limited_reply?
+  end
+
   def process_circle!
     mentioned_account_ids = @current_mentions.map(&:account_id)
 
@@ -70,7 +74,7 @@ class ProcessMentionsService < BaseService
 
       # If the account cannot be found or isn't the right protocol,
       # first try to resolve it
-      if mention_undeliverable?(mentioned_account)
+      if mention_undeliverable?(mentioned_account) && !editing_limited_reply?
         begin
           mentioned_account = ResolveAccountService.new.call(Regexp.last_match(1))
         rescue Webfinger::Error, *Mastodon::HTTP_CONNECTION_ERRORS, Mastodon::UnexpectedResponseError
