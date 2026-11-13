@@ -61,6 +61,7 @@ module Mastodon::CLI
           AND NOT EXISTS (SELECT 1 FROM status_pins WHERE statuses.id = status_id)
           AND NOT EXISTS (SELECT 1 FROM mentions WHERE statuses.id = mentions.status_id AND mentions.account_id IN (SELECT accounts.id FROM accounts WHERE domain IS NULL))
           AND NOT EXISTS (SELECT 1 FROM favourites WHERE statuses.id = favourites.status_id AND favourites.account_id IN (SELECT accounts.id FROM accounts WHERE domain IS NULL))
+          AND NOT EXISTS (SELECT 1 FROM status_reactions WHERE statuses.id = status_reactions.status_id AND status_reactions.account_id IN (SELECT accounts.id FROM accounts WHERE domain IS NULL))
           AND NOT EXISTS (SELECT 1 FROM bookmarks WHERE statuses.id = bookmarks.status_id AND bookmarks.account_id IN (SELECT accounts.id FROM accounts WHERE domain IS NULL))
           AND NOT EXISTS (SELECT 1 FROM quotes JOIN statuses statuses1 ON quotes.status_id = statuses1.id WHERE quotes.quoted_status_id = statuses.id AND (statuses1.uri IS NULL OR statuses1.local))
           AND NOT EXISTS (SELECT 1 FROM quotes JOIN statuses statuses1 ON quotes.quoted_status_id = statuses1.id WHERE quotes.status_id = statuses.id AND (statuses1.uri IS NULL OR statuses1.local))
