@@ -48,6 +48,23 @@ RSpec.describe 'Misskey-compat legacy app authentication sessions' do
     expect(response.parsed_body[:error]).to include(code: 'NO_SUCH_SESSION', id: '5b5a1503-8bc8-4bd0-8054-dc189e8cdcb3')
   end
 
+  it 'revokes an app session by its original userkey value and removes its push subscriptions' do
+    session = generate_session
+    post '/api/auth/accept', params: { i: token, token: session[:token] }, as: :json
+    post '/api/auth/session/userkey', params: { appSecret: application.secret, token: session[:token] }, as: :json
+    access_token = response.parsed_body[:accessToken]
+    issued = Doorkeeper::AccessToken.by_token(MisskeyCompat::MiAuth.app_token_hash(access_token, application))
+    subscription = Fabricate(:web_push_subscription, user: user, access_token: issued)
+
+    post '/api/i/revoke-token', params: { i: issued.token, token: access_token }, as: :json
+    expect(response).to have_http_status(204)
+    expect(issued.reload).to be_revoked
+    expect(Web::PushSubscription.exists?(subscription.id)).to be(false)
+
+    post '/api/i', params: { i: issued.token }, as: :json
+    expect(response).to have_http_status(401)
+  end
+
   it 'authenticates with the hashed token and lists the app as authorized' do
     raw = MisskeyCompat::MiAuth.issue_app_token(user, application)
     hashed = Digest::SHA256.hexdigest(raw + application.secret)

@@ -42,7 +42,7 @@ class Api::MisskeyCompat::TokensController < Api::MisskeyCompat::BaseController
     token = if params.key?(:tokenId)
               params[:tokenId].is_a?(String) ? app_tokens.find_by(id: params[:tokenId]) : nil
             elsif params[:token].is_a?(String)
-              app_tokens.find_by(token: params[:token])
+              token_by_value(params[:token])
             end
 
     if token && !native_user_token? && token.id != current_token.id
@@ -94,6 +94,13 @@ class Api::MisskeyCompat::TokensController < Api::MisskeyCompat::BaseController
   def revoke_token!(token)
     token.revoke
     Web::PushSubscription.where(access_token_id: token.id).delete_all
+  end
+
+  def token_by_value(value)
+    token = app_tokens.find_by(token: value)
+    return token if token || current_token.application&.misskey_app.nil?
+
+    app_tokens.find_by(id: current_token.id, token: MisskeyCompat::MiAuth.app_token_hash(value, current_token.application))
   end
 
   def valid_gen_token_params?
