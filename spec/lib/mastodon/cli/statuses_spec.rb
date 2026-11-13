@@ -36,6 +36,13 @@ RSpec.describe Mastodon::CLI::Statuses do
       let(:remote_account) { Fabricate(:account, domain: 'example.com') }
       let(:local_account) { Fabricate(:account) }
 
+      after do
+        remote_account.statuses.destroy_all
+        local_account.destroy!
+        remote_account.destroy!
+        Instance.refresh
+      end
+
       it 'preserves local reactions while removing statuses with only remote reactions or no references' do
         statuses = Array.new(3) do |index|
           Fabricate(:status, account: remote_account, id: Mastodon::Snowflake.id_at(100.days.ago, with_random: false) + index, created_at: 100.days.ago)
