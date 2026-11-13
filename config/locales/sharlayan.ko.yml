@@ -321,6 +321,7 @@ ko:
       privileges:
         invite_bypass_approval_description: 이 사용자들이 초대한 사람들이 관리자 승인을 거치지 않도록 허용합니다
     settings:
+      registration_rejection_patterns_invalid: "올바른 정규식을 사용하고, 빈 줄을 제외하여 %{max_patterns}줄 및 전체 %{max_length}자 이내로 입력하세요."
       user_themes:
         catalog: 서버 테마 카탈로그 JSON
         catalog_example: '밝음/어두움 테마 간단 예시:'
@@ -615,6 +616,7 @@ ko:
     customized: 서버 전용 - 에모지
     misskey_flavour: 서버 전용 - 미스키 풍미
   auth:
+    registration_rejected: "이 이메일 주소 또는 사용자명으로는 가입할 수 없습니다."
     disable_custom_css: 커스텀 CSS 비활성화
     progress:
       list: 가입 진행 상황
@@ -774,6 +776,8 @@ ko:
           (Fediverse Enhancement Proposals)를 수용하지 않는 Mastodon 이외의 소프트웨어에서는 인용될 수
           있습니다.<br>%{instance} 서버의 기본값은 '나만'입니다."
       form_admin_settings:
+        registration_reject_email_pattern: "한 줄에 하나씩 대소문자를 구분하는 부분 문자열을 입력하세요. 줄을 ?로 시작하면 정규식으로 처리합니다(대소문자를 무시하려면 (?i) 사용). 빈 줄은 무시합니다. 초대를 포함한 신규 가입에 적용하며 기존 계정에는 영향을 주지 않습니다."
+        registration_reject_username_pattern: "한 줄에 하나씩 대소문자를 구분하는 부분 문자열을 입력하세요. 줄을 ?로 시작하면 정규식으로 처리합니다(대소문자를 무시하려면 (?i) 사용). 빈 줄은 무시합니다. 초대를 포함한 신규 가입에 적용하며 기존 계정에는 영향을 주지 않습니다."
         theme_color: 브라우저의 주소 표시줄과 앱 UI에 사용되는 강조 색상.
       user_role:
         drive_quota: 이 역할을 가진 사용자별 드라이브 라이브러리의 최대 용량을 MB 단위로 지정합니다. 비워 두면 서버 기본값을
@@ -832,6 +836,8 @@ ko:
           이외의 소프트웨어가 FEP-044f 제안을 수용하지 않으면 인용될 수 있음을 이해해 주시기 바랍니다.<br>%{instance}
           서버의 경우 기본값이 '나만' 으로 지정되어 있습니다."
       form_admin_settings:
+        registration_reject_email_pattern: "가입을 차단할 이메일 패턴"
+        registration_reject_username_pattern: "가입을 차단할 사용자명 패턴"
         local_account_statuses_access: 로컬 계정에 대한 게시물 접근
         local_status_page_access: 개별 게시물 페이지 접근
         theme_color: 테마 색상

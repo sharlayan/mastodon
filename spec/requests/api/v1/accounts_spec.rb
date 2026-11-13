@@ -104,6 +104,25 @@ RSpec.describe '/api/v1/accounts' do
     let(:agreement) { nil }
     let(:date_of_birth) { nil }
 
+    context 'with registration rejection patterns' do
+      let(:agreement) { true }
+
+      it 'returns a validation error without creating users, accounts or tokens for either pattern' do
+        Setting.registrations_mode = 'open'
+        token
+
+        %i(registration_reject_email_pattern registration_reject_username_pattern).each do |key|
+          Setting.public_send(:"#{key}=", key == :registration_reject_email_pattern ? '?@world\\.tld\\z' : 'test')
+
+          expect { subject }.to not_change(User, :count).and not_change(Account, :count).and not_change(Doorkeeper::AccessToken, :count)
+          expect(response).to have_http_status(422)
+          expect(response.parsed_body[:error]).to include(I18n.t('auth.registration_rejected'))
+
+          Setting.public_send(:"#{key}=", '')
+        end
+      end
+    end
+
     context 'when not using client credentials token' do
       let(:token) { Fabricate(:accessible_access_token, application: client_app, scopes: 'read write', resource_owner_id: user.id) }
 

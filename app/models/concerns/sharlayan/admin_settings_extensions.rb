@@ -4,6 +4,8 @@ module Sharlayan::AdminSettingsExtensions
   extend ActiveSupport::Concern
 
   KEYS = %i(
+    registration_reject_email_pattern
+    registration_reject_username_pattern
     theme_color
     background_color
     background_opacity
@@ -164,9 +166,19 @@ module Sharlayan::AdminSettingsExtensions
     validate :validate_misskey_signin_origins, if: -> { defined?(@misskey_compat_signin_flow_allowed_origins) }
     validate :validate_link_preview_direct_hosts, if: -> { defined?(@link_preview_direct_hosts) }
     validate :validate_roleplay_forced_skin, if: -> { defined?(@roleplay_forced_skin) }
+    validate :validate_registration_rejection_patterns
   end
 
   private
+
+  def validate_registration_rejection_patterns
+    %i(registration_reject_email_pattern registration_reject_username_pattern).each do |key|
+      next unless instance_variable_defined?(:"@#{key}")
+      next if Sharlayan::RegistrationRejectionPatterns.valid?(instance_variable_get(:"@#{key}"))
+
+      errors.add(key, I18n.t('admin.settings.registration_rejection_patterns_invalid', max_length: Sharlayan::RegistrationRejectionPatterns::MAX_LENGTH, max_patterns: Sharlayan::RegistrationRejectionPatterns::MAX_PATTERNS))
+    end
+  end
 
   def validate_drive_allowed_extensions
     extensions = DriveFile.parse_extensions(@drive_allowed_extensions)

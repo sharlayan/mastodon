@@ -1,4 +1,6 @@
 defaults:
+  registration_reject_email_pattern: ''
+  registration_reject_username_pattern: ''
   site_title: 'Mastodon Custard Edition'
   theme_color: '#FFFD78'
   background_color: ''

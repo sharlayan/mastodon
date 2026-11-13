@@ -337,6 +337,7 @@ en:
         invite_bypass_approval_description: Allows people invited to the server by
           these users to bypass moderation approval
     settings:
+      registration_rejection_patterns_invalid: "Use valid regular expressions, at most %{max_patterns} non-empty lines and %{max_length} characters in total."
       user_themes:
         catalog: Server theme catalog JSON
         catalog_example: 'Short light/dark example:'
@@ -661,6 +662,7 @@ en:
     customized: Customized - Emojis
     misskey_flavour: Customized - Misskey Flavour
   auth:
+    registration_rejected: "Sign-up is not allowed with this email address or username."
     disable_custom_css: Disable custom CSS
     progress:
       list: Sign up progress
@@ -844,6 +846,8 @@ en:
           quote, software other than Mastodon, maybe quoted if they don't accept the
           FEP-044f (Fediverse Enhancement Proposals)<br>%{instance} default is 'Nobody'"
       form_admin_settings:
+        registration_reject_email_pattern: "One case-sensitive substring per line. Start a line with ? to use a regular expression (use (?i) for case-insensitive matching). Blank lines are ignored. Applies to new sign-ups, including invitations; existing accounts are unaffected."
+        registration_reject_username_pattern: "One case-sensitive substring per line. Start a line with ? to use a regular expression (use (?i) for case-insensitive matching). Blank lines are ignored. Applies to new sign-ups, including invitations; existing accounts are unaffected."
         theme_color: The accent color used by browsers for the address bar and app
           UI.
       user_role:
@@ -909,6 +913,8 @@ en:
           does not prevent software that does not support FEP-044f from quoting.<br>The
           default on %{instance} is 'Nobody'."
       form_admin_settings:
+        registration_reject_email_pattern: "Email patterns to reject at sign-up"
+        registration_reject_username_pattern: "Username patterns to reject at sign-up"
         local_account_statuses_access: Access to local account feeds
         local_status_page_access: Access to individual status pages
         theme_color: Theme color
