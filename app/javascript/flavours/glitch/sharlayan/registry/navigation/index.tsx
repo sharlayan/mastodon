@@ -22,6 +22,7 @@ import InventoryIcon from '@/material-icons/400-24px/inventory_2.svg?react';
 import NotificationsActiveIcon from '@/material-icons/400-24px/notifications-fill.svg?react';
 import NotificationsIcon from '@/material-icons/400-24px/notifications.svg?react';
 import PublicIcon from '@/material-icons/400-24px/public.svg?react';
+import SearchIcon from '@/material-icons/400-24px/search.svg?react';
 import StarActiveIcon from '@/material-icons/400-24px/star-fill.svg?react';
 import StarIcon from '@/material-icons/400-24px/star.svg?react';
 import TrendingUpIcon from '@/material-icons/400-24px/trending_up.svg?react';
@@ -50,6 +51,7 @@ import { selectUnreadNotificationGroupsCount } from 'flavours/glitch/selectors/n
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
 import { computeNavigationOrder, isNavigationItemAlwaysVisible } from './items';
+import { useMobileLocalTimeline } from './mobile';
 
 const messages = defineMessages({
   home: { id: 'tabs_bar.home', defaultMessage: 'Home' },
@@ -58,6 +60,7 @@ const messages = defineMessages({
     defaultMessage: 'Notifications',
   },
   explore: { id: 'explore.title', defaultMessage: 'Trending' },
+  search: { id: 'tabs_bar.search', defaultMessage: 'Search' },
   local: { id: 'navigation_bar.community_timeline', defaultMessage: 'Local' },
   federated: {
     id: 'navigation_bar.public_timeline',
@@ -178,6 +181,7 @@ export const useSharlayanPrimaryNavigation = (
     [],
   );
   const isMobileLayout = useBreakpoint('openable');
+  const mobileLocalTimeline = useMobileLocalTimeline();
   const confirmDraftBeforePublish = useConfirmDraftBeforePublish();
   const orderedKeys = useMemo(
     () => computeNavigationOrder(navOrder?.toArray()),
@@ -206,6 +210,17 @@ export const useSharlayanPrimaryNavigation = (
         icon='explore'
         iconComponent={TrendingUpIcon}
         text={intl.formatMessage(messages.explore)}
+        id={id}
+      />
+    );
+  } else if (isMobileLayout && mobileLocalTimeline) {
+    renderers.explore = (id) => (
+      <ColumnLink
+        transparent
+        to='/search'
+        icon='search'
+        iconComponent={SearchIcon}
+        text={intl.formatMessage(messages.search)}
         id={id}
       />
     );
