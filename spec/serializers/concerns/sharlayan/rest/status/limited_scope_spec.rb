@@ -26,16 +26,26 @@ RSpec.describe Sharlayan::REST::Status::LimitedScope do
   context 'when another account views the circle status' do
     let(:current_user) { Fabricate(:user) }
 
-    it 'does not expose the circle' do
-      expect(subject).to include('limited_scope' => 'circle')
+    it 'hides that the status was published to a circle' do
+      expect(subject).to include('visibility' => 'private', 'limited_scope' => 'none')
       expect(subject).to_not have_key('circle')
+
+      status.update!(limited_scope: :personal)
+      expect(serialized_record_json(status.reload, REST::StatusSerializer, options: { scope: current_user, scope_name: :current_user })).to include('limited_scope' => 'none')
+    end
+
+    it 'keeps the reply audience scope' do
+      status.update!(limited_scope: :reply)
+
+      expect(subject).to include('limited_scope' => 'reply')
     end
   end
 
   context 'without a current user' do
     let(:current_user) { nil }
 
-    it 'does not expose the circle' do
+    it 'hides that the status was published to a circle' do
+      expect(subject).to include('limited_scope' => 'none')
       expect(subject).to_not have_key('circle')
     end
   end

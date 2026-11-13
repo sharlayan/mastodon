@@ -15,6 +15,8 @@ module Sharlayan::REST::Status::LimitedScope
   end
 
   def limited_scope
+    return 'none' if circle_scope? && !owner_view?
+
     object.limited_scope || 'none'
   end
 
@@ -39,15 +41,18 @@ module Sharlayan::REST::Status::LimitedScope
   end
 
   def owner_circle?
-    !instance_options[:source_requested] &&
-      current_user? &&
-      current_user.account_id == object.account_id &&
-      object.limited_visibility? &&
-      (object.limited_circle? || object.limited_personal?) &&
-      owned_circle.present?
+    !instance_options[:source_requested] && object.limited_visibility? && circle_scope? && owner_view? && owned_circle.present?
   end
 
   private
+
+  def circle_scope?
+    object.limited_circle? || object.limited_personal?
+  end
+
+  def owner_view?
+    current_user? && current_user.account_id == object.account_id
+  end
 
   def owned_circle
     return @owned_circle if defined?(@owned_circle)

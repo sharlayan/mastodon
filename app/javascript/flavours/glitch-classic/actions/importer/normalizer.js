@@ -115,8 +115,9 @@ export function normalizeStatus(status, normalOldStatus, { settings, bogusQuoteP
 
     normalStatus.quote_approval ||= normalOldStatus.get('quote_approval');
 
-    if (normalStatus.circle === undefined && normalStatus.limited_scope === normalOldStatus.get('limited_scope')) {
-      normalStatus.circle = normalOldStatus.get('circle')?.toJS();
+    if (normalStatus.circle === undefined && normalStatus.limited_scope === 'none' && normalOldStatus.get('circle')) {
+      normalStatus.circle = normalOldStatus.get('circle').toJS();
+      normalStatus.limited_scope = normalOldStatus.get('limited_scope');
     }
 
     if (preserveReactions) {
