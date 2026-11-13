@@ -76,6 +76,8 @@ RSpec.describe 'Misskey-compat admin announcements' do
       expect(api('list')).to be_empty
       expect(api('list', status: 'archived').sole).to include(id: created[:id], isActive: false)
 
+      BoardAnnouncement.create!(title: 'Private draft', text: 'Unpublished', published: false)
+
       post '/api/announcements', params: { i: token }, as: :json
       expect(response.parsed_body).to be_empty
       post '/api/announcements', params: { i: token, isActive: false }, as: :json

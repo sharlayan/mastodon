@@ -8,7 +8,7 @@ class Api::MisskeyCompat::AnnouncementsController < Api::MisskeyCompat::BaseCont
   def index
     return render_invalid_param('#/properties/isActive', 'must be boolean') unless params[:isActive].nil? || [true, false].include?(params[:isActive])
 
-    scope = (params[:isActive] == false ? BoardAnnouncement.archived : BoardAnnouncement.published).reverse_chronological
+    scope = (params[:isActive] == false ? BoardAnnouncement.archived.where.not(published_at: nil) : BoardAnnouncement.published).reverse_chronological
     scope = scope.for_account(current_account) if current_account
     scope = scope.where(id: ...(params[:untilId].to_i)) if params[:untilId].present?
     scope = scope.where('board_announcements.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
