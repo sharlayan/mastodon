@@ -16,8 +16,9 @@ class Api::MisskeyCompat::TokensController < Api::MisskeyCompat::BaseController
   requires_misskey_permission 'write:account', :revoke, :regenerate, :gen_token
 
   before_action :require_object_body!
-  before_action :require_user!
-  before_action :require_native_user_token!
+  before_action :require_user!, except: :revoke
+  before_action :require_revoke_user!, only: :revoke
+  before_action :require_native_user_token!, except: :revoke
 
   def index
     sort = params[:sort]
@@ -44,6 +45,10 @@ class Api::MisskeyCompat::TokensController < Api::MisskeyCompat::BaseController
               app_tokens.find_by(token: params[:token])
             end
 
+    if token && !native_user_token? && token.id != current_token.id
+      return render_error('Permission denied.', 'PERMISSION_DENIED', 403, id: 'fc20d118-5705-4462-b6c5-2b5b43092cf3') # rubocop:disable I18n/RailsI18n/DecorateString
+    end
+
     revoke_token!(token) if token
     head 204
   end
@@ -69,6 +74,10 @@ class Api::MisskeyCompat::TokensController < Api::MisskeyCompat::BaseController
   end
 
   private
+
+  def require_revoke_user!
+    require_user! if current_user.nil? || !current_user.functional?
+  end
 
   def require_object_body!
     object_body!
