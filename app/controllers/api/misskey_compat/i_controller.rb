@@ -221,7 +221,11 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
 
     previous_chat_policy = current_user.settings[:chat_policy]
     current_user.update!(settings_attributes: settings) if settings.present?
-    ActivityPub::UpdateDistributionWorker.perform_in(ActivityPub::UpdateDistributionWorker::DEBOUNCE_DELAY, current_account.id) if current_user.settings[:chat_policy] != previous_chat_policy
+    if current_user.settings[:chat_policy] != previous_chat_policy
+      ActiveRecord.after_all_transactions_commit do
+        ActivityPub::UpdateDistributionWorker.perform_in(ActivityPub::UpdateDistributionWorker::DEBOUNCE_DELAY, current_account.id)
+      end
+    end
   end
 
   def fields_attributes

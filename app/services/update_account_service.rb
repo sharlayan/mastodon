@@ -17,7 +17,7 @@ class UpdateAccountService < BaseService
     account.send(update_method, params).tap do |ret|
       next unless ret
 
-      authorize_all_follow_requests(account) if was_locked && !account.locked
+      ActiveRecord.after_all_transactions_commit { authorize_all_follow_requests(account) } if was_locked && !account.locked
       check_links(account)
       process_hashtags(account)
       process_attribution_domains(account)
@@ -119,7 +119,7 @@ class UpdateAccountService < BaseService
   def check_links(account)
     return unless account.fields.any?(&:requires_verification?)
 
-    VerifyAccountLinksWorker.perform_async(account.id)
+    ActiveRecord.after_all_transactions_commit { VerifyAccountLinksWorker.perform_async(account.id) }
   end
 
   def process_hashtags(account)
@@ -141,6 +141,6 @@ class UpdateAccountService < BaseService
 
     PreviewCard.where(id: preview_cards.pluck(:id), unverified_author_account: account).update_all(author_account_id: account.id, unverified_author_account_id: nil)
 
-    UpdateLinkCardAttributionWorker.perform_async(account.id) if should_queue_worker
+    ActiveRecord.after_all_transactions_commit { UpdateLinkCardAttributionWorker.perform_async(account.id) } if should_queue_worker
   end
 end

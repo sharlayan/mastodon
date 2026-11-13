@@ -81,6 +81,24 @@ RSpec.describe 'Misskey-compat i endpoints' do
       expect(account.reload.display_name).to_not eq('nope')
     end
 
+    it 'queues follow approvals only after the entire profile update succeeds' do
+      account.update!(locked: true)
+      sender = Fabricate(:account, created_at: 8.days.ago)
+      sender.request_follow!(account)
+      AuthorizeFollowWorker.clear
+
+      update(isLocked: false, followApprovalLocalSeconds: 0, mutedWords: 'invalid')
+      expect(response).to have_http_status(400)
+      expect(account.reload).to be_locked
+      expect(user.reload.settings[:follow_approval_local_seconds]).to be_nil
+      expect(AuthorizeFollowWorker.jobs).to be_empty
+
+      update(isLocked: false, followApprovalLocalSeconds: 0)
+      expect(response).to have_http_status(200)
+      expect(account.reload).to_not be_locked
+      expect(AuthorizeFollowWorker.jobs.pluck('args')).to eq([[sender.id, account.id]])
+    end
+
     it 'rejects a body that is not an object' do
       post "/api/i/update?i=#{token}", params: '[]', headers: { 'CONTENT_TYPE' => 'application/json' }
 
