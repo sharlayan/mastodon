@@ -856,6 +856,7 @@ export const DriveBrowser: React.FC<{
       )}
 
       <DriveStatusBar
+        loading={loading}
         itemCount={itemKeys.length}
         hasMore={hasMore}
         selectionCount={selectionCount}
@@ -884,28 +885,31 @@ const formatBytes = (bytes: number) => {
 };
 
 const DriveStatusBar: React.FC<{
+  loading: boolean;
   itemCount: number;
   hasMore: boolean;
   selectionCount: number;
   selectedSize: number | null;
   usage: ApiDriveUsageJSON | null;
-}> = ({ itemCount, hasMore, selectionCount, selectedSize, usage }) => (
+}> = ({ loading, itemCount, hasMore, selectionCount, selectedSize, usage }) => (
   <div className='drive__status-bar'>
-    <span className='drive__status-bar__section'>
-      {hasMore ? (
-        <FormattedMessage
-          id='drive.status_items_more'
-          defaultMessage='{count}+ items'
-          values={{ count: itemCount }}
-        />
-      ) : (
-        <FormattedMessage
-          id='drive.status_items'
-          defaultMessage='{count, plural, one {# item} other {# items}}'
-          values={{ count: itemCount }}
-        />
-      )}
-    </span>
+    {!loading && (
+      <span className='drive__status-bar__section'>
+        {hasMore ? (
+          <FormattedMessage
+            id='drive.status_items_more'
+            defaultMessage='{count}+ items'
+            values={{ count: itemCount }}
+          />
+        ) : (
+          <FormattedMessage
+            id='drive.status_items'
+            defaultMessage='{count, plural, one {# item} other {# items}}'
+            values={{ count: itemCount }}
+          />
+        )}
+      </span>
+    )}
 
     {selectionCount > 0 && (
       <span className='drive__status-bar__section'>

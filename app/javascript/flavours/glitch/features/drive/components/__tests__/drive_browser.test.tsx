@@ -270,6 +270,21 @@ describe('Drive manager selection', () => {
     );
   });
 
+  it('leaves the item count out of the status bar while the file list is still loading', async () => {
+    mocks.apiGetDriveFiles.mockReturnValue(new Promise(() => undefined));
+
+    render(
+      <IntlProvider locale='en'>
+        <Manager onSelectFile={vi.fn()} />
+      </IntlProvider>,
+    );
+    await screen.findByTitle('Album');
+
+    expect(
+      document.querySelector('.drive__status-bar')?.textContent,
+    ).not.toContain('item');
+  });
+
   it('drags every selected file onto a folder and moves them in one bulk request', async () => {
     await renderManager();
 
