@@ -11,6 +11,73 @@ const note = (overrides = {}) => ({
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
+test('clip subscriptions recheck permissions and visibility and send only invalidation events', async () => {
+  const listeners = new Map();
+  const sent = [];
+  let access = true;
+  let permissions = ['read:account'];
+  let heartbeatStops = 0;
+  const compat = createMisskeyCompat({
+    subscribe: (channel, listener) => listeners.set(channel, listener),
+    unsubscribe: (channel) => listeners.delete(channel),
+    subscriptionHeartbeat: () => () => { heartbeatStops += 1; },
+    loadGrantPermissions: async () => permissions,
+    loadChatGrantPermissions: async () => permissions,
+    authorizeClipAccess: async () => access,
+    isEnabled: async () => true,
+    logger: { error: () => {}, warn: () => {} },
+  });
+  const session = {
+    request: { accountId: '7', scopes: ['read:lists'] },
+    websocket: { readyState: 1, OPEN: 1, send: (message) => sent.push(JSON.parse(message)) },
+  };
+  const connect = async (clipId = '0000000000000009') => {
+    compat.handleMessage(session, { type: 'connect', body: { channel: 'clip', id: 'clip', params: { clipId } } });
+    await flush();
+  };
+  const event = (type) => ({ event: 'clip', payload: { type, clipId: '9', accountId: '8', public: true, body: { secret: 'never forward' } } });
+
+  await connect('bad');
+  assert.equal(listeners.size, 0);
+  access = false;
+  await connect();
+  assert.equal(listeners.size, 0);
+  access = true;
+  await connect();
+  listeners.get('misskey:clip:9')(event('updated'));
+  await flush();
+  assert.deepEqual(sent, [{ type: 'channel', body: { id: 'clip', type: 'updated', body: null } }]);
+
+  access = false;
+  listeners.get('misskey:clip:9')(event('updated'));
+  await flush();
+  assert.equal(sent.length, 1);
+  assert.equal(listeners.size, 0);
+
+  access = true;
+  await connect();
+  permissions = [];
+  listeners.get('misskey:clip:9')(event('updated'));
+  await flush();
+  assert.equal(sent.length, 1);
+  assert.equal(listeners.size, 0);
+
+  permissions = undefined;
+  await connect();
+  listeners.get('misskey:clip:9')(event('deleted'));
+  await flush();
+  assert.deepEqual(sent[1], { type: 'channel', body: { id: 'clip', type: 'deleted', body: null } });
+  assert.equal(listeners.size, 0);
+
+  await connect();
+  const listener = listeners.get('misskey:clip:9');
+  listener(event('updated'));
+  compat.cleanup(session);
+  await flush();
+  assert.equal(sent.length, 2);
+  assert.equal(heartbeatStops, 4);
+});
+
 const fixture = (channelResult = { channelIds: ['timeline:public:local'], options: { filterLocal: false } }, isExcluded = () => false) => {
   const listeners = new Map();
   const sent = [];

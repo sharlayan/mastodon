@@ -13,6 +13,23 @@ RSpec.describe MisskeyCompat::Streaming do
 
   after { Setting.misskey_compat_enabled = false }
 
+  describe '.broadcast_clip' do
+    let(:clip) { instance_double(Clip, id: 9, account_id: 7, public?: false) }
+
+    it 'publishes gated invalidations with access metadata and no note content' do
+      Setting.clips_enabled = true
+      allow(broadcast_redis).to receive(:exists?).with('subscribed:misskey:clip:9').and_return(true)
+      allow(broadcast_redis).to receive(:publish)
+
+      described_class.broadcast_clip(broadcast_redis, clip, 'deleted')
+      expect(broadcast_redis).to have_received(:publish).with('misskey:clip:9', JSON.generate({ event: 'clip', payload: { type: 'deleted', clipId: '9', accountId: '7', public: false, body: nil } }))
+
+      Setting.clips_enabled = false
+      described_class.broadcast_clip(broadcast_redis, clip, 'updated')
+      expect(broadcast_redis).to have_received(:publish).once
+    end
+  end
+
   describe '.broadcast_note' do
     it 'does not load the viewer before the subscription gate' do
       allow(broadcast_redis).to receive(:exists?).with('subscribed:misskey:timeline:7').and_return(false)

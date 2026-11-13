@@ -213,6 +213,29 @@ const authorizeReversiGame = async (pgPool, gameId) => {
   return result.rows.length > 0;
 };
 
+const authorizeClipAccess = async (pgPool, clipId, req, event) => {
+  if (!validChatId(clipId) || !validChatId(req.accountId)) return false;
+  const deleted = event?.type === 'deleted';
+  if (deleted && (event.clipId !== clipId || !validChatId(event.accountId) || typeof event.public !== 'boolean')) return false;
+
+  const result = await pgPool.query(`
+    SELECT 1 FROM accounts
+    ${deleted ? '' : 'INNER JOIN clips ON clips.account_id = accounts.id'}
+    WHERE ${deleted ? 'accounts.id = $1' : 'clips.id = $1'}
+      AND accounts.suspended_at IS NULL
+      AND accounts.requested_deletion_at IS NULL
+      AND EXISTS (SELECT 1 FROM settings WHERE var = 'clips_enabled' AND value = '--- true\n')
+      AND (
+        accounts.id = $2
+        OR ${deleted ? '$3::boolean' : 'clips.public'} AND NOT EXISTS (
+          SELECT 1 FROM blocks WHERE account_id = accounts.id AND target_account_id = $2
+        )
+      )
+    LIMIT 1
+  `, deleted ? [event.accountId, req.accountId, event.public] : [clipId, req.accountId]);
+  return result.rows.length > 0;
+};
+
 const SIDEKIQ_REDIS_PREFIX = 'SIDEKIQ_REDIS_';
 
 const sidekiqRedisEnv = (env) => {
@@ -259,6 +282,7 @@ const createMisskeyExtension = (deps) => {
     authorizeChatAccess: (channel, targetId, req, event) => authorizeChatAccess(deps.pgPool, channel, targetId, req, event),
     markChatRead: (channel, targetId, req, messageId) => markChatRead(deps.pgPool, channel, targetId, req, messageId, deps.publish),
     authorizeReversiGame: (gameId) => authorizeReversiGame(deps.pgPool, gameId),
+    authorizeClipAccess: (clipId, req, event) => authorizeClipAccess(deps.pgPool, clipId, req, event),
     enqueueReversiAction: createReversiActionEnqueuer(deps.logger),
     isEnabled,
   });
@@ -266,4 +290,4 @@ const createMisskeyExtension = (deps) => {
   return { ...compat, isEnabled };
 };
 
-export { authorizeChatAccess, authorizeReversiGame, authorizeStatusAccess, createChatEnabledCheck, createEnabledCheck, createMisskeyExtension, createReversiActionEnqueuer, excludedTimelineNote, isChatEnabled, loadGrantPermissions, markChatRead, sidekiqRedisEnv };
+export { authorizeChatAccess, authorizeClipAccess, authorizeReversiGame, authorizeStatusAccess, createChatEnabledCheck, createEnabledCheck, createMisskeyExtension, createReversiActionEnqueuer, excludedTimelineNote, isChatEnabled, loadGrantPermissions, markChatRead, sidekiqRedisEnv };
