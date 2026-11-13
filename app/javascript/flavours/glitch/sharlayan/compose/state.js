@@ -1,5 +1,7 @@
 import { List as ImmutableList, Map as ImmutableMap } from 'immutable';
 
+import { circlesEnabled } from '../../initial_state';
+
 import { reduceScheduledCompose } from './scheduled_state';
 import { reduceStatusDraftCompose } from './draft_state';
 
@@ -20,6 +22,13 @@ export const resetSharlayanComposeState = (state) =>
   state.merge(sharlayanComposeInitialState)
     .set('default_reaction_acceptance', state.get('default_reaction_acceptance', null))
     .set('reaction_acceptance', state.get('default_reaction_acceptance', null));
+
+export const replyCircleId = (status) => {
+  if (!circlesEnabled || !status) return null;
+
+  const id = ImmutableMap.isMap(status) ? status.getIn(['circle', 'id']) : status.circle?.id;
+  return id ? String(id) : null;
+};
 
 export const resetScheduledComposeState = (state) =>
   state.set('scheduled_at', null)

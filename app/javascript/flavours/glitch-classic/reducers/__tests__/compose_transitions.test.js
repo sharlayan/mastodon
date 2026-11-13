@@ -9,6 +9,11 @@ import { getScheduledSubmissionContext } from '../../sharlayan/compose/scheduled
 import { getSharlayanComposeSubmission } from '../../sharlayan/compose/submission';
 import { composeReducer } from '../compose';
 
+vi.mock('../../initial_state', async (importOriginal) => ({
+  ...(await importOriginal()),
+  circlesEnabled: true,
+}));
+
 const sourceStatus = fromJS({
   id: 'published-status',
   in_reply_to_id: 'parent-status',
@@ -144,6 +149,31 @@ describe('compose restoration transitions', () => {
 
     expect(state.get('limited_scope')).toBe('reply');
     expect(submission).toMatchObject({ circleId: null, visibility: 'private', limitedScope: 'reply' });
+  });
+
+  it('selects the circle of the own circle post being replied to', () => {
+    const state = composeReducer(loadedDraft(), {
+      type: COMPOSE_REPLY,
+      status: sourceStatus.merge(fromJS({ visibility: 'private', limited_scope: 'personal', circle: { id: 'source-circle', title: 'Friends' }, account: { id: 'me', acct: 'me' }, mentions: [] })),
+    });
+    const submission = getSharlayanComposeSubmission({
+      getState: () => fromJS({}).set('compose', state),
+      effectiveStatusId: null,
+    });
+
+    expect(state.get('circle_id')).toBe('source-circle');
+    expect(state.get('limited_scope')).toBeNull();
+    expect(state.get('reply_to_limited')).toBe(true);
+    expect(submission).toMatchObject({ circleId: 'source-circle', visibility: 'private', limitedScope: undefined });
+  });
+
+  it('keeps the circle when continuing a circle thread', () => {
+    const threaded = composeReducer(undefined, changeComposeCircle('source-circle')).setIn(['advanced_options', 'threaded_mode'], true);
+    const state = composeReducer(threaded, { type: COMPOSE_SUBMIT_SUCCESS, status: { id: 'posted', visibility: 'private', limited_scope: 'circle', circle: { id: 'source-circle', title: 'Friends' }, spoiler_text: '', content: '', mentions: [], tags: [], account: { id: 'me', acct: 'me' } } });
+
+    expect(state.get('in_reply_to')).toBe('posted');
+    expect(state.get('circle_id')).toBe('source-circle');
+    expect(state.get('limited_scope')).toBeNull();
   });
 
   it('allows a circle to be explicitly selected after entering direct mode', () => {
