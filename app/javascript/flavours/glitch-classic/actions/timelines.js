@@ -1,0 +1,273 @@
+import { Map as ImmutableMap, List as ImmutableList } from 'immutable';
+
+import api, { getLinks } from 'flavours/glitch-classic/api';
+import { compareId } from 'flavours/glitch-classic/compare_id';
+import { usePendingItems as preferPendingItems } from 'flavours/glitch-classic/initial_state';
+import { toServerSideType } from 'flavours/glitch-classic/utils/filters';
+
+import { importFetchedStatus, importFetchedStatuses } from './importer';
+import { submitMarkers } from './markers';
+import { isNonStatusId, timelineDelete } from './timelines_typed';
+import { isRedesignEnabled } from '../utils/environment';
+
+export { disconnectTimeline } from './timelines_typed';
+
+export const TIMELINE_UPDATE  = 'TIMELINE_UPDATE';
+export const TIMELINE_CLEAR   = 'TIMELINE_CLEAR';
+
+export const TIMELINE_EXPAND_REQUEST = 'TIMELINE_EXPAND_REQUEST';
+export const TIMELINE_EXPAND_SUCCESS = 'TIMELINE_EXPAND_SUCCESS';
+export const TIMELINE_EXPAND_FAIL    = 'TIMELINE_EXPAND_FAIL';
+
+export const TIMELINE_SCROLL_TOP   = 'TIMELINE_SCROLL_TOP';
+export const TIMELINE_LOAD_PENDING = 'TIMELINE_LOAD_PENDING';
+export const TIMELINE_CONNECT      = 'TIMELINE_CONNECT';
+
+export const TIMELINE_MARK_AS_PARTIAL = 'TIMELINE_MARK_AS_PARTIAL';
+export const TIMELINE_INSERT          = 'TIMELINE_INSERT';
+
+// When adding new special markers here, make sure to update TIMELINE_NON_STATUS_MARKERS in actions/timelines_typed.js
+export const TIMELINE_SUGGESTIONS = 'inline-follow-suggestions';
+export const TIMELINE_GAP = null;
+export const TIMELINE_PINNED_VIEW_ALL = 'pinned-view-all';
+
+export const TIMELINE_NON_STATUS_MARKERS = [
+  TIMELINE_GAP,
+  TIMELINE_SUGGESTIONS,
+  TIMELINE_PINNED_VIEW_ALL,
+];
+
+let nextTimelineRequestId = 0;
+
+export const loadPending = timeline => ({
+  type: TIMELINE_LOAD_PENDING,
+  timeline,
+});
+
+export function updateTimeline(timeline, status, { accept = undefined, bogusQuotePolicy = false } = {}) {
+  return (dispatch, getState) => {
+    if (typeof accept === 'function' && !accept(status)) {
+      return;
+    }
+
+    if (getState().getIn(['timelines', timeline, 'isPartial'])) {
+      // Prevent new items from being added to a partial timeline,
+      // since it will be reloaded anyway
+
+      return;
+    }
+
+    let filtered = false;
+
+    if (status.filtered) {
+      const contextType = toServerSideType(timeline);
+      const filters = status.filtered.filter(result => result.filter.context.includes(contextType));
+
+      filtered = filters.length > 0;
+    }
+
+    dispatch(importFetchedStatus(status, { bogusQuotePolicy }));
+
+    dispatch({
+      type: TIMELINE_UPDATE,
+      timeline,
+      status,
+      usePendingItems: preferPendingItems,
+      filtered,
+    });
+
+    if (timeline === 'home') {
+      dispatch(submitMarkers());
+    }
+  };
+}
+
+export function deleteFromTimelines(id) {
+  return (dispatch, getState) => {
+    const accountId  = getState().getIn(['statuses', id, 'account']);
+    const references = getState().get('statuses').filter(status => status.get('reblog') === id).map(status => status.get('id')).valueSeq().toJSON();
+    const reblogOf   = getState().getIn(['statuses', id, 'reblog'], null);
+
+    dispatch(timelineDelete({ statusId: id, accountId, references, reblogOf }));
+  };
+}
+
+export function clearTimeline(timeline) {
+  return (dispatch) => {
+    dispatch({ type: TIMELINE_CLEAR, timeline });
+  };
+}
+
+const parseTags = (tags = {}, mode) => {
+  return (tags[mode] || []).map((tag) => {
+    return tag.value;
+  });
+};
+
+export function expandTimeline(timelineId, path, params = {}) {
+  return async (dispatch, getState) => {
+    const timeline = getState().getIn(['timelines', timelineId], ImmutableMap());
+    const { nextUri, skipSinceId, trackNext, ...requestParams } = params;
+    const isLoadingMore = !!requestParams.max_id || !!nextUri;
+
+    if (timeline.get('isLoading')) {
+      return;
+    }
+
+    const requestId = ++nextTimelineRequestId;
+
+    if (!skipSinceId && !requestParams.max_id && !requestParams.pinned && (timeline.get('items', ImmutableList()).size + timeline.get('pendingItems', ImmutableList()).size) > 0) {
+      const a = timeline.getIn(['pendingItems', 0]);
+      const b = timeline.getIn(['items', 0]);
+
+      if (a && b && compareId(a, b) > 0) {
+        requestParams.since_id = a;
+      } else {
+        requestParams.since_id = b || a;
+      }
+    }
+
+    const isLoadingRecent = !!requestParams.since_id;
+
+    dispatch(expandTimelineRequest(timelineId, isLoadingMore, requestId));
+
+    try {
+      const response = await api().get(nextUri || path, { params: requestParams });
+      const next = getLinks(response).refs.find(link => link.rel === 'next');
+
+      if (getState().getIn(['timelines', timelineId, 'requestId']) !== requestId) {
+        return;
+      }
+
+      dispatch(importFetchedStatuses(response.data));
+      dispatch(expandTimelineSuccess(timelineId, response.data, next ? next.uri : null, response.status === 206, isLoadingRecent, isLoadingMore, isLoadingRecent && preferPendingItems, trackNext, requestId));
+
+      if (timelineId === 'home' && !isLoadingMore && !isLoadingRecent) {
+        const now = new Date();
+        const fittingIndex = response.data.findIndex(status => now - (new Date(status.created_at)) > 4 * 3600 * 1000);
+
+        if (fittingIndex !== -1) {
+          dispatch(insertIntoTimeline(timelineId, TIMELINE_SUGGESTIONS, Math.max(1, fittingIndex)));
+        }
+      }
+
+      if (timelineId === 'home') {
+        dispatch(submitMarkers());
+      }
+    } catch(error) {
+      dispatch(expandTimelineFail(timelineId, error, isLoadingMore, requestId));
+    }
+  };
+}
+
+export function fillTimelineGaps(timelineId, path, params = {}) {
+  return async (dispatch, getState) => {
+    const timeline = getState().getIn(['timelines', timelineId], ImmutableMap());
+    const items = timeline.get('items');
+    const gaps = items
+      .map((statusId, index) => statusId === TIMELINE_GAP ? index : null)
+      .filter(index => index !== null);
+
+    // Only expand at most two gaps to avoid doing too many requests
+    for (const index of gaps.take(2)) {
+      if (index === 0) {
+        await dispatch(expandTimeline(timelineId, path, { ...params, skipSinceId: true }));
+      } else {
+        const maxId = items.take(index).findLast(id => !isNonStatusId(id));
+        if (maxId) {
+          await dispatch(expandTimeline(timelineId, path, { ...params, max_id: maxId }));
+        }
+      }
+    }
+  };
+}
+
+export const expandHomeTimeline            = ({ maxId } = {}) => expandTimeline('home', '/api/v1/timelines/home', { max_id: maxId, ...(isRedesignEnabled() ? { exclude_direct: true } : {}) });
+export const expandPublicTimeline          = ({ maxId, onlyMedia, onlyRemote, allowLocalOnly } = {}) => expandTimeline(`public${onlyRemote ? ':remote' : (allowLocalOnly ? ':allow_local_only' : '')}${onlyMedia ? ':media' : ''}`, '/api/v1/timelines/public', { remote: !!onlyRemote, allow_local_only: !!allowLocalOnly, max_id: maxId, only_media: !!onlyMedia });
+export const expandCommunityTimeline       = ({ maxId, onlyMedia } = {}) => expandTimeline(`community${onlyMedia ? ':media' : ''}`, '/api/v1/timelines/public', { local: true, max_id: maxId, only_media: !!onlyMedia });
+export const expandDirectTimeline          = ({ maxId } = {}) => expandTimeline('direct', '/api/v1/timelines/direct', { max_id: maxId });
+export const expandAccountTimeline         = (accountId, { maxId, withReplies, tagged } = {}) => expandTimeline(`account:${accountId}${withReplies ? ':with_replies' : ''}${tagged ? `:${tagged}` : ''}`, `/api/v1/accounts/${accountId}/statuses`, { exclude_replies: !withReplies, exclude_reblogs: withReplies, tagged, max_id: maxId });
+export const expandAccountFeaturedTimeline = (accountId, { tagged } = {}) => expandTimeline(`account:${accountId}:pinned`, `/api/v1/accounts/${accountId}/statuses`, { pinned: true, tagged });
+export const expandAccountMediaTimeline    = (accountId, { maxId, withReplies } = {}) => expandTimeline(`account:${accountId}:media${withReplies ? ':with_replies' : ''}`, `/api/v1/accounts/${accountId}/statuses`, { max_id: maxId, only_media: true, limit: 40, exclude_replies: !withReplies });
+export const expandListTimeline            = (id, { maxId } = {}) => expandTimeline(`list:${id}`, `/api/v1/timelines/list/${id}`, { max_id: maxId });
+export const expandClipTimeline            = (id, { nextUri } = {}) => expandTimeline(`clip:${id}`, `/api/v1/clips/${id}/statuses`, { nextUri, skipSinceId: true, trackNext: true });
+export const expandAntennaTimeline         = (id, { maxId } = {}) => expandTimeline(`antenna:${id}`, `/api/v1/timelines/antenna/${id}`, { max_id: maxId });
+export const expandLinkTimeline            = (url, { maxId } = {}) => expandTimeline(`link:${url}`, `/api/v1/timelines/link`, { url, max_id: maxId });
+export const expandHashtagTimeline         = (hashtag, { maxId, tags, local } = {}) => {
+  return expandTimeline(`hashtag:${hashtag}${local ? ':local' : ''}`, `/api/v1/timelines/tag/${hashtag}`, {
+    max_id: maxId,
+    any:    parseTags(tags, 'any'),
+    all:    parseTags(tags, 'all'),
+    none:   parseTags(tags, 'none'),
+    local:  local,
+  });
+};
+
+export const fillHomeTimelineGaps      = () => fillTimelineGaps('home', '/api/v1/timelines/home', {});
+export const fillPublicTimelineGaps    = ({ onlyMedia, onlyRemote, allowLocalOnly } = {}) => fillTimelineGaps(`public${onlyRemote ? ':remote' : (allowLocalOnly ? ':allow_local_only' : '')}${onlyMedia ? ':media' : ''}`, '/api/v1/timelines/public', { remote: !!onlyRemote, only_media: !!onlyMedia, allow_local_only: !!allowLocalOnly });
+export const fillCommunityTimelineGaps = ({ onlyMedia } = {}) => fillTimelineGaps(`community${onlyMedia ? ':media' : ''}`, '/api/v1/timelines/public', { local: true, only_media: !!onlyMedia });
+export const fillListTimelineGaps      = (id) => fillTimelineGaps(`list:${id}`, `/api/v1/timelines/list/${id}`, {});
+export const fillAntennaTimelineGaps   = (id) => fillTimelineGaps(`antenna:${id}`, `/api/v1/timelines/antenna/${id}`, {});
+
+export function expandTimelineRequest(timeline, isLoadingMore, requestId) {
+  return {
+    type: TIMELINE_EXPAND_REQUEST,
+    timeline,
+    requestId,
+    skipLoading: !isLoadingMore,
+  };
+}
+
+export function expandTimelineSuccess(timeline, statuses, next, partial, isLoadingRecent, isLoadingMore, usePendingItems, trackNext, requestId) {
+  return {
+    type: TIMELINE_EXPAND_SUCCESS,
+    timeline,
+    statuses,
+    next,
+    partial,
+    isLoadingRecent,
+    usePendingItems,
+    trackNext,
+    requestId,
+    skipLoading: !isLoadingMore,
+  };
+}
+
+export function expandTimelineFail(timeline, error, isLoadingMore, requestId) {
+  return {
+    type: TIMELINE_EXPAND_FAIL,
+    timeline,
+    error,
+    requestId,
+    skipLoading: !isLoadingMore,
+    skipNotFound: timeline.startsWith('account:'),
+  };
+}
+
+export function scrollTopTimeline(timeline, top) {
+  return {
+    type: TIMELINE_SCROLL_TOP,
+    timeline,
+    top,
+  };
+}
+
+export function connectTimeline(timeline) {
+  return {
+    type: TIMELINE_CONNECT,
+    timeline,
+    usePendingItems: preferPendingItems,
+  };
+}
+
+export const markAsPartial = timeline => ({
+  type: TIMELINE_MARK_AS_PARTIAL,
+  timeline,
+});
+
+export const insertIntoTimeline = (timeline, key, index) => ({
+  type: TIMELINE_INSERT,
+  timeline,
+  index,
+  key,
+});

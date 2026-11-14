@@ -1,0 +1,127 @@
+import PropTypes from 'prop-types';
+
+import { defineMessages, FormattedMessage } from 'react-intl';
+
+import { Helmet } from '@unhead/react/helmet';
+
+import ImmutablePropTypes from 'react-immutable-proptypes';
+import { ImmutablePureComponent } from 'react-immutable-pure-component';
+import { connect } from 'react-redux';
+
+import { debounce } from 'lodash';
+
+import RefreshIcon from '@/material-icons/400-24px/refresh.svg?react';
+import RepeatIcon from '@/material-icons/400-24px/repeat.svg?react';
+import { fetchReblogs, expandReblogs } from '@/flavours/glitch-classic/actions/interactions';
+import { Account } from '@/flavours/glitch-classic/components/account';
+import { Column } from '@/flavours/glitch-classic/components/column';
+import { ColumnHeader as LegacyColumnHeader } from '@/flavours/glitch-classic/components/column/header';
+import { Icon }  from '@/flavours/glitch-classic/components/icon';
+import { injectIntl } from '@/flavours/glitch-classic/components/intl';
+
+import { LoadingIndicator } from '@/flavours/glitch-classic/components/loading_indicator';
+import ScrollableList from '@/flavours/glitch-classic/components/scrollable_list';
+import { isRedesignEnabled } from '@/flavours/glitch-classic/utils/environment';
+import { ColumnHeader, ColumnHeaderButton } from '@/flavours/glitch-classic/components/column_header';
+import { ArrowClockwiseIcon } from '@phosphor-icons/react';
+
+const messages = defineMessages({
+  title: { id: 'status.boosts_title', defaultMessage: 'Post Boosts' },
+  heading: { id: 'column.reblogged_by', defaultMessage: 'Boosted by' },
+  refresh: { id: 'refresh', defaultMessage: 'Refresh' },
+});
+
+const mapStateToProps = (state, props) => ({
+  accountIds: state.getIn(['user_lists', 'reblogged_by', props.params.statusId, 'items']),
+  hasMore: !!state.getIn(['user_lists', 'reblogged_by', props.params.statusId, 'next']),
+  isLoading: state.getIn(['user_lists', 'reblogged_by', props.params.statusId, 'isLoading'], true),
+});
+
+class Reblogs extends ImmutablePureComponent {
+
+  static propTypes = {
+    params: PropTypes.object.isRequired,
+    dispatch: PropTypes.func.isRequired,
+    accountIds: ImmutablePropTypes.list,
+    hasMore: PropTypes.bool,
+    isLoading: PropTypes.bool,
+    multiColumn: PropTypes.bool,
+    intl: PropTypes.object.isRequired,
+  };
+
+  componentDidMount () {
+    if (!this.props.accountIds) {
+      this.props.dispatch(fetchReblogs(this.props.params.statusId));
+    }
+  }
+
+  handleRefresh = () => {
+    this.props.dispatch(fetchReblogs(this.props.params.statusId));
+  };
+
+  handleLoadMore = debounce(() => {
+    this.props.dispatch(expandReblogs(this.props.params.statusId));
+  }, 300, { leading: true });
+
+  render () {
+    const { intl, accountIds, hasMore, isLoading, multiColumn } = this.props;
+
+    if (!accountIds) {
+      return (
+        <Column>
+          <LoadingIndicator />
+        </Column>
+      );
+    }
+
+    const emptyMessage = <FormattedMessage id='status.reblogs.empty' defaultMessage='No one has boosted this post yet. When someone does, they will show up here.' />;
+
+    return (
+      <Column bindToDocument={!multiColumn}>
+        {isRedesignEnabled() ? (
+          <ColumnHeader
+            withBackButton
+            title={intl.formatMessage(messages.title)}
+            extraButtons={
+              <ColumnHeaderButton icon={ArrowClockwiseIcon} onClick={this.handleRefresh}>
+                {intl.formatMessage(messages.refresh)}
+              </ColumnHeaderButton>
+            }
+          />
+        ) : (
+          <LegacyColumnHeader
+            icon='retweet'
+            iconComponent={RepeatIcon}
+            title={intl.formatMessage(messages.heading)}
+            showBackButton
+            multiColumn={multiColumn}
+            scrollTopOnClick
+            extraButton={(
+              <button type='button' className='column-header__button' title={intl.formatMessage(messages.refresh)} aria-label={intl.formatMessage(messages.refresh)} onClick={this.handleRefresh}><Icon id='refresh' icon={RefreshIcon} /></button>
+            )}
+          />
+        )}
+
+        <ScrollableList
+          scrollKey='reblogs'
+          onLoadMore={this.handleLoadMore}
+          hasMore={hasMore}
+          isLoading={isLoading}
+          emptyMessage={emptyMessage}
+          bindToDocument={!multiColumn}
+        >
+          {accountIds.map(id =>
+            <Account key={id} id={id} reference='status' />,
+          )}
+        </ScrollableList>
+
+        <Helmet>
+          <meta name='robots' content='noindex' />
+        </Helmet>
+      </Column>
+    );
+  }
+
+}
+
+export default connect(mapStateToProps)(injectIntl(Reblogs));

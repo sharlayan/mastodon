@@ -6,6 +6,7 @@ RSpec.describe 'Misskey-compat service worker endpoints' do
   let(:user)    { Fabricate(:user) }
   let(:account) { user.account }
   let(:token)   { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read write') }
+  let(:unprivileged) { MisskeyCompat::MiAuth.issue_token(user, permissions: []) }
   let(:endpoint) { 'https://ntfy.example/upABCDEF?up=1' }
   let(:auth)     { 'YXV0aC1zZWNyZXQ' }
   let(:publickey) { 'BOSIjzD4yKwMdDWTbuNy7hICylPQ9kwN-kR7APV6wJo-tVtO0L7A-0tb6LcmZx2hS6SETEDp2fCKdSJdomXZz-I' }
@@ -69,6 +70,44 @@ RSpec.describe 'Misskey-compat service worker endpoints' do
   end
 
   describe 'POST /api/sw/unregister' do
+    it 'checks both subscription keys and removes all matching accounts only without credentials' do
+      other_user = Fabricate(:user)
+      other_token = Fabricate(:accessible_access_token, resource_owner_id: other_user.id, scopes: 'read write')
+      post '/api/sw/register', params: register_params, as: :json
+      post '/api/sw/register', params: register_params(i: other_token.token), as: :json
+      keys = register_params.except(:i)
+
+      [keys.except(:auth), keys.merge(auth: []), keys.merge(publickey: nil)].each do |invalid|
+        post '/api/sw/unregister', params: invalid, as: :json
+        expect(response).to have_http_status(400)
+      end
+
+      [keys.merge(auth: 'wrong'), keys.merge(publickey: 'wrong')].each do |invalid|
+        expect { post '/api/sw/unregister', params: invalid, as: :json }.to_not change(Web::PushSubscription, :count)
+        expect(response).to have_http_status(204)
+      end
+
+      post '/api/sw/unregister', params: keys.merge(i: 'invalid'), as: :json
+      expect(response).to have_http_status(401)
+
+      expect { post '/api/sw/unregister', params: keys.merge(i: unprivileged.token), as: :json }
+        .to change { Web::PushSubscription.where(user_id: user.id).count }.from(1).to(0)
+        .and(not_change { Web::PushSubscription.where(user_id: other_user.id).count })
+      expect(response).to have_http_status(204)
+
+      expect { post '/api/sw/unregister', params: keys, as: :json }
+        .to change { Web::PushSubscription.where(user_id: other_user.id).count }.from(1).to(0)
+      expect(response).to have_http_status(204)
+    end
+
+    it 'limits anonymous subscription removal attempts' do
+      limiter = instance_double(RateLimiter)
+      allow(RateLimiter).to receive(:new).with(anything, family: :misskey_compat_push_unregister).and_return(limiter)
+      allow(limiter).to receive(:record!).and_raise(Mastodon::RateLimitExceededError)
+      post '/api/sw/unregister', params: register_params.except(:i), as: :json
+      expect(response).to have_http_status(429)
+    end
+
     it 'removes the subscription for the current session without an endpoint' do
       other_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read write')
       other_endpoint = 'https://ntfy.example/upOTHER?up=1'
@@ -84,6 +123,9 @@ RSpec.describe 'Misskey-compat service worker endpoints' do
 
     it 'removes the subscription and succeeds when it is already gone or the current session has none' do
       post '/api/sw/register', params: register_params, as: :json
+
+      post '/api/sw/unregister', params: { i: unprivileged.token, endpoint: endpoint }, as: :json
+      expect(response).to have_http_status(403)
 
       expect { post '/api/sw/unregister', params: { i: token.token, endpoint: endpoint }, as: :json }
         .to change { Web::PushSubscription.where(user_id: user.id, endpoint: endpoint).count }.from(1).to(0)

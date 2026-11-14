@@ -8,6 +8,35 @@ RSpec.describe FollowService do
   let(:sender) { Fabricate(:account, username: 'alice', created_at: 8.days.ago) }
 
   context 'when local account' do
+    describe 'recipient follow approval period' do
+      let(:bob_user) { Fabricate(:user) }
+      let(:bob) { bob_user.account }
+
+      it 'requires approval for a posted account younger than the configured period and preserves bypasses' do
+        bob_user.update!(settings_attributes: { follow_approval_local_seconds: 10.days.to_i, auto_accept_followed: true })
+        bob.follow!(sender)
+        Fabricate(:status, account: sender)
+
+        expect(subject.call(sender, bob)).to be_a(FollowRequest)
+        expect(sender.following?(bob)).to be false
+
+        UnfollowService.new.call(sender, bob)
+        expect(subject.call(sender, bob, bypass_review: true)).to be_a(Follow)
+      end
+
+      it 'accepts a posted account at the exact threshold or with the additional rule disabled' do
+        freeze_time do
+          sender.update!(created_at: 8.days.ago)
+          Fabricate(:status, account: sender)
+          [8.days.to_i, 0, nil].each do |seconds|
+            bob_user.update!(settings_attributes: { follow_approval_local_seconds: seconds })
+            expect(subject.call(sender, bob)).to be_a(Follow)
+            sender.unfollow!(bob)
+          end
+        end
+      end
+    end
+
     describe 'locked account' do
       let(:bob) { Fabricate(:account, locked: true, username: 'bob') }
 

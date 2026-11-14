@@ -113,7 +113,7 @@ class Api::V1::StatusDraftsController < Api::BaseController
   end
 
   def save_with_media!(draft)
-    media_ids = Array(params[:media_ids]).first(Status::MEDIA_ATTACHMENTS_LIMIT).map(&:to_i)
+    media_ids = Array(params[:media_ids]).first(Status.local_media_attachments_limit).map(&:to_i)
 
     current_account.with_lock do
       draft.save!

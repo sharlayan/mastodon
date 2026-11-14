@@ -1,0 +1,209 @@
+import PropTypes from 'prop-types';
+import { PureComponent } from 'react';
+
+import { defineMessages, FormattedMessage } from 'react-intl';
+
+import { Helmet } from '@unhead/react/helmet';
+
+import { connect } from 'react-redux';
+
+import PeopleIcon from '@/material-icons/400-24px/group.svg?react';
+import { Column } from '@/flavours/glitch-classic/components/column';
+import { ColumnHeader as LegacyColumnHeader } from '@/flavours/glitch-classic/components/column/header';
+import { injectIntl } from '@/flavours/glitch-classic/components/intl';
+import { DismissableBanner } from 'flavours/glitch-classic/components/dismissable_banner';
+import { identityContextPropShape, withIdentity } from 'flavours/glitch-classic/identity_context';
+import { domain, localLiveFeedAccess } from 'flavours/glitch-classic/initial_state';
+import { canViewFeed } from 'flavours/glitch-classic/permissions';
+import { roleplayMode } from 'flavours/glitch-classic/sharlayan/roleplay';
+
+import { addColumn, removeColumn, moveColumn } from '../../actions/columns';
+import { connectCommunityStream } from '../../actions/streaming';
+import { expandCommunityTimeline } from '../../actions/timelines';
+import StatusListContainer from '../ui/containers/status_list_container';
+
+import ColumnSettingsContainer from './containers/column_settings_container';
+import { ColumnHeader, ColumnSettingsMenu } from '@/flavours/glitch-classic/components/column_header';
+import { FeedColumnSettings } from '../public_timeline/components/feed_column_settings';
+import { MultiColumnMenuItems } from '@/flavours/glitch-classic/components/column_header/multicolumn_settings';
+import { isRedesignEnabled } from '@/flavours/glitch-classic/utils/environment';
+
+const messages = defineMessages({
+  title: { id: 'column.community', defaultMessage: 'Local timeline' },
+  titleRoleplay: { id: 'navigation_bar.roleplay_public_timeline', defaultMessage: 'Public timeline' },
+  title_redesign: { id: 'column.this_server', defaultMessage: 'This Server' },
+});
+
+const mapStateToProps = (state, { columnId }) => {
+  const uuid = columnId;
+  const columns = state.getIn(['settings', 'columns']);
+  const index = columns.findIndex(c => c.get('uuid') === uuid);
+  const onlyMedia = (columnId && index >= 0) ? columns.get(index).getIn(['params', 'other', 'onlyMedia']) : state.getIn(['settings', 'community', 'other', 'onlyMedia']);
+  const regex = (columnId && index >= 0) ? columns.get(index).getIn(['params', 'regex', 'body']) : state.getIn(['settings', 'community', 'regex', 'body']);
+  const timelineState = state.getIn(['timelines', `community${onlyMedia ? ':media' : ''}`]);
+
+  return {
+    hasUnread: !!timelineState && timelineState.get('unread') > 0,
+    onlyMedia,
+    regex,
+  };
+};
+
+class CommunityTimeline extends PureComponent {
+  static defaultProps = {
+    onlyMedia: false,
+  };
+
+  static propTypes = {
+    identity: identityContextPropShape,
+    dispatch: PropTypes.func.isRequired,
+    columnId: PropTypes.string,
+    intl: PropTypes.object.isRequired,
+    hasUnread: PropTypes.bool,
+    multiColumn: PropTypes.bool,
+    onlyMedia: PropTypes.bool,
+    regex: PropTypes.string,
+  };
+
+  handlePin = () => {
+    const { columnId, dispatch, onlyMedia } = this.props;
+
+    if (columnId) {
+      dispatch(removeColumn(columnId));
+    } else {
+      dispatch(addColumn('COMMUNITY', { other: { onlyMedia } }));
+    }
+  };
+
+  handleMove = (dir) => {
+    const { columnId, dispatch } = this.props;
+    dispatch(moveColumn(columnId, dir));
+  };
+
+  componentDidMount () {
+    const { dispatch, onlyMedia } = this.props;
+    const { signedIn } = this.props.identity;
+
+    dispatch(expandCommunityTimeline({ onlyMedia }));
+
+    if (signedIn) {
+      this.disconnect = dispatch(connectCommunityStream({ onlyMedia }));
+    }
+  }
+
+  componentDidUpdate (prevProps) {
+    const { signedIn } = this.props.identity;
+
+    if (prevProps.onlyMedia !== this.props.onlyMedia) {
+      const { dispatch, onlyMedia } = this.props;
+
+      if (this.disconnect) {
+        this.disconnect();
+      }
+
+      dispatch(expandCommunityTimeline({ onlyMedia }));
+
+      if (signedIn) {
+        this.disconnect = dispatch(connectCommunityStream({ onlyMedia }));
+      }
+    }
+  }
+
+  componentWillUnmount () {
+    if (this.disconnect) {
+      this.disconnect();
+      this.disconnect = null;
+    }
+  }
+
+  handleLoadMore = maxId => {
+    const { dispatch, onlyMedia } = this.props;
+
+    dispatch(expandCommunityTimeline({ maxId, onlyMedia }));
+  };
+
+  render () {
+    const { intl, hasUnread, columnId, multiColumn, onlyMedia } = this.props;
+    const { signedIn, permissions } = this.props.identity;
+    const pinned = !!columnId;
+    const title = intl.formatMessage(
+      roleplayMode
+        ? messages.titleRoleplay
+        : isRedesignEnabled()
+          ? messages.title_redesign
+          : messages.title,
+    );
+
+    const emptyMessage = canViewFeed(signedIn, permissions, localLiveFeedAccess) ? (
+      <FormattedMessage
+        id='empty_column.community'
+        defaultMessage='The local timeline is empty. Write something publicly to get the ball rolling!'
+      />
+    ) : (
+      <FormattedMessage
+        id='empty_column.disabled_feed'
+        defaultMessage='This feed has been disabled by your server administrators.'
+      />
+    );
+
+    return (
+      <Column bindToDocument={!multiColumn} label={title}>
+        {isRedesignEnabled() ? (
+          <ColumnHeader
+            title={title}
+            withUnreadMarker={hasUnread}
+            extraButtons={
+              <ColumnSettingsMenu
+                labelPrefix={title}
+              >
+                <FeedColumnSettings localOnly columnId={columnId} />
+                {multiColumn && (
+                  <MultiColumnMenuItems
+                    withDivider
+                    pinned={pinned}
+                    onPin={this.handlePin}
+                    onMove={this.handleMove}
+                  />
+                )}
+              </ColumnSettingsMenu>
+            }
+          />
+        ) : (
+          <LegacyColumnHeader
+            icon='users'
+            iconComponent={PeopleIcon}
+            active={hasUnread}
+            title={title}
+            onPin={this.handlePin}
+            onMove={this.handleMove}
+            pinned={pinned}
+            multiColumn={multiColumn}
+            scrollTopOnClick
+          >
+            <ColumnSettingsContainer columnId={columnId} />
+          </LegacyColumnHeader>
+        )}
+
+        <StatusListContainer
+          prepend={<DismissableBanner id='community_timeline'><FormattedMessage id='dismissable_banner.community_timeline' defaultMessage='These are the most recent public posts from people whose accounts are hosted by {domain}.' values={{ domain }} /></DismissableBanner>}
+          alwaysPrepend
+          trackScroll={!pinned}
+          scrollKey={`community_timeline-${columnId}`}
+          timelineId={`community${onlyMedia ? ':media' : ''}`}
+          onLoadMore={this.handleLoadMore}
+          emptyMessage={emptyMessage}
+          bindToDocument={!multiColumn}
+          regex={this.props.regex}
+        />
+
+        <Helmet>
+          <title>{title}</title>
+          <meta name='robots' content='noindex' />
+        </Helmet>
+      </Column>
+    );
+  }
+
+}
+
+export default withIdentity(connect(mapStateToProps)(injectIntl(CommunityTimeline)));

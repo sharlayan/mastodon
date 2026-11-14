@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_13_075600) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -557,6 +557,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_075600) do
     t.text "text_html", default: "", null: false
     t.string "title", default: "", null: false
     t.datetime "updated_at", null: false
+    t.datetime "auto_archive_at"
     t.index ["account_id"], name: "index_board_announcements_on_account_id", where: "(account_id IS NOT NULL)"
     t.index ["published_at"], name: "index_board_announcements_on_published_at"
     t.index ["sort_priority"], name: "index_board_announcements_on_sort_priority"

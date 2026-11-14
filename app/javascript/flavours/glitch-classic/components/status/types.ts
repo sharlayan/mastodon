@@ -1,0 +1,98 @@
+import type { ComponentType, ReactNode } from 'react';
+
+import StatusContainer from '@/flavours/glitch-classic/components/status/legacy/container';
+import type { Account as TAccount } from '@/flavours/glitch-classic/models/account';
+import type { Status as TStatus } from '@/flavours/glitch-classic/models/status';
+
+import type { StatusHeaderRenderFn } from './legacy/header';
+import Status from './legacy/status';
+
+export type StatusContextType =
+  | 'account'
+  | `antenna:${string}`
+  | 'bookmarks'
+  | 'composer'
+  | 'detailed'
+  | 'favourites'
+  | 'home'
+  | `list:${string}`
+  | 'notifications'
+  | 'public'
+  | 'search'
+  | 'thread';
+
+export interface StatusContainerProps {
+  id?: string | null;
+  account?: TAccount;
+  children?: ReactNode;
+  rootId?: string;
+  previousId?: string;
+  nextId?: string;
+  onOpen?: () => void;
+  muted?: boolean;
+  hidden?: boolean;
+  unread?: boolean;
+  featured?: boolean;
+  showThread?: boolean;
+  showActions?: boolean;
+  isQuotedPost?: boolean;
+  shouldHighlightOnMount?: boolean;
+  contextType?: StatusContextType;
+  withCounters?: boolean;
+  unfocusable?: boolean;
+  collapsed?: boolean;
+  headerRenderFn?: StatusHeaderRenderFn;
+  getScrollPosition?: () => null | { height: number; top: number };
+  updateScrollBottom?: (snapshot: number) => void;
+  cacheMediaWidth?: (width: number) => void;
+  cachedMediaWidth?: number;
+  scrollKey?: string;
+  skipPrepend?: boolean;
+  avatarSize?: number;
+  withDismiss?: boolean;
+}
+
+export const TypedStatusContainer =
+  StatusContainer as unknown as ComponentType<StatusContainerProps>;
+
+// Taken from the Status component.
+export interface StatusProps extends Omit<StatusContainerProps, 'nextId'> {
+  status: TStatus;
+  nextInReplyToId?: string;
+  onReply: (status: TStatus) => void;
+  onFavourite: (status: TStatus) => void;
+  onReblog: (status: TStatus, event?: unknown) => void;
+  onQuote: (status: TStatus) => void;
+  onDelete?: (status: TStatus) => void;
+  onDirect?: (status: TStatus) => void;
+  onMention: (account: TAccount) => void;
+  onPin?: (status: TStatus) => void;
+  onOpenMedia: (
+    statusId: string,
+    media: unknown,
+    index: number,
+    lang?: string,
+  ) => void;
+  onOpenVideo: (
+    statusId: string,
+    media: unknown,
+    lang?: string,
+    options?: unknown,
+  ) => void;
+  onBlock?: (status: TStatus) => void;
+  onAddFilter?: (status: TStatus) => void;
+  onEmbed?: (status: TStatus) => void;
+  onHeightChange?: () => void;
+  onToggleHidden: (status: TStatus) => void;
+  onToggleCollapsed: (status: TStatus, isCollapsed: boolean) => void;
+  onTranslate: (status: TStatus) => void;
+  onInteractionModal?: (type: string, status: TStatus) => void;
+  deployPictureInPicture: (
+    status: TStatus,
+    type: string,
+    mediaProps: unknown,
+  ) => void;
+  pictureInPicture: Immutable.Map<'inUse' | 'available', boolean>;
+}
+
+export const TypedStatus = Status as unknown as ComponentType<StatusProps>;

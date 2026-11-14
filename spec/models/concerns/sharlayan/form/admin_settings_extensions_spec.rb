@@ -6,12 +6,12 @@ RSpec.describe Form::AdminSettings do
   it 'registers Sharlayan settings with the required storage types' do
     expect(described_class::KEYS).to include(
       :theme_color, :background_color, :background_opacity, :local_status_page_access, :norss, :reactions_enabled,
-      :drive_allowed_extensions, :roleplay_forced_skin, :profile_fields_limit, :remote_media_attachments_limit,
+      :drive_allowed_extensions, :roleplay_forced_skin, :profile_fields_limit, :local_media_attachments_limit, :remote_media_attachments_limit,
       :chat_enabled, :chat_soft_delete_enabled, :chat_delete_window_hours, :chat_max_group_members, :chat_max_attachments
     )
     expect(described_class::INTEGER_KEYS).to include(
       :avatar_decorations_max_count, :background_opacity, :drive_quota, :drive_max_file_size, :status_character_limit,
-      :profile_fields_limit, :remote_media_attachments_limit, :chat_delete_window_hours, :chat_max_group_members,
+      :profile_fields_limit, :local_media_attachments_limit, :remote_media_attachments_limit, :chat_delete_window_hours, :chat_max_group_members,
       :chat_max_attachments
     )
     expect(described_class::BOOLEAN_KEYS).to include(
@@ -20,11 +20,14 @@ RSpec.describe Form::AdminSettings do
     )
   end
 
-  it 'validates chat operating limits and configurable profile and remote media limits' do
+  it 'validates chat operating limits and configurable profile, local and remote media limits' do
     expect(described_class.new(chat_max_group_members: '50', chat_max_attachments: '4', chat_delete_window_hours: '24')).to be_valid
     expect(described_class.new(chat_max_group_members: '1', chat_max_attachments: '5', chat_delete_window_hours: '-1')).to_not be_valid
-    expect(described_class.new(profile_fields_limit: '0', remote_media_attachments_limit: '4')).to be_valid
+    expect(described_class.new(profile_fields_limit: '0', local_media_attachments_limit: '1', remote_media_attachments_limit: '4')).to be_valid
+    expect(described_class.new(local_media_attachments_limit: '16')).to be_valid
     expect(described_class.new(profile_fields_limit: '51', remote_media_attachments_limit: '17')).to_not be_valid
+    expect(described_class.new(local_media_attachments_limit: '0')).to_not be_valid
+    expect(described_class.new(local_media_attachments_limit: '17')).to_not be_valid
   end
 
   it 'validates server background presentation, feed access modes and theme colors' do
@@ -49,11 +52,12 @@ RSpec.describe Form::AdminSettings do
   end
 
   it 'derives defaults from MAX_TOOT_CHARS and the legacy environment variables, ignoring invalid character limits' do
-    ClimateControl.modify MAX_TOOT_CHARS: '1000', MAX_PROFILE_FIELDS: '12', REMOTE_MEDIA_ATTACHMENTS_LIMIT: '8' do
+    ClimateControl.modify MAX_TOOT_CHARS: '1000', MAX_PROFILE_FIELDS: '12', MAX_MEDIA_ATTACHMENTS: '6', REMOTE_MEDIA_ATTACHMENTS_LIMIT: '8' do
       defaults = Sharlayan::SettingExtensions.sharlayan_defaults
 
       expect(defaults.fetch('status_character_limit')).to eq(1000)
       expect(defaults.fetch('profile_fields_limit')).to eq(12)
+      expect(defaults.fetch('local_media_attachments_limit')).to eq(6)
       expect(defaults.fetch('remote_media_attachments_limit')).to eq(8)
     end
 

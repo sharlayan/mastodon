@@ -1,0 +1,193 @@
+import { useMemo, useState } from 'react';
+import type { JSX } from 'react';
+
+import classNames from 'classnames';
+
+import type { Map as ImmutableMap } from 'immutable';
+
+import { replyComposeById } from '@/flavours/glitch-classic/actions/compose_typed';
+import { LinkedDisplayName } from '@/flavours/glitch-classic/components/display_name';
+import {
+  navigateToStatus,
+  navigateToStatusOrConversation,
+} from 'flavours/glitch-classic/actions/statuses';
+import { Avatar } from 'flavours/glitch-classic/components/avatar';
+import { AvatarGroup } from 'flavours/glitch-classic/components/avatar_group';
+import { CollapseButton } from 'flavours/glitch-classic/components/collapse_button';
+import { Hotkeys } from 'flavours/glitch-classic/components/hotkeys';
+import type { IconProp } from 'flavours/glitch-classic/components/icon';
+import { Icon } from 'flavours/glitch-classic/components/icon';
+import { RelativeTimestamp } from 'flavours/glitch-classic/components/relative_timestamp';
+import { NOTIFICATIONS_GROUP_MAX_AVATARS } from 'flavours/glitch-classic/models/notification_group';
+import { shouldAutoCollapseNotification } from 'flavours/glitch-classic/sharlayan/post_collapsing';
+import { useAppSelector, useAppDispatch } from 'flavours/glitch-classic/store';
+
+import { EmbeddedStatus } from './embedded_status';
+
+const AVATAR_SIZE = 28;
+
+export const AvatarById: React.FC<{ accountId: string }> = ({ accountId }) => {
+  const account = useAppSelector((state) => state.accounts.get(accountId));
+
+  if (!account) return null;
+
+  return <Avatar withLink account={account} size={AVATAR_SIZE} />;
+};
+
+export type LabelRenderer = (
+  displayedName: JSX.Element,
+  total: number,
+  seeMoreHref?: string,
+) => JSX.Element;
+
+export const NotificationGroupWithStatus: React.FC<{
+  icon: IconProp;
+  iconId: string;
+  statusId?: string;
+  actions?: JSX.Element;
+  count: number;
+  accountIds: string[];
+  timestamp: string;
+  labelRenderer: LabelRenderer;
+  labelSeeMoreHref?: string;
+  type: string;
+  unread: boolean;
+  additionalContent?: JSX.Element;
+}> = ({
+  icon,
+  iconId,
+  timestamp,
+  accountIds,
+  actions,
+  count,
+  statusId,
+  labelRenderer,
+  labelSeeMoreHref,
+  type,
+  unread,
+  additionalContent,
+}) => {
+  const dispatch = useAppDispatch();
+  const account = useAppSelector((state) =>
+    state.accounts.get(accountIds.at(0) ?? ''),
+  );
+
+  const collapseEnabled = useAppSelector(
+    (state) => state.local_settings.getIn(['collapsed', 'enabled']) as boolean,
+  );
+  const autoCollapseSettings = useAppSelector(
+    (state) =>
+      state.local_settings.getIn(['collapsed', 'auto']) as ImmutableMap<
+        string,
+        unknown
+      >,
+  );
+  const [wasUnreadOnMount] = useState(unread);
+  const [manuallyCollapsed, setCollapsed] = useState<boolean | null>(null);
+  const collapsed =
+    collapseEnabled &&
+    (manuallyCollapsed ??
+      shouldAutoCollapseNotification(autoCollapseSettings, wasUnreadOnMount));
+
+  const label = useMemo(
+    () =>
+      labelRenderer(
+        <LinkedDisplayName displayProps={{ account, variant: 'simple' }} />,
+        count,
+        labelSeeMoreHref,
+      ),
+    [labelRenderer, account, count, labelSeeMoreHref],
+  );
+
+  const isPrivateMention = useAppSelector(
+    (state) => state.statuses.getIn([statusId, 'visibility']) === 'direct',
+  );
+
+  const handlers = useMemo(
+    () => ({
+      open: () => {
+        dispatch(
+          isPrivateMention
+            ? navigateToStatusOrConversation(statusId)
+            : navigateToStatus(statusId),
+        );
+      },
+
+      reply: () => {
+        dispatch(replyComposeById({ statusId }));
+      },
+      toggleCollapse: () => {
+        if (collapseEnabled) setCollapsed(!collapsed);
+      },
+    }),
+    [dispatch, statusId, collapseEnabled, collapsed, isPrivateMention],
+  );
+
+  return (
+    <Hotkeys handlers={handlers}>
+      <div
+        role='button'
+        className={classNames(
+          `notification-group focusable notification-group--${type}`,
+          {
+            'notification-group--unread': unread,
+            'notification-group--direct': isPrivateMention,
+          },
+        )}
+        tabIndex={0}
+      >
+        <div className='notification-group__icon'>
+          <Icon icon={icon} id={iconId} />
+        </div>
+
+        <div className='notification-group__main'>
+          <div className='notification-group__main__header'>
+            <div className='notification-group__main__header__wrapper'>
+              <AvatarGroup avatarHeight={AVATAR_SIZE}>
+                {accountIds
+                  .slice(0, NOTIFICATIONS_GROUP_MAX_AVATARS)
+                  .map((id) => (
+                    <AvatarById key={id} accountId={id} />
+                  ))}
+              </AvatarGroup>
+
+              {actions && (
+                <div className='notification-group__actions'>{actions}</div>
+              )}
+              {collapseEnabled && statusId && (
+                <CollapseButton
+                  collapsed={collapsed}
+                  setCollapsed={setCollapsed}
+                />
+              )}
+            </div>
+
+            <h2 className='notification-group__main__header__label'>
+              <span>{label}</span>
+              {timestamp && (
+                <>
+                  <span className='notification-group__main__header__label-separator'>
+                    &middot;
+                  </span>
+                  <RelativeTimestamp timestamp={timestamp} />
+                </>
+              )}
+            </h2>
+          </div>
+
+          {statusId && (
+            <div className='notification-group__main__status'>
+              <EmbeddedStatus statusId={statusId} collapsed={collapsed} />
+            </div>
+          )}
+
+          {additionalContent && (
+            <div className='notification-group__main__additional-content'>
+              {additionalContent}
+            </div>
+          )}
+        </div>
+      </div>
+    </Hotkeys>
+  );
+};

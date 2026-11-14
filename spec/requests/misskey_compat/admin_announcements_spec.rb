@@ -65,6 +65,85 @@ RSpec.describe 'Misskey-compat admin announcements' do
     expect(response.parsed_body.dig(:error, :id)).to eq('d3aae5a7-6372-4cb4-b61c-f511ffc2d7cc')
   end
 
+  it 'archives announcements at the requested millisecond timestamp across admin and reader APIs' do
+    freeze_time do
+      deadline = 1.hour.from_now
+      created = api('create', title: 'Timed', text: 'Body', imageUrl: nil, autoArchiveAt: deadline.to_i * 1000)
+      expect(response).to have_http_status(200)
+      expect(api('list').sole).to include(autoArchiveAt: deadline.iso8601(3), isActive: true)
+
+      travel 1.hour
+      expect(api('list')).to be_empty
+      expect(api('list', status: 'archived').sole).to include(id: created[:id], isActive: false)
+
+      BoardAnnouncement.create!(title: 'Private draft', text: 'Unpublished', published: false)
+
+      post '/api/announcements', params: { i: token }, as: :json
+      expect(response.parsed_body).to be_empty
+      post '/api/announcements', params: { i: token, isActive: false }, as: :json
+      expect(response.parsed_body.pluck(:id)).to eq([created[:id]])
+      post '/api/i', params: { i: token }, as: :json
+      expect(response.parsed_body[:hasUnreadAnnouncement]).to be false
+    end
+  end
+
+  it 'shows archived announcements without exposing drafts or announcements for older accounts' do
+    archived = BoardAnnouncement.create!(title: 'Archived', text: 'Body', published: true, auto_archive_at: 1.hour.ago)
+    draft = BoardAnnouncement.create!(title: 'Draft', text: 'Private')
+    hidden = BoardAnnouncement.create!(title: 'Hidden', text: 'Old', published: false, published_at: user.account.created_at - 1.day, for_existing_users: true)
+
+    post '/api/announcements/show', params: { i: token, announcementId: MisskeyCompat::MiId.encode(archived.id) }, as: :json
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body[:id]).to eq(MisskeyCompat::MiId.encode(archived.id))
+
+    [draft, hidden].each do |announcement|
+      post '/api/announcements/show', params: { i: token, announcementId: MisskeyCompat::MiId.encode(announcement.id) }, as: :json
+      expect(response).to have_http_status(404)
+    end
+  end
+
+  it 'keeps expired announcements archived when changing their deadline unless explicitly reactivated' do
+    [nil, 1.day.from_now.to_i * 1000].each do |deadline|
+      announcement = BoardAnnouncement.create!(title: 'Expired', text: 'Body', published: true, auto_archive_at: 1.hour.ago)
+      id = MisskeyCompat::MiId.encode(announcement.id)
+      api('update', id: id, autoArchiveAt: deadline)
+      expect(response).to have_http_status(204)
+      expect(announcement.reload).to_not be_active
+      expect(announcement).to_not be_published
+
+      announcement.update!(published: true, auto_archive_at: 1.hour.ago)
+      api('update', id: id, autoArchiveAt: deadline, isActive: true)
+      expect(response).to have_http_status(204)
+      expect(announcement.reload).to be_active
+      announcement.destroy!
+    end
+  end
+
+  it 'rejects invalid archive times and permits past dates on updates without losing omitted dates' do
+    base = { title: 'Timed', text: 'Body', imageUrl: nil }
+    [-1, 0, 8_640_000_000_000_001].each do |invalid|
+      api('create', **base, autoArchiveAt: invalid)
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body[:error]).to include(code: 'INVALID_AUTO_ARCHIVE_AT', id: '2a892bd5-487d-46a2-a5fe-3d85ad51defe')
+    end
+    ['tomorrow', true, []].each do |invalid|
+      api('create', **base, autoArchiveAt: invalid)
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
+    end
+
+    deadline = 1.day.from_now.change(usec: 123_000)
+    created = api('create', **base, autoArchiveAt: (deadline.to_r * 1000).to_i)
+    api('update', id: created[:id], title: 'Renamed')
+    expect(api('list').sole[:autoArchiveAt]).to eq(deadline.iso8601(3))
+
+    api('update', id: created[:id], autoArchiveAt: -1)
+    expect(response.parsed_body[:error]).to include(code: 'INVALID_AUTO_ARCHIVE_AT', id: '01b83d7b-2fd5-4d7c-86c4-d03144d16355')
+    api('update', id: created[:id], autoArchiveAt: 0)
+    expect(response).to have_http_status(204)
+    expect(api('list', status: 'archived').sole[:isActive]).to be false
+  end
+
   it 'maps Misskey moderator requirements to Mastodon role flags and token kinds' do
     announcement = BoardAnnouncement.create!(title: 'Hi', text: 'There', published: true)
 

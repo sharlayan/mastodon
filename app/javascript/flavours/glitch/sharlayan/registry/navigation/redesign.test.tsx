@@ -19,6 +19,7 @@ import {
   PERMISSION_VIEW_DASHBOARD,
 } from '@/flavours/glitch/permissions';
 
+import { useSharlayanPrimaryNavigation } from './index';
 import {
   SharlayanRedesignAccountMenuItems,
   SharlayanRedesignAntennas,
@@ -34,6 +35,9 @@ const context = vi.hoisted(() => ({
   extraPermissions: 0,
   searchClick: vi.fn(),
   flags: {
+    initialState: null,
+    me: '1',
+    chatEnabled: false,
     antennaEnabled: true,
     boardAnnouncementsEnabled: true,
     circlesEnabled: true,
@@ -270,6 +274,43 @@ describe('Sharlayan redesign navigation', () => {
       view.unmount();
       state.local_settings = fromJS({});
     }
+  });
+
+  it('keeps search in the legacy mobile menu when the local tab replaces it without trends', () => {
+    const LegacyPrimaryNavigation = () =>
+      useSharlayanPrimaryNavigation(false).primaryItems;
+    context.mobile = true;
+    context.flags.trendsEnabled = false;
+
+    const view = renderNavigation(<LegacyPrimaryNavigation />);
+    expect(paths()).not.toContain('/search');
+
+    state.local_settings = fromJS({
+      navigation_panel: { mobile_local_timeline: true },
+    });
+    view.rerender(
+      <MemoryRouter>
+        <IntlProvider locale='en'>
+          <ul>
+            <LegacyPrimaryNavigation />
+          </ul>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+    expect(paths()).toContain('/search');
+
+    context.flags.trendsEnabled = true;
+    view.rerender(
+      <MemoryRouter>
+        <IntlProvider locale='en'>
+          <ul>
+            <LegacyPrimaryNavigation />
+          </ul>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+    expect(paths()).toContain('/explore');
+    expect(paths()).not.toContain('/search');
   });
 
   it('falls back to search when local access is disabled and retains the redesign search focus behavior', () => {

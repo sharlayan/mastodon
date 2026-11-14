@@ -3,6 +3,28 @@ import test from 'node:test';
 
 import * as misskey from './misskey.js';
 
+test('clip authorization validates deletion snapshots and queries current ownership, blocking and feature state', async () => {
+  const calls = [];
+  const pool = { query: async (sql, params) => { calls.push({ sql, params }); return { rows: [{ allowed: true, missing: false }] }; } };
+  const request = { accountId: '7' };
+  assert.equal(await misskey.authorizeClipAccess(pool, 'bad', request), false);
+  assert.equal(await misskey.authorizeClipAccess(pool, '9', request, { type: 'deleted', clipId: '8', accountId: '10', public: true }), false);
+  assert.equal(calls.length, 0);
+  assert.equal(await misskey.authorizeClipAccess(pool, '9', request), true);
+  assert.deepEqual(calls[0].params, ['9', '7']);
+  assert.match(calls[0].sql, /clips\.public/);
+  assert.match(calls[0].sql, /clips_enabled/);
+  assert.match(calls[0].sql, /target_account_id = \$2/);
+  assert.equal(await misskey.authorizeClipAccess(pool, '9', request, { type: 'deleted', clipId: '9', accountId: '10', public: false }), true);
+  assert.deepEqual(calls[1].params, ['10', '7', false]);
+  assert.doesNotMatch(calls[1].sql, /JOIN clips/);
+  assert.equal(await misskey.authorizeClipAccess({ query: async () => ({ rows: [] }) }, '9', request), false);
+  const missing = { query: async () => ({ rows: [{ allowed: false, missing: true }] }) };
+  assert.equal(await misskey.authorizeClipAccess(missing, '9', request), false);
+  assert.equal(await misskey.authorizeClipAccess(missing, '9', request, { type: 'updated' }), 'missing');
+  assert.equal(await misskey.authorizeClipAccess({ query: async () => ({ rows: [{ allowed: false, missing: false }] }) }, '9', request, { type: 'updated' }), false);
+});
+
 test('chat setting requires both chat and compatibility enabled and fails closed', async () => {
   assert.equal(await misskey.isChatEnabled({ query: async () => ({ rows: [{ var: 'chat_enabled', value: '--- true\n' }, { var: 'misskey_compat_enabled', value: '--- true\n' }] }) }), true);
   assert.equal(await misskey.isChatEnabled({ query: async () => ({ rows: [{ var: 'chat_enabled', value: '--- true\n' }] }) }), false);

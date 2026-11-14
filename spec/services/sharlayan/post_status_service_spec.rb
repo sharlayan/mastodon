@@ -148,6 +148,19 @@ RSpec.describe PostStatusService do
       expect(circle.statuses).to include(status)
     end
 
+    it 'delivers to remote circle members through their personal inboxes without listing them' do
+      member = Fabricate(:account, domain: 'remote.example', protocol: :activitypub, inbox_url: 'https://remote.example/users/member/inbox', shared_inbox_url: 'https://remote.example/inbox')
+      listed = Fabricate(:account, domain: 'other.example', protocol: :activitypub, inbox_url: 'https://other.example/users/listed/inbox', shared_inbox_url: 'https://other.example/inbox')
+      member.follow!(account)
+      circle.circle_accounts.create!(account: member)
+      Setting.circles_enabled = true
+
+      status = subject.call(account, text: "@#{listed.acct} circle post", circle_id: circle.id)
+
+      expect(StatusReachFinder.new(status).inboxes).to contain_exactly(member.inbox_url, listed.shared_inbox_url)
+      expect(ActivityPub::TagManager.instance.to(status)).to contain_exactly(ActivityPub::TagManager.instance.uri_for(listed))
+    end
+
     it 'accepts allowed mentions that omit circle members' do
       follower = Fabricate(:account)
       follower.follow!(account)

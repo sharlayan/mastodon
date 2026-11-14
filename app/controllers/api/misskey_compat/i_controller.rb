@@ -4,15 +4,21 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
   MAX_MUTED_WORDS_BYTES = 64.kilobytes
   MAX_MUTED_INSTANCES = 100
   MAX_MUTED_EMOJIS = 1_000
+  FOLLOW_APPROVAL_SETTINGS = {
+    followApprovalLocalSeconds: :follow_approval_local_seconds,
+    followApprovalRemoteSeconds: :follow_approval_remote_seconds,
+  }.freeze
 
   PROFILE_IMAGE_ERRORS = {
     avatarId: {
       missing: ['No such avatar file', 'NO_SUCH_AVATAR', '539f3a45-f215-4f81-a9a8-31293640207f'],
       not_image: ['The file specified as an avatar is not an image', 'AVATAR_NOT_AN_IMAGE', 'f419f9f8-2f4d-46b1-9fb4-49d3a2fd7191'],
+      sensitive: ['The file specified as an avatar is marked as sensitive.', 'AVATAR_IS_SENSITIVE', '71bb5e53-4742-4609-b465-36081e131208'], # rubocop:disable I18n/RailsI18n/DecorateString
     },
     bannerId: {
       missing: ['No such banner file', 'NO_SUCH_BANNER', '0d8f5629-f210-41c2-9433-735831a58595'],
       not_image: ['The file specified as a banner is not an image', 'BANNER_NOT_AN_IMAGE', '75aedb19-2afd-4e6d-87fc-67941256fa60'],
+      sensitive: ['The file specified as a banner is marked as sensitive.', 'BANNER_IS_SENSITIVE', 'e148b34c-9f33-4300-93e0-7817008fb366'], # rubocop:disable I18n/RailsI18n/DecorateString
     },
   }.freeze
 
@@ -69,11 +75,17 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     return unless object_body!
     return render_invalid_param('#/properties/chatScope', 'must be a chat policy') if params.key?(:chatScope) && %w(everyone followers following mutual none).exclude?(params[:chatScope])
 
-    apply_profile!
-    apply_privacy!
-    apply_muted_words!
-    apply_muted_instances!
-    apply_muted_emojis!
+    approval_settings = follow_approval_settings
+
+    current_user.transaction do
+      approval_settings.each { |key, value| current_user.settings[key] = value }
+      current_user.save! if approval_settings.present?
+      apply_profile!
+      apply_privacy!
+      apply_muted_words!
+      apply_muted_instances!
+      apply_muted_emojis!
+    end
 
     render json: me_json
   end
@@ -133,6 +145,17 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
   end
 
   private
+
+  def follow_approval_settings
+    FOLLOW_APPROVAL_SETTINGS.each_with_object({}) do |(key, setting), settings|
+      next unless params.key?(key)
+
+      value = params[key]
+      raise InvalidParamError.new("#/properties/#{key}", 'must be null or an integer between 0 and 2592000') unless value.nil? || (value.is_a?(Integer) && value.between?(0, 30.days.to_i))
+
+      settings[setting] = value
+    end
+  end
 
   def pinnable_status
     status = Status.find_by(id: params[:noteId])
@@ -198,7 +221,11 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
 
     previous_chat_policy = current_user.settings[:chat_policy]
     current_user.update!(settings_attributes: settings) if settings.present?
-    ActivityPub::UpdateDistributionWorker.perform_in(ActivityPub::UpdateDistributionWorker::DEBOUNCE_DELAY, current_account.id) if current_user.settings[:chat_policy] != previous_chat_policy
+    if current_user.settings[:chat_policy] != previous_chat_policy
+      ActiveRecord.after_all_transactions_commit do
+        ActivityPub::UpdateDistributionWorker.perform_in(ActivityPub::UpdateDistributionWorker::DEBOUNCE_DELAY, current_account.id)
+      end
+    end
   end
 
   def fields_attributes
@@ -252,6 +279,7 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     drive_file = current_account.drive_files.find_by(id: id) if Setting.drive_enabled && current_account.local?
     if drive_file
       raise ProfileImageError.new(key, :not_image) unless Account::Avatar::AVATAR_IMAGE_MIME_TYPES.include?(drive_file.file_content_type)
+      raise ProfileImageError.new(key, :sensitive) if drive_file.sensitive?
 
       return { "#{attachment}_drive_file_id": drive_file.id }
     end
@@ -259,6 +287,7 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     media = current_account.media_attachments.find_by(id: id)
     raise ProfileImageError.new(key, :missing) if media.nil?
     raise ProfileImageError.new(key, :not_image) unless media.image?
+    raise ProfileImageError.new(key, :sensitive) if media.drive_pointer? ? media.drive_file.sensitive? : media.status&.sensitive?
 
     { attachment => media.file }
   end

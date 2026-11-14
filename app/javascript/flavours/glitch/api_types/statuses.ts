@@ -102,6 +102,11 @@ export interface ApiFilterResultJSON {
   status_matches: string[];
 }
 
+export interface ApiStatusCircleJSON {
+  id: string;
+  title: string;
+}
+
 export interface ApiStatusJSON {
   id: string;
   created_at: string;
@@ -112,6 +117,7 @@ export interface ApiStatusJSON {
   visibility: StatusVisibility;
   limited_scope?: string;
   limited_reply_account_ids?: string[];
+  circle?: ApiStatusCircleJSON;
   language: string;
   uri: string;
   url: string;

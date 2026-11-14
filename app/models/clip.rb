@@ -15,6 +15,7 @@
 
 class Clip < ApplicationRecord
   include Paginable
+  include Redisable
 
   PER_ACCOUNT_LIMIT = 100
   STATUSES_LIMIT = 200
@@ -35,6 +36,13 @@ class Clip < ApplicationRecord
 
   scope :public_clips, -> { where(public: true) }
 
+  after_update_commit :broadcast_update
+  after_destroy_commit :broadcast_deleted
+
+  def broadcast_update
+    with_redis { |redis| MisskeyCompat::Streaming.broadcast_clip(redis, self, 'updated') } unless destroyed?
+  end
+
   def visible_to?(viewer_account)
     return false if account.unavailable?
     return true if viewer_account&.id == account_id
@@ -49,6 +57,10 @@ class Clip < ApplicationRecord
   end
 
   private
+
+  def broadcast_deleted
+    with_redis { |redis| MisskeyCompat::Streaming.broadcast_clip(redis, self, 'deleted') }
+  end
 
   def validate_account_clips_limit
     errors.add(:base, I18n.t('clips.errors.limit')) if account.clips.count >= PER_ACCOUNT_LIMIT

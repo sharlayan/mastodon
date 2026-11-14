@@ -1,0 +1,149 @@
+import { useEffect, useCallback } from 'react';
+
+import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
+
+import { Helmet } from '@unhead/react/helmet';
+
+import { Column } from '@/flavours/glitch-classic/components/column';
+import { ColumnHeader as LegacyColumnHeader } from '@/flavours/glitch-classic/components/column/header';
+import {
+  ColumnHeader,
+  ColumnSettingsMenu,
+} from '@/flavours/glitch-classic/components/column_header';
+import { MultiColumnMenuItems } from '@/flavours/glitch-classic/components/column_header/multicolumn_settings';
+import { isRedesignEnabled } from '@/flavours/glitch-classic/utils/environment';
+import BookmarksIcon from '@/material-icons/400-24px/bookmarks-fill.svg?react';
+import {
+  fetchBookmarkedStatuses,
+  expandBookmarkedStatuses,
+} from 'flavours/glitch-classic/actions/bookmarks';
+import {
+  addColumn,
+  removeColumn,
+  moveColumn,
+} from 'flavours/glitch-classic/actions/columns';
+import StatusList from 'flavours/glitch-classic/components/status_list';
+import { getStatusList } from 'flavours/glitch-classic/selectors';
+import { MyArchiveTabs } from 'flavours/glitch-classic/sharlayan/my_archive/tabs';
+import { useAppDispatch, useAppSelector } from 'flavours/glitch-classic/store';
+
+const messages = defineMessages({
+  heading: { id: 'column.bookmarks', defaultMessage: 'Bookmarks' },
+  heading_redesign: { id: 'column.saved_posts', defaultMessage: 'Saved Posts' },
+});
+
+const Bookmarks: React.FC<{
+  columnId: string;
+  multiColumn: boolean;
+}> = ({ columnId, multiColumn }) => {
+  const intl = useIntl();
+  const dispatch = useAppDispatch();
+  const statusIds = useAppSelector((state) =>
+    getStatusList(state, 'bookmarks'),
+  );
+  const isLoading = useAppSelector(
+    (state) =>
+      state.status_lists.getIn(['bookmarks', 'isLoading'], true) as boolean,
+  );
+  const hasMore = useAppSelector(
+    (state) => !!state.status_lists.getIn(['bookmarks', 'next']),
+  );
+
+  useEffect(() => {
+    dispatch(fetchBookmarkedStatuses());
+  }, [dispatch]);
+
+  const handlePin = useCallback(() => {
+    if (columnId) {
+      dispatch(removeColumn(columnId));
+    } else {
+      dispatch(addColumn('BOOKMARKS', {}));
+    }
+  }, [dispatch, columnId]);
+
+  const handleMove = useCallback(
+    (dir: number) => {
+      dispatch(moveColumn(columnId, dir));
+    },
+    [dispatch, columnId],
+  );
+
+  const handleLoadMore = useCallback(() => {
+    dispatch(expandBookmarkedStatuses());
+  }, [dispatch]);
+
+  const pinned = !!columnId;
+
+  const emptyMessage = (
+    <FormattedMessage
+      id='empty_column.bookmarked_statuses'
+      defaultMessage="You don't have any bookmarked posts yet. When you bookmark one, it will show up here."
+    />
+  );
+
+  return (
+    <Column
+      bindToDocument={!multiColumn}
+      label={intl.formatMessage(messages.heading)}
+    >
+      {isRedesignEnabled() ? (
+        <ColumnHeader
+          title={intl.formatMessage(messages.heading_redesign)}
+          withBackButton={multiColumn && !pinned && 'auto'}
+          extraButtons={
+            multiColumn && (
+              <ColumnSettingsMenu
+                labelPrefix={intl.formatMessage(messages.heading_redesign)}
+              >
+                <MultiColumnMenuItems
+                  pinned={pinned}
+                  onPin={handlePin}
+                  onMove={handleMove}
+                />
+              </ColumnSettingsMenu>
+            )
+          }
+        />
+      ) : (
+        <LegacyColumnHeader
+          icon='bookmarks'
+          iconComponent={BookmarksIcon}
+          title={intl.formatMessage(messages.heading)}
+          onPin={handlePin}
+          onMove={handleMove}
+          pinned={pinned}
+          multiColumn={multiColumn}
+          showBackButton
+          scrollTopOnClick
+          appendContent={<MyArchiveTabs />}
+        />
+      )}
+
+      {isRedesignEnabled() && <MyArchiveTabs />}
+
+      <StatusList
+        trackScroll={!pinned}
+        statusIds={statusIds}
+        scrollKey={`bookmarked_statuses-${columnId}`}
+        hasMore={hasMore}
+        isLoading={isLoading}
+        onLoadMore={handleLoadMore}
+        emptyMessage={emptyMessage}
+        bindToDocument={!multiColumn}
+        timelineId='bookmarks'
+      />
+
+      <Helmet>
+        <title>
+          {isRedesignEnabled()
+            ? intl.formatMessage(messages.heading_redesign)
+            : intl.formatMessage(messages.heading)}
+        </title>
+        <meta name='robots' content='noindex' />
+      </Helmet>
+    </Column>
+  );
+};
+
+// eslint-disable-next-line import/no-default-export
+export default Bookmarks;

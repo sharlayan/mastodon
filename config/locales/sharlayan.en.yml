@@ -153,6 +153,8 @@ en:
       update_category: Update category
       updated_msg: Decoration updated successfully
     board_announcements:
+      auto_archive_at: Automatic archive time
+      auto_archive_at_hint: Enter a date and time with a timezone, or leave blank to disable automatic archiving. After expiry, use Publish to publish the announcement again.
       attachments: Media attachments
       attachments_hint: Upload media, then click an item to copy its Markdown into
         the body.
@@ -565,11 +567,13 @@ en:
           to everyone.
         title: API Rate Limit Bypass
       content_limits:
+        local_media_attachments_limit: Local post media attachments
+        local_media_attachments_limit_hint: Maximum number of media attachments allowed per local post. Must be between 1 and 16. Changes apply to new posts and edits; existing posts keep their attachments.
         profile_fields_limit: Profile metadata fields
         profile_fields_limit_hint: Maximum number of metadata fields allowed on a local profile. Changes take effect immediately; existing fields above a lowered limit remain visible until the profile is edited.
         remote_media_attachments_limit: Remote post media attachments
         remote_media_attachments_limit_hint: Maximum number of media attachments accepted and displayed per remote post. Must be between 4 and 16. Lowering the limit does not delete attachments already stored beyond it.
-        title: Profile and remote content limits
+        title: Profile and post content limits
       status_character_limit:
         hint: Maximum number of characters allowed in a local post, including its content warning. Changes take effect immediately.
         label: Character limit
@@ -724,6 +728,9 @@ en:
       clips: Importing clips
     types:
       clips: Clips
+  media_attachments:
+    validations:
+      too_many_limited: Cannot attach more than %{count} files
   misskey_compat:
     authorization:
       access_request_html: "%{app} is requesting access to your account %{account}."

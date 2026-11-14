@@ -5,6 +5,7 @@
 # Table name: board_announcements
 #
 #  id                        :bigint(8)        not null, primary key
+#  auto_archive_at           :datetime
 #  display                   :string           default("normal"), not null
 #  for_existing_users        :boolean          default(FALSE), not null
 #  icon                      :string           default("info"), not null
@@ -25,7 +26,8 @@ class BoardAnnouncement < ApplicationRecord
   ICONS = %w(info warning error success).freeze
   DISPLAYS = %w(normal banner).freeze
 
-  scope :published, -> { where(published: true) }
+  scope :published, -> { where(published: true).where(arel_table[:auto_archive_at].eq(nil).or(arel_table[:auto_archive_at].gt(Time.current))) }
+  scope :archived, -> { where(published: false).or(where(auto_archive_at: ..Time.current)) }
   scope :reverse_chronological, -> { order(sort_priority: :desc).order(coalesced_timestamp.desc) }
   scope :banner, -> { where(display: 'banner') }
   scope :for_account, lambda { |account|
@@ -44,6 +46,7 @@ class BoardAnnouncement < ApplicationRecord
   validates :icon, inclusion: { in: ICONS }
   validates :display, inclusion: { in: DISPLAYS }
   validates :sort_priority, numericality: { only_integer: true, greater_than_or_equal_to: -2_147_483_648, less_than_or_equal_to: 2_147_483_647 }
+  validate :validate_auto_archive_at
 
   before_save :render_text_html
   before_save :set_published_at
@@ -90,7 +93,19 @@ class BoardAnnouncement < ApplicationRecord
   end
 
   def publish!
-    update!(published: true, published_at: published_at || Time.now.utc)
+    update!(published: true, published_at: published_at || Time.now.utc, auto_archive_at: auto_archive_at&.future? ? auto_archive_at : nil)
+  end
+
+  def update_with_archive_state(attributes, raise_error: false, republish_expired: false)
+    with_lock do
+      attributes = attributes.except(:published) if !republish_expired && auto_archive_at.present? && auto_archive_at <= Time.current
+      self.published = false unless active?
+      public_send(raise_error ? :update! : :update, attributes)
+    end
+  end
+
+  def active?
+    published? && (auto_archive_at.nil? || auto_archive_at.future?)
   end
 
   def unpublish!
@@ -118,6 +133,10 @@ class BoardAnnouncement < ApplicationRecord
   end
 
   private
+
+  def validate_auto_archive_at
+    errors.add(:auto_archive_at, :invalid) if auto_archive_at_before_type_cast.present? && auto_archive_at.nil?
+  end
 
   def grouped_ordered_board_announcement_reactions
     board_announcement_reactions

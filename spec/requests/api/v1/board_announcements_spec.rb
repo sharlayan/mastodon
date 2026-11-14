@@ -59,4 +59,15 @@ RSpec.describe 'Board announcement authorization' do
 
     expect(response).to have_http_status(404)
   end
+
+  it 'excludes expired announcements from the native listing, detail and unread count' do
+    announcement.update!(auto_archive_at: 1.minute.ago)
+
+    get paths[:index], headers: headers
+    expect(response.parsed_body).to be_empty
+    get paths[:show], headers: headers
+    expect(response).to have_http_status(404)
+    get paths[:unread_count], headers: headers
+    expect(response.parsed_body[:count]).to eq(0)
+  end
 end

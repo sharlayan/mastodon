@@ -67,7 +67,7 @@ class Status < ApplicationRecord
     quote: { status: { account: [:account_stat, user: :role] } },
   ].freeze
 
-  MEDIA_ATTACHMENTS_LIMIT = Sharlayan::Status::MediaLimits.local_media_attachments_limit
+  MEDIA_ATTACHMENTS_LIMIT = Sharlayan::Status::MediaLimits::MAX_MEDIA_ATTACHMENTS_LIMIT
 
   rate_limit by: :account, family: :statuses
 

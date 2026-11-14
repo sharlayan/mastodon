@@ -1,0 +1,77 @@
+import { useCallback } from 'react';
+
+import { FormattedMessage } from 'react-intl';
+
+import { changeComposeSpoilerness } from '@/flavours/glitch-classic/actions/compose';
+import { closeModal } from '@/flavours/glitch-classic/actions/modal';
+import type { StatusVisibility } from '@/flavours/glitch-classic/api_types/statuses';
+import { Button } from '@/flavours/glitch-classic/components/button/redesign';
+import {
+  ModalShell,
+  ModalActions,
+  ModalTitle,
+} from '@/flavours/glitch-classic/components/modal_shell/redesign';
+import {
+  requestComposerFocus,
+  submitComposer,
+} from '@/flavours/glitch-classic/reducers/slices/composer';
+import { useAppDispatch } from '@/flavours/glitch-classic/store';
+
+const ComposerModalSensitive: React.FC<{
+  redirectOnSuccess?: boolean;
+  overridePrivacy?: StatusVisibility;
+}> = ({ redirectOnSuccess, overridePrivacy }) => {
+  const dispatch = useAppDispatch();
+  const onCancel = useCallback(() => {
+    dispatch(requestComposerFocus());
+    dispatch(
+      closeModal({
+        modalType: 'COMPOSER_ADD_CONTENT_WARNING',
+        ignoreFocus: false,
+      }),
+    );
+  }, [dispatch]);
+  const onContinue = useCallback(() => {
+    dispatch(changeComposeSpoilerness());
+    dispatch(submitComposer({ redirectOnSuccess, overridePrivacy }));
+    dispatch(
+      closeModal({
+        modalType: 'COMPOSER_ADD_CONTENT_WARNING',
+        ignoreFocus: false,
+      }),
+    );
+  }, [dispatch, redirectOnSuccess, overridePrivacy]);
+
+  return (
+    <ModalShell>
+      <ModalTitle>
+        <FormattedMessage
+          id='compose.sensitive_modal.title'
+          defaultMessage='Publish without content warning?'
+        />
+      </ModalTitle>
+
+      <FormattedMessage
+        id='compose.sensitive_modal.body'
+        defaultMessage="You haven't added content warning text. If you publish now, your post will not be hidden behind a content warning."
+      />
+
+      <ModalActions>
+        <Button variant='solid' color='destructive' onClick={onCancel}>
+          <FormattedMessage
+            id='compose.sensitive_modal.cancel'
+            defaultMessage='Continue editing'
+          />
+        </Button>
+        <Button variant='solid' onClick={onContinue}>
+          <FormattedMessage
+            id='compose.sensitive_modal.continue'
+            defaultMessage='Publish without warning'
+          />
+        </Button>
+      </ModalActions>
+    </ModalShell>
+  );
+};
+
+export default ComposerModalSensitive;

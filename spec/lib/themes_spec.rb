@@ -35,12 +35,13 @@ RSpec.describe Themes do
   end
 
   describe 'legacy glitch assets' do
-    it 'is listed alongside existing flavours, shares the glitch entrypoints and locales, and provides both skins with all color schemes' do
+    it 'is listed alongside existing flavours, uses its own entrypoints and locales, and provides both skins with all color schemes' do
       legacy = themes.flavour('glitch-classic')
       glitch = themes.flavour('glitch')
 
       expect(themes.flavours).to include('glitch', 'glitch-classic', 'vanilla')
-      expect(legacy['pack_directory']).to eq(glitch['pack_directory'])
+      expect(legacy['pack_directory']).to eq('app/javascript/flavours/glitch-classic/entrypoints')
+      expect(glitch['pack_directory']).to eq('app/javascript/flavours/glitch/entrypoints')
       expect(legacy['locales']).to match_array(glitch['locales'])
       expect(legacy['locales']).to include('en', 'ja', 'ko')
       expect(themes.skins_for('glitch-classic')).to contain_exactly('default', 'birdsiteui')

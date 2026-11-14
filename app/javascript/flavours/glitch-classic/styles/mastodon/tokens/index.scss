@@ -1,0 +1,45 @@
+@use 'theme/palette';
+@use 'theme/dark';
+@use 'theme/light';
+@use 'theme/utils';
+@use 'border';
+@use 'shape';
+@use 'type';
+
+html {
+  @include palette.palette;
+  @include border.border-widths;
+  @include border.borders;
+  @include shape.space;
+  @include shape.radius;
+  @include type.font-size;
+  @include type.line-height;
+  @include type.letter-spacing;
+}
+
+[data-color-scheme='dark'],
+html:not([data-color-scheme]) {
+  color-scheme: dark;
+
+  @include dark.base-indigo;
+  @include dark.tokens;
+  @include utils.invert-on-dark;
+
+  &[data-contrast='high'],
+  [data-contrast='high'] & {
+    @include dark.base-indigo-contrast;
+  }
+}
+
+[data-color-scheme='light'] {
+  color-scheme: light;
+
+  @include light.base-indigo;
+  @include light.tokens;
+  @include utils.invert-on-light;
+
+  &[data-contrast='high'],
+  [data-contrast='high'] & {
+    @include light.base-indigo-contrast;
+  }
+}

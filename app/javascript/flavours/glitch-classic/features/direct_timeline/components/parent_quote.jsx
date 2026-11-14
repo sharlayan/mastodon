@@ -1,0 +1,68 @@
+import PropTypes from 'prop-types';
+import { useCallback, useEffect, useRef } from 'react';
+
+import { useHistory } from 'react-router-dom';
+
+import { useDispatch, useSelector } from 'react-redux';
+
+import { fetchStatus } from 'flavours/glitch-classic/actions/statuses';
+import { Avatar } from 'flavours/glitch-classic/components/avatar';
+import { DisplayName } from 'flavours/glitch-classic/components/display_name';
+import { EmojiHTML } from 'flavours/glitch-classic/components/emoji/html';
+import { VisibilityIcon } from 'flavours/glitch-classic/components/visibility_icon';
+import { makeGetStatus } from 'flavours/glitch-classic/selectors';
+
+const getStatus = makeGetStatus();
+
+export const ParentQuote = ({ statusId }) => {
+  const dispatch = useDispatch();
+  const history = useHistory();
+
+  const status = useSelector(state => getStatus(state, { id: statusId }));
+  const isInStore = useSelector(state => state.getIn(['statuses', statusId], null) !== null);
+
+  const didFetchRef = useRef(false);
+
+  useEffect(() => {
+    didFetchRef.current = false;
+  }, [statusId]);
+
+  useEffect(() => {
+    if (!isInStore && !didFetchRef.current) {
+      didFetchRef.current = true;
+      dispatch(fetchStatus(statusId, { alsoFetchContext: false }));
+    }
+  }, [dispatch, statusId, isInStore]);
+
+  const account = status ? status.get('account') : null;
+
+  const handleClick = useCallback(() => {
+    if (account) {
+      history.push(`/@${account.get('acct')}/${status.get('id')}`);
+    }
+  }, [history, account, status]);
+
+  if (!status || !account || status.get('visibility') === 'direct') {
+    return null;
+  }
+
+  return (
+    <button type='button' className='chat-message__parent' onClick={handleClick}>
+      <div className='chat-message__parent__header'>
+        <Avatar account={account} size={16} />
+        <DisplayName account={account} variant='simple' />
+        <VisibilityIcon visibility={status.get('visibility')} />
+      </div>
+
+      <EmojiHTML
+        className='chat-message__parent__content'
+        htmlString={status.get('contentHtml')}
+        extraEmojis={status.get('emojis')}
+      />
+    </button>
+  );
+};
+
+ParentQuote.propTypes = {
+  statusId: PropTypes.string.isRequired,
+};

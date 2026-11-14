@@ -1,0 +1,122 @@
+import { useEffect } from 'react';
+import type { FC } from 'react';
+
+import { FormattedMessage } from 'react-intl';
+
+import { fetchRelationships } from '@/flavours/glitch-classic/actions/accounts';
+import { useAccount } from '@/flavours/glitch-classic/hooks/useAccount';
+import { roleplayMode } from '@/flavours/glitch-classic/initial_state';
+import type { AccountRole } from '@/flavours/glitch-classic/models/account';
+import {
+  useAppDispatch,
+  useAppSelector,
+} from '@/flavours/glitch-classic/store';
+import PersonIcon from '@/material-icons/400-24px/person.svg?react';
+
+import {
+  AdminBadge,
+  AutomatedBadge,
+  Badge,
+  BlockedBadge,
+  GroupBadge,
+  MutedBadge,
+} from '../badge';
+
+import classes from './styles.module.scss';
+
+export const AccountBadges: FC<{ accountId: string }> = ({ accountId }) => {
+  const account = useAccount(accountId);
+  const localDomain = useAppSelector(
+    (state) => state.meta.get('domain') as string,
+  );
+  const relationship = useAppSelector((state) =>
+    state.relationships.get(accountId),
+  );
+
+  const dispatch = useAppDispatch();
+  useEffect(() => {
+    if (!relationship) {
+      dispatch(fetchRelationships([accountId]));
+    }
+  }, [accountId, dispatch, relationship]);
+
+  const badges = [];
+
+  if (!account) {
+    return null;
+  }
+
+  const domain = account.acct.includes('@')
+    ? account.acct.split('@')[1]
+    : localDomain;
+  const roleDomain = roleplayMode ? undefined : `(${domain})`;
+  account.roles.forEach((role) => {
+    if (isAdminBadge(role)) {
+      badges.push(
+        <AdminBadge
+          key={role.id}
+          label={role.name}
+          domain={roleDomain}
+          roleId={role.id}
+          color={role.color}
+        />,
+      );
+    } else {
+      badges.push(
+        <Badge
+          icon={<PersonIcon />}
+          key={role.id}
+          label={role.name}
+          domain={roleDomain}
+          roleId={role.id}
+          color={role.color}
+        />,
+      );
+    }
+  });
+
+  if (account.bot) {
+    badges.push(<AutomatedBadge key='bot-badge' />);
+  }
+  if (account.group) {
+    badges.push(<GroupBadge key='group-badge' />);
+  }
+  if (relationship) {
+    if (relationship.blocking) {
+      badges.push(<BlockedBadge key='blocking' />);
+    }
+    if (relationship.domain_blocking) {
+      badges.push(
+        <BlockedBadge
+          key='domain-blocking'
+          domain={domain}
+          label={
+            <FormattedMessage
+              id='account.badges.domain_blocked'
+              defaultMessage='Blocked domain'
+            />
+          }
+        />,
+      );
+    }
+    if (relationship.muting) {
+      badges.push(
+        <MutedBadge
+          key='muted-badge'
+          expiresAt={relationship.muting_expires_at}
+        />,
+      );
+    }
+  }
+
+  if (!badges.length) {
+    return null;
+  }
+
+  return <div className={classes.badges}>{badges}</div>;
+};
+
+function isAdminBadge(role: AccountRole) {
+  const name = role.name.toLowerCase();
+  return name === 'admin' || name === 'owner';
+}

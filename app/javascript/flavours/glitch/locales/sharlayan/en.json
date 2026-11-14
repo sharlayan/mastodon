@@ -635,6 +635,7 @@
   "pages.visibility.public": "Public",
   "pages.wide_view": "Wide view",
   "pages.youtube.video": "YouTube video",
+  "privacy.circle.named": "Circle: {name}",
   "privacy.circle.short": "Circle",
   "privacy.reply.long": "Only the author and recipients of the original post",
   "privacy.reply.short": "Reply audience",

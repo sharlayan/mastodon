@@ -1,0 +1,356 @@
+import PropTypes from 'prop-types';
+import { PureComponent } from 'react';
+
+import { defineMessages } from 'react-intl';
+
+import ImmutablePropTypes from 'react-immutable-proptypes';
+import { connect } from 'react-redux';
+
+import AttachFileIcon from '@/material-icons/400-24px/attach_file.svg?react';
+import MoreHorizIcon from '@/material-icons/400-24px/more_horiz.svg?react';
+import { injectIntl } from '@/flavours/glitch-classic/components/intl';
+import { identityContextPropShape, withIdentity } from 'flavours/glitch-classic/identity_context';
+import { PERMISSION_MANAGE_USERS, PERMISSION_MANAGE_FEDERATION } from 'flavours/glitch-classic/permissions';
+import { accountAdminLink, statusAdminLink } from 'flavours/glitch-classic/utils/backend_links';
+
+import { IconButton } from '@/flavours/glitch-classic/components/icon_button';
+import { Dropdown } from 'flavours/glitch-classic/components/dropdown_menu';
+import { SharlayanStatusReactionButton, sharlayanAddToClipMenuItem, sharlayanRoleplayStatusAction, sharlayanRoleplayStatusMenuItem } from 'flavours/glitch-classic/sharlayan/status_action_bar';
+import { me, quickBoosting, reactionsEnabled, clipsEnabled } from '@/flavours/glitch-classic/initial_state';
+import { BoostButton } from '@/flavours/glitch-classic/components/status/legacy/boost_button';
+import { quoteItemState } from '@/flavours/glitch-classic/components/status/boost_button_utils';
+import { selectStatusConditions } from '@/flavours/glitch-classic/selectors/statuses';
+import { selectStatusActionBarOrder } from '@/flavours/glitch-classic/features/status_action_bar/items';
+import { openModal } from '@/flavours/glitch-classic/actions/modal';
+import { isRedesignEnabled } from '@/flavours/glitch-classic/utils/environment';
+import {
+  StatusBookmarkActiveIcon,
+  StatusBookmarkIcon,
+  StatusLikeActiveIcon,
+  StatusLikeIcon,
+  StatusReplyAllIcon,
+  StatusReplyIcon,
+} from '@/flavours/glitch-classic/components/status/icons';
+
+const baseMessages = defineMessages({
+  delete: { id: 'status.delete', defaultMessage: 'Delete' },
+  redraft: { id: 'status.redraft', defaultMessage: 'Delete & re-draft' },
+  edit: { id: 'status.edit', defaultMessage: 'Edit' },
+  direct: { id: 'status.direct', defaultMessage: 'Privately mention @{name}' },
+  mention: { id: 'status.mention', defaultMessage: 'Mention @{name}' },
+  reply: { id: 'status.reply', defaultMessage: 'Reply' },
+  favourite: { id: 'status.favourite', defaultMessage: 'Favorite' },
+  removeFavourite: { id: 'status.remove_favourite', defaultMessage: 'Remove from favorites' },
+  bookmark: { id: 'status.bookmark', defaultMessage: 'Bookmark' },
+  removeBookmark: { id: 'status.remove_bookmark', defaultMessage: 'Remove bookmark' },
+  more: { id: 'status.more', defaultMessage: 'More' },
+  mute: { id: 'status.mute', defaultMessage: 'Mute @{name}' },
+  muteConversation: { id: 'status.mute_conversation', defaultMessage: 'Mute conversation' },
+  unmuteConversation: { id: 'status.unmute_conversation', defaultMessage: 'Unmute conversation' },
+  block: { id: 'status.block', defaultMessage: 'Block @{name}' },
+  report: { id: 'status.report', defaultMessage: 'Report @{name}' },
+  share: { id: 'status.share', defaultMessage: 'Share' },
+  pin: { id: 'status.pin', defaultMessage: 'Pin on profile' },
+  unpin: { id: 'status.unpin', defaultMessage: 'Unpin from profile' },
+  embed: { id: 'status.embed', defaultMessage: 'Get embed code' },
+  admin_account: { id: 'status.admin_account', defaultMessage: 'Open moderation interface for @{name}' },
+  admin_status: { id: 'status.admin_status', defaultMessage: 'Open this post in the moderation interface' },
+  admin_domain: { id: 'status.admin_domain', defaultMessage: 'Open moderation interface for {domain}' },
+  copy: { id: 'status.copy', defaultMessage: 'Copy link to post' },
+  openOriginalPage: { id: 'account.open_original_page', defaultMessage: 'Open original page' },
+  revokeQuote: { id: 'status.revoke_quote', defaultMessage: 'Remove my post from @{name}’s post' },
+  quotePolicyChange: { id: 'status.quote_policy_change', defaultMessage: 'Change who can quote' },
+  reactions: { id: 'status.reactions', defaultMessage: 'Reactions' },
+});
+
+const redesignMessages = defineMessages({
+  favourite: { id: 'status.like', defaultMessage: 'Like' },
+  removeFavourite: { id: 'status.unlike', defaultMessage: 'Unlike' },
+  bookmark: { id: 'status.save', defaultMessage: 'Save post' },
+  removeBookmark: { id: 'status.remove_from_saved', defaultMessage: 'Remove from Saved' },
+});
+
+const messages = isRedesignEnabled() ? {...baseMessages, ...redesignMessages} : baseMessages;
+
+const mapStateToProps = (state, { status }) => {
+  const quotedStatusId = status.getIn(['quote', 'quoted_status']);
+  return ({
+    quotedAccountId: quotedStatusId ? state.getIn(['statuses', quotedStatusId, 'account']) : null,
+    statusQuoteState: selectStatusConditions(state, status.get('id')),
+    statusActionBarOrder: selectStatusActionBarOrder(state),
+    statusActionBarHidden: state.getIn(['local_settings', 'status_action_bar', 'hidden']),
+  });
+};
+
+class ActionBar extends PureComponent {
+  static propTypes = {
+    identity: identityContextPropShape,
+    status: ImmutablePropTypes.map.isRequired,
+    statusQuoteState: PropTypes.object,
+    quotedAccountId: ImmutablePropTypes.string,
+    statusActionBarOrder: PropTypes.arrayOf(PropTypes.string).isRequired,
+    statusActionBarHidden: ImmutablePropTypes.map.isRequired,
+    onReply: PropTypes.func.isRequired,
+    onReblog: PropTypes.func.isRequired,
+    onFavourite: PropTypes.func.isRequired,
+    onReactionAdd: PropTypes.func.isRequired,
+    onBookmark: PropTypes.func.isRequired,
+    onDelete: PropTypes.func.isRequired,
+    onRevokeQuote: PropTypes.func,
+    onQuotePolicyChange: PropTypes.func,
+    onEdit: PropTypes.func.isRequired,
+    onDirect: PropTypes.func.isRequired,
+    onMention: PropTypes.func.isRequired,
+    onMute: PropTypes.func,
+    onBlock: PropTypes.func,
+    onMuteConversation: PropTypes.func,
+    onReport: PropTypes.func,
+    onPin: PropTypes.func,
+    onEmbed: PropTypes.func,
+    intl: PropTypes.object.isRequired,
+  };
+
+  handleReplyClick = () => {
+    this.props.onReply(this.props.status);
+  };
+
+  handleReblogClick = (e) => {
+    this.props.onReblog(this.props.status, e);
+  };
+
+  handleFavouriteClick = (e) => {
+    this.props.onFavourite(this.props.status, e);
+  };
+
+  handleBookmarkClick = (e) => {
+    this.props.onBookmark(this.props.status, e);
+  };
+
+  handleDeleteClick = () => {
+    this.props.onDelete(this.props.status);
+  };
+
+  handleRevokeQuoteClick = () => {
+    this.props.onRevokeQuote(this.props.status);
+  };
+
+  handleQuoteClick = () => {
+    this.props.onQuote(this.props.status);
+  };
+
+  handleQuotePolicyChange = () => {
+    this.props.onQuotePolicyChange(this.props.status);
+  };
+
+  handleRedraftClick = () => {
+    this.props.onDelete(this.props.status, true);
+  };
+
+  handleEditClick = () => {
+    this.props.onEdit(this.props.status);
+  };
+
+  handleDirectClick = () => {
+    this.props.onDirect(this.props.status.get('account'));
+  };
+
+  handleMentionClick = () => {
+    this.props.onMention(this.props.status.get('account'));
+  };
+
+  handleMuteClick = () => {
+    this.props.onMute(this.props.status.get('account'));
+  };
+
+  handleBlockClick = () => {
+    this.props.onBlock(this.props.status);
+  };
+
+  handleConversationMuteClick = () => {
+    this.props.onMuteConversation(this.props.status);
+  };
+
+  handleReport = () => {
+    this.props.onReport(this.props.status);
+  };
+
+  handlePinClick = () => {
+    this.props.onPin(this.props.status);
+  };
+
+  handleShare = () => {
+    navigator.share({
+      url: this.props.status.get('url'),
+    });
+  };
+
+  handleEmbed = () => {
+    this.props.onEmbed(this.props.status);
+  };
+
+  handleCopy = () => {
+    const url = this.props.status.get('url');
+    navigator.clipboard.writeText(url);
+  };
+
+  handleOpenReactions = () => {
+    const { status } = this.props;
+    this.props.dispatch(openModal({
+      modalType: 'STATUS_REACTIONS',
+      modalProps: {
+        statusId: status.get('id'),
+        reactions: status.get('reactions'),
+      },
+    }));
+  };
+
+  render () {
+    const { status, statusQuoteState, quotedAccountId, intl } = this.props;
+    const { signedIn, permissions } = this.props.identity;
+
+    const publicStatus       = ['public', 'unlisted'].includes(status.get('visibility'));
+    const pinnableStatus     = ['public', 'unlisted', 'private'].includes(status.get('visibility'));
+    const mutingConversation = status.get('muted');
+    const account            = status.get('account');
+    const writtenByMe        = status.getIn(['account', 'id']) === me;
+    const isRemote           = status.getIn(['account', 'username']) !== status.getIn(['account', 'acct']);
+    const roleplayAction     = sharlayanRoleplayStatusAction({ status, writtenByMe, isRemote });
+    const roleplayMenuItem   = sharlayanRoleplayStatusMenuItem(intl, roleplayAction, this.handleDeleteClick);
+
+    let menu = [];
+
+    if (publicStatus && isRemote) {
+      menu.push({ text: intl.formatMessage(messages.openOriginalPage), href: status.get('url') });
+    }
+
+    menu.push({ text: intl.formatMessage(messages.copy), action: this.handleCopy });
+
+    if (status.get('reactions_count') > 0) {
+      menu.push({ text: intl.formatMessage(messages.reactions), action: this.handleOpenReactions });
+    }
+
+    if (publicStatus && 'share' in navigator) {
+      menu.push({ text: intl.formatMessage(messages.share), action: this.handleShare });
+    }
+
+    const clipMenuItem = sharlayanAddToClipMenuItem(intl, { enabled: signedIn && clipsEnabled, statusId: status.get('id'), dispatch: this.props.dispatch });
+    if (clipMenuItem) menu.push(clipMenuItem);
+
+    if (publicStatus && (signedIn || !isRemote)) {
+      menu.push({ text: intl.formatMessage(messages.embed), action: this.handleEmbed });
+    }
+
+    if (quickBoosting && signedIn && this.props.statusActionBarHidden.get('quote') === true) {
+      const quoteItem = quoteItemState(statusQuoteState);
+      menu.push(null);
+      menu.push({
+        text: intl.formatMessage(quoteItem.title),
+        description: quoteItem.meta
+          ? intl.formatMessage(quoteItem.meta)
+          : undefined,
+        disabled: quoteItem.disabled,
+        action: this.handleQuoteClick,
+      });
+    }
+
+    if (signedIn) {
+      menu.push(null);
+
+      if (writtenByMe) {
+        if (roleplayAction === 'purge') {
+          menu.push(roleplayMenuItem);
+        } else {
+          if (pinnableStatus) {
+            menu.push({ text: intl.formatMessage(status.get('pinned') ? messages.unpin : messages.pin), action: this.handlePinClick });
+            menu.push(null);
+          }
+
+          menu.push({ text: intl.formatMessage(mutingConversation ? messages.unmuteConversation : messages.muteConversation), action: this.handleConversationMuteClick });
+          if (!['private', 'direct'].includes(status.get('visibility'))) {
+            menu.push({ text: intl.formatMessage(messages.quotePolicyChange), action: this.handleQuotePolicyChange });
+          }
+          menu.push(null);
+          menu.push({ text: intl.formatMessage(messages.edit), action: this.handleEditClick });
+          menu.push({ text: intl.formatMessage(messages.delete), action: this.handleDeleteClick, dangerous: true });
+          menu.push({ text: intl.formatMessage(messages.redraft), action: this.handleRedraftClick, dangerous: true });
+        }
+      } else {
+        if (roleplayMenuItem) {
+          menu.push(roleplayMenuItem);
+          menu.push(null);
+        }
+
+        if (!account.get('invalid_handle')) {
+          menu.push({ text: intl.formatMessage(messages.mention, { name: status.getIn(['account', 'username']) }), action: this.handleMentionClick });
+          menu.push({ text: intl.formatMessage(messages.direct, { name: status.getIn(['account', 'username']) }), action: this.handleDirectClick });
+          menu.push(null);
+        }
+
+        if (quotedAccountId === me) {
+          menu.push({ text: intl.formatMessage(messages.revokeQuote, { name: account.get('username') }), action: this.handleRevokeQuoteClick, dangerous: true });
+        }
+
+        menu.push({ text: intl.formatMessage(messages.mute, { name: account.get('username') }), action: this.handleMuteClick, dangerous: true });
+        menu.push({ text: intl.formatMessage(messages.block, { name: account.get('username') }), action: this.handleBlockClick, dangerous: true });
+        menu.push({ text: intl.formatMessage(messages.report, { name: status.getIn(['account', 'username']) }), action: this.handleReport, dangerous: true });
+
+        if (((permissions & PERMISSION_MANAGE_USERS) === PERMISSION_MANAGE_USERS && (accountAdminLink || statusAdminLink)) || (isRemote && (permissions & PERMISSION_MANAGE_FEDERATION) === PERMISSION_MANAGE_FEDERATION) && !account.get('invalid_handle')) {
+          menu.push(null);
+          if ((permissions & PERMISSION_MANAGE_USERS) === PERMISSION_MANAGE_USERS) {
+            if (accountAdminLink !== undefined) {
+              menu.push({ text: intl.formatMessage(messages.admin_account, { name: status.getIn(['account', 'username']) }), href: accountAdminLink(status.getIn(['account', 'id'])) });
+            }
+            if (statusAdminLink !== undefined) {
+              menu.push({ text: intl.formatMessage(messages.admin_status), href: statusAdminLink(status.getIn(['account', 'id']), status.get('id')) });
+            }
+          }
+          if (isRemote && (permissions & PERMISSION_MANAGE_FEDERATION) === PERMISSION_MANAGE_FEDERATION) {
+            const domain = account.get('acct').split('@')[1];
+
+            menu.push({ text: intl.formatMessage(messages.admin_domain, { domain: domain }), href: `/admin/instances/${domain}` });
+          }
+        }
+      }
+    }
+
+    let replyIcon;
+    let replyIconComponent;
+
+    if (status.get('in_reply_to_id', null) === null) {
+      replyIcon = 'reply';
+      replyIconComponent = StatusReplyIcon;
+    } else {
+      replyIcon = 'reply-all';
+      replyIconComponent = StatusReplyAllIcon;
+    }
+
+    const bookmarkTitle = intl.formatMessage(status.get('bookmarked') ? messages.removeBookmark : messages.bookmark);
+    const favouriteTitle = intl.formatMessage(status.get('favourited') ? messages.removeFavourite : messages.favourite);
+    const quoteExposed = this.props.statusActionBarHidden.get('quote') !== true;
+    const quoteItem = quoteItemState(statusQuoteState);
+    const configurableActions = {
+      favourite: <div className='detailed-status__button' key='favourite'><IconButton className='star-icon' animate active={status.get('favourited')} title={favouriteTitle} icon='star' iconComponent={status.get('favourited') ? StatusLikeActiveIcon : StatusLikeIcon} onClick={this.handleFavouriteClick} /></div>,
+      reaction: reactionsEnabled ? <SharlayanStatusReactionButton key='reaction' enabled status={status} canReact={signedIn} onReactionAdd={this.props.onReactionAdd} wrapperClassName='detailed-status__button' buttonClassName='add-reaction-icon' /> : null,
+      bookmark: <div className='detailed-status__button' key='bookmark'><IconButton className='bookmark-icon' disabled={!signedIn} active={status.get('bookmarked')} title={bookmarkTitle} icon='bookmark' iconComponent={status.get('bookmarked') ? StatusBookmarkActiveIcon : StatusBookmarkIcon} onClick={this.handleBookmarkClick} /></div>,
+      clip: signedIn && clipsEnabled ? <div className='detailed-status__button' key='clip'><IconButton title={intl.formatMessage({ id: 'status.add_to_clip', defaultMessage: 'Add to clip' })} icon='paperclip' iconComponent={AttachFileIcon} onClick={() => this.props.dispatch(openModal({ modalType: 'CLIP_ADD', modalProps: { statusId: status.get('id') } }))} /></div> : null,
+      quote: signedIn ? <div className='detailed-status__button' key='quote'><IconButton disabled={quoteItem.disabled} title={intl.formatMessage(quoteItem.meta ?? quoteItem.title)} icon='quote-right' iconComponent={quoteItem.iconComponent} onClick={quoteItem.disabled ? undefined : this.handleQuoteClick} /></div> : null,
+    };
+
+    return (
+      <div className='detailed-status__action-bar'>
+        <div className='detailed-status__button'><IconButton disabled={status.get('repliable') === false} title={intl.formatMessage(messages.reply)} icon={replyIcon} iconComponent={replyIconComponent} onClick={status.get('repliable') === false ? undefined : this.handleReplyClick} /></div>
+        <div className='detailed-status__button'>
+          <BoostButton statusId={status.get('id')} forceStandalone={quoteExposed} />
+        </div>
+        {this.props.statusActionBarOrder.map(key => this.props.statusActionBarHidden.get(key) === true ? null : configurableActions[key])}
+
+        <div className='detailed-status__action-bar-dropdown'>
+          <Dropdown icon='ellipsis-h' iconComponent={MoreHorizIcon} status={status} items={menu} direction='left' title={intl.formatMessage(messages.more)} />
+        </div>
+      </div>
+    );
+  }
+
+}
+
+export default connect(mapStateToProps)(withIdentity(injectIntl(ActionBar)));

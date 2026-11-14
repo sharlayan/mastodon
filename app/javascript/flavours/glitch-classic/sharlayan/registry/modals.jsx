@@ -1,0 +1,64 @@
+import { ConfirmDeleteCircleModal } from 'flavours/glitch-classic/features/ui/components/confirmation_modals';
+import { ConversationParticipantsModal } from 'flavours/glitch-classic/features/ui/components/conversation_participants_modal';
+import { InlineComposeModal } from 'flavours/glitch-classic/features/ui/components/inline_compose_modal';
+import { MfmPreviewModal } from 'flavours/glitch-classic/features/ui/components/mfm_preview_modal';
+import { ColumnWidthModal } from 'flavours/glitch-classic/features/ui/components/column_width_modal';
+
+const accountEditModal = (type) => () =>
+  import('@/flavours/glitch-classic/features/account_edit/modals').then((module) => ({
+    default: module[type],
+  }));
+
+export const sharlayanModalComponents = {
+  COLUMN_WIDTH: () => Promise.resolve({ default: ColumnWidthModal }),
+  INLINE_COMPOSE: () => Promise.resolve({ default: InlineComposeModal }),
+  CONFIRM_DELETE_CIRCLE: () =>
+    Promise.resolve({ default: ConfirmDeleteCircleModal }),
+  DOMAIN_MUTE: () =>
+    import('flavours/glitch-classic/features/ui/components/domain_mute_modal'),
+  REPORT_PAGE: () =>
+    import('flavours/glitch-classic/features/ui/components/report_page_modal').then(
+      (module) => ({ default: module.ReportPageModal }),
+    ),
+  CLIP_ADD: () =>
+    import('@/flavours/glitch-classic/features/clip_adder').then((module) => ({
+      default: module.ClipAdder,
+    })),
+  DRIVE: () =>
+    import('@/flavours/glitch-classic/features/drive_modal').then((module) => ({
+      default: module.DriveModal,
+    })),
+  DRIVE_MANAGER: () =>
+    import('@/flavours/glitch-classic/features/drive/components/drive_manager_modal').then(
+      (module) => ({ default: module.DriveManagerModal }),
+    ),
+  DRIVE_FOLDER_NAME: () =>
+    import('@/flavours/glitch-classic/features/drive/components/name_modal').then(
+      (module) => ({ default: module.DriveFolderNameModal }),
+    ),
+  DRIVE_FILE_NAME: () =>
+    import('@/flavours/glitch-classic/features/drive/components/name_modal').then(
+      (module) => ({ default: module.DriveFileNameModal }),
+    ),
+  MFM_PREVIEW: () => Promise.resolve({ default: MfmPreviewModal }),
+  BOOKLET_COVER_CROP: () =>
+    import('@/flavours/glitch-classic/features/pages/components/booklet_cover_crop_modal').then(
+      (module) => ({ default: module.BookletCoverCropModal }),
+    ),
+  CONVERSATION_PARTICIPANTS: () =>
+    Promise.resolve({ default: ConversationParticipantsModal }),
+  STATUS_REACTIONS: () =>
+    import('flavours/glitch-classic/features/ui/components/status_reactions_modal').then(
+      (module) => ({ default: module.StatusReactionsModal }),
+    ),
+  ACCOUNT_SWITCHER: () =>
+    import('@/flavours/glitch-classic/sharlayan/account_switcher/modal').then((module) => ({
+      default: module.AccountSwitcherModal,
+    })),
+  ACCOUNT_EDIT_DECORATION: accountEditModal('DecorationModal'),
+  ACCOUNT_EDIT_FOLLOW_MESSAGE: accountEditModal('FollowMessageModal'),
+  ACCOUNT_EDIT_BIRTHDAY: () =>
+    import('@/flavours/glitch-classic/sharlayan/account/birthday_modal').then((module) => ({
+      default: module.BirthdayModal,
+    })),
+};

@@ -1,0 +1,117 @@
+// Mastodon Bird UI - Semantic token overrides
+// Updated for v4.6.0-alpha.3-2026-01-24 file-based theme system with data-color-scheme/data-contrast attributes
+// Dark tokens apply by default - light themes override via _variables-light.scss
+// stylelint-disable no-duplicate-selectors
+// stylelint-disable plugin/no-unused-custom-properties
+
+// Dark theme tokens - apply by default when Bird UI is loaded
+// The stylesheet being loaded IS the theme selection
+:root {
+  // Text tokens
+  --color-text-primary: #fff;
+  --color-text-secondary: #8899a6;
+  --color-text-tertiary: #8899a6;
+  --color-text-brand: var(--color-accent);
+  --color-text-brand-soft: var(--color-accent);
+  --color-text-on-brand-base: #fff;
+  --color-text-brand-on-inverted: var(--color-accent-dark);
+  --color-text-error: #e0245e;
+  --color-text-on-error-base: #fff;
+  --color-text-warning: #ffac33;
+  --color-text-on-warning-base: #fff;
+  --color-text-success: #17bf63;
+  --color-text-on-success-base: #fff;
+  --color-text-disabled: #8899a6;
+  --color-text-on-disabled: #aab8c2;
+  --color-text-bookmark-highlight: #e0245e;
+  --color-text-favourite-highlight: #ffac33;
+  --color-text-on-media: #fff;
+  --color-text-status-links: #858afa;
+
+  // Background tokens
+  --color-bg-primary: #15202b;
+  --color-bg-desktop: color-mix(
+    in srgb,
+    var(--color-bg-primary),
+    var(--color-black) 30%
+  );
+  --overlay-strength-secondary: 8%;
+  --color-bg-secondary-base: #192734;
+  --color-bg-secondary: rgb(255 255 255 / 5%);
+  --color-bg-secondary-solid: #192734;
+  --color-bg-tertiary: rgb(255 255 255 / 10%);
+  --color-bg-ambient: #15202b;
+  --color-bg-elevated: #15202b;
+  --color-bg-inverted: #fff;
+  --color-bg-media-base: #000;
+  --color-bg-media-strength: 65%;
+  --color-bg-media: rgb(0 0 0 / 65%);
+  --color-bg-overlay: #192734;
+  --color-bg-disabled: #253341;
+  --overlay-strength-brand: 10%;
+  --color-bg-brand-base: #6364ff;
+  --color-bg-brand-base-hover: #5253e0;
+  --color-bg-brand-soft: rgb(99 100 255 / 15%);
+  --color-bg-brand-softer: rgb(99 100 255 / 10%);
+  --overlay-strength-error: 12%;
+  --color-bg-error-base: #e0245e;
+  --color-bg-error-base-hover: #c51f52;
+  --color-bg-error-soft: rgb(224 36 94 / 18%);
+  --color-bg-error-softer: rgb(224 36 94 / 12%);
+  --overlay-strength-warning: 10%;
+  --color-bg-warning-base: #ffac33;
+  --color-bg-warning-base-hover: #e69500;
+  --color-bg-warning-soft: rgb(255 172 51 / 15%);
+  --color-bg-warning-softer: rgb(255 172 51 / 10%);
+  --overlay-strength-success: 15%;
+  --color-bg-success-base: #17bf63;
+  --color-bg-success-base-hover: #14a653;
+  --color-bg-success-soft: rgb(23 191 99 / 22%);
+  --color-bg-success-softer: rgb(23 191 99 / 15%);
+
+  // Border tokens
+  --border-strength-primary: 18%;
+  --color-border-primary: #38444d;
+  --color-border-media: rgb(255 255 255 / 15%);
+  --color-border-on-bg-secondary: rgb(255 255 255 / 12%);
+  --color-border-on-bg-brand-softer: #38444d;
+  --color-border-on-bg-error-softer: rgb(224 36 94 / 50%);
+  --color-border-on-bg-warning-softer: rgb(255 172 51 / 50%);
+  --color-border-on-bg-success-softer: rgb(23 191 99 / 50%);
+  --color-border-on-bg-inverted: #38444d;
+
+  // Shadow tokens
+  --shadow-strength-primary: 80%;
+  --color-shadow-primary: rgb(0 0 0 / 80%);
+  --dropdown-shadow:
+    0 20px 25px -5px rgb(15 20 25 / 80%), 0 8px 10px -6px rgb(15 20 25 / 80%);
+  --overlay-icon-shadow: drop-shadow(0 0 8px rgb(0 0 0 / 80%));
+
+  // Graph tokens
+  --color-graph-primary-stroke: #858afa;
+  --color-graph-primary-fill: rgb(133 138 250 / 10%);
+  --color-graph-warning-stroke: #ffac33;
+  --color-graph-warning-fill: rgb(255 172 51 / 10%);
+  --color-graph-disabled-stroke: #8899a6;
+  --color-graph-disabled-fill: #253341;
+
+  // Legacy tokens
+  --rich-text-container-color: rgb(87 24 60 / 100%);
+  --rich-text-text-color: rgb(255 175 212 / 100%);
+  --rich-text-decorations-color: rgb(128 58 95 / 100%);
+}
+
+// High contrast theme - applies when user has high contrast preference
+html[data-contrast='high'] {
+  // Higher contrast text
+  --color-text-primary: #fff;
+  --color-text-secondary: #aab8c2;
+  --color-text-tertiary: #8899a6;
+  --color-text-brand: #858afa;
+  --color-text-brand-soft: #aeb1ff;
+  --color-text-status-links: #aeb1ff;
+
+  // Stronger borders
+  --color-border-primary: #657786;
+  --border-strength-primary: 25%;
+}

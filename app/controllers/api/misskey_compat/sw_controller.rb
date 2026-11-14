@@ -7,7 +7,8 @@ class Api::MisskeyCompat::SwController < Api::MisskeyCompat::BaseController
   requires_misskey_permission 'read:notifications', :show_registration
   requires_misskey_permission 'write:notifications', :register, :unregister, :update_registration
 
-  before_action :require_user!
+  before_action :require_user!, except: :unregister
+  before_action :require_unregister_user!, only: :unregister
   before_action :require_native_user_token!, only: :update_registration
 
   def register
@@ -28,9 +29,22 @@ class Api::MisskeyCompat::SwController < Api::MisskeyCompat::BaseController
   end
 
   def unregister
+    return unless object_body!
+    return if rate_limited?(:misskey_compat_push_unregister)
+
     endpoint = params[:endpoint].to_s
-    subscriptions = Web::PushSubscription.where(user_id: current_user.id)
-    subscriptions = endpoint.present? ? subscriptions.where(endpoint: endpoint) : subscriptions.where(access_token_id: current_token.id)
+    subscriptions = Web::PushSubscription.all
+    subscriptions = subscriptions.where(user_id: current_user.id) if current_user
+
+    if key_based_unregister?
+      %i(endpoint auth publickey).each do |key|
+        return render_invalid_param("#/properties/#{key}", 'must be a non-empty string') unless params[key].is_a?(String) && params[key].present?
+      end
+
+      subscriptions = subscriptions.where(endpoint: params[:endpoint], key_auth: params[:auth], key_p256dh: params[:publickey])
+    else
+      subscriptions = endpoint.present? ? subscriptions.where(endpoint: endpoint) : subscriptions.where(access_token_id: current_token.id)
+    end
 
     subscriptions.destroy_all
     head 204
@@ -60,6 +74,17 @@ class Api::MisskeyCompat::SwController < Api::MisskeyCompat::BaseController
   end
 
   private
+
+  def key_based_unregister?
+    current_user.nil? || params.key?(:auth) || params.key?(:publickey)
+  end
+
+  def require_unregister_user!
+    return unless bearer_token.present? || params[:i].present?
+    return if current_user&.functional? && key_based_unregister?
+
+    require_user!
+  end
 
   def registration_json(subscription)
     {

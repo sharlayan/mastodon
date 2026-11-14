@@ -33,13 +33,6 @@ export function isClientFeatureEnabled(feature: ClientFeatures) {
 
 /* Checks if the 5.0 redesign features are enabled or not. */
 export function isRedesignEnabled() {
-  if (
-    typeof document !== 'undefined' &&
-    document.documentElement.dataset.userFlavour === 'glitch-classic'
-  ) {
-    return false;
-  }
-
   return (
     isServerFeatureEnabled('redesign') || isClientFeatureEnabled('redesign')
   );

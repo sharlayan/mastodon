@@ -1,0 +1,619 @@
+import { useMemo } from 'react';
+import type { FC } from 'react';
+
+import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
+
+import { DotsThreeIcon } from '@phosphor-icons/react';
+
+import {
+  followAccount,
+  pinAccount,
+  unblockAccount,
+  unmuteAccount,
+  unpinAccount,
+} from '@/flavours/glitch-classic/actions/accounts';
+import { removeAccountFromFollowers } from '@/flavours/glitch-classic/actions/accounts_typed';
+import { showAlert } from '@/flavours/glitch-classic/actions/alerts';
+import { initBlockModal } from '@/flavours/glitch-classic/actions/blocks';
+import {
+  directCompose,
+  mentionCompose,
+} from '@/flavours/glitch-classic/actions/compose';
+import {
+  initDomainBlockModal,
+  unblockDomain,
+} from '@/flavours/glitch-classic/actions/domain_blocks';
+import { openModal } from '@/flavours/glitch-classic/actions/modal';
+import { initMuteModal } from '@/flavours/glitch-classic/actions/mutes';
+import { initReport } from '@/flavours/glitch-classic/actions/reports';
+import { IconButton } from '@/flavours/glitch-classic/components/button/redesign';
+import {
+  Menu,
+  MenuList,
+  MenuTrigger,
+  LegacyDropdownMenuItems,
+} from '@/flavours/glitch-classic/components/menu';
+import {
+  canAccountBeAdded,
+  canAccountBeAddedByFollowers,
+} from '@/flavours/glitch-classic/features/collections/utils';
+import { useAccount } from '@/flavours/glitch-classic/hooks/useAccount';
+import { useIdentity } from '@/flavours/glitch-classic/identity_context';
+import { collectionsEnabled } from '@/flavours/glitch-classic/initial_state';
+import type { Account } from '@/flavours/glitch-classic/models/account';
+import type { MenuItem as DropdownMenuItem } from '@/flavours/glitch-classic/models/dropdown_menu';
+import type { Relationship } from '@/flavours/glitch-classic/models/relationship';
+import {
+  PERMISSION_MANAGE_FEDERATION,
+  PERMISSION_MANAGE_USERS,
+} from '@/flavours/glitch-classic/permissions';
+import {
+  sharlayanAdminAccountDecorationItems,
+  sharlayanAdminDomainDecorationItems,
+  sharlayanDomainMuteItems,
+  sharlayanReactionMuteItems,
+  sharlayanRefetchProfileItems,
+} from '@/flavours/glitch-classic/sharlayan/account/header_menu';
+import type { AppDispatch } from '@/flavours/glitch-classic/store';
+import {
+  useAppDispatch,
+  useAppSelector,
+} from '@/flavours/glitch-classic/store';
+import { isRedesignEnabled } from '@/flavours/glitch-classic/utils/environment';
+import BlockIcon from '@/material-icons/400-24px/block.svg?react';
+import LinkIcon from '@/material-icons/400-24px/link_2.svg?react';
+import MoreHorizIcon from '@/material-icons/400-24px/more_horiz.svg?react';
+import PersonRemoveIcon from '@/material-icons/400-24px/person_remove.svg?react';
+import ReportIcon from '@/material-icons/400-24px/report.svg?react';
+import ShareIcon from '@/material-icons/400-24px/share.svg?react';
+
+import { Dropdown } from '../dropdown_menu';
+
+import classes from './styles.module.scss';
+
+export const AccountMenu: FC<{ accountId: string }> = ({ accountId }) => {
+  const intl = useIntl();
+  const { signedIn, permissions } = useIdentity();
+
+  const account = useAccount(accountId);
+  const relationship = useAppSelector((state) =>
+    state.relationships.get(accountId),
+  );
+  const currentAccountId = useAppSelector(
+    (state) => state.meta.get('me') as string,
+  );
+  const isMe = currentAccountId === accountId;
+
+  const dispatch = useAppDispatch();
+  const menuItems = useMemo(() => {
+    if (!account) {
+      return [];
+    }
+
+    return getMenuItems({
+      account,
+      signedIn: !isMe && signedIn,
+      permissions,
+      intl,
+      relationship,
+      dispatch,
+    });
+  }, [account, signedIn, isMe, permissions, intl, relationship, dispatch]);
+
+  if (isRedesignEnabled()) {
+    return (
+      <Menu>
+        <MenuTrigger
+          as={IconButton}
+          size='sm'
+          icon={DotsThreeIcon}
+          disabled={menuItems.length === 0}
+        >
+          <FormattedMessage
+            id='account.menu.label'
+            defaultMessage='More account options'
+          />
+        </MenuTrigger>
+        <MenuList>
+          <LegacyDropdownMenuItems items={menuItems} />
+        </MenuList>
+      </Menu>
+    );
+  } else {
+    return (
+      <Dropdown
+        disabled={menuItems.length === 0}
+        items={menuItems}
+        icon='ellipsis-v'
+        iconComponent={MoreHorizIcon}
+        className={classes.buttonMenu}
+      />
+    );
+  }
+};
+
+interface MenuItemsParams {
+  account: Account;
+  signedIn: boolean;
+  permissions: number;
+  intl: ReturnType<typeof useIntl>;
+  relationship?: Relationship;
+  dispatch: AppDispatch;
+}
+
+const messages = defineMessages({
+  share: { id: 'account.menu.share', defaultMessage: 'Share…' },
+  copy: { id: 'account.menu.copy', defaultMessage: 'Copy link' },
+  copied: {
+    id: 'account.menu.copied',
+    defaultMessage: 'Copied account link to clipboard',
+  },
+  mention: { id: 'account.menu.mention', defaultMessage: 'Mention' },
+  noteDescription: {
+    id: 'account.menu.note.description',
+    defaultMessage: 'Visible only to you',
+  },
+  direct: {
+    id: 'account.menu.direct',
+    defaultMessage: 'Privately mention',
+  },
+  redesignMessage: {
+    id: 'account.menu.message',
+    defaultMessage: 'Message',
+    description:
+      'Message refers to a direct message. For languages where this is confusing, "chat" or "direct message" can be used.',
+  },
+  mute: { id: 'account.menu.mute', defaultMessage: 'Mute account' },
+  unmute: {
+    id: 'account.menu.unmute',
+    defaultMessage: 'Unmute account',
+  },
+  block: { id: 'account.menu.block', defaultMessage: 'Block account' },
+  unblock: {
+    id: 'account.menu.unblock',
+    defaultMessage: 'Unblock account',
+  },
+  domainBlock: {
+    id: 'account.menu.block_domain',
+    defaultMessage: 'Block {domain}',
+  },
+  domainUnblock: {
+    id: 'account.menu.unblock_domain',
+    defaultMessage: 'Unblock {domain}',
+  },
+  report: { id: 'account.menu.report', defaultMessage: 'Report account' },
+  hideReblogs: {
+    id: 'account.menu.hide_reblogs',
+    defaultMessage: 'Hide boosts in timeline',
+  },
+  showReblogs: {
+    id: 'account.menu.show_reblogs',
+    defaultMessage: 'Show boosts in timeline',
+  },
+  addToList: {
+    id: 'account.menu.add_to_list',
+    defaultMessage: 'Add to list…',
+  },
+  addToCustomFeed: {
+    id: 'account.menu.add_to_feed',
+    defaultMessage: 'Add to custom feed…',
+  },
+  addToCollection: {
+    id: 'account.menu.add_to_collection',
+    defaultMessage: 'Add to collection…',
+  },
+  openOriginalPage: {
+    id: 'account.menu.open_original_page',
+    defaultMessage: 'View on {domain}',
+  },
+  openOriginalPageInvalid: {
+    id: 'account.menu.open_original_page_no_domain',
+    defaultMessage: 'View on original server',
+  },
+  removeFollower: {
+    id: 'account.menu.remove_follower',
+    defaultMessage: 'Remove follower',
+  },
+  addNote: {
+    id: 'account.add_note',
+    defaultMessage: 'Add a personal note',
+  },
+  editNote: {
+    id: 'account.edit_note',
+    defaultMessage: 'Edit personal note',
+  },
+  endorse: { id: 'account.endorse', defaultMessage: 'Feature on profile' },
+  unendorse: {
+    id: 'account.unendorse',
+    defaultMessage: "Don't feature on profile",
+  },
+  admin_account: {
+    id: 'status.admin_account',
+    defaultMessage: 'Open moderation interface for @{name}',
+  },
+  admin_domain: {
+    id: 'status.admin_domain',
+    defaultMessage: 'Open moderation interface for {domain}',
+  },
+  enableNotifications: {
+    id: 'account.notify_me',
+    defaultMessage: 'Notify me about new posts',
+  },
+  disableNotifications: {
+    id: 'account.stop_notifying_me',
+    defaultMessage: 'Stop notifying me about new posts',
+  },
+  languages: {
+    id: 'account.languages',
+    defaultMessage: 'Change subscribed languages',
+  },
+  confirmRemoveFromFollowersTitle: {
+    id: 'confirmations.remove_from_followers.title',
+    defaultMessage: 'Remove follower?',
+  },
+  confirmRemoveFromFollowersMessage: {
+    id: 'confirmations.remove_from_followers.message',
+    defaultMessage:
+      '{name} will stop following you. Are you sure you want to proceed?',
+  },
+  confirmRemoveFromFollowersButton: {
+    id: 'confirmations.remove_from_followers.confirm',
+    defaultMessage: 'Remove follower',
+  },
+});
+
+function getMenuItems({
+  account,
+  signedIn,
+  permissions,
+  intl,
+  relationship,
+  dispatch,
+}: MenuItemsParams): DropdownMenuItem[] {
+  const items: DropdownMenuItem[] = [];
+  const isRemote = account.acct !== account.username;
+  const remoteDomain = isRemote ? account.acct.split('@')[1] : null;
+  const sharlayanContext = {
+    account,
+    relationship,
+    dispatch,
+    intl,
+    signedIn,
+    isRemote,
+    remoteDomain,
+  };
+
+  // Share and copy link options
+  if (account.url) {
+    if ('share' in navigator) {
+      items.push({
+        text: intl.formatMessage(messages.share),
+        action: () => {
+          void navigator.share({
+            url: account.url,
+          });
+        },
+        icon: ShareIcon,
+      });
+    }
+    items.push({
+      text: intl.formatMessage(messages.copy),
+      action: () => {
+        void navigator.clipboard.writeText(account.url);
+        dispatch(showAlert({ message: messages.copied }));
+      },
+      icon: LinkIcon,
+    });
+  }
+
+  // Open on remote page.
+  if (isRemote) {
+    items.push({
+      text: account.invalid_handle
+        ? intl.formatMessage(messages.openOriginalPageInvalid)
+        : intl.formatMessage(messages.openOriginalPage, {
+            domain: remoteDomain,
+          }),
+      href: account.url,
+    });
+  }
+
+  items.push(...sharlayanRefetchProfileItems(sharlayanContext));
+
+  // Mention and direct message options
+  if (signedIn && !account.suspended) {
+    if (!account.invalid_handle) {
+      if (isRedesignEnabled()) {
+        if (!relationship?.following) {
+          items.push(null, {
+            text: intl.formatMessage(messages.redesignMessage),
+            action: () => {
+              dispatch(directCompose(account, true));
+            },
+          });
+        }
+      } else {
+        items.push(
+          null,
+          {
+            text: intl.formatMessage(messages.mention),
+            action: () => {
+              dispatch(mentionCompose(account));
+            },
+          },
+
+          {
+            text: intl.formatMessage(messages.direct),
+            action: () => {
+              dispatch(directCompose(account));
+            },
+          },
+        );
+      }
+      items.push(null);
+    }
+  }
+
+  if (!signedIn) {
+    return items;
+  }
+
+  // Add to list
+  if (relationship?.following) {
+    items.push({
+      text: intl.formatMessage(
+        isRedesignEnabled() ? messages.addToCustomFeed : messages.addToList,
+      ),
+      action: () => {
+        dispatch(
+          openModal({
+            modalType: 'LIST_ADDER',
+            modalProps: {
+              accountId: account.id,
+            },
+          }),
+        );
+      },
+    });
+  }
+
+  // Add to collection
+  if (
+    collectionsEnabled &&
+    (canAccountBeAdded(account) ||
+      (canAccountBeAddedByFollowers(account) && relationship?.following))
+  ) {
+    items.push({
+      text: intl.formatMessage(messages.addToCollection),
+      action: () => {
+        dispatch(
+          openModal({
+            modalType: 'COLLECTION_ADDER',
+            modalProps: {
+              accountId: account.id,
+            },
+          }),
+        );
+      },
+    });
+  }
+
+  // Feature on profile
+  if (relationship?.following) {
+    items.push({
+      text: intl.formatMessage(
+        relationship.endorsed ? messages.unendorse : messages.endorse,
+      ),
+      action: () => {
+        if (relationship.endorsed) {
+          dispatch(unpinAccount(account.id));
+        } else {
+          dispatch(pinAccount(account.id));
+        }
+      },
+    });
+  }
+
+  items.push(
+    {
+      text: intl.formatMessage(
+        relationship?.note ? messages.editNote : messages.addNote,
+      ),
+      description: intl.formatMessage(messages.noteDescription),
+      action: () => {
+        dispatch(
+          openModal({
+            modalType: 'ACCOUNT_NOTE',
+            modalProps: {
+              accountId: account.id,
+            },
+          }),
+        );
+      },
+    },
+    null,
+  );
+
+  // Timeline options
+  if (relationship?.following && !relationship.muting) {
+    if (isRedesignEnabled()) {
+      items.push({
+        text: intl.formatMessage(
+          relationship.notifying
+            ? messages.disableNotifications
+            : messages.enableNotifications,
+        ),
+        action: () => {
+          dispatch(
+            followAccount(account.id, { notify: !relationship.notifying }),
+          );
+        },
+      });
+    }
+    items.push(
+      {
+        text: intl.formatMessage(
+          relationship.showing_reblogs
+            ? messages.hideReblogs
+            : messages.showReblogs,
+        ),
+        action: () => {
+          dispatch(
+            followAccount(account.id, {
+              reblogs: !relationship.showing_reblogs,
+            }),
+          );
+        },
+      },
+      {
+        text: intl.formatMessage(messages.languages),
+        action: () => {
+          dispatch(
+            openModal({
+              modalType: 'SUBSCRIBED_LANGUAGES',
+              modalProps: {
+                accountId: account.id,
+              },
+            }),
+          );
+        },
+      },
+    );
+  }
+
+  items.push(
+    {
+      text: intl.formatMessage(
+        relationship?.muting ? messages.unmute : messages.mute,
+      ),
+      action: () => {
+        if (relationship?.muting) {
+          dispatch(unmuteAccount(account.id));
+        } else {
+          dispatch(initMuteModal(account));
+        }
+      },
+    },
+    null,
+  );
+
+  if (relationship?.followed_by) {
+    items.push({
+      text: intl.formatMessage(messages.removeFollower),
+      action: () => {
+        dispatch(
+          openModal({
+            modalType: 'CONFIRM',
+            modalProps: {
+              title: intl.formatMessage(
+                messages.confirmRemoveFromFollowersTitle,
+              ),
+              message: intl.formatMessage(
+                messages.confirmRemoveFromFollowersMessage,
+                { name: <strong>{account.acct}</strong> },
+              ),
+              confirm: intl.formatMessage(
+                messages.confirmRemoveFromFollowersButton,
+              ),
+              onConfirm: () => {
+                void dispatch(
+                  removeAccountFromFollowers({ accountId: account.id }),
+                );
+              },
+            },
+          }),
+        );
+      },
+      dangerous: true,
+      icon: PersonRemoveIcon,
+    });
+  }
+
+  items.push({
+    text: intl.formatMessage(
+      relationship?.blocking ? messages.unblock : messages.block,
+    ),
+    action: () => {
+      if (relationship?.blocking) {
+        dispatch(unblockAccount(account.id));
+      } else {
+        dispatch(initBlockModal(account));
+      }
+    },
+    dangerous: true,
+    icon: BlockIcon,
+  });
+
+  if (!account.suspended) {
+    items.push({
+      text: intl.formatMessage(messages.report),
+      action: () => {
+        dispatch(initReport(account));
+      },
+      dangerous: true,
+      icon: ReportIcon,
+    });
+  }
+
+  if (remoteDomain && !account.invalid_handle) {
+    items.push(null, {
+      text: intl.formatMessage(
+        relationship?.domain_blocking
+          ? messages.domainUnblock
+          : messages.domainBlock,
+        {
+          domain: remoteDomain,
+        },
+      ),
+      action: () => {
+        if (relationship?.domain_blocking) {
+          dispatch(unblockDomain(remoteDomain));
+        } else {
+          dispatch(initDomainBlockModal(account));
+        }
+      },
+      dangerous: true,
+      icon: BlockIcon,
+      iconId: 'domain-block',
+    });
+    items.push(...sharlayanDomainMuteItems(sharlayanContext));
+  }
+
+  items.push(...sharlayanReactionMuteItems(sharlayanContext));
+
+  if (
+    (permissions & PERMISSION_MANAGE_USERS) === PERMISSION_MANAGE_USERS ||
+    (isRemote &&
+      (permissions & PERMISSION_MANAGE_FEDERATION) ===
+        PERMISSION_MANAGE_FEDERATION)
+  ) {
+    items.push(null);
+    if ((permissions & PERMISSION_MANAGE_USERS) === PERMISSION_MANAGE_USERS) {
+      items.push({
+        text: intl.formatMessage(messages.admin_account, {
+          name: account.username,
+        }),
+        href: `/admin/accounts/${account.id}`,
+      });
+
+      items.push(...sharlayanAdminAccountDecorationItems(sharlayanContext));
+    }
+    if (
+      remoteDomain &&
+      !account.invalid_handle &&
+      (permissions & PERMISSION_MANAGE_FEDERATION) ===
+        PERMISSION_MANAGE_FEDERATION
+    ) {
+      items.push({
+        text: intl.formatMessage(messages.admin_domain, {
+          domain: remoteDomain,
+        }),
+        href: `/admin/instances/${remoteDomain}`,
+      });
+
+      items.push(...sharlayanAdminDomainDecorationItems(sharlayanContext));
+    }
+  }
+
+  return items;
+}

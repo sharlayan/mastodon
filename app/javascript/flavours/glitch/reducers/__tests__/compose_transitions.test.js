@@ -1,6 +1,6 @@
 import { fromJS } from 'immutable';
 
-import { COMPOSE_DIRECT, COMPOSE_REPLY, COMPOSE_RESET, COMPOSE_SET_STATUS, COMPOSE_SUBMIT_SUCCESS } from '../../actions/compose';
+import { COMPOSE_DIRECT, COMPOSE_REPLY, COMPOSE_REPLY_CANCEL, COMPOSE_RESET, COMPOSE_SET_STATUS, COMPOSE_SUBMIT_SUCCESS } from '../../actions/compose';
 import { changeComposeCircle, changeComposeVisibility } from '../../actions/compose_typed';
 import { STATUS_DRAFT_DELETE_SUCCESS, STATUS_DRAFT_SAVE_REQUEST, STATUS_DRAFT_SAVE_SUCCESS } from '../../actions/status_drafts';
 import { REDRAFT } from '../../actions/statuses';
@@ -8,6 +8,11 @@ import { timelineDelete } from '../../actions/timelines_typed';
 import { getScheduledSubmissionContext } from '../../sharlayan/compose/scheduled_submission';
 import { getSharlayanComposeSubmission } from '../../sharlayan/compose/submission';
 import { composeReducer } from '../compose';
+
+vi.mock('../../initial_state', async (importOriginal) => ({
+  ...(await importOriginal()),
+  circlesEnabled: true,
+}));
 
 const sourceStatus = fromJS({
   id: 'published-status',
@@ -144,6 +149,57 @@ describe('compose restoration transitions', () => {
 
     expect(state.get('limited_scope')).toBe('reply');
     expect(submission).toMatchObject({ circleId: null, visibility: 'private', limitedScope: 'reply' });
+  });
+
+  it('selects the circle of the own circle post being replied to', () => {
+    const state = composeReducer(loadedDraft(), {
+      type: COMPOSE_REPLY,
+      status: sourceStatus.merge(fromJS({ visibility: 'private', limited_scope: 'personal', circle: { id: 'source-circle', title: 'Friends' }, account: { id: 'me', acct: 'me' }, mentions: [] })),
+    });
+    const submission = getSharlayanComposeSubmission({
+      getState: () => fromJS({}).set('compose', state),
+      effectiveStatusId: null,
+    });
+
+    expect(state.get('circle_id')).toBe('source-circle');
+    expect(state.get('limited_scope')).toBeNull();
+    expect(state.get('reply_to_limited')).toBe(true);
+    expect(submission).toMatchObject({ circleId: 'source-circle', visibility: 'private', limitedScope: undefined });
+  });
+
+  it('returns to the reply audience instead of followers when the selected circle is cleared', () => {
+    const replying = composeReducer(undefined, {
+      type: COMPOSE_REPLY,
+      status: sourceStatus.merge(fromJS({ visibility: 'private', limited_scope: 'circle', circle: { id: 'source-circle', title: 'Friends' }, account: { id: 'me', acct: 'me' }, mentions: [] })),
+    });
+    const state = composeReducer(replying, changeComposeCircle(null));
+    const submission = getSharlayanComposeSubmission({
+      getState: () => fromJS({}).set('compose', state),
+      effectiveStatusId: null,
+    });
+
+    expect(submission).toMatchObject({ circleId: null, visibility: 'private', limitedScope: 'reply' });
+  });
+
+  it('forgets an automatically selected circle once the reply ends but keeps an explicit one', () => {
+    const ownCircleReply = { type: COMPOSE_REPLY, status: sourceStatus.merge(fromJS({ visibility: 'private', limited_scope: 'circle', circle: { id: 'source-circle', title: 'Friends' }, account: { id: 'me', acct: 'me' }, mentions: [] })) };
+    const publicReply = { type: COMPOSE_REPLY, status: sourceStatus.merge(fromJS({ id: 'public-status', visibility: 'public', account: { id: 'other', acct: 'other' }, mentions: [] })) };
+    const automatic = composeReducer(undefined, ownCircleReply);
+
+    expect(composeReducer(automatic, publicReply).get('circle_id')).toBeNull();
+    expect(composeReducer(automatic, { type: COMPOSE_REPLY_CANCEL }).get('circle_id')).toBeNull();
+
+    const explicit = composeReducer(automatic, changeComposeCircle('chosen-circle'));
+    expect(composeReducer(explicit, { type: COMPOSE_RESET }).get('circle_id')).toBe('chosen-circle');
+  });
+
+  it('keeps the circle when continuing a circle thread', () => {
+    const threaded = composeReducer(undefined, changeComposeCircle('source-circle')).setIn(['advanced_options', 'threaded_mode'], true);
+    const state = composeReducer(threaded, { type: COMPOSE_SUBMIT_SUCCESS, status: { id: 'posted', visibility: 'private', limited_scope: 'circle', circle: { id: 'source-circle', title: 'Friends' }, spoiler_text: '', content: '', mentions: [], tags: [], account: { id: 'me', acct: 'me' } } });
+
+    expect(state.get('in_reply_to')).toBe('posted');
+    expect(state.get('circle_id')).toBe('source-circle');
+    expect(state.get('limited_scope')).toBeNull();
   });
 
   it('allows a circle to be explicitly selected after entering direct mode', () => {

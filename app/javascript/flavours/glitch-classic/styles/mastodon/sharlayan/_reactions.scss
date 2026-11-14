@@ -1,0 +1,182 @@
+.status--in-thread > .status__content,
+.status--in-thread > .status__action-bar,
+.status--in-thread > .media-gallery,
+.status--in-thread > div > .video-player,
+.status--in-thread > .audio-player,
+.status--in-thread > .attachment-list,
+.status--in-thread > .picture-in-picture-placeholder,
+.status--in-thread > .more-from-author,
+.status--in-thread > .status-card,
+.status--in-thread > .collection-preview,
+.status--in-thread > .hashtag-bar,
+.status--in-thread > .content-warning,
+.status--in-thread > .filter-warning,
+.status--in-thread > .reactions-bar,
+.status--in-thread > .status__quote {
+  margin-inline-start: var(--thread-margin);
+  width: calc(100% - var(--thread-margin));
+}
+
+.reactions-bar__item {
+  margin: 1px;
+  min-height: 2em;
+}
+
+.reactions-bar__item--unreactable {
+  cursor: not-allowed;
+  border-style: solid;
+}
+
+.reaction-summary-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 10px;
+}
+
+.reaction-summary-bar__item {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--color-bg-brand-softest);
+  color: color-mix(
+    in oklab,
+    var(--color-text-primary),
+    var(--color-text-secondary)
+  );
+  border: 1px solid var(--color-border-brand-soft);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  user-select: none;
+  transition: all 100ms ease-in;
+  transition-property: background-color, color, border-color;
+}
+
+.reaction-summary-bar__item:hover,
+.reaction-summary-bar__item:focus,
+.reaction-summary-bar__item:active {
+  color: var(--color-text-primary);
+  background: var(--color-bg-brand-soft);
+  transition: all 200ms ease-out;
+  transition-property: background-color, color;
+}
+
+.reaction-summary-bar__item.active {
+  color: var(--color-text-brand);
+  background-color: var(--color-bg-brand-soft);
+  border-color: var(--color-text-brand);
+}
+
+.reaction-summary-bar__item__emoji {
+  display: flex;
+  align-items: center;
+}
+
+.reaction-summary-bar__item__emoji img {
+  display: block;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.reaction-summary-bar__item__count {
+  min-width: 9px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.reaction-summary-bar__item__label {
+  font-size: 13px;
+}
+
+.reaction-summary-bar__item__unknown {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--color-text-secondary);
+}
+
+.status-reactions-modal {
+  width: 90vw;
+  max-width: 520px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+}
+
+.status-reactions-modal__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border-primary);
+
+  h1 {
+    flex: 1 1 auto;
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: 16px;
+    font-weight: 600;
+  }
+}
+
+.status-reactions-modal__tabs {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 8px;
+  border-bottom: 1px solid var(--color-border-primary);
+
+  button {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 5px;
+    min-height: 34px;
+    padding: 4px 10px;
+    color: var(--color-text-secondary);
+    background: transparent;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 999px;
+    cursor: pointer;
+
+    &:hover,
+    &:focus,
+    &.active {
+      color: var(--color-text-brand);
+      background: var(--color-bg-brand-soft);
+      border-color: var(--color-text-brand);
+    }
+
+    img {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+    }
+  }
+}
+
+.status-reactions-modal__list {
+  flex: 1 1 auto;
+  min-height: 120px;
+  overflow-y: auto;
+
+  .account {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-border-primary);
+  }
+}
+
+.status-reactions-modal__loading {
+  position: relative;
+  min-height: 120px;
+}

@@ -107,6 +107,27 @@ RSpec.describe 'Misskey-compat apps and access tokens' do
       expect(miauth.reload).to_not be_revoked
     end
 
+    it 'lets an app revoke only itself without account permissions and cleans up its push subscriptions' do
+      app_token = MisskeyCompat::MiAuth.issue_token(user, permissions: [])
+      subscription = Fabricate(:web_push_subscription, user: user, access_token: app_token)
+
+      post '/api/i/revoke-token', params: { tokenId: MisskeyCompat::MiId.encode(app_token.id) }, as: :json
+      expect(response).to have_http_status(401)
+
+      post '/api/i/revoke-token', params: { i: app_token.token, tokenId: MisskeyCompat::MiId.encode(miauth.id) }, as: :json
+      expect(response).to have_http_status(403)
+      expect(response.parsed_body.dig(:error, :code)).to eq('PERMISSION_DENIED')
+      expect(miauth.reload).to_not be_revoked
+
+      post '/api/i/apps', params: { i: app_token.token }, as: :json
+      expect(response).to have_http_status(403)
+
+      post '/api/i/revoke-token', params: { i: app_token.token, token: app_token.token }, as: :json
+      expect(response).to have_http_status(204)
+      expect(app_token.reload).to be_revoked
+      expect(Web::PushSubscription.exists?(subscription.id)).to be(false)
+    end
+
     it 'generates a MiAuth token from the native session and hands it to the session check' do
       session = SecureRandom.uuid
 

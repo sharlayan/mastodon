@@ -1,0 +1,50 @@
+.status__wrapper.collapsed {
+  .status {
+    background-position: center;
+    background-size: cover;
+    user-select: none;
+    min-height: 0;
+  }
+
+  .display-name:hover .display-name__html {
+    text-decoration: none;
+  }
+
+  .status__content__wrapper {
+    height: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-top: 0;
+    mask-image: linear-gradient(rgb(0 0 0 / 100%), transparent);
+
+    a:hover {
+      text-decoration: none;
+    }
+  }
+
+  .notification__message {
+    margin-bottom: 0;
+    white-space: nowrap;
+  }
+}
+
+.notification-ungrouped {
+  .status__wrapper.collapsed {
+    .status__content__wrapper {
+      height: 20px;
+    }
+  }
+}
+
+.status__collapse-button {
+  order: 99;
+  width: 20px;
+  height: 16px;
+
+  --default-icon-color: var(--color-text-brand);
+  --hover-icon-color: var(--color-text-brand-soft);
+
+  &.active {
+    --hover-icon-color: var(--color-text-brand-soft);
+  }
+}

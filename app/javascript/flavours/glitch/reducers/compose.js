@@ -70,7 +70,10 @@ import { overwrite } from '../utils/js_helpers';
 import { privacyPreference } from '../utils/privacy_preference';
 import { uuid } from '../uuid';
 import {
+  clearReplyCircle,
+  isUntouchedReplyCircle,
   reduceSharlayanCompose,
+  replyCircleId,
   resetScheduledComposeState,
   resetSharlayanComposeState,
   sharlayanComposeInitialState,
@@ -226,11 +229,13 @@ function continueThread (state, status) {
       'advanced_options',
       map => map.merge(new ImmutableMap({ do_not_federate: status.local_only })),
     );
+    const circleId = replyCircleId(status);
     map.set('privacy', status.visibility);
-    map.set('limited_scope', status.limited_scope ? 'reply' : null);
+    map.set('limited_scope', status.limited_scope && !circleId ? 'reply' : null);
     map.set('limited_reply_account_ids', null);
     map.set('reply_to_limited', !!status.limited_scope);
-    if (status.limited_scope) map.set('circle_id', null);
+    if (status.limited_scope || isUntouchedReplyCircle(state)) map.set('circle_id', circleId);
+    map.set('reply_circle_id', circleId);
     map.set('sensitive', false);
     map.update('media_attachments', list => list.clear());
     map.set('poll', null);
@@ -592,12 +597,14 @@ export const composeReducer = (state = initialState, action) => {
       map.set('in_reply_to', action.status.get('id'));
       map.set('text', statusToTextMentions(state, action.status, action.statusRebloggedBy));
       const limited = !!action.status.get('limited_scope');
+      const circleId = limited ? replyCircleId(action.status) : null;
       const privacy = limited ? 'private' : privacyPreference(action.status.get('visibility'), state.get('default_privacy'));
       map.set('privacy', privacy);
       map.set('reply_to_limited', limited);
-      map.set('limited_scope', limited ? 'reply' : null);
+      map.set('limited_scope', limited && !circleId ? 'reply' : null);
       map.set('limited_reply_account_ids', null);
-      if (limited || privacy === 'direct') map.set('circle_id', null);
+      if (limited || privacy === 'direct' || isUntouchedReplyCircle(state)) map.set('circle_id', circleId);
+      map.set('reply_circle_id', circleId);
       map.update(
         'advanced_options',
         map => map.merge(new ImmutableMap({ do_not_federate: !!action.status.get('local_only') })),
@@ -632,7 +639,7 @@ export const composeReducer = (state = initialState, action) => {
     state = state.setIn(['advanced_options', 'threaded_mode'], false);
     // eslint-disable-next-line no-fallthrough -- fall-through to `COMPOSE_RESET` is intended
   case COMPOSE_RESET:
-    return resetScheduledComposeState(state.withMutations(map => {
+    return clearReplyCircle(resetScheduledComposeState(state.withMutations(map => {
       map.set('in_reply_to', null);
       if (defaultContentType) map.set('content_type', defaultContentType);
       map.set('text', '');
@@ -649,7 +656,7 @@ export const composeReducer = (state = initialState, action) => {
         map => map.mergeWith(overwrite, state.get('default_advanced_options')),
       );
       map.set('idempotencyKey', uuid());
-    }));
+    })));
   case COMPOSE_SUBMIT_REQUEST:
     return state.set('is_submitting', true);
   case COMPOSE_SUBMIT_SUCCESS:
