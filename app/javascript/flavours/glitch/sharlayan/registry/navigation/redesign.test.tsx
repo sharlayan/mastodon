@@ -76,6 +76,10 @@ vi.mock('@/flavours/glitch/sharlayan/roleplay', async () => {
     await import('@/flavours/glitch/permissions');
 
   return {
+    roleplayMode: false,
+    get collectionsEnabled() {
+      return context.flags.collectionsEnabled;
+    },
     get adminTimelineOwnerViewer() {
       return context.roleplay.adminTimelineOwnerViewer;
     },
