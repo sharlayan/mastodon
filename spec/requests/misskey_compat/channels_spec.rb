@@ -102,10 +102,12 @@ RSpec.describe 'Misskey-compat channels' do
     let!(:first) { MisskeyChannel.create!(account: other_user.account, name: 'First') }
     let!(:second) { MisskeyChannel.create!(account: other_user.account, name: 'Second', archived: true) }
 
-    it 'follows, favorites and lists channels idempotently and reports the relationship flags' do
+    it 'rejects duplicate follows and lists channels with their relationship flags' do
       [first, second].each do |channel|
-        2.times { api('channels/follow', i: token, channelId: mi(channel.id)) }
+        api('channels/follow', i: token, channelId: mi(channel.id))
         expect(response).to have_http_status(204)
+        expect(api('channels/follow', i: token, channelId: mi(channel.id))[:error]).to include(code: 'ALREADY_FOLLOWING', id: '7db31665-651e-40c1-8e6e-28e9ad829a2d')
+        expect(response).to have_http_status(400)
       end
       api('channels/favorite', i: token, channelId: mi(first.id))
 

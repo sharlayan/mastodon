@@ -3,8 +3,8 @@
 module Api::InteractionPoliciesConcern
   extend ActiveSupport::Concern
 
-  def quote_approval_policy
-    case status_params[:quote_approval_policy].presence || current_user.setting_default_quote_policy
+  def quote_approval_policy(policy = status_params[:quote_approval_policy].presence || current_user.setting_default_quote_policy)
+    case policy
     when 'public'
       InteractionPolicy::POLICY_FLAGS[:public] << 16
     when 'followers'

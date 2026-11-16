@@ -91,7 +91,11 @@ class Api::MisskeyCompat::ChannelsController < Api::MisskeyCompat::BaseControlle
   end
 
   def follow
-    MisskeyChannelFollowing.find_or_create_by!(account: current_account, misskey_channel: @channel)
+    following = current_account.with_lock do
+      MisskeyChannelFollowing.find_or_create_by!(account: current_account, misskey_channel: @channel)
+    end
+    return render_error('You are already following that channel', 'ALREADY_FOLLOWING', 400, id: '7db31665-651e-40c1-8e6e-28e9ad829a2d') unless following.previously_new_record?
+
     head 204
   end
 
