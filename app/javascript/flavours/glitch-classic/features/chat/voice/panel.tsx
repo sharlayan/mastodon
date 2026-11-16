@@ -193,22 +193,30 @@ export const VoiceCallHeaderButton: FC<{
     start({ id: room.id, title: room.title }, voicePreferences().micEnabled);
   }, [room.id, room.title, start]);
 
-  if (!enabled || !state?.available || inThisCall(call, room.id)) return null;
+  if (!enabled || inThisCall(call, room.id)) return null;
   const label = intl.formatMessage(
-    state.active ? voiceMessages.join : voiceMessages.startCall,
+    state?.active ? voiceMessages.join : voiceMessages.startCall,
   );
-  const panelOffersJoin = state.active && state.participants.length > 0;
-  const title = joining ? intl.formatMessage(voiceMessages.connecting) : label;
+  const panelOffersJoin = state?.active && state.participants.length > 0;
+  const title = !state
+    ? intl.formatMessage(voiceMessages.callUnavailableNow)
+    : !state.available
+      ? intl.formatMessage(voiceMessages.errorUnavailable)
+      : joining
+        ? intl.formatMessage(voiceMessages.connecting)
+        : label;
   return (
     <>
-      {!panelOffersJoin && <JoinMicToggle className='column-header__button' />}
+      {state?.available && !panelOffersJoin && (
+        <JoinMicToggle className='column-header__button' />
+      )}
       <button
         type='button'
         className='column-header__button'
         title={title}
         aria-label={title}
         aria-busy={joining}
-        disabled={joining}
+        disabled={joining || !state?.available}
         onClick={handleClick}
       >
         <Icon id='call' icon={CallIcon} />

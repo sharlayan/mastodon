@@ -26,13 +26,23 @@ RSpec.describe 'API V1 Chat voice calls' do
     Setting.voice_call_enabled = false
   end
 
-  it 'reports availability, joins a call, lists call states of own rooms only and keeps removed members out' do
+  it 'shows enabled voice calls without a relay but rejects joining until one is available' do
     get '/api/v1/chat/settings', headers: headers
-    expect(response.parsed_body['voice_calls']).to be false
+    expect(response.parsed_body).to include('voice_calls' => true, 'voice_call_screen_share' => true)
 
     get "/api/v1/chat/conversations/#{room.id}/voice", headers: headers
     expect(response.parsed_body).to include('available' => false, 'active' => false)
 
+    post "/api/v1/chat/conversations/#{room.id}/voice/join", headers: headers
+    expect(response).to have_http_status(422)
+    expect(response.parsed_body).to eq('error' => 'VOICE_CALL_UNAVAILABLE')
+
+    Setting.voice_call_enabled = false
+    get '/api/v1/chat/settings', headers: headers
+    expect(response.parsed_body).to include('voice_calls' => false, 'voice_call_screen_share' => false)
+  end
+
+  it 'reports availability, joins a call, lists call states of own rooms only and keeps removed members out' do
     relay.provider
     get '/api/v1/chat/settings', headers: headers
     expect(response.parsed_body).to include('voice_calls' => true, 'voice_call_screen_share' => true)
