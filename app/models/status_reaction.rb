@@ -38,6 +38,13 @@ class StatusReaction < ApplicationRecord
   after_destroy :invalidate_cleanup_info
   after_commit :expire_summary_cache, on: %i(create destroy)
 
+  def self.with_account_status_lock(account, status)
+    transaction do
+      connection.select_value(sanitize_sql_array(['SELECT pg_advisory_xact_lock(hashtextextended(?, 0))', "status_reaction:#{account.id}:#{status.id}"]))
+      yield
+    end
+  end
+
   USERS_DISPLAY_LIMIT = 11
 
   def users

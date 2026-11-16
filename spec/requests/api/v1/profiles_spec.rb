@@ -41,6 +41,8 @@ RSpec.describe 'Profile API' do
           'avatar_decorations' => [],
           'followed_message' => anything,
           'is_cat' => anything,
+          'birthday' => anything,
+          'show_birthday' => anything,
           'bot' => account.bot,
           'locked' => account.locked,
           'discoverable' => account.discoverable,

@@ -121,6 +121,7 @@ export const accountDefaultValues: AccountShape = {
   hide_collections: false,
   email_subscriptions: false,
   followed_message: null,
+  birthday: null,
   avatar_decorations: [],
   mfm: false,
   server_features: {

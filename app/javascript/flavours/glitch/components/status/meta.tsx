@@ -11,6 +11,7 @@ import type {
 } from '@/flavours/glitch/models/status';
 
 import { AnimatedNumber } from '../animated_number';
+import { CircleVisibilityLabel } from '../circle_visibility_label';
 import { FormattedDateWrapper } from '../formatted_date';
 
 import classes from './styles.module.scss';
@@ -30,12 +31,17 @@ export const StatusMeta: React.FC<{
   }, [created_at]);
   const visibility = useMemo(
     () =>
-      status.limited_scope === 'circle' ? (
-        <FormattedMessage id='privacy.circle.short' defaultMessage='Circle' />
+      status.limited_scope === 'circle' || status.circle ? (
+        <CircleVisibilityLabel title={status.circle?.title} />
+      ) : status.limited_scope === 'reply' ? (
+        <FormattedMessage
+          id='privacy.reply.short'
+          defaultMessage='Reply audience'
+        />
       ) : (
         statusVisibilityText(status.visibility)
       ),
-    [status.visibility, status.limited_scope],
+    [status.visibility, status.limited_scope, status.circle],
   );
 
   if (!createdAt) {

@@ -1,0 +1,38 @@
+import type { ApiCustomEmojiMuteJSON } from 'flavours/glitch-classic/initial_state';
+import { useAppSelector } from 'flavours/glitch-classic/store/typed_functions';
+
+export function isCustomEmojiMuted(
+  shortcode: string,
+  domain: string | undefined,
+  mutes: ApiCustomEmojiMuteJSON[],
+): boolean {
+  if (mutes.length === 0) {
+    return false;
+  }
+
+  const normalizedShortcode = shortcode.toLowerCase();
+  const normalizedDomain = (domain ?? '').toLowerCase();
+
+  return mutes.some((mute) => {
+    const prefix = mute.prefix.trim().toLowerCase();
+    if (prefix === '') {
+      return false;
+    }
+    if (mute.domain && mute.domain !== normalizedDomain) {
+      return false;
+    }
+    return normalizedShortcode.startsWith(prefix);
+  });
+}
+
+export function useIsCustomEmojiMuted(
+  shortcode: string,
+  domain: string | undefined,
+): boolean {
+  const mutes = useAppSelector((state) => state.custom_emoji_mutes.items);
+  return isCustomEmojiMuted(shortcode, domain, mutes);
+}
+
+export function useCustomEmojiMuteHidden(): boolean {
+  return useAppSelector((state) => state.custom_emoji_mutes.hidden);
+}

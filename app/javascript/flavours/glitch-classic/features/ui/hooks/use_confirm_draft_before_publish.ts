@@ -1,0 +1,57 @@
+import { useCallback } from 'react';
+
+import { openModal } from 'flavours/glitch-classic/actions/modal';
+import { useAppDispatch, useAppSelector } from 'flavours/glitch-classic/store';
+
+import { useBreakpoint } from './useBreakpoint';
+
+const hasItems = (value: unknown) =>
+  typeof value === 'object' &&
+  value !== null &&
+  'size' in value &&
+  typeof value.size === 'number' &&
+  value.size > 0;
+
+export const useConfirmDraftBeforePublish = () => {
+  const dispatch = useAppDispatch();
+  const isMobileLayout = useBreakpoint('full');
+  const hasDraft = useAppSelector((state) => {
+    const compose = state.compose;
+
+    return Boolean(
+      compose.get('id') ||
+      compose.get('in_reply_to') ||
+      compose.get('quoted_status_id') ||
+      compose.get('scheduled_at') ||
+      compose.get('poll') ||
+      compose.get('text') ||
+      compose.get('spoiler_text') ||
+      hasItems(compose.get('media_attachments')) ||
+      hasItems(compose.get('clip_ids')),
+    );
+  });
+
+  return useCallback<React.MouseEventHandler>(
+    (event) => {
+      if (!isMobileLayout) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (hasDraft) {
+        dispatch(
+          openModal({ modalType: 'CONFIRM_RESUME_DRAFT', modalProps: {} }),
+        );
+      } else {
+        dispatch(
+          openModal({
+            modalType: 'INLINE_COMPOSE',
+            modalProps: { title: 'compose', discardOnClose: false },
+          }),
+        );
+      }
+    },
+    [dispatch, hasDraft, isMobileLayout],
+  );
+};

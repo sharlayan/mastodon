@@ -52,6 +52,8 @@ class ReportService < BaseService
       LocalNotificationWorker.perform_async(u.account_id, @report.id, 'Report', 'admin.report')
       AdminMailer.with(recipient: u.account).new_report(@report).deliver_later if u.allows_report_emails?
     end
+
+    MisskeyAbuseReportRecipient.notify!(@report)
   end
 
   def forward_to_origin!

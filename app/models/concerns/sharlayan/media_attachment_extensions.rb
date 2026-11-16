@@ -26,6 +26,15 @@ module Sharlayan::MediaAttachmentExtensions
     )
   SQL
 
+  GALLERY_REFERENCE_SQL = <<~SQL.squish.freeze
+    EXISTS (
+      SELECT 1
+      FROM misskey_gallery_posts
+      WHERE misskey_gallery_posts.account_id = media_attachments.account_id
+        AND misskey_gallery_posts.media_attachment_ids @> ARRAY[media_attachments.id]
+    )
+  SQL
+
   included do
     has_many :chat_message_media_attachments, dependent: :destroy
     has_many :chat_messages, through: :chat_message_media_attachments
@@ -36,9 +45,10 @@ module Sharlayan::MediaAttachmentExtensions
 
     scope :attached, -> { where.not(status_id: nil).or(where.not(scheduled_status_id: nil)).or(where.not(status_draft_id: nil)).or(where(CHAT_REFERENCE_SQL)) }
     scope :referenced_by_page, -> { where(PAGE_REFERENCE_SQL) }
-    scope :in_use, -> { attached.or(referenced_by_page) }
+    scope :referenced_by_gallery, -> { where(GALLERY_REFERENCE_SQL) }
+    scope :in_use, -> { attached.or(referenced_by_page).or(referenced_by_gallery) }
     scope :outside_chat, -> { where.not(CHAT_REFERENCE_SQL) }
-    scope :unattached, -> { where(status_id: nil, scheduled_status_id: nil, status_draft_id: nil).where.not(PAGE_REFERENCE_SQL).where.not(CHAT_REFERENCE_SQL) }
+    scope :unattached, -> { where(status_id: nil, scheduled_status_id: nil, status_draft_id: nil).where.not(PAGE_REFERENCE_SQL).where.not(GALLERY_REFERENCE_SQL).where.not(CHAT_REFERENCE_SQL) }
 
     before_validation :generate_drive_access_key, if: :drive_pointer?
     before_save :lock_drive_file
@@ -57,7 +67,7 @@ module Sharlayan::MediaAttachmentExtensions
   end
 
   def removable_with_chat_message?
-    status_id.nil? && scheduled_status_id.nil? && status_draft_id.nil? && !self.class.referenced_by_page.exists?(id: id)
+    status_id.nil? && scheduled_status_id.nil? && status_draft_id.nil? && !self.class.referenced_by_page.exists?(id: id) && !self.class.referenced_by_gallery.exists?(id: id)
   end
 
   private

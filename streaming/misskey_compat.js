@@ -13,6 +13,10 @@ const REACTION_NOTE_UPDATE_TYPES = new Set(['reacted', 'unreacted']);
 const TIMELINE_CHANNELS = new Set(['homeTimeline', 'localTimeline', 'hybridTimeline', 'globalTimeline']);
 const CHAT_CHANNELS = new Set(['chatUser', 'chatRoom', 'main']);
 const CHAT_EVENTS = new Set(['message', 'updated', 'deleted', 'react', 'unreact', 'roomUpdated', 'membershipStarted', 'membershipEnded', 'roomDeleted']);
+const REVERSI_CHANNELS = new Set(['reversi', 'reversiGame']);
+const REVERSI_ACTIONS = new Set(['ready', 'updateSettings', 'cancel', 'putStone', 'claimTimeIsUp']);
+const REVERSI_ACTION_WINDOW_MS = 1000;
+const REVERSI_ACTIONS_PER_WINDOW = 10;
 
 const MI_ID_TIME2000 = 946684800000;
 
@@ -67,7 +71,12 @@ const hasScope = (request, ...scopes) => Array.isArray(request.scopes) && scopes
 
 const canReadStatuses = (request, grantPermissions) => (Array.isArray(grantPermissions) ? grantPermissions.includes('read:account') : hasScope(request, 'read', 'read:statuses'));
 
+const canPlayReversi = (request, grantPermissions) => (Array.isArray(grantPermissions) ? grantPermissions.includes('write:account') : hasScope(request, 'write', 'write:accounts'));
+const canReadMain = (request, grantPermissions) => (Array.isArray(grantPermissions) ? grantPermissions.includes('read:account') : hasScope(request, 'read', 'read:notifications'));
+
 const canReadDrive = (request, grantPermissions) => (Array.isArray(grantPermissions) ? grantPermissions.includes('read:drive') : hasScope(request, 'read', 'read:drive'));
+
+const canReadClip = (request, permissions) => Array.isArray(permissions) ? permissions.includes('read:account') : hasScope(request, 'read', 'read:lists');
 
 const isSelfChannel = (channel) => channel === 'drive';
 
@@ -75,7 +84,7 @@ const isPureRenote = (note) => note.renoteId != null && note.text == null && not
 
 const isFeedFiltered = (options, note) => (note.user?.host == null ? options?.filterLocal : options?.filterRemote);
 
-const needsViewerFiltering = (sourceChannel) => sourceChannel.startsWith('timeline:public') || sourceChannel.startsWith('timeline:hashtag:');
+const needsViewerFiltering = (sourceChannel) => sourceChannel.startsWith('timeline:public') || sourceChannel.startsWith('timeline:hashtag:') || sourceChannel.startsWith('channel:');
 
 const timelineNoteTargets = (note) => {
   const authors = [note, note.renote].filter(Boolean);
@@ -134,6 +143,10 @@ const resolveChannel = (channel, params, request, channelNameToIds) => {
     return channelNameToIds(request, 'hashtag', { tag: extractTag(params) });
   case 'drive':
     return Promise.resolve({ channelIds: [`drive:${request.accountId}`] });
+  case 'channel': {
+    const channelId = typeof params.channelId === 'string' ? decodeDatabaseId(params.channelId) : undefined;
+    return Promise.resolve({ channelIds: channelId ? [`channel:${channelId}`] : [] });
+  }
   default:
     return Promise.reject(new Error(`Unsupported misskey channel: ${channel}`));
   }
@@ -155,10 +168,13 @@ const resolveChannel = (channel, params, request, channelNameToIds) => {
  * @param {Function} deps.isChatEnabled
  * @param {Function} deps.authorizeChatAccess
  * @param {Function} deps.markChatRead
+ * @param {Function} deps.authorizeReversiGame
+ * @param {Function} deps.enqueueReversiAction
+ * @param {Function} deps.authorizeClipAccess
  * @param {function(): Promise.<boolean>} deps.isEnabled
  * @param {import('pino').Logger} deps.logger
  */
-const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, channelNameToIds, authorizeStatusAccess, loadExcludedReactionAccountIds, loadExcludedTimelineNote, loadGrantPermissions, loadChatGrantPermissions = loadGrantPermissions, isChatEnabled = async () => false, authorizeChatAccess = async () => false, markChatRead = async () => false, isEnabled, logger }) => {
+const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, channelNameToIds, authorizeStatusAccess, loadExcludedReactionAccountIds, loadExcludedTimelineNote, loadGrantPermissions, loadChatGrantPermissions = loadGrantPermissions, isChatEnabled = async () => false, authorizeChatAccess = async () => false, markChatRead = async () => false, authorizeReversiGame = async () => false, enqueueReversiAction = async () => {}, authorizeClipAccess = async () => false, isEnabled, logger }) => {
   const send = (session, type, body) => {
     const ws = session.websocket;
     if (ws.readyState !== ws.OPEN) return;
@@ -322,8 +338,149 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
     });
   };
 
+  const connectClip = (session, { id, params = {} }) => {
+    if (!params || typeof params !== 'object' || Array.isArray(params)) return;
+    const clipId = typeof params.clipId === 'string' ? decodeDatabaseId(params.clipId) : undefined;
+    const channels = store(session).channels;
+    if (!clipId || channels.has(id) || channels.size >= MAX_CHANNEL_SUBSCRIPTIONS) return;
+
+    const reservation = {};
+    channels.set(id, reservation);
+    const permitted = async (event) => await isEnabled()
+      && canReadClip(session.request, await loadChatGrantPermissions(session.request))
+      && await authorizeClipAccess(clipId, session.request, event);
+
+    (async () => {
+      if (await permitted(undefined) !== true || channels.get(id) !== reservation) return;
+      const channelId = `${MISSKEY_PREFIX}clip:${clipId}`;
+      const subscription = { channelIds: [channelId], listeners: [], stopHeartbeat: () => {} };
+      let terminating = false;
+      let deletionTimeout;
+      const listener = (json) => {
+        const event = json?.payload;
+        if (terminating || json?.event !== 'clip' || event?.clipId !== clipId || !['updated', 'deleted'].includes(event?.type)) return;
+        const deleted = event.type === 'deleted';
+        terminating = deleted;
+        if (deleted) clearTimeout(deletionTimeout);
+        permitted(event).then((allowed) => {
+          if (channels.get(id) !== subscription || terminating && !deleted) return;
+          if (allowed === 'missing') {
+            deletionTimeout ??= setTimeout(() => {
+              if (channels.get(id) === subscription) teardown(channels, id);
+            }, 5_000);
+            deletionTimeout.unref();
+            return;
+          }
+          if (allowed === true) send(session, 'channel', { id, type: event.type, body: null });
+          if (!allowed || deleted) teardown(channels, id);
+        }).catch((err) => {
+          if (channels.get(id) === subscription && (!terminating || deleted)) teardown(channels, id);
+          logger.error({ err }, 'misskey compat clip event failed');
+        });
+      };
+      subscription.listeners.push(listener);
+      channels.set(id, subscription);
+      subscribe(channelId, listener);
+      const stopHeartbeat = subscriptionHeartbeat([channelId]);
+      subscription.stopHeartbeat = () => {
+        clearTimeout(deletionTimeout);
+        stopHeartbeat();
+      };
+    })().catch((err) => logger.error({ err }, 'misskey compat clip connect failed')).finally(() => {
+      if (channels.get(id) === reservation) channels.delete(id);
+    });
+  };
+
+  const connectReversi = (session, { channel, id, params = {} }) => {
+    if (!params || typeof params !== 'object' || Array.isArray(params)) return;
+    const gameId = channel === 'reversiGame' ? chatId(params.gameId) : undefined;
+    if (channel === 'reversiGame' && !gameId) return;
+    const channels = store(session).channels;
+    if (channels.has(id) || channels.size >= MAX_CHANNEL_SUBSCRIPTIONS) return;
+    const reservation = {};
+    channels.set(id, reservation);
+
+    isEnabled().then(async (enabled) => {
+      if (!enabled || channels.get(id) !== reservation) return;
+      if (channel === 'reversi' ? !await authorize(session, channel) : !await authorizeReversiGame(gameId)) return;
+      if (channels.get(id) !== reservation) return;
+
+      const channelId = channel === 'reversi' ? `${MISSKEY_PREFIX}reversi:${session.request.accountId}` : `${MISSKEY_PREFIX}reversiGame:${gameId}`;
+      const listener = (json) => {
+        if (!json || json.event !== 'reversi' || !json.payload || typeof json.payload.type !== 'string') return;
+        send(session, 'channel', { id, type: json.payload.type, body: json.payload.body ?? null });
+      };
+      subscribe(channelId, listener);
+      channels.set(id, { channel, gameId, channelIds: [channelId], listeners: [listener], stopHeartbeat: subscriptionHeartbeat([channelId]) });
+    }).catch((err) => logger.error({ err }, 'misskey compat reversi connect failed')).finally(() => {
+      if (channels.get(id) === reservation) channels.delete(id);
+    });
+  };
+
+  const reversiActionAllowed = (session) => {
+    const now = Date.now();
+    const window = session.misskeyReversiActions;
+    if (!window || now - window.startedAt >= REVERSI_ACTION_WINDOW_MS) {
+      session.misskeyReversiActions = { startedAt: now, count: 1 };
+      return true;
+    }
+    window.count += 1;
+    return window.count <= REVERSI_ACTIONS_PER_WINDOW;
+  };
+
+  const reversiAction = (session, subscription, body) => {
+    if (!REVERSI_ACTIONS.has(body.type) || !reversiActionAllowed(session)) return;
+
+    (async () => {
+      if (!await isEnabled()) return;
+      if (!canPlayReversi(session.request, await grantPermissions(session))) return;
+      await enqueueReversiAction(session.request.accountId, subscription.gameId, body.type, body.body ?? null);
+    })().catch((err) => logger.error({ err }, 'misskey compat reversi action failed'));
+  };
+
+  const mainStore = (session) => {
+    if (!session.misskeyMain) session.misskeyMain = new Map();
+    return session.misskeyMain;
+  };
+
+  const connectMain = (session, id) => {
+    const subscriptions = mainStore(session);
+    if (subscriptions.has(id) || subscriptions.size >= MAX_CHANNEL_SUBSCRIPTIONS) return;
+    const reservation = {};
+    subscriptions.set(id, reservation);
+
+    isEnabled().then((enabled) => (enabled ? grantPermissions(session) : null)).then((permissions) => {
+      if (permissions === null || subscriptions.get(id) !== reservation || !canReadMain(session.request, permissions)) return;
+
+      const channelId = `${MISSKEY_PREFIX}main:${session.request.accountId}`;
+      const listener = (json) => {
+        if (!json || json.event !== 'main' || typeof json.payload?.type !== 'string') return;
+        send(session, 'channel', { id, type: json.payload.type, body: json.payload.body });
+      };
+      subscribe(channelId, listener);
+      subscriptions.set(id, { channelId, listener, stopHeartbeat: subscriptionHeartbeat([channelId]) });
+    }).catch((err) => logger.error({ err }, 'misskey compat main connect failed')).finally(() => {
+      if (subscriptions.get(id) === reservation) subscriptions.delete(id);
+    });
+  };
+
+  const teardownMain = (session, id) => {
+    const sub = session.misskeyMain?.get(id);
+    if (!sub) return;
+    session.misskeyMain.delete(id);
+    if (!sub.channelId) return;
+    unsubscribe(sub.channelId, sub.listener);
+    sub.stopHeartbeat();
+  };
+
   const channelMessage = (session, body) => {
-    if (!body || body.type !== 'read' || typeof body.id !== 'string') return;
+    if (!body || typeof body.id !== 'string') return;
+    const reversiSubscription = session.misskey?.channels.get(body.id);
+    if (reversiSubscription?.channel === 'reversiGame' && reversiSubscription.gameId) {
+      reversiAction(session, reversiSubscription, body);
+      return;
+    }
+    if (body.type !== 'read') return;
     const subscription = session.misskey?.channels.get(body.id);
     const messageId = chatId(body.body?.id);
     if (!subscription || !['chatUser', 'chatRoom'].includes(subscription.channel) || !messageId) return;
@@ -347,7 +504,16 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
     const { channel, id } = body;
     if (id.length > MAX_CHANNEL_ID_LENGTH || channel.length > MAX_CHANNEL_NAME_LENGTH) return;
     if (CHAT_CHANNELS.has(channel)) {
+      if (channel === 'main') connectMain(session, id);
       connectChat(session, body);
+      return;
+    }
+    if (REVERSI_CHANNELS.has(channel)) {
+      connectReversi(session, body);
+      return;
+    }
+    if (channel === 'clip') {
+      connectClip(session, body);
       return;
     }
 
@@ -436,11 +602,18 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
   };
 
   const disconnect = (session, body) => {
-    if (!session.misskey || !body || typeof body.id !== 'string') return;
-    teardown(session.misskey.channels, body.id);
+    if (!body || typeof body.id !== 'string') return;
+    teardownMain(session, body.id);
+    if (session.misskey) teardown(session.misskey.channels, body.id);
   };
 
   const cleanup = (session) => {
+    if (session.misskeyMain) {
+      for (const id of Array.from(session.misskeyMain.keys())) {
+        teardownMain(session, id);
+      }
+    }
+
     if (session.misskey) {
       for (const id of Array.from(session.misskey.channels.keys())) {
         teardown(session.misskey.channels, id);

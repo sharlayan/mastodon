@@ -35,7 +35,7 @@ class Admin::BoardAnnouncementsController < Admin::BaseController
   def update
     authorize :board_announcement, :update?
 
-    if @announcement.update(resource_params)
+    if @announcement.update_with_archive_state(resource_params)
       log_action :update, @announcement
       redirect_to admin_board_announcements_path, notice: I18n.t('admin.board_announcements.updated_msg')
     else
@@ -100,6 +100,6 @@ class Admin::BoardAnnouncementsController < Admin::BaseController
 
   def resource_params
     params
-      .expect(board_announcement: [:title, :text, :published, :sort_priority, :icon, :display, :need_confirmation_to_read, :silence, :for_existing_users, { attachment_ids: [] }])
+      .expect(board_announcement: [:title, :text, :published, :auto_archive_at, :sort_priority, :icon, :display, :need_confirmation_to_read, :silence, :for_existing_users, { attachment_ids: [] }])
   end
 end

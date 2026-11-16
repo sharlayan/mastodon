@@ -1,0 +1,7 @@
+= render 'shared/error_messages', object: form.object
+
+.fields-group
+  = form.input :origin, as: :string, wrapper: :with_block_label, input_html: { placeholder: 'https://voice.example.org', autocomplete: 'off' }
+
+.fields-group
+  = form.input :secret, as: :password, wrapper: :with_block_label, required: form.object.new_record?, input_html: { autocomplete: 'new-password', value: nil }

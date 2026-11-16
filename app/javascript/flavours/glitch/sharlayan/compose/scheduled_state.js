@@ -33,6 +33,9 @@ export const reduceScheduledCompose = (state, action) => {
     map.set('quoted_status_id', getParam('quoted_status_id') || null);
     map.set('quote_policy', getParam('quote_approval_policy') || 'nobody');
     map.set('circle_id', getParam('circle_id') || null);
+    map.set('limited_scope', getParam('limited_scope') === 'reply' ? 'reply' : null);
+    map.set('limited_reply_account_ids', getParam('limited_reply_account_ids') ? ImmutableList(getParam('limited_reply_account_ids')) : null);
+    map.set('reply_to_limited', getParam('limited_scope') === 'reply');
     map.set('clip_ids', ImmutableList(getParam('clip_ids') || []));
     map.set('content_type', getParam('content_type') || defaultContentType || 'text/plain');
     map.set('reaction_acceptance', getParam('reaction_acceptance') === undefined ? state.get('default_reaction_acceptance', null) : getParam('reaction_acceptance'));

@@ -1,0 +1,147 @@
+import { FormattedMessage } from 'react-intl';
+
+import classNames from 'classnames';
+
+import {
+  LockupLink,
+  LockupWrapper,
+} from '@/flavours/glitch-classic/components/lockup';
+import WarningIcon from '@/material-icons/400-24px/warning.svg?react';
+import type { ApiCollectionJSON } from 'flavours/glitch-classic/api_types/collections';
+import { AvatarById } from 'flavours/glitch-classic/components/avatar';
+import { useAccountHandle } from 'flavours/glitch-classic/components/display_name/default';
+import { RelativeTimestamp } from 'flavours/glitch-classic/components/relative_timestamp';
+import { useAccount } from 'flavours/glitch-classic/hooks/useAccount';
+import { domain } from 'flavours/glitch-classic/initial_state';
+
+import { getCollectionPath } from '../utils';
+
+import classes from './collection_lockup.module.scss';
+
+export const AvatarGrid: React.FC<{
+  accountIds: (string | undefined)[];
+  sensitive?: boolean;
+}> = ({ accountIds: ids, sensitive }) => {
+  const avatarIds = [ids[0], ids[1], ids[2], ids[3]];
+  return (
+    <div
+      className={classNames(
+        classes.avatarGrid,
+        sensitive ? classes.avatarGridSensitive : null,
+      )}
+    >
+      {avatarIds.map((id, index) => (
+        <AvatarById
+          animate={false}
+          key={index}
+          accountId={id}
+          className={classes.avatar}
+          size={25}
+        />
+      ))}
+      {sensitive && <WarningIcon className={classes.avatarSensitiveBadge} />}
+    </div>
+  );
+};
+
+export interface CollectionLockupProps {
+  collection: ApiCollectionJSON;
+  withAuthorHandle?: boolean;
+  withTimestamp?: boolean;
+  sideContent?: React.ReactNode;
+  className?: string;
+  headingLevel?: 'h2' | 'h3' | 'h4';
+  titleId?: string;
+  subtitleId?: string;
+}
+
+export const CollectionLockup: React.FC<CollectionLockupProps> = ({
+  collection,
+  withAuthorHandle = true,
+  withTimestamp,
+  sideContent,
+  headingLevel = 'h3',
+  titleId,
+  subtitleId,
+  className,
+}) => {
+  const { id, name } = collection;
+
+  return (
+    <LockupWrapper
+      className={classNames(classes.wrapper, className)}
+      icon={
+        <AvatarGrid
+          accountIds={collection.items.map((item) => item.account_id)}
+          sensitive={collection.sensitive}
+        />
+      }
+      sideContent={sideContent}
+    >
+      <LockupLink
+        as={headingLevel}
+        to={getCollectionPath(id)}
+        id={titleId}
+        subtitle={
+          <CollectionInfo
+            collection={collection}
+            withAuthorHandle={withAuthorHandle}
+            withTimestamp={withTimestamp}
+          />
+        }
+        subtitleId={subtitleId}
+      >
+        {name}
+      </LockupLink>
+    </LockupWrapper>
+  );
+};
+
+export const CollectionInfo: React.FC<
+  Pick<
+    CollectionLockupProps,
+    'collection' | 'withAuthorHandle' | 'withTimestamp'
+  >
+> = ({ collection, withAuthorHandle, withTimestamp }) => {
+  const authorAccount = useAccount(collection.account_id);
+  const authorHandle = useAccountHandle(authorAccount, domain);
+
+  return (
+    <ul>
+      {collection.sensitive && (
+        <li className='sr-only'>
+          <FormattedMessage
+            id='collections.sensitive'
+            defaultMessage='Sensitive'
+          />
+        </li>
+      )}
+      {withAuthorHandle && authorAccount && (
+        <FormattedMessage
+          id='collections.by_account'
+          defaultMessage='by {account_handle}'
+          values={{
+            account_handle: authorHandle,
+          }}
+          tagName='li'
+        />
+      )}
+      <FormattedMessage
+        id='collections.account_count'
+        defaultMessage='{count, plural, one {# account} other {# accounts}}'
+        values={{ count: collection.item_count }}
+        tagName='li'
+      />
+      {withTimestamp && (
+        <FormattedMessage
+          id='collections.last_updated_at'
+          defaultMessage='Last updated: {date}'
+          values={{
+            date: <RelativeTimestamp timestamp={collection.updated_at} long />,
+          }}
+          tagName='li'
+        />
+      )}
+    </ul>
+  );
+};

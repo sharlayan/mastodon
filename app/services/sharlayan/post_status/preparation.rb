@@ -38,11 +38,18 @@ module Sharlayan::PostStatus
     end
 
     def prepare_circle(visibility)
+      return prepare_reply(visibility) if @options[:limited_scope].present?
+
       return [nil, visibility, nil] if @options[:circle_id].blank? && visibility&.to_sym != :circle
 
       raise ActiveRecord::RecordNotFound unless Setting.circles_enabled
 
       [@account.circles.find(@options[:circle_id]), :limited, :circle]
+    end
+
+    def prepare_reply(visibility)
+      Sharlayan::LimitedReplyScope.prepare!(account: @account, options: @options, thread: @in_reply_to, visibility: visibility, quoted_status: @quoted_status)
+      [nil, :limited, :reply]
     end
 
     def prepare_quote(visibility)

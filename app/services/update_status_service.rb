@@ -70,12 +70,19 @@ class UpdateStatusService < BaseService
     @status.media_attachments.reload
   end
 
+  def media_attachments_limit
+    @media_attachments_limit ||= begin
+      kept_count = (@options[:media_ids].map(&:to_i) & @status.media_attachment_ids).size
+      [Status.local_media_attachments_limit, kept_count].max.clamp(1, Status::MEDIA_ATTACHMENTS_LIMIT)
+    end
+  end
+
   def validate_media!
     return [] if @options[:media_ids].blank? || !@options[:media_ids].is_a?(Enumerable)
 
-    raise Mastodon::ValidationError, I18n.t('media_attachments.validations.too_many') if @options[:media_ids].size > Status::MEDIA_ATTACHMENTS_LIMIT
+    raise Mastodon::ValidationError, I18n.t('media_attachments.validations.too_many_limited', count: media_attachments_limit) if @options[:media_ids].size > media_attachments_limit
 
-    media_attachments = @status.account.media_attachments.includes(:drive_file).where(status_id: [nil, @status.id]).where(scheduled_status_id: nil).where(id: @options[:media_ids].take(Status::MEDIA_ATTACHMENTS_LIMIT).map(&:to_i)).to_a
+    media_attachments = @status.account.media_attachments.includes(:drive_file).where(status_id: [nil, @status.id]).where(scheduled_status_id: nil).where(id: @options[:media_ids].take(media_attachments_limit).map(&:to_i)).to_a
 
     not_found_ids = @options[:media_ids].map(&:to_i) - media_attachments.map(&:id)
     raise Mastodon::ValidationError, I18n.t('media_attachments.validations.not_found', ids: not_found_ids.join(', ')) if not_found_ids.any?
@@ -130,6 +137,7 @@ class UpdateStatusService < BaseService
     # We raise here to rollback the entire transaction
     raise NoChangesSubmittedError unless significant_changes?
 
+    ProcessMentionsService.new.call(@status, save_status: false) if @status.limited_visibility? && @status.limited_reply?
     @status.edited_at = Time.now.utc
     @status.save!
   end
@@ -143,7 +151,7 @@ class UpdateStatusService < BaseService
 
   def update_metadata!
     ProcessHashtagsService.new.call(@status)
-    ProcessMentionsService.new.call(@status)
+    ProcessMentionsService.new.call(@status) unless @status.limited_visibility? && @status.limited_reply?
     ProcessLinksService.new.call(@status)
   end
 

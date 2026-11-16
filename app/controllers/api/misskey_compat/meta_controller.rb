@@ -50,6 +50,10 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
     }
   end
 
+  def ping
+    render json: { pong: (Time.now.to_f * 1000).floor }
+  end
+
   def server_info
     render json: {
       machine: '?',
@@ -145,8 +149,8 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
         showTimelineForVisitor: true,
         showActivitiesForVisitor: true,
       },
-      ads: [],
-      notesPerOneAd: 0,
+      ads: published_ads,
+      notesPerOneAd: Setting.misskey_compat_notes_per_one_ad.to_i,
       enableEmail: true,
       enableServiceWorker: Rails.configuration.x.vapid.public_key.present?,
       translatorAvailable: false,
@@ -176,6 +180,13 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
         miauth: true,
       }
     )
+  end
+
+  def published_ads
+    now = Time.now.utc
+    MisskeyAd.publishing(now).for_day(now).map do |ad|
+      { id: MisskeyCompat::MiId.encode(ad.id), url: ad.url, place: ad.place, ratio: ad.ratio, imageUrl: ad.image_url, dayOfWeek: ad.day_of_week, isSensitive: ad.is_sensitive || nil }.compact
+    end
   end
 
   def cached_stat(key, &block)

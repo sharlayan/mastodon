@@ -38,6 +38,7 @@ class MisskeyCompat::NoteSerializer
     reactions, my_reaction = reactions_for(status, reaction_emojis, emojis)
     merge_text_emojis(status, emojis)
     mentions = load_mentions(status)
+    listed_mentions = mentions.reject(&:silent?)
     media = status.ordered_media_attachments
 
     {
@@ -61,8 +62,8 @@ class MisskeyCompat::NoteSerializer
       renoteId: quoted_id(status),
       renote: embed_relations ? embedded_note(quoted_status(status)) : nil,
       isHidden: false,
-      mentions: mentions.map { |m| MisskeyCompat::MiId.encode(m.account_id) },
-      visibleUserIds: visible_user_ids(status, mentions),
+      mentions: listed_mentions.map { |m| MisskeyCompat::MiId.encode(m.account_id) },
+      visibleUserIds: visible_user_ids(status, @current_account&.id == status.account_id ? mentions : listed_mentions),
       fileIds: media.map { |m| MisskeyCompat::MiId.encode(m.drive_file_id || m.id) },
       files: media.map { |m| MisskeyCompat::DriveFileSerializer.serialize(m, sensitive: status.sensitive?) },
       tags: status.tags.map(&:name),
@@ -70,7 +71,7 @@ class MisskeyCompat::NoteSerializer
       emojis: emojis,
       uri: status.local? ? nil : status.uri,
       url: status.local? ? nil : (status.url || ActivityPub::TagManager.instance.url_for(status)),
-    }
+    }.merge(channel_fields(status))
   end
 
   private
@@ -97,6 +98,23 @@ class MisskeyCompat::NoteSerializer
       renoteCount: status.reblogs_count + status.quotes_count,
       repliesCount: status.replies_count,
       emojis: {},
+    }.merge(channel_fields(status))
+  end
+
+  def channel_fields(status)
+    channel = @context.channel_for(status)
+    return { channel: nil } if channel.nil?
+
+    {
+      channelId: MisskeyCompat::MiId.encode(channel.id),
+      channel: {
+        id: MisskeyCompat::MiId.encode(channel.id),
+        name: channel.name,
+        color: channel.color,
+        isSensitive: channel.sensitive?,
+        allowRenoteToExternal: channel.allow_renote_to_external?,
+        userId: MisskeyCompat::MiId.encode(channel.account_id),
+      },
     }
   end
 

@@ -8,6 +8,11 @@ get 'user_custom.css', to: 'user_custom_css#show', as: :user_custom_css
 get 'miauth/:session', to: 'miauth#show', as: :miauth
 post 'miauth/:session', to: 'miauth#create'
 
+constraints(token: /\h{8}-\h{4}-\h{4}-\h{4}-\h{12}/) do
+  get 'auth/:token', to: 'misskey_compat/auth_sessions#show', as: :misskey_auth_session
+  post 'auth/:token', to: 'misskey_compat/auth_sessions#create'
+end
+
 constraints(username: %r{[^@/.]+}) do
   with_options to: 'accounts#show' do
     get '/@:username/clips'

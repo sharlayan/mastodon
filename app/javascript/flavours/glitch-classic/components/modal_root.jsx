@@ -1,0 +1,185 @@
+import PropTypes from 'prop-types';
+import { PureComponent } from 'react';
+
+import 'wicg-inert';
+
+import { multiply } from 'color-blend';
+import { createBrowserHistory } from 'history';
+
+import { WithOptionalRouterPropTypes, withOptionalRouter } from 'flavours/glitch-classic/utils/react_router';
+import { IGNORE_FOCUS_ON_OPEN } from '../reducers/modal';
+import { normalizeKey } from './hotkeys/utils';
+
+class ModalRoot extends PureComponent {
+
+  static propTypes = {
+    children: PropTypes.node,
+    onClose: PropTypes.func.isRequired,
+    backgroundColor: PropTypes.oneOfType([
+      PropTypes.string,
+      PropTypes.shape({
+        r: PropTypes.number,
+        g: PropTypes.number,
+        b: PropTypes.number,
+      }),
+    ]),
+    noEsc: PropTypes.bool,
+    ignoreFocus: PropTypes.oneOfType([
+      PropTypes.bool,
+      PropTypes.string, // 'on-open', see IGNORE_FOCUS_ON_OPEN
+    ]),
+    ...WithOptionalRouterPropTypes,
+  };
+
+  activeElement = this.props.children ? document.activeElement : null;
+
+  /**
+   * @param {KeyboardEvent} e Event
+   */
+  handleKeyDown = (e) => {
+    const key = normalizeKey(e.key);
+    if (key === 'tab') {
+      const focusable = Array.from(this.node.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')).filter((x) => window.getComputedStyle(x).display !== 'none');
+      const index = focusable.indexOf(e.target);
+
+      let element;
+
+      if (e.shiftKey) {
+        element = focusable[index - 1] || focusable[focusable.length - 1];
+      } else {
+        element = focusable[index + 1] || focusable[0];
+      }
+
+      if (element) {
+        element.focus();
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    } else if (key === 'escape' && !e.defaultPrevented && !!this.props.children) {
+      this.props.onClose();
+    }
+  };
+
+  handleBackgroundClick = (e) => {
+    // Close modal, but only when clicking outside of the modal's content
+    if (e.target.matches('.modal-root__container *') || !e.target.matches('.modal-root *')) {
+      return;
+    }
+
+    this.props.onClose();
+  }
+
+  componentDidMount () {
+    window.addEventListener('keydown', this.handleKeyDown, false);
+    this.history = this.props.history || createBrowserHistory();
+
+    if (this.props.children) {
+      this._handleModalOpen();
+    }
+  }
+
+  componentDidUpdate (prevProps) {
+    if (!this.props.children && !!prevProps.children) {
+      this.getSiblings().forEach(sibling => sibling.removeAttribute('inert'));
+
+      // Because of the wicg-inert polyfill, the activeElement may not be
+      // immediately selectable, we have to wait for observers to run, as
+      // described in https://github.com/WICG/inert#performance-and-gotchas
+      Promise.resolve().then(() => {
+        if (!this.props.ignoreFocus) {
+          this.activeElement.focus({ preventScroll: true });
+        }
+        this.activeElement = null;
+      }).catch(console.error);
+
+      this._handleModalClose();
+    }
+
+    if (this.props.children && !prevProps.children) {
+      this.activeElement = document.activeElement;
+
+      this.getSiblings().forEach(sibling => sibling.setAttribute('inert', true));
+
+      this._handleModalOpen();
+    }
+
+    if (this.props.children) {
+      this._ensureHistoryBuffer();
+    }
+  }
+
+  componentWillUnmount () {
+    window.removeEventListener('keydown', this.handleKeyDown);
+  }
+
+  _handleModalOpen () {
+    this._modalHistoryKey = Date.now();
+    this.unlistenHistory = this.history.listen((_, action) => {
+      if (action === 'POP') {
+        this.props.onClose();
+      }
+    });
+  }
+
+  _handleModalClose () {
+    if (this.unlistenHistory) {
+      this.unlistenHistory();
+    }
+    const { state } = this.history.location;
+    if (state && state.mastodonModalKey === this._modalHistoryKey) {
+      this.history.goBack();
+    }
+  }
+
+  _ensureHistoryBuffer () {
+    const { pathname, search, hash, state } = this.history.location;
+    if (!state || state.mastodonModalKey !== this._modalHistoryKey) {
+      this.history.push({ pathname, search, hash }, {
+        ...state,
+        focusTarget: this.props.ignoreFocus !== IGNORE_FOCUS_ON_OPEN,
+        mastodonModalKey: this._modalHistoryKey,
+      });
+    }
+  }
+
+  getSiblings = () => {
+    return Array(...this.node.parentElement.childNodes).filter(node => node !== this.node);
+  };
+
+  setRef = ref => {
+    this.node = ref;
+  };
+
+  render () {
+    const { children } = this.props;
+    const visible = !!children;
+
+    if (!visible) {
+      return (
+        <div className='modal-root' ref={this.setRef} style={{ opacity: 0 }} />
+      );
+    }
+
+    let backgroundColor = null;
+
+    if (this.props.backgroundColor && typeof this.props.backgroundColor === 'string') {
+      backgroundColor = this.props.backgroundColor;
+    } else if (this.props.backgroundColor) {
+      const darkenedColor = multiply({ ...this.props.backgroundColor, a: 1 }, { r: 0, g: 0, b: 0, a: 0.7 });
+      backgroundColor = `rgb(${darkenedColor.r}, ${darkenedColor.g}, ${darkenedColor.b})`;
+    }
+
+    return (
+      // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+      <div className='modal-root' ref={this.setRef} onClick={this.handleBackgroundClick}>
+        <div>
+          <div className='modal-root__overlay' style={{ backgroundColor }} />
+          <div role='dialog' className='modal-root__container'>{children}</div>
+        </div>
+      </div>
+    );
+  }
+
+}
+
+export default withOptionalRouter(ModalRoot);

@@ -54,6 +54,12 @@ export const apiMoveDriveFile = (id: string, folderId: string | null) =>
     folder_id: folderId ?? '',
   });
 
+export const apiMoveDriveFiles = (ids: string[], folderId: string | null) =>
+  apiRequestPost<ApiDriveFileJSON[]>('v1/drive/files/move_bulk', {
+    file_ids: ids,
+    folder_id: folderId ?? '',
+  });
+
 export const apiDeleteDriveFile = (id: string) =>
   apiRequestDelete(`v1/drive/files/${id}`);
 

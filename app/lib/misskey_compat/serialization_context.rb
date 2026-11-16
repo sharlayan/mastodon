@@ -14,6 +14,7 @@ class MisskeyCompat::SerializationContext
     @instance_cache = {}
     @reaction_map = nil
     @own_votes_map = nil
+    @channel_map = nil
   end
 
   def user(account)
@@ -41,11 +42,23 @@ class MisskeyCompat::SerializationContext
     @own_votes_map[poll.id] || []
   end
 
+  def channel_for(status)
+    return MisskeyChannelNote.channels_by_status_id([status.id])[status.id] if @channel_map.nil?
+
+    @channel_map[status.id]
+  end
+
   def prime(statuses)
     expanded = prepare(statuses)
     prime_reactions(expanded)
     prime_own_votes(expanded)
     prime_relations(expanded)
+    prime_channels(expanded)
+    self
+  end
+
+  def prime_channels(statuses)
+    @channel_map = MisskeyChannelNote.channels_by_status_id(statuses.map(&:id))
     self
   end
 

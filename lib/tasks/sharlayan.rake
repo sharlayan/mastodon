@@ -16,4 +16,11 @@ namespace :sharlayan do
       puts "Re-rendered #{count} board announcements"
     end
   end
+
+  namespace :chat_dice do
+    desc 'Fill in dice results of remote chat messages received before dice support by fetching them again'
+    task backfill: :environment do
+      puts "Filled in dice results for #{Sharlayan::ChatDiceBackfill.new.call} chat messages"
+    end
+  end
 end

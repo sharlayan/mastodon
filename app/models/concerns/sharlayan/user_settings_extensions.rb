@@ -14,8 +14,11 @@ module Sharlayan::UserSettingsExtensions
 
     def apply_root_settings(settings)
       settings.setting :auto_accept_followed, default: false
+      settings.setting :follow_approval_local_seconds, default: nil
+      settings.setting :follow_approval_remote_seconds, default: nil
       settings.setting :show_reactions, default: true
       settings.setting :show_online_status, default: false
+      settings.setting :show_birthday, default: false
       settings.setting :prevent_ai_learning, default: false
       settings.setting :norss, default: -> { ::Setting.norss }
       settings.setting :visible_reactions, default: 6

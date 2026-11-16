@@ -192,6 +192,29 @@ RSpec.describe ReactService, type: :service do
     end
   end
 
+  describe 'rolling back a replacement' do
+    let(:status) { Fabricate(:status) }
+
+    it 'keeps the previous reaction and does not publish rolled-back changes' do
+      existing = subject.call(sender, status, '👍')
+      allow(MisskeyCompat::Streaming).to receive(:broadcast_reaction)
+      notification_jobs = LocalNotificationWorker.jobs.size
+      broadcast_jobs = BroadcastStatusUpdateWorker.jobs.size
+      distribution_jobs = ActivityPub::ReactionsDistributionWorker.jobs.size
+
+      StatusReaction.transaction do
+        subject.call(sender, status, '🎉')
+        raise ActiveRecord::Rollback
+      end
+
+      expect(status.status_reactions.pluck(:id)).to eq([existing.id])
+      expect(LocalNotificationWorker.jobs.size).to eq(notification_jobs)
+      expect(BroadcastStatusUpdateWorker.jobs.size).to eq(broadcast_jobs)
+      expect(ActivityPub::ReactionsDistributionWorker.jobs.size).to eq(distribution_jobs)
+      expect(MisskeyCompat::Streaming).to_not have_received(:broadcast_reaction)
+    end
+  end
+
   describe 'replacing a remote custom emoji with a local one of the same shortcode' do
     let(:status) { Fabricate(:status) }
 

@@ -1,0 +1,208 @@
+// @vitest-environment node
+
+import { showChatDesktopNotification } from '../stream';
+
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+
+vi.mock('flavours/glitch-classic/components/router', () => ({
+  browserHistory: { push },
+}));
+
+const payload = {
+  id: '10',
+  conversation_id: '20',
+  content: 'Hello',
+  account: {
+    display_name: 'Alice',
+    acct: 'alice',
+    avatar: 'https://example.com/avatar.png',
+  },
+};
+
+describe('Chat stream connection', () => {
+  it('is live only from being subscribed until it is cut off', async () => {
+    vi.resetModules();
+    const stream = await import('../stream');
+
+    expect(stream.isChatStreamLive()).toBe(false);
+    stream.handleChatStreamConnected();
+    expect(stream.isChatStreamLive()).toBe(true);
+    stream.handleChatStreamDisconnected();
+    expect(stream.isChatStreamLive()).toBe(false);
+    stream.handleChatStreamPolled();
+    expect(stream.isChatStreamLive()).toBe(false);
+  });
+
+  it('announces each poll made while the stream is down', async () => {
+    vi.resetModules();
+    const stream = await import('../stream');
+    const listener = vi.fn();
+    const unsubscribe = stream.subscribeChatStream(listener);
+
+    stream.handleChatStreamPolled();
+
+    expect(listener).toHaveBeenCalledWith({
+      event: stream.CHAT_STREAM_RECONNECTED,
+      payload: {},
+    });
+    unsubscribe();
+  });
+
+  it('announces every connection, the first one included, and asks for everything on the first poll only, until the stream is back', async () => {
+    vi.resetModules();
+    const stream = await import('../stream');
+    const listener = vi.fn();
+    const unsubscribe = stream.subscribeChatStream(listener);
+    const events = () =>
+      listener.mock.calls.map(([item]) => (item as { event: string }).event);
+
+    stream.handleChatStreamConnected();
+    expect(listener).toHaveBeenLastCalledWith({
+      event: stream.CHAT_STREAM_RECONNECTED,
+      payload: {},
+    });
+    stream.handleChatStreamDisconnected();
+    stream.handleChatStreamPolled();
+    stream.handleChatStreamPolled();
+    stream.handleChatStreamPolled();
+    stream.handleChatStreamConnected();
+    stream.handleChatStreamDisconnected();
+    stream.handleChatStreamPolled();
+
+    expect(events()).toEqual([
+      stream.CHAT_STREAM_RECONNECTED,
+      stream.CHAT_STREAM_RECONNECTED,
+      stream.CHAT_STREAM_POLLED,
+      stream.CHAT_STREAM_POLLED,
+      stream.CHAT_STREAM_RECONNECTED,
+      stream.CHAT_STREAM_RECONNECTED,
+    ]);
+    unsubscribe();
+  });
+});
+
+describe('Chat desktop notifications', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('does not notify without browser permission', () => {
+    const constructor = vi.fn();
+    function NotificationMock(...args: unknown[]) {
+      constructor(...args);
+    }
+    NotificationMock.permission = 'denied';
+    vi.stubGlobal('Notification', NotificationMock);
+    vi.stubGlobal('window', { Notification: NotificationMock });
+
+    showChatDesktopNotification(payload);
+
+    expect(constructor).not.toHaveBeenCalled();
+  });
+
+  it('shows a conversation-scoped notification for an incoming message', () => {
+    const addEventListener = vi.fn();
+    const close = vi.fn();
+    const constructor = vi.fn();
+    class NotificationMock {
+      static permission = 'granted';
+
+      addEventListener = addEventListener;
+      close = close;
+
+      constructor(...args: unknown[]) {
+        constructor(...args);
+      }
+    }
+    vi.stubGlobal('Notification', NotificationMock);
+    vi.stubGlobal('document', { visibilityState: 'visible' });
+    vi.stubGlobal('window', {
+      Notification: NotificationMock,
+      focus: vi.fn(),
+      location: { assign: vi.fn(), pathname: '/home' },
+    });
+
+    showChatDesktopNotification(payload);
+
+    expect(constructor).toHaveBeenCalledWith('Alice · Chat', {
+      body: 'Hello',
+      icon: 'https://example.com/avatar.png',
+      tag: 'chat-20',
+    });
+    expect(addEventListener).toHaveBeenCalledWith(
+      'click',
+      expect.any(Function),
+    );
+  });
+
+  it('opens the conversation inside the app when the notification is clicked', () => {
+    const addEventListener = vi.fn();
+    const assign = vi.fn();
+    push.mockClear();
+    class NotificationMock {
+      static permission = 'granted';
+
+      addEventListener = addEventListener;
+      close = vi.fn();
+    }
+    vi.stubGlobal('Notification', NotificationMock);
+    vi.stubGlobal('document', { visibilityState: 'hidden' });
+    vi.stubGlobal('window', {
+      Notification: NotificationMock,
+      focus: vi.fn(),
+      location: { assign, pathname: '/deck/home' },
+    });
+
+    showChatDesktopNotification(payload);
+
+    const click = addEventListener.mock.calls.find(
+      ([event]) => event === 'click',
+    )?.[1] as (() => void) | undefined;
+    click?.();
+
+    expect(push).toHaveBeenCalledWith('/chat/20');
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  describe('while the conversation is on screen', () => {
+    const setUp = (pathname: string, visibilityState: string) => {
+      const constructor = vi.fn();
+      class NotificationMock {
+        static permission = 'granted';
+
+        addEventListener = vi.fn();
+        close = vi.fn();
+
+        constructor(...args: unknown[]) {
+          constructor(...args);
+        }
+      }
+      vi.stubGlobal('Notification', NotificationMock);
+      vi.stubGlobal('document', { visibilityState });
+      vi.stubGlobal('window', {
+        Notification: NotificationMock,
+        focus: vi.fn(),
+        location: { assign: vi.fn(), pathname },
+      });
+      return constructor;
+    };
+
+    it('stays quiet in the visible conversation, in either layout', () => {
+      for (const pathname of ['/chat/20', '/deck/chat/20']) {
+        const constructor = setUp(pathname, 'visible');
+
+        showChatDesktopNotification(payload);
+
+        expect(constructor, pathname).not.toHaveBeenCalled();
+      }
+    });
+
+    it('notifies when that conversation is in a background tab', () => {
+      const constructor = setUp('/chat/20', 'hidden');
+
+      showChatDesktopNotification(payload);
+
+      expect(constructor).toHaveBeenCalled();
+    });
+  });
+});

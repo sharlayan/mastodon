@@ -1,0 +1,61 @@
+@use '../variables/icon-mixin' as icons;
+
+html .icon-button.star-icon .icon-star {
+  animation: none !important;
+}
+
+// Body
+.layout-single-column,
+.layout-multiple-columns {
+  // Left sidebar column links
+  .column-link .icon-star {
+    @include icons.icon-swap(heart, $color: var(--color-light-text));
+  }
+
+  .column-link.active .icon-star {
+    @include icons.icon-swap(heart, fill, var(--color-light-text));
+  }
+
+  .notification-group--favourite .icon-star,
+  .notification-favourite .icon-star {
+    @include icons.icon-swap(heart, fill, var(--color-text-bookmark-highlight));
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+  }
+
+  .notification__filter-bar .icon-star,
+  .detailed-status__action-bar .icon-button .icon-star,
+  .status__action-bar .icon-button .icon-star {
+    @include icons.icon-swap(heart, $color: var(--color-dim));
+  }
+
+  .notification__filter-bar .active .icon-star {
+    @include icons.icon-swap(heart, fill, var(--color-light-text));
+  }
+
+  .detailed-status__action-bar .active:not(.activated) .icon-star,
+  .status__action-bar .active:not(.activated) .icon-star {
+    @include icons.icon-swap(heart, fill, var(--color-text-bookmark-highlight));
+  }
+
+  .icon-button.star-icon.active,
+  .notification-group--favourite .star-icon,
+  .notification-favourite .star-icon {
+    color: var(--color-red);
+  }
+
+  // Favourite counter follows the heart's red on hover/active.
+  button.icon-button:hover .icon-star ~ span,
+  button.icon-button.active .icon-star ~ span {
+    color: var(--color-red);
+  }
+
+  .detailed-status__action-bar .icon-button:hover .icon-star,
+  .detailed-status button.icon-button:hover .icon-star,
+  .status button.icon-button:hover .icon-star {
+    @include icons.icon-swap(
+      heart,
+      $color: var(--color-text-bookmark-highlight)
+    );
+  }
+}

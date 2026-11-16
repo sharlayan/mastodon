@@ -30,7 +30,7 @@ class FollowService < BaseService
       return change_follow_request_options!
     end
 
-    @force_follow_request = !@options[:bypass_review] && @target_account.local? && @source_account.requires_follow_review?
+    @force_follow_request = !@options[:bypass_review] && @target_account.local? && @source_account.requires_follow_review?(@target_account)
 
     ActivityTracker.increment('activity:interactions')
     FeatureUsageTracker.for(:follow).increment(@options[:ref])

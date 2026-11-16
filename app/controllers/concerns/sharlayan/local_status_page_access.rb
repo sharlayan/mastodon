@@ -8,8 +8,7 @@ module Sharlayan::LocalStatusPageAccess
   def local_status_page_accessible?
     return @local_status_page_accessible if defined?(@local_status_page_accessible)
 
-    mode = Setting.local_status_page_access
-    @local_status_page_accessible = mode == 'public' || (current_user.present? && (mode != 'disabled' || current_user.can?(:view_feeds)))
+    @local_status_page_accessible = Sharlayan::LocalContentAccess.accessible?(Setting.local_status_page_access, current_user)
   end
 
   def require_status_page_access!

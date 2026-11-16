@@ -2,6 +2,7 @@ import { IntlProvider } from 'react-intl';
 
 import { render, screen } from '@testing-library/react';
 
+import { AccountFollowersCount } from '../account_followers_count';
 import { ShortNumber } from '../short_number';
 
 function renderShortNumber(value: number) {
@@ -76,5 +77,49 @@ describe('ShortNumber Component', () => {
   it('truncates decimals for 9999999', () => {
     renderShortNumber(9999999);
     expect(screen.getByText('9.9M')).toBeDefined();
+  });
+});
+
+describe('AccountFollowersCount Component', () => {
+  it('replaces hidden counts without selecting a numeric plural and preserves visible counts', () => {
+    const { getByTestId } = render(
+      <IntlProvider
+        locale='en'
+        messages={{
+          'account.followers_counter':
+            '{count, plural, =0 {No followers} other {{counter} followers}}',
+        }}
+      >
+        <div data-testid='hidden'>
+          <AccountFollowersCount value={-1} />
+        </div>
+        <div data-testid='hidden-label'>
+          <AccountFollowersCount value={-1} withLabel />
+        </div>
+        <div data-testid='zero'>
+          <AccountFollowersCount value={0} />
+        </div>
+        <div data-testid='zero-label'>
+          <AccountFollowersCount value={0} withLabel />
+        </div>
+        <div data-testid='positive'>
+          <AccountFollowersCount value={1234} />
+        </div>
+        <div data-testid='positive-label'>
+          <AccountFollowersCount value={1234} withLabel />
+        </div>
+        <div data-testid='negative-number'>
+          <ShortNumber value={-1} />
+        </div>
+      </IntlProvider>,
+    );
+
+    expect(getByTestId('hidden').textContent).toBe('-');
+    expect(getByTestId('hidden-label').textContent).toBe('Followers');
+    expect(getByTestId('zero').textContent).toBe('0');
+    expect(getByTestId('zero-label').textContent).toBe('No followers');
+    expect(getByTestId('positive').textContent).toBe('1.2K');
+    expect(getByTestId('positive-label').textContent).toBe('1.2K followers');
+    expect(getByTestId('negative-number').textContent).toBe('-1');
   });
 });

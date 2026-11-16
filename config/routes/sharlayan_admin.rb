@@ -33,3 +33,12 @@ resources :avatar_decorations, only: [:index, :new, :create, :edit, :update, :de
 end
 
 resources :avatar_decoration_domain_blocks, only: [:index, :create, :destroy]
+
+resources :voice_calls, only: [:destroy]
+resources :voice_relay_providers, except: [:show] do
+  member do
+    post :check
+    post :enable
+    post :disable
+  end
+end

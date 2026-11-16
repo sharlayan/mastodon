@@ -6,6 +6,18 @@ class Api::MisskeyCompat::AccountDataController < Api::MisskeyCompat::BaseContro
 
   EXPORT_ACTIONS = %i(export_following export_blocking export_mute export_user_lists export_clips export_notes).freeze
   IMPORT_ACTIONS = %i(import_following import_blocking import_muting import_user_lists).freeze
+  MISSKEY_EXPORTS = {
+    export_antennas: ['antenna', :misskey_compat_export_antennas],
+    export_favorites: ['favorite', :misskey_compat_export_favorites],
+    export_custom_emojis: ['customEmoji', :misskey_compat_export_custom_emojis],
+  }.freeze
+  ANTENNA_ACTIONS = %i(export_antennas import_antennas).freeze
+  OWN_RATE_LIMIT_ACTIONS = [*MISSKEY_EXPORTS.keys, :import_antennas].freeze
+  ANTENNA_IMPORT_ERRORS = {
+    no_such_file: ['No such file', 'NO_SUCH_FILE', '3b71d086-c3fa-431c-b01d-ded65a777172'],
+    empty_file: ['That file is empty', 'EMPTY_FILE', '7f60115d-8d93-4b0f-bd0e-3815dcbb389f'],
+    too_many_antennas: ['You cannot create antenna any more', 'TOO_MANY_ANTENNAS', '600917d4-a4cb-4cc5-8ba8-7ac8ea3c7779'],
+  }.freeze
 
   EXPORTS = {
     following: { filename: 'following_accounts', extension: 'csv', content_type: 'text/csv', method: :to_following_accounts_csv, header_lines: 1 },
@@ -42,14 +54,16 @@ class Api::MisskeyCompat::AccountDataController < Api::MisskeyCompat::BaseContro
     },
   }.freeze
 
-  requires_write_scope(*EXPORT_ACTIONS, *IMPORT_ACTIONS)
-  requires_misskey_permission 'write:account', *EXPORT_ACTIONS, *IMPORT_ACTIONS
+  requires_write_scope(*EXPORT_ACTIONS, *IMPORT_ACTIONS, *OWN_RATE_LIMIT_ACTIONS)
+  requires_misskey_permission 'write:account', *EXPORT_ACTIONS, *IMPORT_ACTIONS, *OWN_RATE_LIMIT_ACTIONS
 
   before_action :require_user!
   before_action :require_native_user_token!
+  before_action :prohibit_moved_account!, only: :import_antennas
   before_action :require_drive_enabled!, except: :export_notes
   before_action :require_clips_enabled!, only: :export_clips
-  before_action :enforce_account_data_rate_limit!
+  before_action :require_antennas_enabled!, only: ANTENNA_ACTIONS
+  before_action :enforce_account_data_rate_limit!, except: OWN_RATE_LIMIT_ACTIONS
 
   rescue_from Mastodon::NotPermittedError, Mastodon::RaceConditionError do
     render_error(I18n.t('errors.429'), 'RATE_LIMIT_EXCEEDED', 429, id: '22d05606-fbcf-421a-a2db-b32610dcfd1b')
@@ -87,6 +101,42 @@ class Api::MisskeyCompat::AccountDataController < Api::MisskeyCompat::BaseContro
     head 204
   end
 
+  def export_antennas
+    queue_misskey_export(:export_antennas)
+  end
+
+  def export_favorites
+    queue_misskey_export(:export_favorites)
+  end
+
+  def export_custom_emojis
+    queue_misskey_export(:export_custom_emojis)
+  end
+
+  def import_antennas
+    return if rate_limited?(:misskey_compat_import_antennas)
+
+    drive_file = current_account.drive_files.find_by(id: params[:fileId])
+    return antenna_import_error(:no_such_file, 404) if drive_file.nil?
+    return antenna_import_error(:empty_file) if drive_file.file_file_size.to_i.zero?
+    return render_invalid_param('#/properties/fileId', 'file is too big') if drive_file.file_file_size.to_i > Form::Import::FILE_SIZE_LIMIT
+
+    tempfile = fetch_drive_file(drive_file)
+    return antenna_import_error(:no_such_file, 404) if tempfile.nil?
+
+    tempfile.rewind
+    entries = JSON.parse(tempfile.read)
+    return render_invalid_param('#/properties/fileId', 'must be an exported antenna array') unless entries.is_a?(Array)
+    return antenna_import_error(:too_many_antennas) if current_account.antennas.count + entries.size >= Antenna::ANTENNAS_PER_ACCOUNT_LIMIT
+
+    MisskeyCompat::AntennaPorter.new(current_account).import!(entries)
+    head 204
+  rescue JSON::ParserError
+    render_invalid_param('#/properties/fileId', 'must be an exported antenna array')
+  ensure
+    tempfile&.close!
+  end
+
   def import_following
     import_from_drive(:following)
   end
@@ -111,6 +161,23 @@ class Api::MisskeyCompat::AccountDataController < Api::MisskeyCompat::BaseContro
 
   def enforce_account_data_rate_limit!
     rate_limited?(:misskey_compat_account_data)
+  end
+
+  def require_antennas_enabled!
+    render_error('This endpoint is not available', 'ENDPOINT_DISABLED', 404) if RoleplayModeHelper.roleplay_mode? || !Setting.antenna_enabled
+  end
+
+  def queue_misskey_export(action)
+    entity, family = MISSKEY_EXPORTS.fetch(action)
+    return if rate_limited?(family)
+
+    MisskeyCompatExportWorker.perform_async(current_user.id, entity)
+    head 204
+  end
+
+  def antenna_import_error(error, status = 400)
+    message, code, id = ANTENNA_IMPORT_ERRORS.fetch(error)
+    render_error(message, code, status, id: id)
   end
 
   def export_to_drive(kind)

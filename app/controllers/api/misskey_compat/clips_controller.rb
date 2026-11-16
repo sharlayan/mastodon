@@ -127,7 +127,7 @@ class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
     statuses = statuses.limit(Clip::STATUSES_LIMIT).to_a
     statuses = statuses.select { |status| StatusPolicy.new(current_account, status).show? }
 
-    statuses.first(pagination_limit)
+    filter_local_status_page_access(statuses).first(pagination_limit)
   end
 
   def enforce_clip_notes_rate_limit!

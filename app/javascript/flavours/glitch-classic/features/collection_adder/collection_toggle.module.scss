@@ -1,0 +1,12 @@
+.wrapper {
+  --lockup-gap: 16px;
+  --lockup-padding-block: 12px;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--color-border-primary);
+  }
+
+  &:has(input:disabled) {
+    color: var(--color-text-secondary);
+  }
+}

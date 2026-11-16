@@ -34,6 +34,8 @@ const composePayload = (state) => {
     sensitive: compose.get('sensitive'),
     visibility: compose.get('circle_id') ? 'private' : compose.get('privacy'),
     circle_id: compose.get('circle_id'),
+    limited_scope: compose.get('limited_scope'),
+    limited_reply_account_ids: compose.get('limited_reply_account_ids')?.toArray(),
     clip_ids: compose.get('clip_ids').toArray(),
     poll: poll ? {
       options: poll.get('options').toArray(),

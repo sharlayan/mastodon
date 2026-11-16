@@ -1,5 +1,18 @@
 # frozen_string_literal: true
 
+# == Schema Information
+#
+# Table name: chat_memberships
+#
+#  id                   :bigint(8)        not null, primary key
+#  muted                :boolean          default(FALSE), not null
+#  role                 :integer          default("member"), not null
+#  created_at           :datetime         not null
+#  updated_at           :datetime         not null
+#  account_id           :bigint(8)        not null
+#  chat_conversation_id :bigint(8)        not null
+#  last_read_message_id :bigint(8)
+#
 class ChatMembership < ApplicationRecord
   enum :role, { member: 0, owner: 1 }
 
@@ -11,6 +24,7 @@ class ChatMembership < ApplicationRecord
   validate :last_read_message_belongs_to_conversation
   after_create :record_roster_time
   after_destroy_commit :remove_unusable_conversation
+  after_destroy_commit :revoke_voice_call
 
   private
 
@@ -24,6 +38,13 @@ class ChatMembership < ApplicationRecord
     return if last_read_message.nil? || last_read_message.chat_conversation_id == chat_conversation_id
 
     errors.add(:last_read_message, :invalid)
+  end
+
+  def revoke_voice_call
+    VoiceCallRemoteSession.where(chat_conversation_id:, account_id:).delete_all
+    return unless VoiceCallAllocation.unfinished.exists?(chat_conversation_id:)
+
+    VoiceCallRevocationWorker.perform_async(chat_conversation_id, account_id)
   end
 
   def remove_unusable_conversation

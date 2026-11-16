@@ -1,0 +1,121 @@
+import { useEffect } from 'react';
+import type { FC } from 'react';
+
+import { defineMessage, FormattedMessage } from 'react-intl';
+
+import { useDebouncedCallback } from 'use-debounce';
+
+import {
+  expandFollowers,
+  fetchFollowers,
+} from '@/flavours/glitch-classic/actions/accounts';
+import { DisplayNameSimple } from '@/flavours/glitch-classic/components/display_name/simple';
+import { useAccount } from '@/flavours/glitch-classic/hooks/useAccount';
+import { useAccountId } from '@/flavours/glitch-classic/hooks/useAccountId';
+import { useRelationship } from '@/flavours/glitch-classic/hooks/useRelationship';
+import { me } from '@/flavours/glitch-classic/initial_state';
+import { selectUserListWithoutMe } from '@/flavours/glitch-classic/selectors/user_lists';
+import {
+  useAppDispatch,
+  useAppSelector,
+} from '@/flavours/glitch-classic/store';
+
+import type { EmptyMessageProps } from './components/empty';
+import { BaseEmptyMessage } from './components/empty';
+import { AccountListHeader } from './components/header';
+import { AccountList } from './components/list';
+
+const titleText = defineMessage({
+  id: 'followers.title',
+  defaultMessage: 'Following {name}',
+});
+
+const Followers: FC = () => {
+  const accountId = useAccountId();
+  const account = useAccount(accountId);
+  const currentAccountId = useAppSelector(
+    (state) => (state.meta.get('me') as string | null) ?? null,
+  );
+  const followerList = useAppSelector((state) =>
+    selectUserListWithoutMe(state, 'followers', accountId),
+  );
+
+  const dispatch = useAppDispatch();
+  useEffect(() => {
+    if (!followerList && accountId) {
+      dispatch(fetchFollowers(accountId));
+    }
+  }, [accountId, dispatch, followerList]);
+
+  const loadMore = useDebouncedCallback(
+    () => {
+      if (accountId) {
+        dispatch(expandFollowers(accountId));
+      }
+    },
+    300,
+    { leading: true },
+  );
+
+  const relationship = useRelationship(accountId);
+
+  const followerId = relationship?.following ? currentAccountId : null;
+  const followersExceptMeHidden = !!(
+    account?.hide_collections &&
+    followerList?.items.length === 0 &&
+    followerId
+  );
+
+  const footer = followersExceptMeHidden && (
+    <div className='empty-column-indicator'>
+      <FormattedMessage
+        id='followers.hide_other_followers'
+        defaultMessage='This user has chosen to not make their other followers visible'
+        tagName='span'
+      />
+    </div>
+  );
+
+  return (
+    <AccountList
+      title={
+        <FormattedMessage
+          {...titleText}
+          values={{ name: <DisplayNameSimple account={account} /> }}
+        />
+      }
+      accountId={accountId}
+      header={
+        accountId && (
+          <AccountListHeader
+            accountId={accountId}
+            titleText={titleText}
+            total={account?.followers_count}
+          />
+        )
+      }
+      footer={footer}
+      emptyMessage={<EmptyMessage account={account} />}
+      list={followerList}
+      loadMore={loadMore}
+      prependAccountId={followerId}
+      withoutFollowsYouBadge={accountId === me}
+      scrollKey='followers'
+    />
+  );
+};
+
+const EmptyMessage: FC<EmptyMessageProps> = (props) => (
+  <BaseEmptyMessage
+    {...props}
+    defaultMessage={
+      <FormattedMessage
+        id='account.followers.empty'
+        defaultMessage='No one follows this user yet.'
+      />
+    }
+  />
+);
+
+// eslint-disable-next-line import/no-default-export -- Used by async components.
+export default Followers;

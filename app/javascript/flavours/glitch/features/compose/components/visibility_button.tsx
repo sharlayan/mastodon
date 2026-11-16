@@ -22,6 +22,7 @@ import QuietTimeIcon from '@/material-icons/400-24px/quiet_time.svg?react';
 import type { VisibilityModalCallback } from '../../ui/components/visibility_modal';
 
 import { messages as privacyMessages } from './privacy_dropdown';
+import { ReplyScopeButton } from './reply_scope_button';
 
 const messages = defineMessages({
   anyone_quote: {
@@ -43,7 +44,12 @@ interface PrivacyDropdownProps {
 }
 
 export const VisibilityButton: FC<PrivacyDropdownProps> = (props) => {
-  return <PrivacyModalButton {...props} />;
+  return (
+    <>
+      <PrivacyModalButton {...props} />
+      <ReplyScopeButton {...props} />
+    </>
+  );
 };
 
 const visibilityOptions = {
@@ -123,7 +129,15 @@ const PrivacyModalButton: FC<PrivacyDropdownProps> = ({ disabled = false }) => {
     const option = visibilityOptions[visibility];
     return { icon: option.icon, iconComponent: option.iconComponent };
   }, [visibility]);
+  const replyScope = useAppSelector(
+    (state) => state.compose.get('limited_scope') === 'reply',
+  );
   const text = useMemo(() => {
+    if (replyScope)
+      return intl.formatMessage({
+        id: 'privacy.reply.short',
+        defaultMessage: 'Reply audience',
+      });
     const visibilityText = intl.formatMessage(
       visibilityOptions[visibility].text,
     );
@@ -143,20 +157,20 @@ const PrivacyModalButton: FC<PrivacyDropdownProps> = ({ disabled = false }) => {
     return intl.formatMessage(messages.anyone_quote, {
       visibility: visibilityText,
     });
-  }, [quotePolicy, visibility, intl]);
+  }, [quotePolicy, visibility, intl, replyScope]);
 
   const dispatch = useAppDispatch();
 
   const handleChange: VisibilityModalCallback = useCallback(
     (newVisibility, newQuotePolicy) => {
-      if (newVisibility !== visibility) {
+      if (newVisibility !== visibility || replyScope) {
         dispatch(changeComposeVisibility(newVisibility));
       }
       if (newQuotePolicy !== quotePolicy) {
         dispatch(setComposeQuotePolicy(newQuotePolicy));
       }
     },
-    [dispatch, quotePolicy, visibility],
+    [dispatch, quotePolicy, visibility, replyScope],
   );
 
   const handleOpen = useCallback(() => {

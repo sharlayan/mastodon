@@ -49,8 +49,18 @@ class Follow < ApplicationRecord
   after_destroy :decrement_cache_counters
   after_commit :invalidate_follow_recommendations_cache
   after_commit :invalidate_hash_cache
+  after_create_commit :trigger_misskey_follow_webhooks
+  after_destroy_commit :trigger_misskey_unfollow_webhooks
 
   private
+
+  def trigger_misskey_follow_webhooks
+    MisskeyCompat::WebhookTrigger.follow_created(self)
+  end
+
+  def trigger_misskey_unfollow_webhooks
+    MisskeyCompat::WebhookTrigger.follow_destroyed(self)
+  end
 
   def set_uri
     self.uri = ActivityPub::TagManager.instance.generate_uri_for(self) if uri.nil?

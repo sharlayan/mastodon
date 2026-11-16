@@ -15,6 +15,7 @@ class MisskeyCompat::ChartService
     ['federation_request_statistics', :bucket_at] => 'federation_request_statistics.bucket_at',
     ['follows', :created_at] => 'follows.created_at',
     ['media_attachments', :created_at] => 'media_attachments.created_at',
+    ['misskey_user_page_views', :bucket_at] => 'misskey_user_page_views.bucket_at',
     ['status_reactions', :created_at] => 'status_reactions.created_at',
     ['statuses', :created_at] => 'statuses.created_at',
     ['statuses', :deleted_at] => 'statuses.deleted_at',
@@ -236,6 +237,8 @@ class MisskeyCompat::ChartService
       populate_user_following(records)
     when :user_reactions
       populate_user_reactions(records)
+    when :user_pv
+      populate_user_pv(records)
     when :active_users
       populate_active_users(records)
     when :federation
@@ -378,6 +381,21 @@ class MisskeyCompat::ChartService
     base = StatusReaction.joins(:status, :account).where(statuses: { account_id: @group })
     populate_simple_events(records, base.where(accounts: { domain: nil }), 'local.count')
     populate_simple_events(records, base.where.not(accounts: { domain: nil }), 'remote.count')
+  end
+
+  def populate_user_pv(records)
+    scope = MisskeyUserPageView.where(account_id: @group, bucket_at: range)
+    bucket = Arel.sql(bucket_sql(qualified_column(scope, :bucket_at)))
+    rows = scope.group(bucket, :visitor).pluck(bucket, :visitor, Arel.sql('COUNT(DISTINCT misskey_user_page_views.viewer_key)'), Arel.sql('COALESCE(SUM(misskey_user_page_views.views), 0)'))
+
+    rows.each do |time, visitor, unique_views, views|
+      record = records[bucket_by_timestamp[time.to_time.to_i]]
+      next if record.nil?
+
+      kind = visitor ? 'visitor' : 'user'
+      record["upv.#{kind}"] = unique_views
+      record["pv.#{kind}"] = views.to_i
+    end
   end
 
   def populate_simple_events(records, scope, key)

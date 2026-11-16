@@ -179,7 +179,11 @@ class PostStatusService < BaseService
 
   def schedule_status!
     status_for_validation = @account.statuses.build(status_attributes)
-    safeguard_private_mention_quote!(status_for_validation)
+    if @options[:limited_scope].to_s == 'reply'
+      @sharlayan_pipeline.prepare_status!(status_for_validation, process_mentions_service) { safeguard_mentions!(status_for_validation) }
+    else
+      safeguard_private_mention_quote!(status_for_validation)
+    end
 
     antispam = Antispam.new(status_for_validation)
     antispam.local_preflight_check!
@@ -231,7 +235,7 @@ class PostStatusService < BaseService
   def validate_media!
     return if @options[:media_ids].blank? || !@options[:media_ids].is_a?(Enumerable)
 
-    raise Mastodon::ValidationError, I18n.t('media_attachments.validations.too_many') if @options[:media_ids].size > Status::MEDIA_ATTACHMENTS_LIMIT
+    raise Mastodon::ValidationError, I18n.t('media_attachments.validations.too_many_limited', count: media_attachments_limit) if @options[:media_ids].size > media_attachments_limit
 
     not_found_ids = @options[:media_ids].map(&:to_i) - @media.map(&:id)
     raise Mastodon::ValidationError, I18n.t('media_attachments.validations.not_found', ids: not_found_ids.join(', ')) if not_found_ids.any?
@@ -240,11 +244,15 @@ class PostStatusService < BaseService
     raise Mastodon::ValidationError, I18n.t('media_attachments.validations.not_ready') if @media.any?(&:not_processed?)
   end
 
+  def media_attachments_limit
+    @options[:scheduled_status].present? ? Status::MEDIA_ATTACHMENTS_LIMIT : Status.local_media_attachments_limit
+  end
+
   def load_media!
     @media = if @options[:media_ids].blank? || !@options[:media_ids].is_a?(Enumerable)
                []
              else
-               @account.media_attachments.where(status_id: nil).where(id: @options[:media_ids].take(Status::MEDIA_ATTACHMENTS_LIMIT).map(&:to_i))
+               @account.media_attachments.where(status_id: nil).where(id: @options[:media_ids].take(media_attachments_limit).map(&:to_i))
              end
   end
 

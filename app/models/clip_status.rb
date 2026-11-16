@@ -21,8 +21,13 @@ class ClipStatus < ApplicationRecord
   validate :validate_clip_statuses_limit, on: :create
 
   after_destroy :invalidate_cleanup_info
+  after_commit :broadcast_clip_update, on: [:create, :destroy]
 
   private
+
+  def broadcast_clip_update
+    clip&.broadcast_update
+  end
 
   def validate_clip_statuses_limit
     return if clip.nil?

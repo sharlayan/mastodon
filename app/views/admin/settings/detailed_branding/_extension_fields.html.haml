@@ -21,12 +21,21 @@
             sharlayan_only: true
 
 .fields-group
+  = f.input :local_media_attachments_limit,
+            as: :integer,
+            wrapper: :with_label,
+            label: t('admin.settings.content_limits.local_media_attachments_limit'),
+            hint: t('admin.settings.content_limits.local_media_attachments_limit_hint'),
+            input_html: { min: Sharlayan::Status::MediaLimits::LOCAL_MEDIA_ATTACHMENTS_LIMIT_RANGE.min, max: Sharlayan::Status::MediaLimits::MAX_MEDIA_ATTACHMENTS_LIMIT },
+            sharlayan_only: true
+
+.fields-group
   = f.input :remote_media_attachments_limit,
             as: :integer,
             wrapper: :with_label,
             label: t('admin.settings.content_limits.remote_media_attachments_limit'),
             hint: t('admin.settings.content_limits.remote_media_attachments_limit_hint'),
-            input_html: { min: Status::MEDIA_ATTACHMENTS_LIMIT, max: 16 },
+            input_html: { min: Sharlayan::Status::MediaLimits::MIN_REMOTE_MEDIA_ATTACHMENTS_LIMIT, max: Sharlayan::Status::MediaLimits::MAX_MEDIA_ATTACHMENTS_LIMIT },
             sharlayan_only: true
 
 %h2= t('admin.settings.rate_limit_bypass.title')
@@ -157,6 +166,14 @@
             label: t('admin.settings.federation_instance_edges.enabled'),
             hint: roleplay_mode? ? t('admin.settings.federation_instance_edges.roleplay_hint') : t('admin.settings.federation_instance_edges.enabled_hint'),
             disabled: roleplay_mode?,
+            sharlayan_only: true
+
+.fields-group
+  = f.input :link_preview_direct_hosts,
+            as: :text,
+            label: t('admin.settings.link_preview_direct_hosts.title'),
+            hint: t('admin.settings.link_preview_direct_hosts.hint'),
+            input_html: { rows: 4, autocomplete: 'off', placeholder: "youtube.com\ngoogle.com" },
             sharlayan_only: true
 
 .fields-group

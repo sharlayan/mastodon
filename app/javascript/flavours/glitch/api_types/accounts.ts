@@ -87,6 +87,7 @@ export interface BaseApiAccountJSON {
   hide_collections: boolean;
   email_subscriptions?: boolean;
   followed_message?: string | null;
+  birthday?: string | null;
   avatar_decorations?: ApiAvatarDecorationJSON[];
   mfm?: boolean;
   server_features?: ApiServerFeaturesJSON;

@@ -27,7 +27,7 @@ class Api::V1::StatusDraftsController < Api::BaseController
   end
 
   def update
-    @draft.data = draft_data
+    @draft.data = draft_data(previous: @draft.data)
     save_with_media!(@draft)
     render json: @draft, serializer: REST::StatusDraftSerializer
   end
@@ -63,19 +63,57 @@ class Api::V1::StatusDraftsController < Api::BaseController
     render json: { error: I18n.t('status_drafts.data_too_large', limit: StatusDraft::MAX_DATA_BYTES / 1.kilobyte) }, status: 422
   end
 
-  def draft_data
-    params.permit(
+  def draft_data(previous: nil)
+    data = params.permit(
       :status, :spoiler_text, :content_type, :local_only, :in_reply_to_id,
-      :sensitive, :visibility, :circle_id, :language, :quoted_status_id,
+      :sensitive, :visibility, :circle_id, :limited_scope, :language, :quoted_status_id,
       :quote_approval_policy, :scheduled_at,
       :reaction_acceptance,
+      limited_reply_account_ids: [],
       clip_ids: [],
       poll: [:expires_in, :multiple, :hide_totals, { options: [] }]
     ).to_h
+    restore_reply_scope!(data, previous) if previous&.fetch('limited_scope', nil) == 'reply'
+    prepare_reply_data!(data, previous) if data[:limited_scope].present?
+    data
+  end
+
+  def restore_reply_scope!(data, previous)
+    return if data.key?(:limited_scope)
+    return if data.key?(:visibility) && %w(private limited).exclude?(data[:visibility].to_s)
+
+    data[:limited_scope] = 'reply'
+    data[:in_reply_to_id] ||= previous['in_reply_to_id']
+    data[:visibility] ||= previous['visibility']
+  end
+
+  def prepare_reply_data!(data, previous)
+    thread = Status.find_by(id: data[:in_reply_to_id])
+    same_thread = previous.present? && previous['in_reply_to_id'].present? && previous['in_reply_to_id'].to_s == data[:in_reply_to_id].to_s
+    return narrow_unavailable_reply!(data) if same_thread && (thread.nil? || !StatusPolicy.new(current_account, thread).reply?)
+
+    if previous&.fetch('limited_scope', nil) == 'reply' && same_thread
+      previous_ids = previous['limited_reply_account_ids']
+      data[:limited_reply_account_ids] = data[:limited_reply_account_ids] ? data[:limited_reply_account_ids] & previous_ids : previous_ids if previous_ids
+      data[:local_only] = true if ActiveModel::Type::Boolean.new.cast(previous['local_only'])
+    end
+
+    Sharlayan::LimitedReplyScope.prepare!(
+      account: current_account,
+      options: data,
+      thread:,
+      visibility: data[:visibility],
+      quoted_status: data[:quoted_status_id]
+    )
+  end
+
+  def narrow_unavailable_reply!(data)
+    data.except!(:limited_scope, :limited_reply_account_ids, :in_reply_to_id)
+    data[:visibility] = 'direct'
   end
 
   def save_with_media!(draft)
-    media_ids = Array(params[:media_ids]).first(Status::MEDIA_ATTACHMENTS_LIMIT).map(&:to_i)
+    media_ids = Array(params[:media_ids]).first(Status.local_media_attachments_limit).map(&:to_i)
 
     current_account.with_lock do
       draft.save!

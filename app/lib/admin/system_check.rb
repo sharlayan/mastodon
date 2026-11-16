@@ -8,6 +8,7 @@ class Admin::SystemCheck
     Admin::SystemCheck::SidekiqProcessCheck,
     Admin::SystemCheck::RulesCheck,
     Admin::SystemCheck::ElasticsearchCheck,
+    Admin::SystemCheck::VoiceRelayCheck,
   ].freeze
 
   def self.perform(current_user)

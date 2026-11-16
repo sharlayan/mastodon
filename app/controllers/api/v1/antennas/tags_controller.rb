@@ -14,7 +14,7 @@ class Api::V1::Antennas::TagsController < Api::BaseController
   end
 
   def create
-    ApplicationRecord.transaction do
+    @antenna.with_lock do
       validate_limit!
 
       tags_from_names.each do |tag|

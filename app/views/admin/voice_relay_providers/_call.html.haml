@@ -1,0 +1,27 @@
+%tr
+  %td
+    - conversation = call.chat_conversation
+    - if conversation.nil?
+      = t('admin.voice_relay_providers.call_room_deleted')
+    - else
+      - label = t("admin.voice_relay_providers.call_room_#{conversation.conversation_type}", id: conversation.id)
+      - if policy(conversation).show?
+        = link_to label, admin_chat_conversation_path(conversation)
+      - else
+        = label
+  %td
+    = t('admin.voice_relay_providers.call_participant_count', participants: call.participants.size, slots: call.slots)
+  %td
+    %samp= call.voice_relay_provider.origin
+  %td
+    = t("admin.voice_relay_providers.call_state.#{call.state}")
+    - if call.unavailable?
+      %br/
+      %small.warning-hint= t('admin.voice_relay_providers.call_unavailable')
+    %br/
+    %small
+      = t('admin.voice_relay_providers.call_updated_at')
+      \:
+      = l(call.updated_at)
+  %td
+    = table_link_to 'call_end', t('admin.voice_relay_providers.end_call'), admin_voice_call_path(call), method: :delete, data: { confirm: t('admin.voice_relay_providers.end_call_confirm') }

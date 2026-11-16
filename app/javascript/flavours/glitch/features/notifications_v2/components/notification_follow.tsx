@@ -5,9 +5,8 @@ import { FormattedMessage } from 'react-intl';
 import { Link } from 'react-router-dom';
 
 import PersonAddIcon from '@/material-icons/400-24px/person_add-fill.svg?react';
-import { FollowersCounter } from 'flavours/glitch/components/counters';
+import { AccountFollowersCount } from 'flavours/glitch/components/account_followers_count';
 import { FollowButton } from 'flavours/glitch/components/follow_button';
-import { ShortNumber } from 'flavours/glitch/components/short_number';
 import { me } from 'flavours/glitch/initial_state';
 import type { NotificationGroupFollow } from 'flavours/glitch/models/notification_group';
 import { useAppSelector } from 'flavours/glitch/store';
@@ -44,9 +43,7 @@ const FollowerCount: React.FC<{ accountId: string }> = ({ accountId }) => {
 
   if (!account) return null;
 
-  return (
-    <ShortNumber value={account.followers_count} renderer={FollowersCounter} />
-  );
+  return <AccountFollowersCount value={account.followers_count} withLabel />;
 };
 
 export const NotificationFollow: React.FC<{

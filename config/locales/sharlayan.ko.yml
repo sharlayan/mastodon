@@ -58,6 +58,13 @@ ko:
           attributes:
             drive_quota:
               own_role: 당신의 현재 역할에서는 변경할 수 없습니다
+        voice_relay_provider:
+          attributes:
+            origin:
+              own_origin: "이 서버 자신의 주소는 사용할 수 없습니다"
+              unfinished_calls: "이 릴레이의 통화가 아직 열려 있어 변경할 수 없습니다"
+          provider_limit: "음성 릴레이는 최대 %{count}개까지 등록할 수 있습니다"
+          unfinished_calls: "이 릴레이에 아직 열린 통화가 있습니다. 사용을 중지하고 통화가 끝난 뒤 삭제하세요."
   admin:
     accounts:
       block_avatar_decorations: 장식 표시 끄기
@@ -73,15 +80,24 @@ ko:
         create_avatar_decoration_html: "%{name} 님이 아바타 장식 %{target}을(를) 만들었습니다"
         create_avatar_decoration_domain_block_html: "%{name} 님이 %{target}의 아바타 장식을 차단했습니다"
         create_board_announcement_html: "%{name} 님이 게시판형 공지사항 %{target}을(를) 만들었습니다"
+        create_misskey_ad_html: "%{name} 님이 Misskey 광고 %{target}을(를) 만들었습니다"
         destroy_avatar_decoration_domain_block_html: "%{name} 님이 %{target}의 아바타 장식 차단을 해제했습니다"
         destroy_avatar_decoration_html: "%{name} 님이 아바타 장식 %{target}을(를) 삭제했습니다"
         destroy_board_announcement_html: "%{name} 님이 게시판형 공지사항 %{target}을(를) 삭제했습니다"
         destroy_drive_file_html: "%{name} 님이 드라이브 파일 %{target}을(를) 삭제했습니다"
+        destroy_misskey_ad_html: "%{name} 님이 Misskey 광고 %{target}을(를) 삭제했습니다"
         update_account_html: "%{name} 님이 계정 %{target}을(를) 수정했습니다"
         update_avatar_decoration_html: "%{name} 님이 아바타 장식 %{target}을(를) 수정했습니다"
         update_board_announcement_html: "%{name} 님이 게시판형 공지사항 %{target}을(를) 수정했습니다"
+        update_misskey_ad_html: "%{name} 님이 Misskey 광고 %{target}을(를) 수정했습니다"
         destroy_chat_conversation_html: "%{name} 님이 채팅 대화 %{target}을(를) 삭제했습니다"
         update_collection_html: "%{name} 님이 %{target}의 컬렉션을 수정했습니다"
+        create_voice_relay_provider_html: "%{name} 님이 음성 릴레이 %{target}을(를) 추가했습니다"
+        destroy_voice_relay_provider_html: "%{name} 님이 음성 릴레이 %{target}을(를) 삭제했습니다"
+        disable_voice_relay_provider_html: "%{name} 님이 음성 릴레이 %{target}의 사용을 중지했습니다"
+        enable_voice_relay_provider_html: "%{name} 님이 음성 릴레이 %{target}을(를) 사용하도록 설정했습니다"
+        update_voice_relay_provider_html: "%{name} 님이 음성 릴레이 %{target}을(를) 수정했습니다"
+        end_voice_call_allocation_html: "%{name} 님이 음성 통화 %{target}을(를) 종료했습니다"
     avatar_decoration_domain_blocks:
       added_at: 추가됨
       block: 도메인 차단
@@ -134,6 +150,8 @@ ko:
       update_category: 카테고리 업데이트
       updated_msg: 아바타 장식이 성공적으로 업데이트되었습니다
     board_announcements:
+      auto_archive_at: 자동 보관 시각
+      auto_archive_at_hint: 시간대를 포함한 날짜와 시각을 입력하세요. 비워 두면 자동으로 보관하지 않습니다. 기한이 지난 공지를 다시 게시하려면 게시 버튼을 사용하세요.
       attachments: 미디어 첨부
       attachments_hint: 미디어를 업로드한 뒤 항목을 클릭하면 마크다운이 클립보드에 복사되어 본문에 붙여넣을 수 있습니다.
       author: '작성자: %{name}'
@@ -291,15 +309,21 @@ ko:
       extra_categories:
         api: API
         moderation: 관리
+        voice_calls: 음성 통화
       extra_privileges:
         bypass_rate_limit: API 제한 우회
         bypass_rate_limit_description: 서버 설정에서 API 제한 우회가 활성화된 경우, 이 권한을 가진 사용자는 API
           요청 제한을 받지 않습니다
         view_admin_timeline: 관리 타임라인 열람
         view_admin_timeline_description: 자캐 커뮤니티 모드에서 로컬 사용자간 채팅과 관리 타임라인 콘텐츠를 열람할 수 있습니다
+        join_voice_calls: 음성 통화 참가
+        join_voice_calls_description: 사용자가 속한 채팅방의 음성 통화에 참가할 수 있습니다
+        share_screens: 음성 통화 화면 공유
+        share_screens_description: 음성 통화 중 화면을 공유할 수 있습니다. 서버 설정에서 화면 공유도 켜져 있어야 합니다
       privileges:
         invite_bypass_approval_description: 이 사용자들이 초대한 사람들이 관리자 승인을 거치지 않도록 허용합니다
     settings:
+      registration_rejection_patterns_invalid: "올바른 정규식을 사용하고, 빈 줄을 제외하여 %{max_patterns}줄 및 전체 %{max_length}자 이내로 입력하세요."
       user_themes:
         catalog: 서버 테마 카탈로그 JSON
         catalog_example: '밝음/어두움 테마 간단 예시:'
@@ -403,6 +427,16 @@ ko:
         soft_delete_enabled_hint: 다른 참가자에게서 메시지를 삭제하지 않습니다. 삭제 요청은 발신자에게서만 숨기고 참가자와 권한 있는 관리자의 열람을 위해 보존합니다.
         soft_delete_roleplay_hint: 자캐 커뮤니티 모드에서는 권한 있는 Owner가 로컬 채팅을 감사할 수 있도록 항상 활성화됩니다.
         title: 채팅
+        voice_call_enabled: "채팅방 음성 통화 사용"
+        voice_call_enabled_hint: "방 멤버가 음성 통화 릴레이에 등록한 릴레이를 통해 음성 통화와 화면 공유를 할 수 있습니다. 네이티브 채팅과 승인된 릴레이가 필요합니다."
+        voice_call_federation_host_enabled: "다른 서버 멤버에게 통화 제공"
+        voice_call_federation_host_enabled_hint: "이 서버가 소유한 방의 통화에 다른 서버의 멤버도 참가할 수 있게 합니다. 이 서버의 음성 릴레이 슬롯을 쓰며, 릴레이에 그 참가자의 IP 주소가 보입니다. Chat 연합이 켜져 있어야 합니다."
+        voice_call_max_participants: "통화당 최대 참가자 수"
+        voice_call_max_participants_hint: "2~100명입니다. 릴레이는 통화마다 이 수만큼 슬롯을 예약하므로, 값이 작을수록 더 많은 방이 동시에 통화할 수 있습니다. 1:1 방은 항상 2개를 예약합니다."
+        voice_call_remote_join_enabled: "다른 서버가 연 통화 참가 허용"
+        voice_call_remote_join_enabled_hint: "로컬 계정이 다른 서버가 소유한 방의 통화에 참가할 수 있게 합니다. 방을 소유한 서버의 통화 서버에 참가자의 IP 주소가 보입니다. Chat 연합이 켜져 있어야 합니다."
+        voice_call_screen_share_enabled: "음성 통화 화면 공유 허용"
+        voice_call_screen_share_enabled_hint: "릴레이에서도 이 서버의 화면 공유를 허용해야 합니다."
       community_mode:
         soft_hide_deletion: 삭제된 게시물을 소유자에게만 보존
         soft_hide_deletion_hint: 게시물을 삭제할 때 실제로 파기하지 않고 숨깁니다. 숨겨진 게시물과 첨부 미디어는 모든 피드와
@@ -449,6 +483,10 @@ ko:
         enabled_hint: 활성화하면 다른 서버의 게시물에 서버 정보 바(이름, 테마 색상, 파비콘)가 표시되고 연합 인스턴스의 메타데이터를
           수집합니다. 비활성화하면 정보 바가 숨겨지고 인스턴스 메타데이터를 가져오지 않습니다.
         title: 서버 정보 바
+      link_preview_direct_hosts:
+        hint: 바깥 요청용 HTTP 프록시를 설정한 경우, 이 호스트와 하위 도메인의 링크 미리보기(카드·oEmbed)만 프록시를 거치지 않고 직접 연결합니다. 목록에 없는 링크와, 목록에 없는 호스트로 리다이렉트되는 요청은 프록시로 보냅니다. 한 줄에 도메인 하나씩 입력하세요. 직접 연결한 사이트는 서버의 실제 IP를 알 수 있으므로 신뢰하는 사이트만 넣으세요. IP 주소는 입력할 수 없습니다.
+        invalid: '올바른 도메인이 아닌 항목이 있습니다: %{hosts}'
+        title: 링크 미리보기 직접 연결 호스트
       misskey_compat:
         enabled: Misskey 호환 API 레이어 활성화
         enabled_hint: 활성화하면 이 서버가 Misskey API의 일부도 응답하여 Aria for misskey 및 Flare와
@@ -483,11 +521,13 @@ ko:
           비활성화하면 모든 사용자에게 제한이 적용됩니다.
         title: API 제한 우회
       content_limits:
+        local_media_attachments_limit: 로컬 게시물 미디어 첨부 수
+        local_media_attachments_limit_hint: 로컬 게시물 하나에 첨부할 수 있는 최대 미디어 수입니다. 1~16 사이로 설정해야 하며, 새 게시물과 편집부터 적용되고 기존 게시물의 첨부는 그대로 둡니다.
         profile_fields_limit: 프로필 메타 정보 항목 수
         profile_fields_limit_hint: 로컬 프로필에 허용할 최대 메타 정보 항목 수입니다. 변경 사항은 즉시 적용되며, 한도를 낮춰도 기존 초과 항목은 프로필을 편집하기 전까지 표시됩니다.
         remote_media_attachments_limit: 원격 게시물 미디어 첨부 수
         remote_media_attachments_limit_hint: 원격 게시물 하나에서 수신하고 표시할 최대 미디어 첨부 수입니다. 4~16 사이로 설정해야 하며, 한도를 낮춰도 이미 저장된 초과 첨부는 삭제하지 않습니다.
-        title: 프로필 및 원격 콘텐츠 제한
+        title: 프로필 및 게시물 콘텐츠 제한
       status_character_limit:
         hint: 내용 경고를 포함한 로컬 게시물의 최대 글자 수입니다. 변경 사항은 즉시 적용됩니다.
         label: 글자 수 제한
@@ -509,6 +549,63 @@ ko:
       no_username_block_selected: 아무 것도 선택 되지 않아 어떤 사용자명 규칙도 변경 되지 않았습니다
       not_permitted: 허용하지 않음
       updated_msg: 사용자명 규칙을 변경했습니다
+    system_checks:
+      voice_relay_revoked_check:
+        action: "음성 릴레이 관리"
+        message_html: "음성 릴레이 %{value}이(가) 더 이상 이 서버를 받아들이지 않습니다. 릴레이 운영자가 접근을 복구하거나 시크릿을 갱신할 때까지 그 릴레이에서는 통화를 시작할 수 없습니다."
+      voice_relay_unavailable_check:
+        action: "음성 릴레이 관리"
+        message_html: "음성 통화가 켜져 있지만 승인된 음성 릴레이가 없습니다."
+    voice_relay_providers:
+      add_new: "릴레이 추가"
+      approved: "승인됨"
+      call_end_failed_msg: "통화를 종료하지 못했습니다 (%{code})."
+      call_ended_msg: "통화를 종료했습니다."
+      call_participant_count: "%{participants} / %{slots}"
+      call_participants: "참가자"
+      call_relay: "릴레이"
+      call_room: "방"
+      call_room_deleted: "삭제된 방"
+      call_room_direct: "1:1 채팅 #%{id}"
+      call_room_group: "그룹 #%{id}"
+      call_state:
+        active: "진행 중"
+        ending: "종료 중"
+        pending: "시작 중"
+      call_unavailable: "마지막 확인 때 릴레이에 연결하지 못했습니다"
+      call_updated_at: "마지막 갱신"
+      calls_hint: "릴레이에 자리를 예약하고 있는 통화입니다. 통화를 종료하면 참가자 모두의 연결이 끊기며, 멤버는 새 통화를 시작할 수 있습니다."
+      calls_title: "진행 중인 통화"
+      capacity: "수용량"
+      check: "연결·승인 확인"
+      check_disabled_msg: "릴레이가 응답했지만 이 서버는 릴레이에서 비활성화되어 있습니다."
+      check_failed_msg: "연결 확인에 실패했습니다 (%{code})."
+      check_succeeded_msg: "릴레이가 이 서버를 승인했습니다."
+      created_msg: "음성 릴레이를 추가했습니다. 연결·승인 확인으로 승인 여부를 확인하세요."
+      delete: "삭제"
+      description_html: "채팅방의 음성 통화와 화면 공유는 외부 <a href=\"https://github.com/chalkpe/fediverse-voice-relay\" target=\"_blank\" rel=\"noopener\">음성 릴레이</a>에서 동작합니다. 릴레이 운영자에게 이 서버의 등록을 요청한 뒤, 릴레이 주소와 발급받은 시크릿을 여기에 입력하세요. 이 서버의 origin은 <code>%{origin}</code>입니다."
+      destroyed_msg: "음성 릴레이를 삭제했습니다."
+      disable: "사용 중지"
+      disabled: "사용 중지됨"
+      edit: "릴레이 수정"
+      enable: "사용"
+      end_call: "통화 종료"
+      end_call_confirm: "이 통화의 참가자 모두의 연결을 끊을까요?"
+      last_checked: "마지막 확인"
+      last_error: "마지막 오류: %{code}"
+      never_checked: "아직 확인하지 않음"
+      no_calls: "진행 중인 통화가 없습니다."
+      not_approved: "승인되지 않음"
+      origin: "릴레이 주소"
+      origin_unavailable: "음성 릴레이에 연결하려면 이 서버가 HTTPS를 사용해야 합니다."
+      revoked: "승인 철회됨"
+      revoked_hint: "릴레이가 %{time}에 이 서버를 거부했습니다. 릴레이 운영자에게 문의하거나 시크릿을 갱신한 뒤 다시 확인하세요."
+      screen_share_allowed: "화면 공유 허용"
+      screen_share_not_allowed: "화면 공유 허용 안 됨"
+      slots: "슬롯 %{max}개 중 %{reserved}개 예약됨, 방 %{rooms}개 추가 가능"
+      status: "상태"
+      title: "음성 통화 릴레이"
+      updated_msg: "음성 릴레이를 수정했습니다."
   antennas:
     errors:
       limit: 안테나 최대 개수를 초과합니다
@@ -523,6 +620,7 @@ ko:
     customized: 서버 전용 - 에모지
     misskey_flavour: 서버 전용 - 미스키 풍미
   auth:
+    registration_rejected: "이 이메일 주소 또는 사용자명으로는 가입할 수 없습니다."
     disable_custom_css: 커스텀 CSS 비활성화
     progress:
       list: 가입 진행 상황
@@ -576,7 +674,20 @@ ko:
       clips: 클립 가져오는 중
     types:
       clips: 클립
+  media_attachments:
+    validations:
+      too_many_limited: 최대 %{count}개까지 첨부할 수 있습니다
   misskey_compat:
+    authorization:
+      access_request_html: "%{app} 님이 회원님의 계정 %{account}에 접근하려고 합니다."
+      access_request_unnamed_html: 애플리케이션이 회원님의 계정 %{account}에 접근하려고 합니다.
+      approve: 승인
+      done_automatic: 인증이 완료되었습니다. 자동으로 앱으로 돌아갑니다.
+      done_fallback: 앱으로 돌아가지 않으면 아래 버튼을 눌러 주세요.
+      done_manual: 인증이 완료되었습니다. 앱으로 돌아가 주세요.
+      done_title: 승인 완료
+      permission_notice: 승인하면 이 애플리케이션이 회원님을 대신해 글 작성, 리액션, 알림 확인 등을 할 수 있습니다.
+      return_to_app: 앱으로 돌아가기
     scratchpad:
       code_label: AiScript 코드
       description: Misskey 호환 앱에 표시된 코드를 아래에 붙여넣고 실행하면 푸시 알림이 등록됩니다. 완료되면 결과를 복사해
@@ -672,11 +783,16 @@ ko:
           (Fediverse Enhancement Proposals)를 수용하지 않는 Mastodon 이외의 소프트웨어에서는 인용될 수
           있습니다.<br>%{instance} 서버의 기본값은 '나만'입니다."
       form_admin_settings:
+        registration_reject_email_pattern: "한 줄에 하나씩 대소문자를 구분하는 부분 문자열을 입력하세요. 줄을 ?로 시작하면 정규식으로 처리합니다(대소문자를 무시하려면 (?i) 사용). 빈 줄은 무시합니다. 초대를 포함한 신규 가입에 적용하며 기존 계정에는 영향을 주지 않습니다."
+        registration_reject_username_pattern: "한 줄에 하나씩 대소문자를 구분하는 부분 문자열을 입력하세요. 줄을 ?로 시작하면 정규식으로 처리합니다(대소문자를 무시하려면 (?i) 사용). 빈 줄은 무시합니다. 초대를 포함한 신규 가입에 적용하며 기존 계정에는 영향을 주지 않습니다."
         theme_color: 브라우저의 주소 표시줄과 앱 UI에 사용되는 강조 색상.
       user_role:
         drive_quota: 이 역할을 가진 사용자별 드라이브 라이브러리의 최대 용량을 MB 단위로 지정합니다. 비워 두면 서버 기본값을
           사용하고, 0이면 무제한입니다.
         extra_permissions_as_keys: 이 역할에 부여되는 커스토돈 전용 추가 권한입니다
+      voice_relay_provider:
+        origin: "릴레이의 공개 HTTPS 주소입니다. 예: https://voice.example.org"
+        secret: "릴레이 운영자가 이 서버에 발급한 시크릿입니다. 32자 이상이어야 합니다. 비워 두면 기존 시크릿을 유지합니다."
     labels:
       defaults:
         custom_css_text: 커스텀 CSS
@@ -727,12 +843,22 @@ ko:
           이외의 소프트웨어가 FEP-044f 제안을 수용하지 않으면 인용될 수 있음을 이해해 주시기 바랍니다.<br>%{instance}
           서버의 경우 기본값이 '나만' 으로 지정되어 있습니다."
       form_admin_settings:
+        registration_reject_email_pattern: "가입을 차단할 이메일 패턴"
+        registration_reject_username_pattern: "가입을 차단할 사용자명 패턴"
         local_account_statuses_access: 로컬 계정에 대한 게시물 접근
         local_status_page_access: 개별 게시물 페이지 접근
         theme_color: 테마 색상
       user_role:
         drive_quota: 사용자당 드라이브 용량 (MB)
         extra_permissions_as_keys: 추가 권한
+      voice_relay_provider:
+        origin: "릴레이 주소"
+        secret: "시크릿"
+  statuses:
+    errors:
+      invalid_reply_scope: "답글 대상 공개 범위는 제한 공개 글에만 사용할 수 있으며 서클이나 다른 공개 범위와 함께 선택할 수 없습니다."
+      reply_scope_quote: "제한된 대상에게 보내는 답글에는 인용을 첨부할 수 없습니다."
+      reply_scope_recipients: "원글을 받지 않은 사람은 이 답글에 멘션할 수 없습니다."
   statuses_cleanup:
     ignore_reactions: 반응 무시
     interaction_exceptions_explanation: 즐겨찾기 또는 부스트 기준을 일시적으로 초과한 게시물은 나중에 기준 이하로

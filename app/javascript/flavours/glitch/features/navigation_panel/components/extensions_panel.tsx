@@ -1,6 +1,9 @@
+import { useCallback } from 'react';
+
 import { useIntl, defineMessages } from 'react-intl';
 
 import CalendarTodayIcon from '@/material-icons/400-24px/calendar_today.svg?react';
+import CloudIcon from '@/material-icons/400-24px/cloud.svg?react';
 import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
 import ExtensionIcon from '@/material-icons/400-24px/extension.svg?react';
 import PeopleIcon from '@/material-icons/400-24px/group.svg?react';
@@ -8,10 +11,12 @@ import MoodIcon from '@/material-icons/400-24px/mood.svg?react';
 import NoteStackAddIcon from '@/material-icons/400-24px/note_stack_add.svg?react';
 import DraftIcon from '@/material-icons/400-24px/save.svg?react';
 import VisibilityOffIcon from '@/material-icons/400-24px/visibility_off.svg?react';
+import { openModal } from 'flavours/glitch/actions/modal';
 import { ColumnLink } from 'flavours/glitch/features/ui/components/column_link';
 import {
   circlesEnabled,
   clipsEnabled,
+  driveEnabled,
   pagesEnabled,
 } from 'flavours/glitch/initial_state';
 import { SharlayanCollapsiblePanel } from 'flavours/glitch/sharlayan/registry/navigation/collapsible_panel';
@@ -19,7 +24,7 @@ import {
   adminTimelineOwnerViewer,
   softHideDeletion,
 } from 'flavours/glitch/sharlayan/roleplay';
-import { useAppSelector } from 'flavours/glitch/store';
+import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
 const messages = defineMessages({
   extensions: {
@@ -43,11 +48,20 @@ const messages = defineMessages({
   circles: { id: 'navigation_bar.circles', defaultMessage: 'Circles' },
   reactions: { id: 'navigation_bar.reactions', defaultMessage: 'Reactions' },
   pages: { id: 'navigation_bar.pages', defaultMessage: 'Pages' },
+  drive: { id: 'navigation_bar.drive', defaultMessage: 'Drive' },
   rpHidden: { id: 'navigation_bar.rp_hidden', defaultMessage: 'Deleted posts' },
 });
 
 export const ExtensionsPanel: React.FC = () => {
   const intl = useIntl();
+  const dispatch = useAppDispatch();
+  const handleOpenDrive = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      dispatch(openModal({ modalType: 'DRIVE_MANAGER', modalProps: {} }));
+    },
+    [dispatch],
+  );
   const useMyArchive = useAppSelector(
     (state) => state.local_settings.get('use_my_archive', false) as boolean,
   );
@@ -124,6 +138,19 @@ export const ExtensionsPanel: React.FC = () => {
         icon='description'
         iconComponent={DescriptionIcon}
         text={intl.formatMessage(messages.pages)}
+      />,
+    );
+  }
+
+  if (driveEnabled) {
+    children.push(
+      <ColumnLink
+        key='drive'
+        transparent
+        icon='cloud'
+        iconComponent={CloudIcon}
+        text={intl.formatMessage(messages.drive)}
+        onClick={handleOpenDrive}
       />,
     );
   }

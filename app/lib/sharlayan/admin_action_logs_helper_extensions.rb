@@ -5,7 +5,7 @@ module Sharlayan::AdminActionLogsHelperExtensions
     case log.target_type
     when 'ChatConversation'
       log.human_identifier
-    when 'AvatarDecorationDomainBlock', 'DriveFile'
+    when 'AvatarDecorationDomainBlock', 'DriveFile', 'VoiceRelayProvider', 'VoiceCallAllocation'
       sharlayan_log_label(log)
     when 'AvatarDecoration'
       log.target.present? ? link_to(sharlayan_log_label(log), edit_admin_avatar_decoration_path(log.target_id)) : sharlayan_log_label(log)

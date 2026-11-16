@@ -1,0 +1,386 @@
+// @ts-check
+
+import WebSocketClient from '@gamestdio/websocket';
+
+import { getAccessToken } from './initial_state';
+
+/**
+ * @type {WebSocketClient | undefined}
+ */
+let sharedConnection;
+
+/**
+ * @typedef Subscription
+ * @property {string} channelName
+ * @property {Object.<string, string>} params
+ * @property {() => void} onConnect
+ * @property {(event: StreamEvent) => void} onReceive
+ * @property {() => void} onDisconnect
+ * @property {() => void} [onSubscribed]
+ */
+
+/**
+ * @typedef StreamEvent
+ * @property {string} event
+ * @property {object} payload
+ */
+
+/**
+ * @type {Array.<Subscription>}
+ */
+const subscriptions = [];
+
+/**
+ * @type {Object.<string, number>}
+ */
+const subscriptionCounters = {};
+
+/**
+ * @param {Subscription} subscription
+ */
+const addSubscription = subscription => {
+  subscriptions.push(subscription);
+};
+
+/**
+ * @param {Subscription} subscription
+ */
+const removeSubscription = subscription => {
+  const index = subscriptions.indexOf(subscription);
+
+  if (index !== -1) {
+    subscriptions.splice(index, 1);
+  }
+};
+
+const MAX_SUBSCRIPTION_RETRIES = 5;
+const SUBSCRIPTION_RETRY_DELAY = 2000;
+const MAX_RECONNECT_DELAY = 30000;
+
+/**
+ * @type {Object.<string, number>}
+ */
+const subscriptionRetries = {};
+
+/**
+ * @param {Subscription} subscription
+ */
+const sendSubscribe = ({ channelName, params, onSubscribed }) => {
+  // @ts-expect-error
+  sharedConnection.send(JSON.stringify({ type: 'subscribe', stream: channelName, ...params, ...(onSubscribed ? { ack: true } : {}) }));
+};
+
+/**
+ * @param {Subscription} subscription
+ */
+const subscribe = subscription => {
+  const { channelName, params, onConnect } = subscription;
+  const key = channelNameWithInlineParams(channelName, params);
+
+  subscriptionCounters[key] = subscriptionCounters[key] || 0;
+
+  if (subscriptionCounters[key] === 0) {
+    sendSubscribe(subscription);
+  }
+
+  subscriptionCounters[key] += 1;
+  onConnect();
+};
+
+/**
+ * @param {Subscription} subscription
+ */
+const retrySubscription = subscription => {
+  const key = channelNameWithInlineParams(subscription.channelName, subscription.params);
+  const attempt = (subscriptionRetries[key] ?? 0) + 1;
+
+  if (attempt > MAX_SUBSCRIPTION_RETRIES) {
+    return;
+  }
+
+  subscriptionRetries[key] = attempt;
+
+  setTimeout(() => {
+    if (subscriptions.indexOf(subscription) === -1 || sharedConnection?.readyState !== WebSocketClient.OPEN) {
+      return;
+    }
+
+    sendSubscribe(subscription);
+  }, SUBSCRIPTION_RETRY_DELAY * (2 ** (attempt - 1)));
+};
+
+/**
+ * @param {Subscription} subscription
+ */
+const unsubscribe = ({ channelName, params, onDisconnect }) => {
+  const key = channelNameWithInlineParams(channelName, params);
+
+  subscriptionCounters[key] = subscriptionCounters[key] || 1;
+
+  // @ts-expect-error
+  if (subscriptionCounters[key] === 1 && sharedConnection.readyState === WebSocketClient.OPEN) {
+    // @ts-expect-error
+    sharedConnection.send(JSON.stringify({ type: 'unsubscribe', stream: channelName, ...params }));
+  }
+
+  subscriptionCounters[key] -= 1;
+  onDisconnect();
+};
+
+/**
+ * @param {Array.<string>} stream
+ * @returns {Array.<Subscription>}
+ */
+const subscriptionsForStream = stream => subscriptions.filter(({ channelName, params }) => {
+  const streamChannelName = stream[0];
+
+  if (stream.length === 1) {
+    return channelName === streamChannelName;
+  }
+
+  const streamIdentifier = stream[1];
+
+  if (['hashtag', 'hashtag:local'].includes(channelName)) {
+    return channelName === streamChannelName && params.tag === streamIdentifier;
+  } else if (channelName === 'list') {
+    return channelName === streamChannelName && params.list === streamIdentifier;
+  } else if (channelName === 'antenna') {
+    return channelName === streamChannelName && params.antenna === streamIdentifier;
+  }
+
+  return false;
+});
+
+const sharedCallbacks = {
+  connected() {
+    Object.keys(subscriptionRetries).forEach(key => {
+      delete subscriptionRetries[key];
+    });
+
+    subscriptions.forEach(subscription => subscribe(subscription));
+  },
+
+  // @ts-expect-error
+  received(data) {
+    const { stream } = data;
+
+    if (data.error) {
+      console.error(`Streaming subscription failed${Array.isArray(stream) ? ` for ${stream.join(':')}` : ''}:`, data.error);
+
+      if (Array.isArray(stream)) {
+        subscriptionsForStream(stream).forEach(subscription => retrySubscription(subscription));
+      }
+
+      return;
+    }
+
+    if (!Array.isArray(stream)) {
+      return;
+    }
+
+    if (data.event === 'subscribed') {
+      subscriptionsForStream(stream).forEach(subscription => {
+        subscription.onSubscribed?.();
+      });
+      return;
+    }
+
+    subscriptionsForStream(stream).forEach(subscription => {
+      subscription.onReceive(data);
+    });
+  },
+
+  disconnected() {
+    subscriptions.forEach(subscription => unsubscribe(subscription));
+  },
+
+  reconnected() {
+  },
+};
+
+/**
+ * @param {string} channelName
+ * @param {Object.<string, string>} params
+ * @returns {string}
+ */
+const channelNameWithInlineParams = (channelName, params) => {
+  if (Object.keys(params).length === 0) {
+    return channelName;
+  }
+
+  return `${channelName}&${Object.keys(params).map(key => `${key}=${params[key]}`).join('&')}`;
+};
+
+/**
+ * @typedef {import('flavours/glitch-classic/store').AppDispatch} Dispatch
+ * @typedef {import('flavours/glitch-classic/store').GetState} GetState
+ */
+
+/**
+ * @param {string} channelName
+ * @param {Object.<string, string>} params
+ * @param {(dispatch: Dispatch, getState: GetState) => { onConnect: () => void, onReceive: (event: StreamEvent) => void, onDisconnect: () => void, onSubscribed?: () => void }} callbacks
+ * @returns {(dispatch: Dispatch, getState: GetState) => () => void}
+ */
+export const connectStream = (channelName, params, callbacks) => (dispatch, getState) => {
+  const streamingAPIBaseURL = getState().meta.get('streaming_api_base_url');
+  const accessToken = getAccessToken();
+  const { onConnect, onReceive, onDisconnect, onSubscribed } = callbacks(dispatch, getState);
+
+  if(!accessToken) throw new Error("Trying to connect to the streaming server but no access token is available.");
+
+  // If we cannot use a websockets connection, we must fall back
+  // to using individual connections for each channel
+  if (!streamingAPIBaseURL.startsWith('ws')) {
+    const connection = createConnection(streamingAPIBaseURL, accessToken, channelNameWithInlineParams(channelName, params), {
+      connected() {
+        onConnect();
+        onSubscribed?.();
+      },
+
+      received(data) {
+        onReceive(data);
+      },
+
+      disconnected() {
+        onDisconnect();
+      },
+
+      reconnected() {
+        onConnect();
+        onSubscribed?.();
+      },
+    });
+
+    return () => {
+      connection.close();
+    };
+  }
+
+  const subscription = {
+    channelName,
+    params,
+    onConnect,
+    onReceive,
+    onDisconnect,
+    onSubscribed,
+  };
+
+  addSubscription(subscription);
+
+  // If a connection is open, we can execute the subscription right now. Otherwise,
+  // because we have already registered it, it will be executed on connect
+
+  if (!sharedConnection) {
+    sharedConnection = /** @type {WebSocketClient} */ (createConnection(streamingAPIBaseURL, accessToken, '', sharedCallbacks));
+  } else if (sharedConnection.readyState === WebSocketClient.OPEN) {
+    subscribe(subscription);
+  }
+
+  return () => {
+    removeSubscription(subscription);
+    unsubscribe(subscription);
+  };
+};
+
+const KNOWN_EVENT_TYPES = [
+  'update',
+  'delete',
+  'notification',
+  'conversation',
+  'filters_changed',
+  'announcement',
+  'announcement.delete',
+  'announcement.reaction',
+];
+
+/**
+ * @param {MessageEvent} e
+ * @param {(event: StreamEvent) => void} received
+ */
+const handleEventSourceMessage = (e, received) => {
+  received({
+    event: e.type,
+    payload: e.data,
+  });
+};
+
+/**
+ * @param {WebSocketClient} ws
+ * @returns {() => void}
+ */
+const limitReconnectBackoff = ws => {
+  // @ts-expect-error
+  const { backoff } = ws;
+
+  backoff.backoff = () => {
+    backoff.attempts += 1;
+
+    const maxDelay = Math.min(MAX_RECONNECT_DELAY, (2 ** backoff.attempts) * backoff.delay);
+
+    setTimeout(backoff.onReady, Math.floor(Math.random() * maxDelay));
+  };
+
+  return () => {
+    backoff.attempts = 0;
+  };
+};
+
+/**
+ * @param {string} streamingAPIBaseURL
+ * @param {string} accessToken
+ * @param {string} channelName
+ * @param {{ connected: () => void, received: (event: StreamEvent) => void, disconnected: () => void, reconnected: () => void }} callbacks
+ * @returns {WebSocketClient | EventSource}
+ */
+const createConnection = (streamingAPIBaseURL, accessToken, channelName, { connected, received, disconnected, reconnected }) => {
+  const params = channelName.split('&');
+
+  // @ts-expect-error
+  channelName = params.shift();
+
+  if (streamingAPIBaseURL.startsWith('ws')) {
+    // @ts-expect-error
+    const ws = new WebSocketClient(`${streamingAPIBaseURL}/api/v1/streaming/?${params.join('&')}`, accessToken);
+    const resetReconnectBackoff = limitReconnectBackoff(ws);
+
+    ws.onopen = () => {
+      resetReconnectBackoff();
+      connected();
+    };
+    ws.onmessage = e => {
+      try {
+        received(JSON.parse(e.data));
+      } catch (err) {
+        console.error('Failed to process WebSocket message:', err);
+      }
+    };
+    ws.onclose = disconnected;
+    ws.onreconnect = reconnected;
+
+    return ws;
+  }
+
+  channelName = channelName.replace(/:/g, '/');
+
+  if (channelName.endsWith(':media')) {
+    channelName = channelName.replace('/media', '');
+    params.push('only_media=true');
+  }
+
+  params.push(`access_token=${accessToken}`);
+
+  const es = new EventSource(`${streamingAPIBaseURL}/api/v1/streaming/${channelName}?${params.join('&')}`);
+
+  es.onopen = () => {
+    connected();
+  };
+
+  KNOWN_EVENT_TYPES.forEach(type => {
+    es.addEventListener(type, e => handleEventSourceMessage(/** @type {MessageEvent} */(e), received));
+  });
+
+  es.onerror = /** @type {() => void} */ (disconnected);
+
+  return es;
+};

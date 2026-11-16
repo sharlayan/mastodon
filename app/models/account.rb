@@ -18,6 +18,8 @@
 #  avatar_storage_schema_version :integer
 #  avatar_updated_at             :datetime
 #  birthday                      :string(32)
+#  can_chat                      :boolean          default(TRUE), not null
+#  chat_scope                    :string
 #  collections_url               :string
 #  discoverable                  :boolean
 #  display_name                  :string           default(""), not null

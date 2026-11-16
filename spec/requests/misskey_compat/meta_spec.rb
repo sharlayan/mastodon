@@ -72,4 +72,15 @@ RSpec.describe 'Misskey-compat meta endpoint' do
       expect(response.parsed_body.deep_symbolize_keys.dig(:error, :info)).to eq(param: '#/properties/detail/type', reason: 'must be boolean')
     end
   end
+
+  describe 'POST /api/ping' do
+    it 'returns the current server time in milliseconds' do
+      freeze_time do
+        post '/api/ping', as: :json
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body).to eq('pong' => (Time.now.to_f * 1000).floor)
+      end
+    end
+  end
 end

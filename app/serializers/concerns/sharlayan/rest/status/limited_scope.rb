@@ -6,20 +6,58 @@ module Sharlayan::REST::Status::LimitedScope
   included do
     attribute :limited_scope, if: :limited_scope?
     attribute :circle_id, if: :source_circle?
+    attribute :circle, if: :owner_circle?
+    attribute :limited_reply_account_ids, if: :source_reply?
   end
 
   def limited_scope?
-    object.limited_visibility? && object.limited_scope.present?
+    object.limited_visibility?
+  end
+
+  def limited_scope
+    return 'none' if circle_scope? && !owner_view?
+
+    object.limited_scope || 'none'
+  end
+
+  def limited_reply_account_ids
+    object.mentions.pluck(:account_id).map(&:to_s)
+  end
+
+  def source_reply?
+    instance_options[:source_requested] && object.limited_visibility? && object.limited_reply? && owner_view?
   end
 
   def circle_id
-    @circle_id.to_s
+    owned_circle[:id]
   end
 
   def source_circle?
-    return false unless instance_options[:source_requested] && object.limited_visibility?
+    instance_options[:source_requested] && object.limited_visibility? && owner_view? && owned_circle.present?
+  end
 
-    @circle_id = CircleStatus.where(status_id: object.id).joins(:circle).where(circles: { account_id: object.account_id }).pick(:circle_id)
-    @circle_id.present?
+  def circle
+    owned_circle
+  end
+
+  def owner_circle?
+    !instance_options[:source_requested] && object.limited_visibility? && circle_scope? && owner_view? && owned_circle.present?
+  end
+
+  private
+
+  def circle_scope?
+    object.limited_circle? || object.limited_personal?
+  end
+
+  def owner_view?
+    current_user? && current_user.account_id == object.account_id
+  end
+
+  def owned_circle
+    return @owned_circle if defined?(@owned_circle)
+
+    id, title = CircleStatus.where(status_id: object.id).joins(:circle).where(circles: { account_id: object.account_id }).pick(:circle_id, 'circles.title')
+    @owned_circle = id.present? ? { id: id.to_s, title: title } : nil
   end
 end

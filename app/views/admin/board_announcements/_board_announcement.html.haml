@@ -4,10 +4,13 @@
 
   .announcements-list__item__action-bar
     .announcements-list__item__meta
-      - if board_announcement.published?
+      - if board_announcement.active?
         = t('admin.board_announcements.published')
         ·
       = l(board_announcement.published_at || board_announcement.created_at)
+      - if board_announcement.auto_archive_at.present?
+        ·
+        #{t('admin.board_announcements.auto_archive_at')}: #{l(board_announcement.auto_archive_at)}
       - if board_announcement.account.present?
         ·
         = t('admin.board_announcements.author', name: board_announcement.account.acct)
@@ -22,7 +25,7 @@
 
     .announcements-list__item__actions
       - if can?(:update, board_announcement)
-        - if board_announcement.published?
+        - if board_announcement.active?
           = table_link_to 'toggle_off', t('admin.board_announcements.unpublish'), unpublish_admin_board_announcement_path(board_announcement), method: :post, data: { confirm: t('admin.accounts.are_you_sure') }
         - else
           = table_link_to 'toggle_on', t('admin.board_announcements.publish'), publish_admin_board_announcement_path(board_announcement), method: :post, data: { confirm: t('admin.accounts.are_you_sure') }

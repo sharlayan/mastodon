@@ -289,7 +289,7 @@ RSpec.describe PostStatusService do
       )
     end.to raise_error(
       Mastodon::ValidationError,
-      I18n.t('media_attachments.validations.too_many')
+      I18n.t('media_attachments.validations.too_many_limited', count: 1)
     )
   end
 

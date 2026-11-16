@@ -280,7 +280,7 @@ export function submitCompose(successCallback, overridePrivacy) {
       });
     }
 
-    const { circleId, clipIds, poll, quoteApprovalPolicy, reactionAcceptance, scheduledAt: newStatusScheduledAt, visibility } = getSharlayanComposeSubmission({ getState, effectiveStatusId, overridePrivacy });
+    const { circleId, limitedScope, limitedReplyAccountIds, clipIds, poll, quoteApprovalPolicy, reactionAcceptance, scheduledAt: newStatusScheduledAt, visibility } = getSharlayanComposeSubmission({ getState, effectiveStatusId, overridePrivacy });
 
     const doSubmit = () => api().request({
       url: effectiveStatusId === null ? '/api/v1/statuses' : `/api/v1/statuses/${effectiveStatusId}`,
@@ -296,6 +296,8 @@ export function submitCompose(successCallback, overridePrivacy) {
         sensitive: getState().getIn(['compose', 'sensitive']) || (spoiler_text.length > 0 && media.size !== 0),
         visibility: visibility,
         circle_id: circleId,
+        limited_scope: limitedScope,
+        limited_reply_account_ids: limitedReplyAccountIds,
         clip_ids: clipIds,
         poll,
         language: getState().getIn(['compose', 'language']),

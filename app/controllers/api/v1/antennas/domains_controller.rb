@@ -14,7 +14,7 @@ class Api::V1::Antennas::DomainsController < Api::BaseController
   end
 
   def create
-    ApplicationRecord.transaction do
+    @antenna.with_lock do
       validate_limit!
 
       domains.each do |domain|

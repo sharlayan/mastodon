@@ -46,6 +46,42 @@ RSpec.describe Sharlayan::ChatService do
     end
   end
 
+  describe 'writing after membership was removed while waiting for the room lock' do
+    before { room.memberships.create!(account: invitee) }
+
+    def remove_before_room_lock(message)
+      allow(message.chat_conversation).to receive(:with_lock).and_wrap_original do |original, &block|
+        service.kick(owner, ChatConversation.find(room.id), invitee)
+        original.call(&block)
+      end
+    end
+
+    it 'rejects an edit after a kick committed' do
+      message = service.create_message(invitee, room, text: 'original')
+      remove_before_room_lock(message)
+
+      expect { service.update_message(invitee, message, text: 'changed') }.to raise_error(described_class::Forbidden)
+      expect(message.reload.text).to eq('original')
+    end
+
+    it 'rejects adding a reaction after a kick committed' do
+      message = service.create_message(owner, room, text: 'original')
+      remove_before_room_lock(message)
+
+      expect { service.react(invitee, message, '👍') }.to raise_error(described_class::Forbidden)
+      expect(message.reactions).to be_empty
+    end
+
+    it 'rejects removing a reaction after a kick committed' do
+      message = service.create_message(owner, room, text: 'original')
+      reaction = service.react(invitee, message, '👍')
+      remove_before_room_lock(message)
+
+      expect { service.unreact(invitee, message, '👍') }.to raise_error(described_class::Forbidden)
+      expect(ChatMessageReaction.exists?(reaction.id)).to be(true)
+    end
+  end
+
   describe 'marking a room as read' do
     let(:earlier) { service.create_message(invitee, room, text: 'first') }
     let(:later) { service.create_message(invitee, room, text: 'second') }
@@ -72,7 +108,7 @@ RSpec.describe Sharlayan::ChatService do
 
     it 'keeps a newer pointer when the sender writes again' do
       sent = service.create_message(owner, room, text: 'mine')
-      newer = room.messages.create!(id: sent.id + 1000, account: invitee, text: 'arrived out of order')
+      newer = room.messages.create!(id: Mastodon::Snowflake.id_at(1.hour.from_now), account: invitee, text: 'arrived out of order')
       room.memberships.find_by!(account: owner).update!(last_read_message: newer)
       stale_membership = room.memberships.find_by!(account: owner).tap { |membership| membership.last_read_message_id = sent.id }
       allow(service).to receive(:membership!).and_return(stale_membership)

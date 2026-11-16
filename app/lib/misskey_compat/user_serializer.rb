@@ -11,6 +11,37 @@ class MisskeyCompat::UserSerializer
     new.avatar_decorations_for(account)
   end
 
+  def self.secret_fields(user)
+    {
+      email: user.unconfirmed_email.presence || user.email,
+      emailVerified: user.confirmed? && user.unconfirmed_email.blank?,
+      securityKeysList: security_keys_list(user),
+    }
+  end
+
+  def self.security_keys_list(user)
+    return [] unless user.otp_enabled?
+
+    user.webauthn_credentials.order(:id).map do |credential|
+      { id: credential.external_id, name: credential.nickname, lastUsed: credential.updated_at.iso8601 }
+    end
+  end
+
+  def self.relation_fields(account_id, relationships)
+    following = relationships.following[account_id]
+
+    {
+      isFollowing: following.present?,
+      isFollowed: relationships.followed_by[account_id] || false,
+      hasPendingFollowRequestFromYou: relationships.requested[account_id].present?,
+      hasPendingFollowRequestToYou: relationships.requested_by[account_id].present?,
+      isBlocking: relationships.blocking[account_id] || false,
+      isBlocked: relationships.blocked_by[account_id] || false,
+      isMuted: relationships.muting[account_id].present?,
+      isRenoteMuted: following.present? && following[:reblogs] == false,
+    }
+  end
+
   def serialize(account, detailed: false, viewer: nil, me_user: nil, context: nil, relationships: nil, collection: nil)
     @context = context
     @collection = collection
@@ -75,18 +106,7 @@ class MisskeyCompat::UserSerializer
   end
 
   def preloaded_viewer_fields(account, relationships)
-    following = relationships.following[account.id]
-
-    {
-      isFollowing: following.present?,
-      isFollowed: relationships.followed_by[account.id] || false,
-      hasPendingFollowRequestFromYou: relationships.requested[account.id].present?,
-      hasPendingFollowRequestToYou: relationships.requested_by[account.id].present?,
-      isBlocking: relationships.blocking[account.id] || false,
-      isBlocked: relationships.blocked_by[account.id] || false,
-      isMuted: relationships.muting[account.id].present?,
-      isRenoteMuted: following.present? && following[:reblogs] == false,
-    }
+    self.class.relation_fields(account.id, relationships)
   end
 
   def me_fields(user)
@@ -100,6 +120,8 @@ class MisskeyCompat::UserSerializer
       alwaysMarkNsfw: user.settings['default_sensitive'] || false,
       carefulBot: false,
       autoAcceptFollowed: user.settings['auto_accept_followed'] || false,
+      followApprovalLocalSeconds: user.settings['follow_approval_local_seconds'].presence&.to_i,
+      followApprovalRemoteSeconds: user.settings['follow_approval_remote_seconds'].presence&.to_i,
       noCrawle: user.settings['noindex'] || false,
       preventAiLearning: user.settings['prevent_ai_learning'] || false,
       isExplorable: account.discoverable?,
@@ -109,13 +131,25 @@ class MisskeyCompat::UserSerializer
       followersVisibility: ff_visibility,
       followedMessage: account.followed_message.presence,
       location: account.location.presence,
-      birthday: account.birthday.presence,
+      birthday: account.birthday,
       lang: user.settings['default_language'].presence,
       mutedWords: parse_muted_words(user.settings['misskey_muted_words']),
       hardMutedWords: parse_muted_words(user.settings['misskey_hard_muted_words']),
       mutedInstances: account.domain_mutes.pluck(:domain),
       mutedEmojis: MisskeyCompat::MutedEmojiConverter.to_misskey(account),
+      twoFactorEnabled: user.otp_enabled?,
+      usePasswordLessLogin: false,
+      securityKeys: user.otp_enabled? && user.webauthn_enabled?,
+      twoFactorBackupCodesStock: backup_codes_stock(user),
+      achievements: MisskeyAchievement.for_account(account).map(&:as_misskey_json),
     }
+  end
+
+  def backup_codes_stock(user)
+    count = Array(user.otp_backup_codes).size
+    return 'none' if count.zero?
+
+    count >= User.otp_number_of_backup_codes ? 'full' : 'partial'
   end
 
   def parse_muted_words(raw)
@@ -150,6 +184,7 @@ class MisskeyCompat::UserSerializer
       isBot: account.bot?,
       isCat: Setting.cat_enabled && account.is_cat?,
       publicReactions: public_reactions?(account),
+      birthday: account.birthday_visible_to?(viewer) ? account.birthday : nil,
       fields: fields_for(account),
       verifiedLinks: verified_links_for(account),
       followingVisibility: ff_visibility,
@@ -182,6 +217,7 @@ class MisskeyCompat::UserSerializer
     return @collection.pinned_notes_for(account) if @collection
 
     return [[], []] if account.unavailable? || (viewer && account.blocking?(viewer))
+    return [[], []] unless Sharlayan::LocalContentAccess.account_statuses_accessible?(account, viewer&.user)
 
     statuses = account.pinned_statuses.where(visibility: [:public, :unlisted])
     statuses = statuses.not_local_only if viewer.nil?

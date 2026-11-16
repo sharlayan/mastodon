@@ -17,6 +17,7 @@ import HomeIcon from '@/material-icons/400-24px/home.svg?react';
 
 import { Avatar } from '../avatar';
 import { Badge } from '../badge';
+import { CircleVisibilityLabel } from '../circle_visibility_label';
 import { CollapseButton } from '../collapse_button';
 import { DisplayName } from '../display_name';
 import { useAccountHandle } from '../display_name/default';
@@ -51,6 +52,7 @@ interface StatusRedesignHeaderProps {
     | 'mentions'
     | 'local_only'
     | 'limited_scope'
+    | 'circle'
     | 'instance_metadata'
     | 'collapsed'
     | 'language'
@@ -116,7 +118,7 @@ export const StatusRedesignHeader: React.FC<StatusRedesignHeaderProps> = ({
       <DisplayName account={account} variant='noDomain' />
     </Link>
   );
-  if (status.visibility === 'private' && status.limited_scope !== 'circle') {
+  if (status.visibility === 'private' && !status.limited_scope) {
     displayName = (
       <FormattedMessage
         id='status.header.to_followers'
@@ -124,6 +126,15 @@ export const StatusRedesignHeader: React.FC<StatusRedesignHeaderProps> = ({
         description='Count is # of other people mentioned in the post'
         tagName='span'
         values={{ author: displayName, count: status.mentions.length }}
+      />
+    );
+  } else if (status.limited_scope && status.limited_scope !== 'circle') {
+    displayName = (
+      <FormattedMessage
+        id='status.header.to_limited'
+        defaultMessage='{author} to a limited audience'
+        tagName='span'
+        values={{ author: displayName }}
       />
     );
   } else if (
@@ -295,8 +306,13 @@ const StatusHeaderIndicators: React.FC<
         <MediaIcon key={icon} icon={icon} className={classes.mediaIcon} />
       ))}
       {settings.get('visibility') &&
-        (status.limited_scope === 'circle' ? (
-          <FormattedMessage id='privacy.circle.short' defaultMessage='Circle' />
+        (status.limited_scope === 'circle' || status.circle ? (
+          <CircleVisibilityLabel title={status.circle?.title} />
+        ) : status.limited_scope === 'reply' ? (
+          <FormattedMessage
+            id='privacy.reply.short'
+            defaultMessage='Reply audience'
+          />
         ) : (
           <VisibilityIcon visibility={status.visibility} />
         ))}

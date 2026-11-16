@@ -98,6 +98,82 @@ RSpec.describe 'Antennas' do
     end
   end
 
+  describe 'GET /api/v1/timelines/antenna/:id' do
+    let(:antenna) { Fabricate(:antenna, account: user.account) }
+
+    it 'filters stale inaccessible entries while preserving pagination through the scanned rows' do
+      author = Fabricate(:account)
+      public_status = Fabricate(:status, account: author, id: Mastodon::Snowflake.id_at(1.minute.ago))
+      private_status = Fabricate(:status, account: author, visibility: :private)
+      [public_status, private_status].each { |status| FeedManager.instance.push_to_antenna(antenna, status) }
+
+      get "/api/v1/timelines/antenna/#{antenna.id}", headers: headers, params: { limit: 1 }
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to be_empty
+      expect(response.headers['Link']).to include('rel="next"')
+
+      get URI.parse(response.headers['Link'][/<([^>]+)>; rel="next"/, 1]).request_uri, headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to eq([public_status.id.to_s])
+    end
+
+    it 'checks visibility of a page with a fixed number of relationship queries' do
+      relationship_queries = lambda do
+        count = 0
+        counter = ->(*, payload) { count += 1 if !payload[:cached] && /FROM "(follows|blocks|mentions)"/.match?(payload[:sql]) }
+        ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') { get "/api/v1/timelines/antenna/#{antenna.id}", headers: headers }
+        count
+      end
+      push_statuses = lambda do |count|
+        Fabricate.times(count, :account).product(%i(public private limited)).each do |author, visibility|
+          user.account.follow!(author)
+          FeedManager.instance.push_to_antenna(antenna, Fabricate(:status, account: author, visibility:))
+        end
+      end
+
+      push_statuses.call(1)
+      single_author = relationship_queries.call
+      push_statuses.call(3)
+
+      expect(relationship_queries.call).to be <= single_author
+      expect(response.parsed_body.size).to eq(8)
+    end
+  end
+
+  %w(accounts domains tags).each do |condition|
+    describe "POST /api/v1/antennas/:id/#{condition} locking" do
+      let(:antenna) { Fabricate(:antenna, account: user.account) }
+      let(:queries) { [] }
+
+      it 'locks the antenna before counting and adding conditions' do
+        params = case condition
+                 when 'accounts'
+                   { account_ids: [Fabricate(:account).id.to_s] }
+                 when 'domains'
+                   { domains: ['example.com'] }
+                 else
+                   { tags: ['example'] }
+                 end
+        antenna
+        callback = lambda do |_name, _started, _finished, _unique_id, payload|
+          queries << payload[:sql] if payload[:name] != 'SCHEMA' && !payload[:cached]
+        end
+
+        ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+          post "/api/v1/antennas/#{antenna.id}/#{condition}", headers: headers, params: params
+        end
+
+        expect(response).to have_http_status(200)
+        lock_index = queries.index { |sql| sql.include?('FROM "antennas"') && sql.include?('FOR UPDATE') }
+        count_index = queries.index { |sql| sql.include?("\"antenna_#{condition}\"") && sql.start_with?('SELECT') }
+        expect(lock_index).to be_present
+        expect(count_index).to be > lock_index
+      end
+    end
+  end
+
   describe 'POST /api/v1/antennas/:id/domains' do
     let(:antenna) { Fabricate(:antenna, account: user.account) }
 

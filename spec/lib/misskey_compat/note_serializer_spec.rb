@@ -17,6 +17,21 @@ RSpec.describe MisskeyCompat::NoteSerializer do
     end
   end
 
+  describe 'limited audience' do
+    it 'shows hidden circle recipients only to the author' do
+      author = Fabricate(:account)
+      listed = Fabricate(:account)
+      hidden = Fabricate(:account)
+      status = Fabricate(:status, account: author, visibility: :limited, limited_scope: :circle)
+      Fabricate(:mention, status: status, account: listed)
+      Fabricate(:mention, status: status, account: hidden, silent: true)
+      ids = ->(accounts) { accounts.map { |account| MisskeyCompat::MiId.encode(account.id) } }
+
+      expect(described_class.serialize(status, current_account: listed)).to include(mentions: ids[[listed]], visibleUserIds: ids[[listed]])
+      expect(described_class.serialize(status, current_account: author)).to include(mentions: ids[[listed]], visibleUserIds: match_array(ids[[listed, hidden]]))
+    end
+  end
+
   describe 'reactions' do
     let(:status) { Fabricate(:status) }
 

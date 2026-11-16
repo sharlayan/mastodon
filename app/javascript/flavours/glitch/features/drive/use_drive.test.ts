@@ -26,6 +26,7 @@ vi.mock('@/flavours/glitch/api/drive', () => ({
   apiGetDriveFolders: vi.fn(() => Promise.resolve([])),
   apiGetDriveUsage: vi.fn(() => Promise.resolve(null)),
   apiMoveDriveFile: vi.fn(),
+  apiMoveDriveFiles: vi.fn(),
   apiMoveDriveFolder: vi.fn(),
   apiRenameDriveFile: vi.fn(),
   apiTransferDriveFileToPosts: vi.fn(),
@@ -123,6 +124,26 @@ describe('useDrive', () => {
     ]);
     expect(apiGetDriveUsage).toHaveBeenCalled();
     expect(dispatch).toHaveBeenCalledTimes(1);
+  });
+
+  it('explicitly targets the root folder for uploads instead of inheriting the server default', async () => {
+    vi.mocked(apiGetDriveFiles).mockResolvedValue(page([]));
+    vi.mocked(apiUploadDriveFile).mockResolvedValue(file('uploaded'));
+
+    const { result } = renderHook(() => useDrive());
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    act(() => {
+      result.current.uploadFiles([new File(['image'], 'root.png')]);
+    });
+    await waitFor(() => {
+      expect(result.current.uploading).toBe(false);
+    });
+
+    const request = vi.mocked(apiUploadDriveFile).mock.lastCall?.[0];
+    expect(request?.get('folder_id')).toBe('');
   });
 
   it('does not keep the previous folder files when opening a folder fails', async () => {

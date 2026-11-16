@@ -1,4 +1,6 @@
 defaults:
+  registration_reject_email_pattern: ''
+  registration_reject_username_pattern: ''
   site_title: 'Mastodon Custard Edition'
   theme_color: '#FFFD78'
   background_color: ''
@@ -56,8 +58,18 @@ defaults:
   chat_delete_window_hours: 24
   chat_max_group_members: 50
   chat_max_attachments: 4
+  voice_call_enabled: false
+  voice_call_max_participants: 10
+  voice_call_screen_share_enabled: true
+  voice_call_federation_host_enabled: false
+  voice_call_remote_join_enabled: false
+  link_preview_direct_hosts: |-
+    youtube.com
+    youtu.be
+    google.com
   status_character_limit: 500
   profile_fields_limit: 10
+  local_media_attachments_limit: 10
   remote_media_attachments_limit: 16
   user_themes_enabled: true
   user_theme_catalog: '[]'

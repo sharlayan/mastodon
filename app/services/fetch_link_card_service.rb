@@ -53,7 +53,7 @@ class FetchLinkCardService < BaseService
       'User-Agent' => "#{Mastodon::Version.user_agent} Bot",
     }
 
-    @html = Request.new(:get, @url).add_headers(headers).perform do |res|
+    @html = Request.new(:get, @url, route: :link_preview).add_headers(headers).perform do |res|
       next unless res.code == 200 && res.mime_type == 'text/html'
 
       # We follow redirects, and ideally we want to save the preview card for

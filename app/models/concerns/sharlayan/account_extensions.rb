@@ -9,4 +9,5 @@ module Sharlayan::AccountExtensions
   include Sharlayan::Account::Drive
   include Sharlayan::Account::Interactions
   include Sharlayan::Account::Profile
+  include Sharlayan::Account::VoiceCalls
 end

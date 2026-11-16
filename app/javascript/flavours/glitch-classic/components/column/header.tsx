@@ -1,0 +1,402 @@
+import { useCallback, useState } from 'react';
+
+import { FormattedMessage, defineMessages, useIntl } from 'react-intl';
+
+import classNames from 'classnames';
+
+import AddIcon from '@/material-icons/400-24px/add.svg?react';
+import ArrowBackIcon from '@/material-icons/400-24px/arrow_back.svg?react';
+import ChevronLeftIcon from '@/material-icons/400-24px/chevron_left.svg?react';
+import ChevronRightIcon from '@/material-icons/400-24px/chevron_right.svg?react';
+import CloseIcon from '@/material-icons/400-24px/close.svg?react';
+import FitScreenIcon from '@/material-icons/400-24px/fit_screen.svg?react';
+import UnfoldLessIcon from '@/material-icons/400-24px/unfold_less.svg?react';
+import UnfoldMoreIcon from '@/material-icons/400-24px/unfold_more.svg?react';
+import { openModal } from 'flavours/glitch-classic/actions/modal';
+import type { IconProp } from 'flavours/glitch-classic/components/icon';
+import { Icon } from 'flavours/glitch-classic/components/icon';
+import { useColumnWidthContext } from 'flavours/glitch-classic/features/ui/util/column_width_context';
+import { RenderIntoTabsBarPortal } from 'flavours/glitch-classic/features/ui/util/columns_context';
+import { useIdentity } from 'flavours/glitch-classic/identity_context';
+import { useAppDispatch } from 'flavours/glitch-classic/store';
+
+import { getColumnSkipLinkId } from '../../features/ui/components/skip_links';
+import { NavigationFocusTarget } from '../navigation_focus_target';
+import { useAppHistory } from '../router';
+
+import { useColumn, useColumnIndexContext } from './context';
+
+export const messages = defineMessages({
+  show: { id: 'column_header.show_settings', defaultMessage: 'Show settings' },
+  hide: { id: 'column_header.hide_settings', defaultMessage: 'Hide settings' },
+  moveLeft: {
+    id: 'column_header.moveLeft_settings',
+    defaultMessage: 'Move column to the left',
+  },
+  moveRight: {
+    id: 'column_header.moveRight_settings',
+    defaultMessage: 'Move column to the right',
+  },
+  back: { id: 'column_back_button.label', defaultMessage: 'Back' },
+});
+
+const BackButton: React.FC<{
+  hasTitle: boolean;
+  onClick?: () => void;
+}> = ({ hasTitle, onClick }) => {
+  const history = useAppHistory();
+  const intl = useIntl();
+  const columnIndex = useColumnIndexContext();
+
+  const handleBackClick = useCallback(() => {
+    if (onClick) {
+      onClick();
+      return;
+    }
+
+    if (history.location.state?.fromMastodon) {
+      history.goBack();
+    } else {
+      history.push('/');
+    }
+  }, [history, onClick]);
+
+  return (
+    <button
+      onClick={handleBackClick}
+      className={classNames('column-header__back-button', {
+        compact: hasTitle,
+      })}
+      id={!hasTitle ? getColumnSkipLinkId(columnIndex) : undefined}
+      aria-label={intl.formatMessage(messages.back)}
+      type='button'
+    >
+      <Icon
+        id='chevron-left'
+        icon={ArrowBackIcon}
+        className='column-back-button__icon'
+      />
+      {!hasTitle && (
+        <FormattedMessage id='column_back_button.label' defaultMessage='Back' />
+      )}
+    </button>
+  );
+};
+
+export interface ColumnHeaderProps {
+  title?: React.ReactNode;
+  icon?: string;
+  iconComponent?: IconProp;
+  active?: boolean;
+  children?: React.ReactNode;
+  className?: string;
+  pinned?: boolean;
+  multiColumn?: boolean;
+  extraButton?: React.ReactNode;
+  showBackButton?: boolean;
+  placeholder?: boolean;
+  appendContent?: React.ReactNode;
+  collapseIssues?: boolean;
+  scrollTopOnClick?: boolean;
+  onClick?: () => void;
+  onBack?: () => void;
+  onMove?: (arg0: number) => void;
+  onPin?: () => void;
+}
+
+export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
+  title,
+  icon,
+  iconComponent,
+  active,
+  children,
+  className,
+  pinned,
+  multiColumn,
+  extraButton,
+  showBackButton,
+  placeholder,
+  appendContent,
+  collapseIssues,
+  scrollTopOnClick,
+  onClick,
+  onBack,
+  onMove,
+  onPin,
+}) => {
+  const intl = useIntl();
+  const dispatch = useAppDispatch();
+  const { columnId, width, onSave } = useColumnWidthContext();
+  const { signedIn } = useIdentity();
+  const history = useAppHistory();
+  const [collapsed, setCollapsed] = useState(true);
+  const [animating, setAnimating] = useState(false);
+
+  const handleToggleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setCollapsed((value) => !value);
+      setAnimating(true);
+    },
+    [setCollapsed, setAnimating],
+  );
+
+  const { scrollTop } = useColumn();
+  const handleTitleClick = useCallback(() => {
+    onClick?.();
+    if (scrollTopOnClick) {
+      scrollTop();
+    }
+  }, [onClick, scrollTop, scrollTopOnClick]);
+
+  const handleMoveLeft = useCallback(() => {
+    onMove?.(-1);
+  }, [onMove]);
+
+  const handleMoveRight = useCallback(() => {
+    onMove?.(1);
+  }, [onMove]);
+
+  const handleTransitionEnd = useCallback(() => {
+    setAnimating(false);
+  }, [setAnimating]);
+
+  const handlePin = useCallback(() => {
+    if (!pinned) {
+      history.replace('/');
+    }
+
+    onPin?.();
+  }, [history, pinned, onPin]);
+
+  const handleWidth = useCallback(() => {
+    if ((columnId || onSave) && width) {
+      dispatch(
+        openModal({
+          modalType: 'COLUMN_WIDTH',
+          modalProps: { columnId, width, onSave },
+        }),
+      );
+    }
+  }, [columnId, dispatch, onSave, width]);
+
+  const canAdjustWidth = multiColumn && Boolean(width && (columnId ?? onSave));
+
+  const wrapperClassName = classNames('column-header__wrapper', className, {
+    active,
+  });
+
+  const headingClassName = classNames('column-header', {
+    active,
+  });
+
+  const collapsibleClassName = classNames('column-header__collapsible', {
+    collapsed,
+    animating,
+  });
+
+  const collapsibleButtonClassName = classNames('column-header__button', {
+    active: !collapsed,
+  });
+
+  let extraContent, pinButton, moveButtons, backButton, collapseButton;
+
+  if (children) {
+    extraContent = (
+      <div key='extra-content' className='column-header__collapsible__extra'>
+        {children}
+      </div>
+    );
+  }
+
+  if (multiColumn && pinned) {
+    pinButton = (
+      <div className='column-header__setting-actions'>
+        <button
+          className='text-btn column-header__setting-btn'
+          onClick={handlePin}
+          type='button'
+        >
+          <Icon id='times' icon={CloseIcon} />{' '}
+          <FormattedMessage id='column_header.unpin' defaultMessage='Unpin' />
+        </button>
+        <button
+          className='text-btn column-header__setting-btn'
+          onClick={handleWidth}
+          type='button'
+        >
+          <Icon id='fit-screen' icon={FitScreenIcon} />{' '}
+          <FormattedMessage
+            id='column_header.adjust_width'
+            defaultMessage='Adjust width'
+          />
+        </button>
+      </div>
+    );
+
+    moveButtons = (
+      <div className='column-header__setting-arrows'>
+        <button
+          title={intl.formatMessage(messages.moveLeft)}
+          aria-label={intl.formatMessage(messages.moveLeft)}
+          className='icon-button column-header__setting-btn'
+          onClick={handleMoveLeft}
+          type='button'
+        >
+          <Icon id='chevron-left' icon={ChevronLeftIcon} />
+        </button>
+        <button
+          title={intl.formatMessage(messages.moveRight)}
+          aria-label={intl.formatMessage(messages.moveRight)}
+          className='icon-button column-header__setting-btn'
+          onClick={handleMoveRight}
+          type='button'
+        >
+          <Icon id='chevron-right' icon={ChevronRightIcon} />
+        </button>
+      </div>
+    );
+  } else if (multiColumn && (onPin || canAdjustWidth)) {
+    pinButton = (
+      <div className='column-header__setting-actions'>
+        {onPin && (
+          <button
+            className='text-btn column-header__setting-btn'
+            onClick={handlePin}
+            type='button'
+          >
+            <Icon id='plus' icon={AddIcon} />{' '}
+            <FormattedMessage id='column_header.pin' defaultMessage='Pin' />
+          </button>
+        )}
+        {canAdjustWidth && (
+          <button
+            className='text-btn column-header__setting-btn'
+            onClick={handleWidth}
+            type='button'
+          >
+            <Icon id='fit-screen' icon={FitScreenIcon} />{' '}
+            <FormattedMessage
+              id='column_header.adjust_width'
+              defaultMessage='Adjust width'
+            />
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (
+    !pinned &&
+    ((multiColumn && history.location.state?.fromMastodon) || showBackButton)
+  ) {
+    backButton = <BackButton hasTitle={!!title} onClick={onBack} />;
+  }
+
+  const collapsedContent = [extraContent];
+
+  if (multiColumn) {
+    collapsedContent.unshift(
+      <div key='buttons' className='column-header__advanced-buttons'>
+        {pinButton}
+        {moveButtons}
+      </div>,
+    );
+  }
+
+  if (signedIn && (children || (multiColumn && (onPin || canAdjustWidth)))) {
+    collapseButton = (
+      <button
+        className={collapsibleButtonClassName}
+        title={intl.formatMessage(collapsed ? messages.show : messages.hide)}
+        aria-label={intl.formatMessage(
+          collapsed ? messages.show : messages.hide,
+        )}
+        onClick={handleToggleClick}
+        type='button'
+      >
+        <i className='icon-with-badge'>
+          <Icon
+            id='sliders'
+            icon={collapsed ? UnfoldMoreIcon : UnfoldLessIcon}
+          />
+          {collapseIssues && <i className='icon-with-badge__issue-badge' />}
+        </i>
+      </button>
+    );
+  }
+
+  const hasIcon = icon && iconComponent;
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+  const hasTitle = (hasIcon || backButton) && title;
+  const columnIndex = useColumnIndexContext();
+
+  const titleContents = (
+    <>
+      {!backButton && hasIcon && (
+        <Icon id={icon} icon={iconComponent} className='column-header__icon' />
+      )}
+      <span className='column-header__text'>{title}</span>
+    </>
+  );
+
+  const titleClassNames = classNames('column-header__title', {
+    'column-header__title--with-back-button': !!backButton,
+  });
+
+  const component = (
+    <div className={wrapperClassName}>
+      <div className={headingClassName}>
+        {backButton}
+        {hasTitle && (
+          <NavigationFocusTarget
+            as='h1'
+            className='column-header__title-wrapper'
+          >
+            {onClick || scrollTopOnClick ? (
+              <button
+                onClick={handleTitleClick}
+                className={titleClassNames}
+                type='button'
+                id={getColumnSkipLinkId(columnIndex)}
+              >
+                {titleContents}
+              </button>
+            ) : (
+              <span
+                className={titleClassNames}
+                tabIndex={-1}
+                id={getColumnSkipLinkId(columnIndex)}
+              >
+                {titleContents}
+              </span>
+            )}
+          </NavigationFocusTarget>
+        )}
+
+        <div className='column-header__buttons'>
+          {extraButton}
+          {collapseButton}
+        </div>
+      </div>
+
+      <div
+        className={collapsibleClassName}
+        tabIndex={collapsed ? -1 : undefined}
+        onTransitionEnd={handleTransitionEnd}
+      >
+        <div className='column-header__collapsible-inner'>
+          {(!collapsed || animating) && collapsedContent}
+        </div>
+      </div>
+
+      {appendContent}
+    </div>
+  );
+
+  if (placeholder) {
+    return component;
+  } else {
+    return <RenderIntoTabsBarPortal>{component}</RenderIntoTabsBarPortal>;
+  }
+};

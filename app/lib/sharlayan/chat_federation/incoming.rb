@@ -583,6 +583,7 @@ module Sharlayan
             edited_at: time_of(object['updated']),
             attachments: attachments,
             reply_to_uri: uri_of(object['inReplyTo']),
+            dice: object['_misskey_dice'],
           }
         end
 

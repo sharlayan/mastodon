@@ -47,6 +47,7 @@ SystemCallFilter=~@cpu-emulation @debug @keyring @ipc @mount @obsolete @privileg
 SystemCallFilter=@chown
 SystemCallFilter=pipe
 SystemCallFilter=pipe2
+SystemCallFilter=memfd_create
 ReadWritePaths=/home/mastodon/live
 
 [Install]

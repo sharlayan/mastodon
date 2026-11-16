@@ -166,6 +166,18 @@ describe('redesign status header extensions', () => {
     expect(screen.queryByText(/to You/)).toBeNull();
   });
 
+  it('names the Circle the author published to', () => {
+    renderHeader({
+      status: {
+        ...status,
+        visibility: 'private',
+        limited_scope: 'personal',
+        circle: { id: '1', title: 'Friends' },
+      },
+    });
+    expect(screen.getByTitle('Circle: Friends')).not.toBeNull();
+  });
+
   it('honors disabled local-only and visibility indicators', () => {
     setSettings({ status_icons: { local_only: false, visibility: false } });
     renderHeader({ status: { ...status, limited_scope: 'circle' } });
@@ -201,15 +213,19 @@ describe('redesign status header extensions', () => {
 describe('redesign detailed status scope', () => {
   it('renders Circle and unlisted scope separately from local-only', () => {
     const cases = [
-      ['direct', 'circle', 'Circle'],
-      ['unlisted', undefined, 'Quiet public'],
+      ['direct', 'circle', undefined, 'Circle'],
+      ['private', 'circle', { id: '1', title: 'Friends' }, 'Circle: Friends'],
+      ['private', 'reply', undefined, 'Reply audience'],
+      ['unlisted', undefined, undefined, 'Quiet public'],
     ] as const;
 
-    for (const [visibility, limited_scope, label] of cases) {
+    for (const [visibility, limited_scope, circle, label] of cases) {
       const { unmount } = render(
         <MemoryRouter>
           <IntlProvider locale='en'>
-            <StatusMeta status={{ ...status, visibility, limited_scope }} />
+            <StatusMeta
+              status={{ ...status, visibility, limited_scope, circle }}
+            />
           </IntlProvider>
         </MemoryRouter>,
       );

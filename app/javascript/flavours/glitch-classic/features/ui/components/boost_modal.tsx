@@ -1,0 +1,143 @@
+import { useCallback, useState } from 'react';
+
+import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
+
+import classNames from 'classnames';
+
+import { StatusBoostIcon } from '@/flavours/glitch-classic/components/status/icons';
+import { Button } from 'flavours/glitch-classic/components/button';
+import { Icon } from 'flavours/glitch-classic/components/icon';
+import { NavigationFocusTarget } from 'flavours/glitch-classic/components/navigation_focus_target';
+import PrivacyDropdown from 'flavours/glitch-classic/features/compose/components/privacy_dropdown';
+import { EmbeddedStatus } from 'flavours/glitch-classic/features/notifications_v2/components/embedded_status';
+import type {
+  Status,
+  StatusVisibility,
+} from 'flavours/glitch-classic/models/status';
+import { useAppSelector } from 'flavours/glitch-classic/store';
+
+const messages = defineMessages({
+  cancel_reblog: {
+    id: 'status.cancel_reblog_private',
+    defaultMessage: 'Unboost',
+  },
+  reblog: { id: 'status.reblog', defaultMessage: 'Boost' },
+});
+
+export const BoostModal: React.FC<{
+  status: Status;
+  onClose: () => void;
+  onReblog: (status: Status, privacy: StatusVisibility) => void;
+  missingMediaDescription?: boolean;
+}> = ({ status, onReblog, onClose, missingMediaDescription }) => {
+  const intl = useIntl();
+
+  const defaultPrivacy = useAppSelector(
+    (state) => state.compose.get('default_privacy') as StatusVisibility,
+  );
+
+  const statusId = status.get('id') as string;
+  const statusVisibility = status.get('visibility') as StatusVisibility;
+
+  const [privacy, setPrivacy] = useState<StatusVisibility>(
+    statusVisibility === 'private' ? 'private' : defaultPrivacy,
+  );
+
+  const onPrivacyChange = useCallback((value: StatusVisibility) => {
+    setPrivacy(value);
+  }, []);
+
+  const handleReblog = useCallback(() => {
+    onReblog(status, privacy);
+    onClose();
+  }, [onClose, onReblog, status, privacy]);
+
+  const handleCancel = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  return (
+    <div className='modal-root__modal safety-action-modal'>
+      <div className='safety-action-modal__top'>
+        <div className='safety-action-modal__header'>
+          <div className='safety-action-modal__header__icon'>
+            <Icon icon={StatusBoostIcon} id='retweet' />
+          </div>
+
+          <div>
+            <NavigationFocusTarget as='h1'>
+              {status.get('reblogged') ? (
+                <FormattedMessage
+                  id='boost_modal.undo_reblog'
+                  defaultMessage='Unboost post?'
+                />
+              ) : (
+                <FormattedMessage
+                  id='boost_modal.reblog'
+                  defaultMessage='Boost post?'
+                />
+              )}
+            </NavigationFocusTarget>
+            <div>
+              {missingMediaDescription ? (
+                <FormattedMessage
+                  id='boost_modal.missing_description'
+                  defaultMessage='This toot contains some media without description'
+                />
+              ) : (
+                <FormattedMessage
+                  id='boost_modal.combo'
+                  defaultMessage='You can press {combo} to skip this next time'
+                  values={{
+                    combo: (
+                      <span className='hotkey-combination'>
+                        <kbd>Shift</kbd>+
+                        <Icon id='retweet' icon={StatusBoostIcon} />
+                      </span>
+                    ),
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className='safety-action-modal__status'>
+          <EmbeddedStatus statusId={statusId} />
+        </div>
+      </div>
+
+      <div className={classNames('safety-action-modal__bottom')}>
+        <div className='safety-action-modal__actions'>
+          {!status.get('reblogged') && (
+            <PrivacyDropdown
+              noDirect
+              value={privacy}
+              onChange={onPrivacyChange}
+              disabled={statusVisibility === 'private'}
+            />
+          )}
+
+          <div className='spacer' />
+
+          <button onClick={handleCancel} className='link-button' type='button'>
+            <FormattedMessage
+              id='confirmation_modal.cancel'
+              defaultMessage='Cancel'
+            />
+          </button>
+
+          <Button
+            onClick={handleReblog}
+            text={intl.formatMessage(
+              status.get('reblogged')
+                ? messages.cancel_reblog
+                : messages.reblog,
+            )}
+            autoFocus
+          />
+        </div>
+      </div>
+    </div>
+  );
+};

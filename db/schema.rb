@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -557,6 +557,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
     t.text "text_html", default: "", null: false
     t.string "title", default: "", null: false
     t.datetime "updated_at", null: false
+    t.datetime "auto_archive_at"
     t.index ["account_id"], name: "index_board_announcements_on_account_id", where: "(account_id IS NOT NULL)"
     t.index ["published_at"], name: "index_board_announcements_on_published_at"
     t.index ["sort_priority"], name: "index_board_announcements_on_sort_priority"
@@ -606,7 +607,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
     t.index ["reference_account_id"], name: "index_canonical_email_blocks_on_reference_account_id"
   end
 
-  create_table "chat_conversations", force: :cascade do |t|
+  create_table "chat_conversations", id: :bigint, default: -> { "timestamp_id('chat_conversations'::text)" }, force: :cascade do |t|
     t.datetime "archived_at"
     t.integer "conversation_type", default: 0, null: false
     t.datetime "created_at", null: false
@@ -625,7 +626,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
     t.index ["uri"], name: "index_chat_conversations_on_uri", unique: true, where: "(uri IS NOT NULL)"
   end
 
-  create_table "chat_invitations", force: :cascade do |t|
+  create_table "chat_invitations", id: :bigint, default: -> { "timestamp_id('chat_invitations'::text)" }, force: :cascade do |t|
     t.bigint "chat_conversation_id", null: false
     t.datetime "created_at", null: false
     t.boolean "ignored", default: false, null: false
@@ -640,7 +641,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
     t.index ["inviter_account_id"], name: "index_chat_invitations_on_inviter_account_id"
   end
 
-  create_table "chat_memberships", force: :cascade do |t|
+  create_table "chat_memberships", id: :bigint, default: -> { "timestamp_id('chat_memberships'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "chat_conversation_id", null: false
     t.datetime "created_at", null: false
@@ -655,14 +656,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
     t.index ["last_read_message_id"], name: "index_chat_memberships_on_last_read_message_id", where: "(last_read_message_id IS NOT NULL)"
   end
 
-  create_table "chat_message_edits", force: :cascade do |t|
+  create_table "chat_message_edits", id: :bigint, default: -> { "timestamp_id('chat_message_edits'::text)" }, force: :cascade do |t|
     t.bigint "chat_message_id", null: false
     t.text "text"
     t.datetime "created_at", null: false
     t.index ["chat_message_id"], name: "index_chat_message_edits_on_chat_message_id"
   end
 
-  create_table "chat_message_media_attachments", force: :cascade do |t|
+  create_table "chat_message_media_attachments", id: :bigint, default: -> { "timestamp_id('chat_message_media_attachments'::text)" }, force: :cascade do |t|
     t.bigint "chat_message_id", null: false
     t.datetime "created_at", null: false
     t.bigint "media_attachment_id", null: false
@@ -671,7 +672,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
     t.index ["media_attachment_id"], name: "index_chat_message_media_attachments_on_media_attachment_id", unique: true
   end
 
-  create_table "chat_message_reactions", force: :cascade do |t|
+  create_table "chat_message_reactions", id: :bigint, default: -> { "timestamp_id('chat_message_reactions'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "chat_message_id", null: false
     t.datetime "created_at", null: false
@@ -684,7 +685,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
     t.index ["uri"], name: "index_chat_message_reactions_on_uri", where: "(uri IS NOT NULL)"
   end
 
-  create_table "chat_messages", force: :cascade do |t|
+  create_table "chat_messages", id: :bigint, default: -> { "timestamp_id('chat_messages'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "chat_conversation_id", null: false
     t.datetime "created_at", null: false
@@ -695,6 +696,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
     t.text "text"
     t.datetime "updated_at", null: false
     t.string "uri"
+    t.jsonb "dice"
     t.index ["account_id"], name: "index_chat_messages_on_account_id"
     t.index ["chat_conversation_id", "id"], name: "index_chat_messages_on_chat_conversation_id_and_id"
     t.index ["chat_conversation_id"], name: "index_chat_messages_on_chat_conversation_id"
@@ -703,7 +705,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
     t.index ["uri"], name: "index_chat_messages_on_uri", unique: true, where: "(uri IS NOT NULL)"
   end
 
-  create_table "chat_roster_states", force: :cascade do |t|
+  create_table "chat_roster_states", id: :bigint, default: -> { "timestamp_id('chat_roster_states'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "chat_conversation_id", null: false
     t.datetime "created_at", null: false
@@ -1388,13 +1390,156 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
     t.index ["status_id"], name: "index_mentions_on_status_id"
   end
 
+  create_table "misskey_abuse_report_recipients", id: :bigint, default: -> { "timestamp_id('misskey_abuse_report_recipients'::text)" }, force: :cascade do |t|
+    t.string "name", null: false
+    t.string "delivery_method", null: false
+    t.boolean "active", default: true, null: false
+    t.bigint "account_id"
+    t.bigint "webhook_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_misskey_abuse_report_recipients_on_account_id"
+    t.index ["webhook_id"], name: "index_misskey_abuse_report_recipients_on_webhook_id"
+  end
+
+  create_table "misskey_abuse_report_resolutions", id: :bigint, default: -> { "timestamp_id('misskey_abuse_report_resolutions'::text)" }, force: :cascade do |t|
+    t.bigint "report_id", null: false
+    t.string "resolved_as", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["report_id"], name: "index_misskey_abuse_report_resolutions_on_report_id", unique: true
+  end
+
   create_table "misskey_access_grants", id: :bigint, default: -> { "timestamp_id('misskey_access_grants'::text)" }, force: :cascade do |t|
     t.bigint "access_token_id", null: false
     t.datetime "created_at", null: false
     t.boolean "native_user_token", default: false, null: false
     t.string "permissions", default: [], null: false, array: true
     t.datetime "updated_at", null: false
+    t.string "name"
+    t.text "description"
+    t.string "icon_url"
     t.index ["access_token_id"], name: "index_misskey_access_grants_on_access_token_id", unique: true
+  end
+
+  create_table "misskey_achievements", id: :bigint, default: -> { "timestamp_id('misskey_achievements'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "name", null: false
+    t.datetime "unlocked_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "name"], name: "index_misskey_achievements_on_account_id_and_name", unique: true
+  end
+
+  create_table "misskey_ads", id: :bigint, default: -> { "timestamp_id('misskey_ads'::text)" }, force: :cascade do |t|
+    t.datetime "expires_at", null: false
+    t.datetime "starts_at", null: false
+    t.string "place", default: "", null: false
+    t.string "priority", default: "", null: false
+    t.integer "ratio", default: 1, null: false
+    t.string "url", null: false
+    t.string "image_url", null: false
+    t.text "memo", default: "", null: false
+    t.integer "day_of_week", default: 0, null: false
+    t.boolean "is_sensitive", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["starts_at", "expires_at"], name: "index_misskey_ads_on_starts_at_and_expires_at"
+  end
+
+  create_table "misskey_apps", id: :bigint, default: -> { "timestamp_id('misskey_apps'::text)" }, force: :cascade do |t|
+    t.bigint "oauth_application_id", null: false
+    t.text "description", default: "", null: false
+    t.string "permission", default: [], null: false, array: true
+    t.string "callback_url"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["oauth_application_id"], name: "index_misskey_apps_on_oauth_application_id", unique: true
+  end
+
+  create_table "misskey_auth_sessions", id: :bigint, default: -> { "timestamp_id('misskey_auth_sessions'::text)" }, force: :cascade do |t|
+    t.string "token", null: false
+    t.bigint "oauth_application_id", null: false
+    t.bigint "user_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["oauth_application_id"], name: "index_misskey_auth_sessions_on_oauth_application_id"
+    t.index ["token"], name: "index_misskey_auth_sessions_on_token", unique: true
+    t.index ["user_id"], name: "index_misskey_auth_sessions_on_user_id"
+  end
+
+  create_table "misskey_bubble_game_records", id: :bigint, default: -> { "timestamp_id('misskey_bubble_game_records'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "seed", null: false
+    t.datetime "seeded_at", null: false
+    t.integer "score", null: false
+    t.jsonb "logs", default: [], null: false
+    t.string "game_mode", null: false
+    t.integer "game_version", null: false
+    t.boolean "is_verified", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_misskey_bubble_game_records_on_account_id"
+    t.index ["game_mode", "seeded_at"], name: "index_misskey_bubble_game_records_on_game_mode_and_seeded_at"
+  end
+
+  create_table "misskey_channel_favorites", id: :bigint, default: -> { "timestamp_id('misskey_channel_favorites'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "misskey_channel_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "misskey_channel_id"], name: "index_misskey_channel_favorites_on_account_and_channel", unique: true
+    t.index ["misskey_channel_id"], name: "index_misskey_channel_favorites_on_misskey_channel_id"
+  end
+
+  create_table "misskey_channel_followings", id: :bigint, default: -> { "timestamp_id('misskey_channel_followings'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "misskey_channel_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "misskey_channel_id"], name: "index_misskey_channel_followings_on_account_and_channel", unique: true
+    t.index ["misskey_channel_id"], name: "index_misskey_channel_followings_on_misskey_channel_id"
+  end
+
+  create_table "misskey_channel_mutings", id: :bigint, default: -> { "timestamp_id('misskey_channel_mutings'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "misskey_channel_id", null: false
+    t.datetime "expires_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "misskey_channel_id"], name: "index_misskey_channel_mutings_on_account_and_channel", unique: true
+    t.index ["misskey_channel_id"], name: "index_misskey_channel_mutings_on_misskey_channel_id"
+  end
+
+  create_table "misskey_channel_notes", id: :bigint, default: -> { "timestamp_id('misskey_channel_notes'::text)" }, force: :cascade do |t|
+    t.bigint "status_id", null: false
+    t.bigint "misskey_channel_id", null: false
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["misskey_channel_id", "account_id"], name: "index_misskey_channel_notes_on_channel_and_account"
+    t.index ["misskey_channel_id", "status_id"], name: "index_misskey_channel_notes_on_channel_and_status"
+    t.index ["status_id"], name: "index_misskey_channel_notes_on_status_id", unique: true
+  end
+
+  create_table "misskey_channels", id: :bigint, default: -> { "timestamp_id('misskey_channels'::text)" }, force: :cascade do |t|
+    t.bigint "account_id"
+    t.string "name", null: false
+    t.text "description"
+    t.bigint "banner_drive_file_id"
+    t.bigint "pinned_status_ids", default: [], null: false, array: true
+    t.string "color", default: "#86b300", null: false
+    t.boolean "archived", default: false, null: false
+    t.boolean "sensitive", default: false, null: false
+    t.boolean "allow_renote_to_external", default: true, null: false
+    t.integer "notes_count", default: 0, null: false
+    t.integer "users_count", default: 0, null: false
+    t.datetime "last_noted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_misskey_channels_on_account_id"
+    t.index ["banner_drive_file_id"], name: "index_misskey_channels_on_banner_drive_file_id"
+    t.index ["last_noted_at"], name: "index_misskey_channels_on_last_noted_at"
   end
 
   create_table "misskey_federation_instance_stats", id: :bigint, default: -> { "timestamp_id('misskey_federation_instance_stats'::text)" }, force: :cascade do |t|
@@ -1407,6 +1552,75 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
     t.datetime "updated_at", null: false
     t.integer "users_count", default: 0, null: false
     t.index ["domain"], name: "index_misskey_federation_instance_stats_on_domain", unique: true
+  end
+
+  create_table "misskey_flash_likes", id: :bigint, default: -> { "timestamp_id('misskey_flash_likes'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "misskey_flash_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "misskey_flash_id"], name: "index_misskey_flash_likes_on_account_id_and_flash_id", unique: true
+    t.index ["account_id"], name: "index_misskey_flash_likes_on_account_id"
+    t.index ["misskey_flash_id"], name: "index_misskey_flash_likes_on_misskey_flash_id"
+  end
+
+  create_table "misskey_flashes", id: :bigint, default: -> { "timestamp_id('misskey_flashes'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "title", default: "", null: false
+    t.text "summary", default: "", null: false
+    t.text "script", default: "", null: false
+    t.string "permissions", default: [], null: false, array: true
+    t.string "visibility", default: "public", null: false
+    t.integer "likes_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_misskey_flashes_on_account_id"
+    t.index ["likes_count"], name: "index_misskey_flashes_on_likes_count"
+  end
+
+  create_table "misskey_gallery_likes", id: :bigint, default: -> { "timestamp_id('misskey_gallery_likes'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "misskey_gallery_post_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "misskey_gallery_post_id"], name: "index_misskey_gallery_likes_on_account_id_and_post_id", unique: true
+    t.index ["account_id"], name: "index_misskey_gallery_likes_on_account_id"
+    t.index ["misskey_gallery_post_id"], name: "index_misskey_gallery_likes_on_misskey_gallery_post_id"
+  end
+
+  create_table "misskey_gallery_posts", id: :bigint, default: -> { "timestamp_id('misskey_gallery_posts'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "title", null: false
+    t.text "description"
+    t.bigint "media_attachment_ids", default: [], null: false, array: true
+    t.boolean "sensitive", default: false, null: false
+    t.integer "likes_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_misskey_gallery_posts_on_account_id"
+    t.index ["likes_count"], name: "index_misskey_gallery_posts_on_likes_count"
+    t.index ["media_attachment_ids"], name: "index_misskey_gallery_posts_on_media_attachment_ids", using: :gin
+  end
+
+  create_table "misskey_notifications", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "from_account_id"
+    t.string "notification_type", null: false
+    t.jsonb "data", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "id"], name: "index_misskey_notifications_on_account_id_and_id", order: { id: :desc }
+    t.index ["from_account_id"], name: "index_misskey_notifications_on_from_account_id"
+  end
+
+  create_table "misskey_promo_notes", id: :bigint, default: -> { "timestamp_id('misskey_promo_notes'::text)" }, force: :cascade do |t|
+    t.bigint "status_id", null: false
+    t.bigint "account_id", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_misskey_promo_notes_on_account_id"
+    t.index ["status_id"], name: "index_misskey_promo_notes_on_status_id", unique: true
   end
 
   create_table "misskey_registry_items", id: :bigint, default: -> { "timestamp_id('misskey_registry_items'::text)" }, force: :cascade do |t|
@@ -1430,6 +1644,82 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
     t.datetime "updated_at", null: false
     t.integer "users_count", default: 0, null: false
     t.index ["date_key"], name: "index_misskey_retention_aggregations_on_date_key", unique: true
+  end
+
+  create_table "misskey_reversi_games", id: :bigint, default: -> { "timestamp_id('misskey_reversi_games'::text)" }, force: :cascade do |t|
+    t.bigint "account1_id", null: false
+    t.bigint "account2_id", null: false
+    t.boolean "account1_ready", default: false, null: false
+    t.boolean "account2_ready", default: false, null: false
+    t.integer "black"
+    t.datetime "started_at"
+    t.datetime "ended_at"
+    t.bigint "winner_account_id"
+    t.bigint "surrendered_account_id"
+    t.bigint "timeout_account_id"
+    t.integer "time_limit_for_each_turn", default: 90, null: false
+    t.jsonb "logs", default: [], null: false
+    t.string "map", default: [], null: false, array: true
+    t.string "bw", default: "random", null: false
+    t.boolean "no_irregular_rules", default: false, null: false
+    t.boolean "llotheo", default: false, null: false
+    t.boolean "can_put_everywhere", default: false, null: false
+    t.boolean "looped_board", default: false, null: false
+    t.string "crc32"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account1_id"], name: "index_misskey_reversi_games_on_account1_id"
+    t.index ["account2_id"], name: "index_misskey_reversi_games_on_account2_id"
+  end
+
+  create_table "misskey_system_webhooks", id: :bigint, default: -> { "timestamp_id('misskey_system_webhooks'::text)" }, force: :cascade do |t|
+    t.bigint "webhook_id", null: false
+    t.string "name", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["webhook_id"], name: "index_misskey_system_webhooks_on_webhook_id", unique: true
+  end
+
+  create_table "misskey_user_list_favorites", id: :bigint, default: -> { "timestamp_id('misskey_user_list_favorites'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "list_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "list_id"], name: "index_misskey_user_list_favorites_on_account_id_and_list_id", unique: true
+    t.index ["list_id"], name: "index_misskey_user_list_favorites_on_list_id"
+  end
+
+  create_table "misskey_user_list_settings", id: :bigint, default: -> { "timestamp_id('misskey_user_list_settings'::text)" }, force: :cascade do |t|
+    t.bigint "list_id", null: false
+    t.boolean "is_public", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["list_id"], name: "index_misskey_user_list_settings_on_list_id", unique: true
+  end
+
+  create_table "misskey_user_page_views", id: :bigint, default: -> { "timestamp_id('misskey_user_page_views'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "bucket_at", null: false
+    t.boolean "visitor", default: false, null: false
+    t.string "viewer_key", null: false
+    t.integer "views", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "bucket_at", "visitor", "viewer_key"], name: "index_misskey_user_page_views_on_viewer_bucket", unique: true
+  end
+
+  create_table "misskey_webhooks", id: :bigint, default: -> { "timestamp_id('misskey_webhooks'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "name", null: false
+    t.string "url", null: false
+    t.string "secret", default: "", null: false
+    t.string "events", default: [], null: false, array: true
+    t.boolean "active", default: true, null: false
+    t.datetime "latest_sent_at"
+    t.integer "latest_status"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_misskey_webhooks_on_account_id"
   end
 
   create_table "mutes", force: :cascade do |t|
@@ -2210,6 +2500,65 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
     t.index ["unconfirmed_email"], name: "index_users_on_unconfirmed_email", where: "(unconfirmed_email IS NOT NULL)"
   end
 
+  create_table "voice_call_allocations", id: :bigint, default: -> { "timestamp_id('voice_call_allocations'::text)" }, force: :cascade do |t|
+    t.bigint "chat_conversation_id"
+    t.bigint "voice_relay_provider_id", null: false
+    t.string "room_key", null: false
+    t.string "generation", null: false
+    t.string "remote_id"
+    t.string "state", default: "pending", null: false
+    t.integer "slots", null: false
+    t.string "revision"
+    t.jsonb "participants", default: [], null: false
+    t.boolean "unavailable", default: false, null: false
+    t.datetime "renewed_at"
+    t.datetime "refreshed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chat_conversation_id"], name: "index_voice_call_allocations_on_chat_conversation_id", unique: true
+    t.index ["state"], name: "index_voice_call_allocations_unfinished", where: "((state)::text <> 'ended'::text)"
+    t.index ["voice_relay_provider_id", "remote_id"], name: "index_voice_call_allocations_on_provider_and_remote_id", unique: true, where: "(remote_id IS NOT NULL)"
+    t.index ["voice_relay_provider_id"], name: "index_voice_call_allocations_on_voice_relay_provider_id"
+  end
+
+  create_table "voice_call_remote_sessions", id: :bigint, default: -> { "timestamp_id('voice_call_remote_sessions'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "chat_conversation_id", null: false
+    t.string "identity", null: false
+    t.string "room_name", null: false
+    t.string "origin", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "chat_conversation_id"], name: "index_voice_call_remote_sessions_on_account_and_conversation", unique: true
+    t.index ["chat_conversation_id"], name: "index_voice_call_remote_sessions_on_conversation"
+  end
+
+  create_table "voice_call_remote_states", id: :bigint, default: -> { "timestamp_id('voice_call_remote_states'::text)" }, force: :cascade do |t|
+    t.bigint "chat_conversation_id", null: false
+    t.jsonb "participants", default: [], null: false
+    t.bigint "remote_updated_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chat_conversation_id"], name: "index_voice_call_remote_states_on_conversation", unique: true
+  end
+
+  create_table "voice_relay_providers", id: :bigint, default: -> { "timestamp_id('voice_relay_providers'::text)" }, force: :cascade do |t|
+    t.string "origin", null: false
+    t.text "secret_ciphertext", null: false
+    t.string "credential_version", null: false
+    t.boolean "enabled", default: true, null: false
+    t.boolean "validated", default: false, null: false
+    t.datetime "last_checked_at"
+    t.string "last_error"
+    t.jsonb "capacity", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "events_cursor"
+    t.datetime "revoked_at"
+    t.index ["origin"], name: "index_voice_relay_providers_on_origin", unique: true
+  end
+
   create_table "web_push_subscriptions", force: :cascade do |t|
     t.bigint "access_token_id", null: false
     t.datetime "created_at", precision: nil, null: false
@@ -2409,8 +2758,45 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
   add_foreign_key "media_attachments", "statuses", on_delete: :nullify
   add_foreign_key "mentions", "accounts", name: "fk_970d43f9d1", on_delete: :cascade
   add_foreign_key "mentions", "statuses", on_delete: :cascade
+  add_foreign_key "misskey_abuse_report_recipients", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_abuse_report_recipients", "webhooks", on_delete: :cascade
+  add_foreign_key "misskey_abuse_report_resolutions", "reports", on_delete: :cascade
   add_foreign_key "misskey_access_grants", "oauth_access_tokens", column: "access_token_id", on_delete: :cascade
+  add_foreign_key "misskey_achievements", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_apps", "oauth_applications", on_delete: :cascade
+  add_foreign_key "misskey_auth_sessions", "oauth_applications", on_delete: :cascade
+  add_foreign_key "misskey_auth_sessions", "users", on_delete: :cascade
+  add_foreign_key "misskey_bubble_game_records", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_channel_favorites", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_channel_favorites", "misskey_channels", on_delete: :cascade
+  add_foreign_key "misskey_channel_followings", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_channel_followings", "misskey_channels", on_delete: :cascade
+  add_foreign_key "misskey_channel_mutings", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_channel_mutings", "misskey_channels", on_delete: :cascade
+  add_foreign_key "misskey_channel_notes", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_channel_notes", "misskey_channels", on_delete: :cascade
+  add_foreign_key "misskey_channel_notes", "statuses", on_delete: :cascade
+  add_foreign_key "misskey_channels", "accounts", on_delete: :nullify
+  add_foreign_key "misskey_channels", "drive_files", column: "banner_drive_file_id", on_delete: :nullify
+  add_foreign_key "misskey_flash_likes", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_flash_likes", "misskey_flashes", on_delete: :cascade
+  add_foreign_key "misskey_flashes", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_gallery_likes", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_gallery_likes", "misskey_gallery_posts", on_delete: :cascade
+  add_foreign_key "misskey_gallery_posts", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_notifications", "accounts", column: "from_account_id", on_delete: :cascade
+  add_foreign_key "misskey_notifications", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_promo_notes", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_promo_notes", "statuses", on_delete: :cascade
   add_foreign_key "misskey_registry_items", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_reversi_games", "accounts", column: "account1_id", on_delete: :cascade
+  add_foreign_key "misskey_reversi_games", "accounts", column: "account2_id", on_delete: :cascade
+  add_foreign_key "misskey_system_webhooks", "webhooks", on_delete: :cascade
+  add_foreign_key "misskey_user_list_favorites", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_user_list_favorites", "lists", on_delete: :cascade
+  add_foreign_key "misskey_user_list_settings", "lists", on_delete: :cascade
+  add_foreign_key "misskey_user_page_views", "accounts", on_delete: :cascade
+  add_foreign_key "misskey_webhooks", "accounts", on_delete: :cascade
   add_foreign_key "mutes", "accounts", column: "target_account_id", name: "fk_eecff219ea", on_delete: :cascade
   add_foreign_key "mutes", "accounts", name: "fk_b8d8daf315", on_delete: :cascade
   add_foreign_key "notification_permissions", "accounts", column: "from_account_id", on_delete: :cascade
@@ -2495,6 +2881,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_011300) do
   add_foreign_key "users", "invites", on_delete: :nullify
   add_foreign_key "users", "oauth_applications", column: "created_by_application_id", on_delete: :nullify
   add_foreign_key "users", "user_roles", column: "role_id", on_delete: :nullify
+  add_foreign_key "voice_call_allocations", "chat_conversations", on_delete: :nullify
+  add_foreign_key "voice_call_allocations", "voice_relay_providers", on_delete: :cascade
+  add_foreign_key "voice_call_remote_sessions", "accounts", on_delete: :cascade
+  add_foreign_key "voice_call_remote_sessions", "chat_conversations", on_delete: :cascade
+  add_foreign_key "voice_call_remote_states", "chat_conversations", on_delete: :cascade
   add_foreign_key "web_push_subscriptions", "oauth_access_tokens", column: "access_token_id", on_delete: :cascade
   add_foreign_key "web_push_subscriptions", "users", on_delete: :cascade
   add_foreign_key "web_settings", "users", name: "fk_11910667b2", on_delete: :cascade

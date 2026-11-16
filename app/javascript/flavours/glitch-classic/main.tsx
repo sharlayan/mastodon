@@ -1,0 +1,115 @@
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+
+import { Globals } from '@react-spring/web';
+
+import * as perf from '@/flavours/glitch-classic/utils/performance';
+import { setupBrowserNotifications } from 'flavours/glitch-classic/actions/notifications';
+import Mastodon from 'flavours/glitch-classic/containers/mastodon';
+import {
+  backgroundColor,
+  backgroundImage,
+  backgroundOpacity,
+  me,
+  reduceMotion,
+  userTheme,
+  userThemeCatalog,
+  userThemeDefaults,
+  userThemesEnabled,
+} from 'flavours/glitch-classic/initial_state';
+import ready from 'flavours/glitch-classic/ready';
+import { applyStoredContentFontSize } from 'flavours/glitch-classic/sharlayan/local_settings/content_font_size';
+import { applyStoredSensitiveEmojiDisplay } from 'flavours/glitch-classic/sharlayan/local_settings/sensitive_emoji_display';
+import { applyServerBackground } from 'flavours/glitch-classic/sharlayan/server_background';
+import {
+  resolveUserThemeConfig,
+  userThemeCatalogForActiveSkin,
+  watchUserTheme,
+} from 'flavours/glitch-classic/sharlayan/user_theme';
+import { store } from 'flavours/glitch-classic/store';
+
+import {
+  isDevelopment,
+  isProduction,
+  isRedesignEnabled,
+} from './utils/environment';
+
+function main() {
+  perf.start('main()');
+
+  applyStoredContentFontSize();
+  applyStoredSensitiveEmojiDisplay();
+  watchUserTheme(
+    resolveUserThemeConfig(userTheme, userThemeDefaults),
+    userThemeCatalogForActiveSkin(userThemeCatalog),
+    userThemesEnabled,
+  );
+
+  return ready(async () => {
+    const mountNode = document.getElementById('mastodon');
+    if (!mountNode) {
+      throw new Error('Mount node not found');
+    }
+    applyServerBackground({
+      color: backgroundColor,
+      opacity: backgroundOpacity,
+      url: backgroundImage,
+    });
+    const props = JSON.parse(
+      mountNode.getAttribute('data-props') ?? '{}',
+    ) as Record<string, unknown>;
+
+    if (reduceMotion) {
+      Globals.assign({
+        skipAnimation: true,
+      });
+    }
+
+    const { initializeEmoji } = await import('./features/emoji/index');
+    await initializeEmoji();
+
+    if (isRedesignEnabled()) {
+      document.documentElement.dataset.redesign = 'true';
+    }
+
+    const root = createRoot(mountNode);
+    root.render(
+      <StrictMode>
+        <Mastodon {...props} />
+      </StrictMode>,
+    );
+    store.dispatch(setupBrowserNotifications());
+
+    if (
+      me &&
+      'serviceWorker' in navigator &&
+      (isDevelopment() || isProduction()) // Disallow testing environment
+    ) {
+      let swPath = '/sw.js';
+      if (isDevelopment()) {
+        const { default: swDevUrl } =
+          await import('@/flavours/glitch-classic/service_worker/sw?url');
+        swPath = swDevUrl;
+      }
+
+      await navigator.serviceWorker.register(swPath, {
+        scope: '/',
+        type: 'module',
+      });
+
+      if (isProduction()) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          const registerPushNotifications =
+            await import('flavours/glitch-classic/actions/push_notifications');
+
+          store.dispatch(registerPushNotifications.register());
+        }
+      }
+    }
+
+    perf.stop('main()');
+  });
+}
+
+// eslint-disable-next-line import/no-default-export
+export default main;

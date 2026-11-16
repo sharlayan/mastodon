@@ -1,0 +1,447 @@
+import { useCallback, useState } from 'react';
+
+import { defineMessages, useIntl } from 'react-intl';
+
+import { length } from 'stringz';
+
+import ArrowDownwardIcon from '@/material-icons/400-24px/arrow_downward.svg?react';
+import ArrowUpwardIcon from '@/material-icons/400-24px/arrow_upward.svg?react';
+import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
+import { openModal } from 'flavours/glitch-classic/actions/modal';
+import type { ApiMediaAttachmentJSON } from 'flavours/glitch-classic/api_types/media_attachments';
+import type {
+  ApiPageBlock,
+  ApiPageBlockType,
+} from 'flavours/glitch-classic/api_types/pages';
+import { Icon } from 'flavours/glitch-classic/components/icon';
+import { domain } from 'flavours/glitch-classic/initial_state';
+import { useAppDispatch } from 'flavours/glitch-classic/store';
+
+import { pageDocumentTextOnlyLength } from '../util/plain_text';
+
+import { BlockAddButtons } from './block_add_buttons';
+import { blockTypeMessages } from './block_messages';
+import { ImageUploadField } from './image_upload_field';
+
+export type PageBlockPatch = Record<string, unknown>;
+
+const messages = defineMessages({
+  moveUp: { id: 'pages.block.move_up', defaultMessage: 'Move up' },
+  moveDown: { id: 'pages.block.move_down', defaultMessage: 'Move down' },
+  remove: { id: 'pages.block.remove', defaultMessage: 'Remove block' },
+  removeConfirmTitle: {
+    id: 'pages.block.remove_confirm_title',
+    defaultMessage: 'Delete this item?',
+  },
+  removeConfirm: {
+    id: 'pages.block.remove_confirm',
+    defaultMessage: 'Delete',
+  },
+  textPlaceholder: {
+    id: 'pages.block.text_placeholder',
+    defaultMessage: 'Write text…',
+  },
+  textFormat: {
+    id: 'pages.block.text_format',
+    defaultMessage: 'Document format',
+  },
+  textFormatMfm: {
+    id: 'pages.block.text_format.mfm',
+    defaultMessage: 'MFM',
+  },
+  textFormatMarkdown: {
+    id: 'pages.block.text_format.markdown',
+    defaultMessage: 'Markdown',
+  },
+  characterCountWithSpaces: {
+    id: 'pages.block.character_count_with_spaces',
+    defaultMessage: 'With spaces: {count}',
+  },
+  plainTextCharacterCount: {
+    id: 'pages.block.character_count_plain_text',
+    defaultMessage: 'Text only: {count}',
+  },
+  sectionPlaceholder: {
+    id: 'pages.block.section_placeholder',
+    defaultMessage: 'Section title',
+  },
+  notePlaceholder: {
+    id: 'pages.block.note_placeholder',
+    defaultMessage: 'Post ID or URL',
+  },
+  noUpscale: {
+    id: 'pages.block.no_upscale',
+    defaultMessage: 'Do not enlarge beyond the original size',
+  },
+  spoiler: {
+    id: 'pages.block.spoiler',
+    defaultMessage: 'Hide as spoiler',
+  },
+  youtubePlaceholder: {
+    id: 'pages.block.youtube_placeholder',
+    defaultMessage: 'YouTube video URL',
+  },
+  youtubeSize: {
+    id: 'pages.block.youtube_size',
+    defaultMessage: 'Video size',
+  },
+});
+
+const SECTION_CHILD_TYPES: ApiPageBlockType[] = [
+  'text',
+  'image',
+  'note',
+  'youtube',
+];
+
+const parseNoteInput = (value: string): string | null | undefined => {
+  const raw = value.trim();
+
+  if (!raw) return null;
+  if (/^\d+$/.test(raw)) return raw;
+
+  let url: URL;
+
+  try {
+    url = new URL(raw);
+  } catch {
+    return undefined;
+  }
+
+  if (url.host !== domain) return undefined;
+
+  return /\/(\d+)\/?$/.exec(url.pathname)?.[1];
+};
+
+interface EditorBlockProps {
+  block: ApiPageBlock;
+  depth: number;
+  onUpdate: (id: string, patch: PageBlockPatch) => void;
+  onRemove: (id: string) => void;
+  onMove: (id: string, delta: number) => void;
+  onAddChild: (parentId: string, type: ApiPageBlockType) => void;
+  onMediaUploaded: (media: ApiMediaAttachmentJSON) => void;
+  getMedia: (fileId: string | null) => ApiMediaAttachmentJSON | null;
+}
+
+export const EditorBlock: React.FC<EditorBlockProps> = ({
+  block,
+  depth,
+  onUpdate,
+  onRemove,
+  onMove,
+  onAddChild,
+  onMediaUploaded,
+  getMedia,
+}) => {
+  const intl = useIntl();
+  const dispatch = useAppDispatch();
+  const blockId = block.id;
+  const characterCount = block.type === 'text' ? length(block.text) : undefined;
+  const plainTextCharacterCount =
+    block.type === 'text'
+      ? pageDocumentTextOnlyLength(block.text, block.format ?? 'mfm')
+      : undefined;
+
+  const handleMoveUp = useCallback(() => {
+    onMove(blockId, -1);
+  }, [onMove, blockId]);
+
+  const handleMoveDown = useCallback(() => {
+    onMove(blockId, 1);
+  }, [onMove, blockId]);
+
+  const handleRemove = useCallback(() => {
+    dispatch(
+      openModal({
+        modalType: 'CONFIRM',
+        modalProps: {
+          title: intl.formatMessage(messages.removeConfirmTitle),
+          confirm: intl.formatMessage(messages.removeConfirm),
+          onConfirm: () => {
+            onRemove(blockId);
+          },
+        },
+      }),
+    );
+  }, [dispatch, intl, onRemove, blockId]);
+
+  const handleTextChange = useCallback(
+    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      onUpdate(blockId, { text: event.target.value });
+    },
+    [onUpdate, blockId],
+  );
+
+  const handleTextFormatChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      onUpdate(blockId, { format: event.target.value });
+    },
+    [onUpdate, blockId],
+  );
+
+  const handleTitleChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      onUpdate(blockId, { title: event.target.value });
+    },
+    [onUpdate, blockId],
+  );
+
+  const [noteDraft, setNoteDraft] = useState<string | null>(null);
+  const [noteInvalid, setNoteInvalid] = useState(false);
+
+  const handleNoteChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setNoteDraft(event.target.value);
+      setNoteInvalid(false);
+    },
+    [],
+  );
+
+  const handleNoteBlur = useCallback(() => {
+    if (noteDraft === null) return;
+
+    const note = parseNoteInput(noteDraft);
+
+    if (note === undefined) {
+      setNoteInvalid(true);
+      onUpdate(blockId, { note: null });
+      return;
+    }
+
+    setNoteDraft(null);
+    onUpdate(blockId, { note });
+  }, [onUpdate, blockId, noteDraft]);
+
+  const handleImageChange = useCallback(
+    (media: ApiMediaAttachmentJSON | null) => {
+      if (media) {
+        onMediaUploaded(media);
+      }
+
+      onUpdate(blockId, { fileId: media?.id ?? null });
+    },
+    [onUpdate, onMediaUploaded, blockId],
+  );
+
+  const handleImageNoUpscaleChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      onUpdate(blockId, { noUpscale: event.target.checked });
+    },
+    [onUpdate, blockId],
+  );
+
+  const handleSpoilerChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      onUpdate(blockId, { spoiler: event.target.checked });
+    },
+    [onUpdate, blockId],
+  );
+
+  const handleYoutubeUrlChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      onUpdate(blockId, { url: event.target.value });
+    },
+    [onUpdate, blockId],
+  );
+
+  const handleYoutubeSizeChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      onUpdate(blockId, { size: event.target.value });
+    },
+    [onUpdate, blockId],
+  );
+
+  const handleAddChild = useCallback(
+    (type: ApiPageBlockType) => {
+      onAddChild(blockId, type);
+    },
+    [onAddChild, blockId],
+  );
+
+  return (
+    <div className='page-editor__block'>
+      <div className='page-editor__block__header'>
+        <span className='page-editor__block__type'>
+          {intl.formatMessage(blockTypeMessages[block.type])}
+        </span>
+
+        <div className='page-editor__block__controls'>
+          <button
+            type='button'
+            title={intl.formatMessage(messages.moveUp)}
+            onClick={handleMoveUp}
+          >
+            <Icon id='arrow-up' icon={ArrowUpwardIcon} />
+          </button>
+          <button
+            type='button'
+            title={intl.formatMessage(messages.moveDown)}
+            onClick={handleMoveDown}
+          >
+            <Icon id='arrow-down' icon={ArrowDownwardIcon} />
+          </button>
+          <button
+            type='button'
+            className='page-editor__block__remove'
+            title={intl.formatMessage(messages.remove)}
+            onClick={handleRemove}
+          >
+            <Icon id='trash' icon={DeleteIcon} />
+          </button>
+        </div>
+      </div>
+
+      {block.type === 'text' && (
+        <>
+          <label className='page-editor__block-option page-editor__document-format'>
+            <span>{intl.formatMessage(messages.textFormat)}</span>
+            <select
+              value={block.format ?? 'mfm'}
+              onChange={handleTextFormatChange}
+            >
+              <option value='mfm'>
+                {intl.formatMessage(messages.textFormatMfm)}
+              </option>
+              <option value='markdown'>
+                {intl.formatMessage(messages.textFormatMarkdown)}
+              </option>
+            </select>
+          </label>
+          <textarea
+            className='page-editor__textarea'
+            value={block.text}
+            placeholder={intl.formatMessage(messages.textPlaceholder)}
+            onChange={handleTextChange}
+          />
+          <div className='page-editor__text-meta'>
+            <label className='page-editor__block-option'>
+              <input
+                type='checkbox'
+                checked={block.spoiler ?? false}
+                onChange={handleSpoilerChange}
+              />
+              <span>{intl.formatMessage(messages.spoiler)}</span>
+            </label>
+            <div className='page-editor__character-count'>
+              <span>
+                {intl.formatMessage(messages.characterCountWithSpaces, {
+                  count: characterCount,
+                })}
+              </span>
+              <span>
+                {intl.formatMessage(messages.plainTextCharacterCount, {
+                  count: plainTextCharacterCount,
+                })}
+              </span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {block.type === 'note' && (
+        <input
+          type='text'
+          value={noteDraft ?? block.note ?? ''}
+          placeholder={intl.formatMessage(messages.notePlaceholder)}
+          aria-invalid={noteInvalid}
+          onChange={handleNoteChange}
+          onBlur={handleNoteBlur}
+        />
+      )}
+
+      {block.type === 'image' && (
+        <>
+          <ImageUploadField
+            value={getMedia(block.fileId)}
+            onChange={handleImageChange}
+          />
+          <label className='page-editor__block-option'>
+            <input
+              type='checkbox'
+              checked={block.noUpscale ?? false}
+              onChange={handleImageNoUpscaleChange}
+            />
+            <span>{intl.formatMessage(messages.noUpscale)}</span>
+          </label>
+          <label className='page-editor__block-option'>
+            <input
+              type='checkbox'
+              checked={block.spoiler ?? false}
+              onChange={handleSpoilerChange}
+            />
+            <span>{intl.formatMessage(messages.spoiler)}</span>
+          </label>
+        </>
+      )}
+
+      {block.type === 'youtube' && (
+        <>
+          <input
+            type='url'
+            value={block.url}
+            maxLength={512}
+            placeholder={intl.formatMessage(messages.youtubePlaceholder)}
+            onChange={handleYoutubeUrlChange}
+          />
+          <label className='page-editor__video-option'>
+            <span>{intl.formatMessage(messages.youtubeSize)}</span>
+            <select
+              value={block.size ?? 'medium'}
+              onChange={handleYoutubeSizeChange}
+            >
+              <option value='small'>
+                {intl.formatMessage({
+                  id: 'pages.block.youtube_size.small',
+                  defaultMessage: 'Small',
+                })}
+              </option>
+              <option value='medium'>
+                {intl.formatMessage({
+                  id: 'pages.block.youtube_size.medium',
+                  defaultMessage: 'Medium',
+                })}
+              </option>
+              <option value='large'>
+                {intl.formatMessage({
+                  id: 'pages.block.youtube_size.large',
+                  defaultMessage: 'Large',
+                })}
+              </option>
+            </select>
+          </label>
+        </>
+      )}
+
+      {block.type === 'section' && (
+        <div className='page-editor__section'>
+          <input
+            type='text'
+            value={block.title}
+            maxLength={100}
+            placeholder={intl.formatMessage(messages.sectionPlaceholder)}
+            onChange={handleTitleChange}
+          />
+
+          <div className='page-editor__section__children'>
+            {block.children.map((child) => (
+              <EditorBlock
+                key={child.id}
+                block={child}
+                depth={depth + 1}
+                onUpdate={onUpdate}
+                onRemove={onRemove}
+                onMove={onMove}
+                onAddChild={onAddChild}
+                onMediaUploaded={onMediaUploaded}
+                getMedia={getMedia}
+              />
+            ))}
+          </div>
+
+          <BlockAddButtons types={SECTION_CHILD_TYPES} onAdd={handleAddChild} />
+        </div>
+      )}
+    </div>
+  );
+};

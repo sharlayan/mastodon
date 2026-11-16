@@ -182,6 +182,8 @@ const transformProfile = (result: ApiProfileJSON): ProfileData => ({
   isCat: result.is_cat,
   featuredTags: result.featured_tags.map(transformTag),
   avatarDecorations: result.avatar_decorations,
+  birthday: result.birthday,
+  showBirthday: result.show_birthday,
 });
 
 export const fetchProfile = createDataLoadingThunk(

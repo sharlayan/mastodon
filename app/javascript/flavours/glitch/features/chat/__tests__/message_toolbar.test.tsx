@@ -537,3 +537,52 @@ describe('Long press on a message', () => {
     expect(focus).not.toHaveBeenCalled();
   });
 });
+
+describe('Dice messages', () => {
+  const dice = {
+    version: 1,
+    engine: '@dice-roller/rpg-dice-roller',
+    engineVersion: '5.5.1',
+    notation: '2d6+1',
+    total: 9,
+    output: '2d6+1: [3, 5]+1 = 9',
+  };
+
+  it('shows the stored total and roll details without an edit button', async () => {
+    await mountRoom([
+      message('1', '/dice 2d6+1', { ...fromMe, dice, editable: false }),
+      message('2', '/dice 1d20', {
+        dice: { ...dice, total: 4 },
+        deleted_at: '2026-11-04T00:01:00Z',
+      }),
+    ]);
+
+    const result = bubbleOf('1').querySelector('.chat-native__dice');
+    expect(result?.querySelector('strong')?.textContent).toBe('9');
+    expect(result?.querySelector('summary')?.textContent).toBe('Roll details');
+    expect(result?.querySelector('pre')?.textContent).toBe(dice.output);
+    expect(buttonsOf('1')).not.toContain('Edit');
+    expect(bubbleOf('2').querySelector('.chat-native__dice')).toBeNull();
+  });
+
+  it('explains a rejected roll and keeps the typed command', async () => {
+    await mountRoom([]);
+    const composer = document.querySelector<HTMLTextAreaElement>(
+      '.chat-native__composer textarea',
+    );
+    if (!composer) throw new Error('Missing composer');
+    api.post.mockRejectedValueOnce({
+      response: { status: 422, data: { error_code: 'DICE_INVALID' } },
+    });
+
+    fireEvent.change(composer, { target: { value: '/dice nope(' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    expect(
+      await screen.findByText(
+        'The dice notation could not be read. Check the syntax and edit your message.',
+      ),
+    ).toBeTruthy();
+    expect(composer.value).toBe('/dice nope(');
+  });
+});

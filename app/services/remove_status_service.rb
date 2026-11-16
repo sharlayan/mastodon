@@ -170,7 +170,7 @@ class RemoveStatusService < BaseService
     if permanently?
       @status.media_attachments.destroy_all
     else
-      UpdateMediaAttachmentsPermissionsService.new.call(@status.media_attachments, :private)
+      UpdateMediaAttachmentsPermissionsService.new.call(@status.media_attachments.where(drive_file_id: nil), :private)
     end
   end
 

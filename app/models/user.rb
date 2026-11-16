@@ -60,6 +60,7 @@ class User < ApplicationRecord
   include User::PamAuthenticable
   include User::SignInToken
   include Sharlayan::UserAccountSwitchRevocation
+  include Sharlayan::UserVoiceCallRevocation
 
   devise :two_factor_authenticatable,
          otp_secret_length: 32
@@ -99,6 +100,7 @@ class User < ApplicationRecord
   attr_accessor :registration_form_time, :website, :confirm_password
 
   validates_with RegistrationFormTimeValidator, on: :create
+  validates_with RegistrationRejectionValidator, on: :create
   validates :website, absence: true, on: :create
   validates :confirm_password, absence: true, on: :create
   validates :date_of_birth, presence: true, date_of_birth: true, on: :create, if: -> { Setting.min_age.present? && !bypass_registration_checks? }

@@ -5,86 +5,23 @@ require 'rails_helper'
 RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
   let(:object_endpoints) do
     %w(
-      app/create
-      app/show
-      ping
       test
-      v2/admin/emoji/list
     )
   end
 
   let(:array_endpoints) do
-    %w(
-      bubble-game/ranking
-    )
+    %w()
   end
 
   let(:void_endpoints) do
     %w(
-      bubble-game/register
       promo/read
     )
   end
 
   let(:explicitly_unsupported_endpoints) do
     %w(
-      i/export-antennas
-      i/export-favorites
-      i/import-antennas
-      channels/create
-      channels/favorite
-      channels/featured
-      channels/follow
-      channels/followed
-      channels/mute/create
-      channels/mute/delete
-      channels/mute/list
-      channels/my-favorites
-      channels/owned
-      channels/search
-      channels/show
-      channels/timeline
-      channels/unfavorite
-      channels/unfollow
-      channels/update
-      flash/create
-      flash/delete
-      flash/featured
-      flash/like
-      flash/my
-      flash/my-likes
-      flash/search
-      flash/show
-      flash/unlike
-      flash/update
-      gallery/featured
-      gallery/popular
-      gallery/posts
-      gallery/posts/create
-      gallery/posts/delete
-      gallery/posts/like
-      gallery/posts/show
-      gallery/posts/unlike
-      gallery/posts/update
-      i/change-password
-      i/gallery/likes
-      i/gallery/posts
-      i/update-email
-      request-reset-password
       reset-db
-      reset-password
-      reversi/cancel-match
-      reversi/games
-      reversi/invitations
-      reversi/match
-      reversi/show-game
-      reversi/surrender
-      reversi/verify
-      sw/update-registration
-      username/available
-      users/flashs
-      users/gallery/posts
-      verify-email
     )
   end
 

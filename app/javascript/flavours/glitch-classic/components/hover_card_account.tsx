@@ -1,0 +1,196 @@
+import { useEffect, forwardRef } from 'react';
+
+import { FormattedMessage } from 'react-intl';
+
+import classNames from 'classnames';
+
+import { useFetchFamiliarFollowers } from '@/flavours/glitch-classic/components/familiar_followers/use_fetch_familiar_followers';
+import { fetchAccount } from 'flavours/glitch-classic/actions/accounts';
+import { AccountBio } from 'flavours/glitch-classic/components/account_bio';
+import { AccountFields } from 'flavours/glitch-classic/components/account_fields';
+import { AccountFollowersCount } from 'flavours/glitch-classic/components/account_followers_count';
+import { Avatar } from 'flavours/glitch-classic/components/avatar';
+import { AvatarGroup } from 'flavours/glitch-classic/components/avatar_group';
+import { FollowersYouKnowCounter } from 'flavours/glitch-classic/components/counters';
+import { DisplayName } from 'flavours/glitch-classic/components/display_name';
+import { FollowButton } from 'flavours/glitch-classic/components/follow_button';
+import { LoadingIndicator } from 'flavours/glitch-classic/components/loading_indicator';
+import { Permalink } from 'flavours/glitch-classic/components/permalink';
+import { ShortNumber } from 'flavours/glitch-classic/components/short_number';
+import { domain } from 'flavours/glitch-classic/initial_state';
+import { getAccountHidden } from 'flavours/glitch-classic/selectors/accounts';
+import { useSharlayanEmojiInfoTooltip } from 'flavours/glitch-classic/sharlayan/emoji_info_tooltip';
+import { useAppSelector, useAppDispatch } from 'flavours/glitch-classic/store';
+
+export const HoverCardAccount = forwardRef<
+  HTMLDivElement,
+  { accountId?: string; reference?: string }
+>(({ accountId, reference }, ref) => {
+  const { setContainerElement, tooltip } = useSharlayanEmojiInfoTooltip();
+  const dispatch = useAppDispatch();
+
+  const account = useAppSelector((state) =>
+    accountId ? state.accounts.get(accountId) : undefined,
+  );
+  const suspended = account?.suspended;
+  const hidden = useAppSelector((state) =>
+    accountId ? getAccountHidden(state, accountId) : undefined,
+  );
+  const isSuspendedOrHidden = Boolean(suspended || hidden);
+
+  const note = useAppSelector(
+    (state) =>
+      state.relationships.getIn([accountId, 'note']) as string | undefined,
+  );
+
+  useEffect(() => {
+    if (accountId && !account) {
+      dispatch(fetchAccount(accountId));
+    }
+  }, [dispatch, accountId, account]);
+
+  const { familiarFollowers } = useFetchFamiliarFollowers({ accountId });
+
+  const relationship = useAppSelector((state) =>
+    accountId ? state.relationships.get(accountId) : undefined,
+  );
+  const isMutual = relationship?.followed_by && relationship.following;
+  const isFollower = relationship?.followed_by;
+  const hasRelationshipLoaded = !!relationship;
+
+  const shouldDisplayFamiliarFollowers =
+    familiarFollowers.length > 0 &&
+    hasRelationshipLoaded &&
+    !isMutual &&
+    !isFollower;
+
+  return (
+    <div ref={ref} id='hover-card' role='tooltip'>
+      {account ? (
+        <div
+          className={classNames('hover-card dropdown-animation', {
+            'hover-card--loading': !account,
+          })}
+          ref={setContainerElement}
+        >
+          <Permalink
+            to={`/@${account.acct}`}
+            href={account.get('url')}
+            className='hover-card__name'
+          >
+            <Avatar
+              account={isSuspendedOrHidden ? undefined : account}
+              size={46}
+            />
+            <DisplayName
+              account={account}
+              localDomain={domain}
+              disableEmojiTooltip
+            />
+          </Permalink>
+
+          {isSuspendedOrHidden ? (
+            <div className='hover-card__limited-account-note'>
+              {suspended ? (
+                <FormattedMessage
+                  id='empty_column.account_suspended'
+                  defaultMessage='Account suspended'
+                />
+              ) : (
+                <FormattedMessage
+                  id='limited_account_hint.title'
+                  defaultMessage='This profile or server has been hidden by the moderators of {domain}.'
+                  values={{ domain }}
+                />
+              )}
+            </div>
+          ) : (
+            <>
+              <div className='hover-card__text-row'>
+                <AccountBio
+                  accountId={account.id}
+                  className='hover-card__bio'
+                />
+
+                <div className='account-fields'>
+                  <AccountFields
+                    fields={account.fields.take(2)}
+                    emojis={account.emojis}
+                    mfm={account.mfm}
+                  />
+                </div>
+
+                {note && note.length > 0 && (
+                  <dl className='hover-card__note'>
+                    <dt className='hover-card__note-label'>
+                      <FormattedMessage
+                        id='account.account_note_header'
+                        defaultMessage='Personal note'
+                      />
+                    </dt>
+                    <dd>{note}</dd>
+                  </dl>
+                )}
+              </div>
+
+              <div className='hover-card__numbers'>
+                <AccountFollowersCount
+                  value={account.followers_count}
+                  withLabel
+                />
+                {shouldDisplayFamiliarFollowers && (
+                  <>
+                    &middot;
+                    <div className='hover-card__familiar-followers'>
+                      <ShortNumber
+                        value={familiarFollowers.length}
+                        renderer={FollowersYouKnowCounter}
+                      />
+                      <AvatarGroup compact>
+                        {familiarFollowers.slice(0, 3).map((account) => (
+                          <Avatar
+                            key={account.id}
+                            account={account}
+                            size={22}
+                          />
+                        ))}
+                      </AvatarGroup>
+                    </div>
+                  </>
+                )}
+                {(isMutual || isFollower) && (
+                  <>
+                    &middot;
+                    <span>
+                      {isMutual ? (
+                        <FormattedMessage
+                          id='account.mutual'
+                          defaultMessage='You follow each other'
+                        />
+                      ) : (
+                        <FormattedMessage
+                          id='account.follows_you'
+                          defaultMessage='Follows you'
+                        />
+                      )}
+                    </span>
+                  </>
+                )}
+              </div>
+
+              <FollowButton
+                accountId={accountId}
+                reference={reference ?? 'hover_card'}
+              />
+            </>
+          )}
+        </div>
+      ) : (
+        <LoadingIndicator />
+      )}
+      {tooltip}
+    </div>
+  );
+});
+
+HoverCardAccount.displayName = 'HoverCardAccount';

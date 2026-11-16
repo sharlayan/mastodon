@@ -74,6 +74,11 @@ html {
     width: 100%;
   }
 
+  .media-gallery.full-width,
+  .video-player.full-width {
+    margin-right: 0;
+  }
+
   [class*='_comp_number_fields__item'] button {
     font-size: inherit;
     font-weight: inherit;
@@ -134,6 +139,7 @@ html {
   .column-link .icon-group,
   .column-link .icon-users,
   .column-link .icon-description,
+  .column-link .icon-cloud,
   .column-link .icon-radar,
   .column-link .icon-chat {
     background-image: none;
@@ -200,6 +206,10 @@ html {
 
   .column-link .icon-description {
     @include icons.icon-glyph(pages);
+  }
+
+  .column-link .icon-cloud {
+    @include icons.icon-glyph(cloud);
   }
 
   .column-link .icon-chat {

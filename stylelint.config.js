@@ -4,6 +4,8 @@ module.exports = {
     'app/javascript/styles/mastodon/reset.scss',
     'app/javascript/flavours/glitch/styles/mastodon/reset.scss',
     'app/javascript/flavours/glitch/styles/birdsiteui/**/*',
+    'app/javascript/flavours/glitch-classic/styles/mastodon/reset.scss',
+    'app/javascript/flavours/glitch-classic/styles/birdsiteui/**/*',
     'app/javascript/styles/win95.scss',
     'coverage/**/*',
     'node_modules/**/*',

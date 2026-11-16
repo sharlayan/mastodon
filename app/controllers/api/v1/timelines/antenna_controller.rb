@@ -23,7 +23,16 @@ class Api::V1::Timelines::AntennaController < Api::V1::Timelines::BaseController
   end
 
   def set_statuses
-    @statuses = preload_collection(antenna_statuses, Status)
+    @statuses_page = antenna_statuses.to_a
+    statuses = preload_collection(@statuses_page, Status)
+    preload_visibility_relations!(statuses)
+    @statuses = statuses.select { |status| StatusPolicy.new(current_account, status).show? }
+  end
+
+  def preload_visibility_relations!(statuses)
+    current_account.preload_relations!(statuses.map(&:account_id).uniq)
+    restricted = statuses.reject { |status| status.public_visibility? || status.unlisted_visibility? }
+    ActiveRecord::Associations::Preloader.new(records: restricted, associations: :mentions, scope: Mention.where(account_id: current_account.id)).call
   end
 
   def antenna_statuses
@@ -33,6 +42,14 @@ class Api::V1::Timelines::AntennaController < Api::V1::Timelines::BaseController
       params[:since_id],
       params[:min_id]
     )
+  end
+
+  def pagination_collection
+    @statuses_page
+  end
+
+  def pagination_available?
+    @statuses_page.present?
   end
 
   def next_path

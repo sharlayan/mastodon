@@ -22,11 +22,9 @@ describe('Sharlayan More menu registry', () => {
       { text: 'logout', action: vi.fn() },
     ];
 
-    extendSharlayanMoreMenuItems(items, formatMessage, vi.fn(), true);
+    extendSharlayanMoreMenuItems(items, formatMessage, vi.fn());
 
     expect(itemPaths(items)).toEqual([
-      '/drive',
-      null,
       '/mutes',
       '/custom_emoji_mutes',
       '/reaction_mutes',
@@ -38,18 +36,10 @@ describe('Sharlayan More menu registry', () => {
     ]);
   });
 
-  it('does not add Drive when its feature gate is off', () => {
-    const items: MenuItem[] = [{ text: 'logout', action: vi.fn() }];
-
-    extendSharlayanMoreMenuItems(items, formatMessage, vi.fn(), false);
-
-    expect(itemPaths(items)).toEqual(['action', 'action']);
-  });
-
   it('does not expose the federation universe in the More menu', () => {
     const items: MenuItem[] = [{ text: 'logout', action: vi.fn() }];
 
-    extendSharlayanMoreMenuItems(items, formatMessage, vi.fn(), false);
+    extendSharlayanMoreMenuItems(items, formatMessage, vi.fn());
 
     expect(itemPaths(items)).toEqual(['action', 'action']);
   });

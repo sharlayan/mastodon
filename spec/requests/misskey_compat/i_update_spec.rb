@@ -56,11 +56,47 @@ RSpec.describe 'Misskey-compat i endpoints' do
       post '/api/i/update', params: params.merge(i: token), as: :json
     end
 
+    it 'round trips nullable follow approval periods and validates them before changing the profile' do
+      update(followApprovalLocalSeconds: 86_400, followApprovalRemoteSeconds: 0)
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to include(followApprovalLocalSeconds: 86_400, followApprovalRemoteSeconds: 0)
+
+      post '/api/i', params: { i: token }, as: :json
+      expect(response.parsed_body).to include(followApprovalLocalSeconds: 86_400, followApprovalRemoteSeconds: 0)
+
+      [-1, 2_592_001, 1.5, '86400', true, []].each do |invalid|
+        update(name: 'Invalid update', followApprovalLocalSeconds: invalid)
+        expect(response).to have_http_status(400)
+        expect(account.reload.display_name).to_not eq('Invalid update')
+      end
+
+      update(followApprovalLocalSeconds: nil, followApprovalRemoteSeconds: 2_592_000)
+      expect(response.parsed_body).to include(followApprovalLocalSeconds: nil, followApprovalRemoteSeconds: 2_592_000)
+    end
+
     it 'rejects a read-only token' do
       post '/api/i/update', params: { i: read_token, name: 'nope' }, as: :json
 
       expect(response).to have_http_status(403)
       expect(account.reload.display_name).to_not eq('nope')
+    end
+
+    it 'queues follow approvals only after the entire profile update succeeds' do
+      account.update!(locked: true)
+      sender = Fabricate(:account, created_at: 8.days.ago)
+      sender.request_follow!(account)
+      AuthorizeFollowWorker.clear
+
+      update(isLocked: false, followApprovalLocalSeconds: 0, mutedWords: 'invalid')
+      expect(response).to have_http_status(400)
+      expect(account.reload).to be_locked
+      expect(user.reload.settings[:follow_approval_local_seconds]).to be_nil
+      expect(AuthorizeFollowWorker.jobs).to be_empty
+
+      update(isLocked: false, followApprovalLocalSeconds: 0)
+      expect(response).to have_http_status(200)
+      expect(account.reload).to_not be_locked
+      expect(AuthorizeFollowWorker.jobs.pluck('args')).to eq([[sender.id, account.id]])
     end
 
     it 'rejects a body that is not an object' do
