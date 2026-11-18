@@ -261,15 +261,38 @@ describe('voice call panel', () => {
     );
   });
 
-  it('hides the call controls when the room has no call or cannot have one', async () => {
+  it('shows an unavailable call button without offering microphone controls or joining', async () => {
     api.get.mockResolvedValue({
       data: [voiceState({ active: false, participants: [], available: false })],
     });
-    mount();
+    const view = mount();
+    expect(
+      screen
+        .getByRole('button', {
+          name: 'The call status cannot be checked right now.',
+        })
+        .hasAttribute('disabled'),
+    ).toBe(true);
     await settle();
 
-    expect(screen.queryByRole('button', { name: /call/i })).toBeNull();
+    const button = screen.getByRole('button', {
+      name: 'Voice calls are not available in this chat.',
+    });
+    expect(button.hasAttribute('disabled')).toBe(true);
+    fireEvent.click(button);
+    expect(api.post).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole('button', { name: 'Join with microphone off' }),
+    ).toBeNull();
     expect(screen.queryByText(/in call/)).toBeNull();
+
+    view.rerender(
+      <IntlProvider locale='en'>
+        <VoiceCallHeaderButton room={room} enabled={false} />
+        <VoiceCallPanel room={room} enabled={false} />
+      </IntlProvider>,
+    );
+    expect(screen.queryByRole('button', { name: /call/i })).toBeNull();
   });
 
   it('offers a fresh call from the header when nobody is in it', async () => {

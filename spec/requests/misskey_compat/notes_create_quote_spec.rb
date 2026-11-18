@@ -28,6 +28,26 @@ RSpec.describe 'Misskey-compat notes/create quote checks' do
     Status.find(MisskeyCompat::MiId.decode(response.parsed_body.dig(:createdNote, :id)))
   end
 
+  it 'uses the account quote policy for new notes while preserving visibility restrictions' do
+    %w(public followers nobody).each do |policy|
+      user.settings.update(default_quote_policy: policy)
+      user.save!
+      expected = policy == 'nobody' ? 0 : InteractionPolicy::POLICY_FLAGS.fetch(policy.to_sym) << 16
+
+      post '/api/notes/create', params: { i: token, text: "policy #{policy}", quote_approval_policy: 'public' }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(created_status.quote_approval_policy).to eq(expected)
+    end
+
+    user.settings.update(default_quote_policy: 'public')
+    user.save!
+    post '/api/notes/create', params: { i: token, text: 'private note', visibility: 'followers' }, as: :json
+
+    expect(response).to have_http_status(200)
+    expect(created_status).to have_attributes(visibility: 'private', quote_approval_policy: 0)
+  end
+
   it 'quotes a status whose policy allows it and keeps a manually approved remote quote pending like the REST API' do
     quoted = Fabricate(:status, account: author, quote_approval_policy: automatic_public)
 

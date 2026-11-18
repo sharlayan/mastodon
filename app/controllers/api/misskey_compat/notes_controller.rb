@@ -2,6 +2,7 @@
 
 class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   include Api::AccountRateLimit
+  include Api::InteractionPoliciesConcern
 
   class NoSuchReplyTargetError < StandardError; end
   class CannotReplyToSpecifiedVisibilityNoteError < StandardError; end
@@ -182,7 +183,9 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     conversation = @note.conversation
     render_error('No such note', 'NO_SUCH_NOTE', 404) and return if conversation.nil?
 
-    current_account.mute_conversation!(conversation)
+    muting = current_account.mute_conversation!(conversation)
+    return render_error('You are already muting that thread', 'ALREADY_MUTING', 400, id: 'c146e22d-1141-4b31-b28d-176371014d18') unless muting.previously_new_record?
+
     head 204
   end
 
@@ -646,6 +649,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       thread: reply,
       local_only: ActiveModel::Type::Boolean.new.cast(params[:localOnly]),
       quoted_status: quoted,
+      quote_approval_policy: quote_approval_policy(current_user.setting_default_quote_policy),
       poll: post_poll_options,
       scheduled_at: scheduled_at_option,
       reaction_acceptance: reaction_acceptance_option,
