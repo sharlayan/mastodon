@@ -79,6 +79,13 @@ html {
     margin-right: 0;
   }
 
+  .chat-message__bubble .media-gallery,
+  .chat-message__bubble .audio-player,
+  .chat-message__bubble .video-player {
+    margin-left: 0;
+    margin-inline-start: 0;
+  }
+
   [class*='_comp_number_fields__item'] button {
     font-size: inherit;
     font-weight: inherit;
