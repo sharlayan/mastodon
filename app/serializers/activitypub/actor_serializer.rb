@@ -11,7 +11,7 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
                      :memorial, :indexable, :attribution_domains, :profile_settings,
                      :misskey_followed_message, :avatar_decorations, :is_cat, :misskey_chat
 
-  context_extensions :interaction_policies
+  context_extensions :interaction_policies, :actor_featured_collections
 
   attributes :id, :webfinger, :type, :following, :followers,
              :inbox, :outbox, :featured, :featured_tags,
