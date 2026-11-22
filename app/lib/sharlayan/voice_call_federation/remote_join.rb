@@ -24,9 +24,13 @@ module Sharlayan
         response = signed_post("#{origin}/livekit/federation/token", body, remember_unsupported: true)
         credentials = parse_token_response(response, origin)
 
-        store_participants(credentials[:participants], credentials[:updated_at])
         session_id = remember_session(credentials[:token], origin)
-        credentials.except(:participants, :updated_at).merge(url: "#{Sharlayan::VoiceCallService.signal_url}/remote/#{session_id}", allow_screen_share: body[:canScreenShare])
+        store_participants(credentials[:participants], credentials[:updated_at])
+        credentials.except(:participants, :updated_at).merge(
+          url: "#{Sharlayan::VoiceCallService.signal_url}/remote/#{session_id}",
+          allow_screen_share: body[:canScreenShare],
+          recording: credentials[:participants].any? { |participant| participant[:recording] }
+        )
       end
 
       def report_status(session_id:, mic_muted:, deafened:)

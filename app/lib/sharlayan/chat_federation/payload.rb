@@ -17,6 +17,7 @@ module Sharlayan
           '_misskey_chatRoomMembers' => { '@id' => 'misskey:_misskey_chatRoomMembers', '@type' => '@id', '@container' => '@set' },
           '_misskey_chatRoomRosterAt' => 'misskey:_misskey_chatRoomRosterAt',
           '_misskey_dice' => { '@id' => 'misskey:_misskey_dice', '@type' => '@json' },
+          '_misskey_chatReplyTo' => { '@id' => 'misskey:_misskey_chatReplyTo', '@type' => '@id' },
         },
       ].freeze
 
@@ -27,7 +28,7 @@ module Sharlayan
             'id' => "#{message_uri(message)}/activity",
             'type' => 'Create',
             'actor' => actor_uri(message.account),
-            'published' => message.created_at.iso8601,
+            'published' => message.created_at.utc.iso8601(3),
             'to' => recipients(message),
             'object' => note(message).merge(legacy_room_fields(message)),
           }
@@ -231,7 +232,7 @@ module Sharlayan
             '_misskey_content' => text,
             'source' => { 'content' => text, 'mediaType' => 'text/x.misskeymarkdown' },
             'to' => recipients(message),
-            'published' => message.created_at.iso8601,
+            'published' => message.created_at.utc.iso8601(3),
             '_misskey_talk' => true,
           }
           if message.chat_conversation.chat_group?
@@ -241,7 +242,10 @@ module Sharlayan
           result['updated'] = message.edited_at.utc.iso8601(3) if message.edited_at.present?
           dice = Sharlayan::ChatDice.parse(message.dice)
           result['_misskey_dice'] = dice if dice
-          result['inReplyTo'] = message_uri(message.reply_to) if message.reply_to.present?
+          if message.reply_to.present?
+            result['inReplyTo'] = message_uri(message.reply_to)
+            result['_misskey_chatReplyTo'] = result['inReplyTo']
+          end
           result['attachment'] = documents(message, domain) if message.media_attachments.any?
           result
         end

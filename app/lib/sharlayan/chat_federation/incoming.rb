@@ -582,7 +582,7 @@ module Sharlayan
             created_at: time_of(object['published']),
             edited_at: time_of(object['updated']),
             attachments: attachments,
-            reply_to_uri: uri_of(object['inReplyTo']),
+            reply_to_uri: uri_of(object['_misskey_chatReplyTo']) || uri_of(object['inReplyTo']),
             dice: object['_misskey_dice'],
           }
         end

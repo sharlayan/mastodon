@@ -91,4 +91,29 @@ describe('starting a voice call', () => {
 
     expect(engine.connectVoiceCall).not.toHaveBeenCalled();
   });
+
+  it('asks before connecting to a call that is being recorded', async () => {
+    dispatch.mockClear();
+    const { result } = renderHook(() => useStartVoiceCall(), { wrapper });
+
+    result.current({ id: '5', title: 'Room' });
+    await flush();
+    pending.resolve({ ...credentials, recording: true });
+    await flush();
+
+    expect(engine.connectVoiceCall).not.toHaveBeenCalled();
+    const action = dispatch.mock.calls[0]?.[0] as {
+      payload: {
+        modalProps: { title: string; message: string; onConfirm: () => void };
+      };
+    };
+    expect(action.payload.modalProps.title).toBe(
+      'Join a call that is being recorded?',
+    );
+    expect(action.payload.modalProps.message).toContain('recording');
+
+    action.payload.modalProps.onConfirm();
+
+    expect(engine.connectVoiceCall).toHaveBeenCalledTimes(1);
+  });
 });

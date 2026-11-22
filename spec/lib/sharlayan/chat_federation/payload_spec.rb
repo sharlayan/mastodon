@@ -37,6 +37,17 @@ RSpec.describe Sharlayan::ChatFederation::Payload do
     expect(note['to']).to include(remote.uri)
   end
 
+  it 'names the reply target in both reply fields and publishes with milliseconds' do
+    message.update!(created_at: Time.utc(2026, 11, 22, 1, 2, 3, 456_000))
+    reply = ChatMessage.create!(chat_conversation: conversation, account: owner, text: 'reply', reply_to: message)
+    target_uri = described_class.note(message)['id']
+
+    expect(described_class.note(reply)).to include('inReplyTo' => target_uri, '_misskey_chatReplyTo' => target_uri)
+    expect(described_class.note(message)['published']).to eq('2026-11-22T01:02:03.456Z')
+    expect(described_class.create(message)['published']).to eq('2026-11-22T01:02:03.456Z')
+    expect(described_class::CONTEXT.last['_misskey_chatReplyTo']).to eq('@id' => 'misskey:_misskey_chatReplyTo', '@type' => '@id')
+  end
+
   it 'identifies the room without treating it as a JSON-LD context document' do
     note = described_class.note(message)
     room_uri = "https://#{Rails.configuration.x.web_domain}/chat/rooms/#{conversation.id}"

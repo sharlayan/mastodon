@@ -89,6 +89,20 @@ export const voiceMessages = defineMessages({
     defaultMessage: 'Microphone input detected',
   },
   deafened: { id: 'chat.voice.deafened', defaultMessage: 'Sound turned off' },
+  recording: { id: 'chat.voice.recording', defaultMessage: 'Recording' },
+  recordingInProgress: {
+    id: 'chat.voice.recording_in_progress',
+    defaultMessage: 'This call is being recorded',
+  },
+  recordingJoinTitle: {
+    id: 'chat.voice.recording_join_title',
+    defaultMessage: 'Join a call that is being recorded?',
+  },
+  recordingJoinNotice: {
+    id: 'chat.voice.recording_join_notice',
+    defaultMessage:
+      'If you join, your voice and any screen you share will be included in the recording.',
+  },
   sharingScreen: {
     id: 'chat.voice.sharing_screen',
     defaultMessage: 'Sharing screen',

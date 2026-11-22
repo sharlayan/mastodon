@@ -62,6 +62,14 @@ RSpec.describe 'Chat federation gaps' do
       expect(ChatMessage.find_by(uri: 'https://remote.test/chat/messages/1').reply_to).to eq(target)
     end
 
+    it 'prefers the CherryPick reply field over inReplyTo' do
+      target = service.create_message(owner, direct, text: 'first')
+
+      perform(note_json(_misskey_chatReplyTo: target.uri, inReplyTo: 'https://remote.test/chat/messages/unknown'))
+
+      expect(ChatMessage.find_by(uri: 'https://remote.test/chat/messages/1').reply_to).to eq(target)
+    end
+
     it 'keeps a message whose reply target is unknown' do
       direct
 

@@ -36,6 +36,7 @@ class ActivityPub::VoiceFederationController < ActivityPub::BaseController
   def status
     body = json_body
     return head 400 unless body && room_param?(body['room']) && body['sessionId'].is_a?(String) && body['sessionId'].length.between?(1, 128) && boolean?(body['micMuted']) && boolean?(body['deafened'])
+    return head 403 if body['recording'] == true
 
     conversation = conversation_for(body['room'])
     return head 403 if conversation.nil? || !VoiceCallAllocation.active.exists?(chat_conversation_id: conversation.id)

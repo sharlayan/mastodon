@@ -117,19 +117,38 @@ export const useStartVoiceCall = () => {
         void connectVoiceCall(conversation, credentials, { micEnabled });
       };
 
-      if (!needsMediaNotice(credentials)) {
+      const mediaNotice = needsMediaNotice(credentials);
+      const recording = credentials.recording === true;
+      if (!mediaNotice && !recording) {
         connect();
         return;
       }
 
+      const notices = [
+        ...(recording
+          ? [intl.formatMessage(voiceMessages.recordingJoinNotice)]
+          : []),
+        ...(mediaNotice
+          ? [
+              intl.formatMessage(voiceMessages.mediaNotice, {
+                host: hostOf(credentials.media_provider),
+              }),
+            ]
+          : []),
+      ];
+
       confirm(
-        intl.formatMessage(voiceMessages.mediaNoticeTitle),
-        intl.formatMessage(voiceMessages.mediaNotice, {
-          host: hostOf(credentials.media_provider),
-        }),
-        intl.formatMessage(voiceMessages.mediaNoticeConfirm),
+        intl.formatMessage(
+          recording
+            ? voiceMessages.recordingJoinTitle
+            : voiceMessages.mediaNoticeTitle,
+        ),
+        notices.join(' '),
+        intl.formatMessage(
+          recording ? voiceMessages.join : voiceMessages.mediaNoticeConfirm,
+        ),
         () => {
-          acknowledgeMediaProvider(credentials.media_provider);
+          if (mediaNotice) acknowledgeMediaProvider(credentials.media_provider);
           connect();
         },
       );

@@ -9,6 +9,7 @@ import { Link, useLocation } from 'react-router-dom';
 import CallEndIcon from '@/material-icons/400-24px/call_end.svg?react';
 import MicIcon from '@/material-icons/400-24px/mic.svg?react';
 import MicOffIcon from '@/material-icons/400-24px/mic_off.svg?react';
+import RadioButtonCheckedIcon from '@/material-icons/400-24px/radio_button_checked.svg?react';
 import VolumeUpIcon from '@/material-icons/400-24px/volume_up.svg?react';
 import { Button } from 'flavours/glitch-classic/components/button';
 import { Icon } from 'flavours/glitch-classic/components/icon';
@@ -23,6 +24,7 @@ import {
   VoiceSettings,
 } from './panel';
 import { cancelPendingVoiceCall, usePendingVoiceCall } from './start';
+import { useVoiceState } from './states';
 
 const roomPath = (id: string) => `/chat/${id}`;
 
@@ -36,6 +38,14 @@ export const VoiceCallBar: FC = () => {
   const [settingsFor, setSettingsFor] = useState<string | null>(null);
   const conversationId = call.conversation?.id ?? null;
   const settingsOpen = conversationId != null && settingsFor === conversationId;
+  const voiceState = useVoiceState(
+    conversationId ?? undefined,
+    conversationId != null,
+  );
+  const recording =
+    voiceState?.participants.some(
+      (participant) => participant.recording === true,
+    ) ?? false;
   const handleToggleSettings = useCallback(() => {
     setSettingsFor((open) => (open === conversationId ? null : conversationId));
   }, [conversationId]);
@@ -113,6 +123,12 @@ export const VoiceCallBar: FC = () => {
           <span className='chat-voice-bar__status' role='status'>
             {intl.formatMessage(statusMessage(call))}
           </span>
+          {recording && (
+            <span className='chat-voice-bar__recording' role='status'>
+              <Icon id='radio-button-checked' icon={RadioButtonCheckedIcon} />
+              {intl.formatMessage(voiceMessages.recording)}
+            </span>
+          )}
         </span>
       </Link>
       {call.audioBlocked && (

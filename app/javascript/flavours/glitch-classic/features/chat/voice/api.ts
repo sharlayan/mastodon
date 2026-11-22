@@ -11,6 +11,7 @@ export interface VoiceParticipant {
   screen_sharing: boolean;
   mic_muted: boolean | null;
   deafened: boolean | null;
+  recording?: boolean;
 }
 
 export interface VoiceState {
@@ -45,6 +46,7 @@ export interface VoiceCredentials {
   screen_share_limits: ScreenShareLimits | null;
   allow_screen_share: boolean;
   max_participants: number;
+  recording?: boolean;
 }
 
 export type VoiceErrorCode =

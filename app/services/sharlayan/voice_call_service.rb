@@ -153,6 +153,7 @@ class Sharlayan::VoiceCallService
           screen_sharing: participant['screen_sharing'],
           mic_muted: participant['mic_muted'],
           deafened: participant['deafened'],
+          recording: participant['recording'] == true,
         }
       end
     end

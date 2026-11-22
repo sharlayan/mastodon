@@ -38,7 +38,7 @@ module Sharlayan
           return unless value.is_a?(Array) && value.size <= MAX_PARTICIPANTS && value.all? { |participant| valid_participant?(participant, identity_key) }
 
           value.map do |participant|
-            { identity: participant[identity_key], screen_sharing: participant['screenSharing'], mic_muted: Sharlayan::VoiceCallFederation.reported_status(participant['micMuted']), deafened: Sharlayan::VoiceCallFederation.reported_status(participant['deafened']) }
+            { identity: participant[identity_key], screen_sharing: participant['screenSharing'], mic_muted: Sharlayan::VoiceCallFederation.reported_status(participant['micMuted']), deafened: Sharlayan::VoiceCallFederation.reported_status(participant['deafened']), recording: participant['recording'] == true }
           end
         end
 
@@ -65,22 +65,23 @@ module Sharlayan
         end
 
         def admitted(conversation, participants)
-          member_ids = conversation.memberships.pluck(:account_id).to_set
+          sessions = VoiceCallRemoteSession.where(chat_conversation_id: conversation.id, account_id: conversation.memberships.select(:account_id), expires_at: Time.now.utc..)
+          joined_ids = sessions.pluck(:account_id).to_set
           ActiveRecord::Base.cache do
             participants.uniq { |participant| participant[:identity] }.first(MAX_PARTICIPANTS).filter_map do |participant|
-              admitted_entry(participant, member_ids)
+              admitted_entry(participant, joined_ids)
             end
           end
         end
 
-        def admitted_entry(participant, member_ids)
+        def admitted_entry(participant, joined_ids)
           account = begin
             ActivityPub::TagManager.instance.uri_to_resource(participant[:identity], ::Account)
           rescue Addressable::URI::InvalidURIError, URI::InvalidURIError, ActionController::RoutingError
             nil
           end
           return if account.nil? || account.unavailable?
-          return if account.local? && !member_ids.include?(account.id)
+          return if account.local? && !joined_ids.include?(account.id)
           return if !account.local? && DomainBlock.blocked?(account.domain)
 
           {
@@ -89,6 +90,7 @@ module Sharlayan
             'screen_sharing' => participant[:screen_sharing],
             'mic_muted' => participant[:mic_muted],
             'deafened' => participant[:deafened],
+            'recording' => participant[:recording] == true,
           }
         end
       end

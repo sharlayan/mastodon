@@ -58,6 +58,17 @@ RSpec.describe 'ActivityPub voice call federation' do
     expect(response.parsed_body).to eq('includeIceServers' => true)
   end
 
+  it 'refuses recording reports because hosted rooms do not allow recording' do
+    status = { room: room_uri, sessionId: 'PA_9', micMuted: true, deafened: false }
+    token_request(guest, { room: room_uri })
+
+    post '/livekit/federation/status', params: status.merge(recording: true).to_json, headers: json_headers.dup, sign_with: guest
+    expect(response).to have_http_status(403)
+
+    post '/livekit/federation/status', params: status.merge(recording: false).to_json, headers: json_headers.dup, sign_with: guest
+    expect(response).to have_http_status(200)
+  end
+
   it 'accepts status reports from remote participants, refusing them only once the call is gone' do
     status = { room: room_uri, sessionId: 'PA_9', micMuted: true, deafened: false }
     post '/livekit/federation/status', params: status.to_json, headers: json_headers.dup, sign_with: guest
