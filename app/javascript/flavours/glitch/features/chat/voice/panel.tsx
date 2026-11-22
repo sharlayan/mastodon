@@ -24,6 +24,7 @@ import MicOffIcon from '@/material-icons/400-24px/mic_off.svg?react';
 import MoreHorizIcon from '@/material-icons/400-24px/more_horiz.svg?react';
 import PersonRemoveIcon from '@/material-icons/400-24px/person_remove.svg?react';
 import PictureInPictureIcon from '@/material-icons/400-24px/picture_in_picture_alt.svg?react';
+import RadioButtonCheckedIcon from '@/material-icons/400-24px/radio_button_checked.svg?react';
 import ScreenShareIcon from '@/material-icons/400-24px/screen_share.svg?react';
 import SettingsIcon from '@/material-icons/400-24px/settings.svg?react';
 import StopScreenShareIcon from '@/material-icons/400-24px/stop_screen_share.svg?react';
@@ -85,6 +86,7 @@ interface CallMember {
   self: boolean;
   micMuted: boolean | null;
   deafened: boolean | null;
+  recording: boolean;
   screenSharing: boolean;
   speaking: boolean;
 }
@@ -110,6 +112,7 @@ const membersOf = (
       self,
       micMuted: self ? !call.micEnabled : participant.mic_muted,
       deafened: self ? call.deafened : participant.deafened,
+      recording: participant.recording === true,
       screenSharing: self ? call.screenSharing : participant.screen_sharing,
       speaking:
         joined && call.speakingIdentities.includes(participant.identity),
@@ -124,6 +127,7 @@ const membersOf = (
       self: true,
       micMuted: !call.micEnabled,
       deafened: call.deafened,
+      recording: false,
       screenSharing: call.screenSharing,
       speaking: call.speakingIdentities.includes(call.identity),
     });
@@ -429,6 +433,14 @@ const MemberTile: FC<{
         )}
       </span>
       <span className='chat-voice__member-flags'>
+        {member.recording && (
+          <Icon
+            id='radio-button-checked'
+            icon={RadioButtonCheckedIcon}
+            className='chat-voice__recording-flag'
+            aria-label={intl.formatMessage(voiceMessages.recording)}
+          />
+        )}
         {member.micMuted === true && (
           <Icon
             id='mic-off'
@@ -969,6 +981,11 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
               {intl.formatMessage(voiceMessages.mediaProvider, {
                 host: hostOf(call.mediaProvider),
               })}
+            </span>
+          )}
+          {members.some((member) => member.recording) && (
+            <span className='chat-voice__warning chat-voice__warning--recording'>
+              {intl.formatMessage(voiceMessages.recordingInProgress)}
             </span>
           )}
           {state?.unavailable && (

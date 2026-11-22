@@ -84,6 +84,11 @@
     font-weight: 400;
   }
 
+  &__warning--recording,
+  &__recording-flag {
+    color: var(--color-text-error);
+  }
+
   &__provider {
     color: var(--color-text-secondary);
     font-size: 12px;
@@ -414,6 +419,19 @@
   &__status {
     color: var(--color-text-success);
     font-size: 12px;
+  }
+
+  &__recording {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--color-text-error);
+    font-size: 12px;
+
+    .icon {
+      width: 12px;
+      height: 12px;
+    }
   }
 
   &__line {

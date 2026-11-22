@@ -41,6 +41,10 @@ RSpec.describe Sharlayan::VoiceCallFederation do
     Setting.voice_call_remote_join_enabled = false
   end
 
+  def remember_remote_session(expires_at: 1.hour.from_now)
+    VoiceCallRemoteSession.create!(account: member, chat_conversation: mirror, identity: member_uri, room_name: 'room-9', origin: 'https://remote.test', expires_at:)
+  end
+
   def voice_state_update(participants:, updated: Time.now.utc, room: mirror.uri, actor: host)
     {
       'type' => 'Update', 'actor' => actor.uri,
@@ -51,6 +55,7 @@ RSpec.describe Sharlayan::VoiceCallFederation do
   describe 'incoming call states' do
     it 'stores the newest state from the room owner, keeping only known participants' do
       allow(redis).to receive(:publish).and_call_original
+      remember_remote_session
       update = voice_state_update(participants: [{ 'id' => host.uri, 'screenSharing' => false, 'micMuted' => true }, { 'id' => member_uri, 'screenSharing' => false }, { 'id' => 'https://unknown.test/users/x', 'screenSharing' => false },
                                                  { 'id' => 'http://example.com:abc/u', 'screenSharing' => false },
                                                  { 'id' => "https://#{Rails.configuration.x.local_domain}/users/a b", 'screenSharing' => false }])
@@ -67,6 +72,21 @@ RSpec.describe Sharlayan::VoiceCallFederation do
 
       ActivityPub::Activity::Update.new(voice_state_update(participants: []), host).perform
       expect(Sharlayan::VoiceCallService.state_for(mirror)[:active]).to be false
+    end
+
+    it 'lists local members only while they have a live session through this server and keeps the recording flag' do
+      participants = [{ 'id' => host.uri, 'screenSharing' => false, 'recording' => true }, { 'id' => member_uri, 'screenSharing' => false, 'recording' => 'yes' }]
+
+      ActivityPub::Activity::Update.new(voice_state_update(participants:), host).perform
+      expect(Sharlayan::VoiceCallService.state_for(mirror)[:participants].pluck(:account_id, :recording)).to eq [[host.id.to_s, true]]
+
+      session = remember_remote_session(expires_at: 1.minute.ago)
+      ActivityPub::Activity::Update.new(voice_state_update(participants:, updated: 1.second.from_now), host).perform
+      expect(Sharlayan::VoiceCallService.state_for(mirror)[:participants].pluck(:account_id)).to eq [host.id.to_s]
+
+      session.update!(expires_at: 1.hour.from_now)
+      ActivityPub::Activity::Update.new(voice_state_update(participants:, updated: 2.seconds.from_now), host).perform
+      expect(Sharlayan::VoiceCallService.state_for(mirror)[:participants].pluck(:account_id, :recording)).to contain_exactly([host.id.to_s, true], [member.id.to_s, false])
     end
 
     it 'rejects states from other actors, other servers, the far future, the distant past and while remote calls are off' do
@@ -135,6 +155,14 @@ RSpec.describe Sharlayan::VoiceCallFederation do
       status = stub_request(:post, 'https://remote.test/livekit/federation/status').to_return(status: 200, body: '{}')
       expect(service.report_status(member, mirror, session_id: 'PA_1', mic_muted: true, deafened: false)).to be true
       expect(status.with(body: { room: mirror.uri, sessionId: 'PA_1', micMuted: true, deafened: false }.to_json)).to have_been_made
+    end
+
+    it 'keeps the joining member in the state sent with the token and reports a recording in progress' do
+      body = token_response.merge(participants: [{ identity: host.uri, screenSharing: false, recording: true }, { identity: member_uri, screenSharing: false }])
+      stub_request(:post, 'https://remote.test/livekit/federation/token').to_return(status: 200, body: body.to_json)
+
+      expect(service.join(member, mirror)).to include(recording: true)
+      expect(Sharlayan::VoiceCallService.state_for(mirror)[:participants].pluck(:account_id)).to contain_exactly(host.id.to_s, member.id.to_s)
     end
 
     def joined_remote_session
