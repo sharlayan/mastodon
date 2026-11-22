@@ -678,6 +678,8 @@
   "settings.inline_compose_expand_on_click.hint": "Twitterのようにインライン投稿欄をコンパクトに表示し、クリックすると投稿ツール全体を展開します",
   "settings.inline_compose_timelines": "タイムラインの上部に投稿ボックスを表示",
   "settings.inline_compose_timelines.hint": "Twitter風: ホーム・ローカル・連合タイムラインの上部に投稿ボックスを表示します（シングルカラムモードのみ）",
+  "settings.media_no_autoplay_avatar_decorations": "アバターのデコレーションを自動再生しない",
+  "settings.media_no_autoplay_avatar_decorations_hint": "APNGを含む動くデコレーションを静止状態で表示し、アバターにマウスを乗せたときだけ再生します。アニメーションの動きを減らす設定やGIFの自動再生設定とは別に適用されます",
   "settings.media_no_autoplay_gifv": "添付されたGIFを自動再生しない",
   "settings.media_no_autoplay_gifv_hint": "GIFの自動再生が有効でも、添付されたGIFメディアは自動再生されず、マウスオーバーまたはクリック時に再生されます",
   "settings.mention_reblogger": "ブーストされた投稿に返信するときブーストした人にメンションする",

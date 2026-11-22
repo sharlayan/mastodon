@@ -8,6 +8,10 @@ import { showAlertForError } from '@/flavours/glitch-classic/actions/alerts';
 import { apiGetAvatarDecorations } from '@/flavours/glitch-classic/api/accounts';
 import type { ApiAvatarDecorationJSON } from '@/flavours/glitch-classic/api_types/accounts';
 import type { ApiProfileDecorationConfigJSON } from '@/flavours/glitch-classic/api_types/profile';
+import {
+  FrozenDecorationImage,
+  useDecorationAutoplayDisabled,
+} from '@/flavours/glitch-classic/components/avatar_decoration_image';
 import { buildDecorationTransform } from '@/flavours/glitch-classic/components/avatar_decoration_utils';
 import { Button } from '@/flavours/glitch-classic/components/button';
 import { LoadingIndicator } from '@/flavours/glitch-classic/components/loading_indicator';
@@ -166,8 +170,10 @@ const DecorationTooltip: FC<DecorationTooltipProps> = ({
   target,
   decoration,
 }) => {
+  const autoplayDisabled = useDecorationAutoplayDisabled();
   if (!show || !target) return null;
-  const url = autoPlayGif ? decoration.url : decoration.static_url;
+  const url =
+    autoplayDisabled || autoPlayGif ? decoration.url : decoration.static_url;
   return (
     <Popover
       isOpen={show}
@@ -206,6 +212,7 @@ const DecorationTile: FC<DecorationTileProps> = ({
 }) => {
   const [buttonEl, setButtonEl] = useState<HTMLButtonElement | null>(null);
   const [hovered, setHovered] = useState(false);
+  const autoplayDisabled = useDecorationAutoplayDisabled();
 
   const handleClick = useCallback(() => {
     onSelect(decoration.id);
@@ -230,7 +237,16 @@ const DecorationTile: FC<DecorationTileProps> = ({
         onMouseLeave={handleMouseLeave}
         aria-pressed={isSelected}
       >
-        <img src={decoration.url} alt='' className={classes.decorationImg} />
+        {autoplayDisabled ? (
+          <FrozenDecorationImage
+            url={decoration.url}
+            staticUrl={decoration.static_url}
+            playing={hovered}
+            className={classes.decorationImg}
+          />
+        ) : (
+          <img src={decoration.url} alt='' className={classes.decorationImg} />
+        )}
       </button>
       <DecorationTooltip
         show={hovered}
@@ -282,6 +298,7 @@ const AvatarPreview: FC<AvatarPreviewProps> = ({
   focusedInstanceId,
 }) => {
   const animate = autoPlayGif;
+  const autoplayDisabled = useDecorationAutoplayDisabled();
   const src = avatarUrl ?? '/avatars/original/missing.png';
   const hasFocus = focusedInstanceId != null;
 
@@ -294,18 +311,28 @@ const AvatarPreview: FC<AvatarPreviewProps> = ({
           if (!decoration) return null;
           const url = animate ? decoration.url : decoration.static_url;
           const dimmed = hasFocus && config.instanceId !== focusedInstanceId;
-          return (
+          const style = {
+            transform: buildDecorationTransform(config),
+            opacity: dimmed ? 0.25 : config.opacity,
+            transition: 'opacity 0.2s ease',
+          };
+          return autoplayDisabled ? (
+            <FrozenDecorationImage
+              key={config.instanceId}
+              url={decoration.url}
+              staticUrl={decoration.static_url}
+              playing={false}
+              className={classes.previewDecoration}
+              style={style}
+            />
+          ) : (
             <img
               key={config.instanceId}
               src={url}
               alt=''
               aria-hidden='true'
               className={classes.previewDecoration}
-              style={{
-                transform: buildDecorationTransform(config),
-                opacity: dimmed ? 0.25 : config.opacity,
-                transition: 'opacity 0.2s ease',
-              }}
+              style={style}
             />
           );
         })}
@@ -341,6 +368,7 @@ const ActiveListItem: FC<ActiveListItemProps> = ({
 }) => {
   const intl = useIntl();
   const animate = autoPlayGif;
+  const autoplayDisabled = useDecorationAutoplayDisabled();
 
   const handleRowClick = useCallback(() => {
     onToggleExpand(config.instanceId);
@@ -376,7 +404,16 @@ const ActiveListItem: FC<ActiveListItemProps> = ({
           aria-expanded={isExpanded}
         >
           <div className={classes.listItemThumb}>
-            {url && <img src={url} alt='' className={classes.listItemImg} />}
+            {decoration && autoplayDisabled ? (
+              <FrozenDecorationImage
+                url={decoration.url}
+                staticUrl={decoration.static_url}
+                playing={false}
+                className={classes.listItemImg}
+              />
+            ) : (
+              url && <img src={url} alt='' className={classes.listItemImg} />
+            )}
           </div>
           <span className={classes.listItemName}>
             {decoration?.name ?? config.id}

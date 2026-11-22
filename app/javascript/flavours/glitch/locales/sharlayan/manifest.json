@@ -678,6 +678,8 @@
   "settings.inline_compose_expand_on_click.hint",
   "settings.inline_compose_timelines",
   "settings.inline_compose_timelines.hint",
+  "settings.media_no_autoplay_avatar_decorations",
+  "settings.media_no_autoplay_avatar_decorations_hint",
   "settings.media_no_autoplay_gifv",
   "settings.media_no_autoplay_gifv_hint",
   "settings.mention_reblogger",

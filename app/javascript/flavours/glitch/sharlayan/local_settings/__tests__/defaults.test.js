@@ -44,6 +44,7 @@ describe('sharlayan local_settings defaults', () => {
     const state = initial();
 
     expect(state.getIn(['media', 'no_autoplay_gifv'])).toBe(false);
+    expect(state.getIn(['media', 'no_autoplay_avatar_decorations'])).toBe(false);
     expect(state.getIn(['media', 'letterbox'])).toBe(true);
     expect(state.getIn(['media', 'pop_in_position'])).toBe('right');
     expect(state.get('navigation_panel')).toEqual(

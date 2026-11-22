@@ -678,6 +678,8 @@
   "settings.inline_compose_expand_on_click.hint": "Keep the inline compose box compact until you click it, similar to Twitter",
   "settings.inline_compose_timelines": "Show the compose box at the top of timelines",
   "settings.inline_compose_timelines.hint": "Twitter-style: display the compose box above the home, local and federated timelines (single-column mode only)",
+  "settings.media_no_autoplay_avatar_decorations": "Do not autoplay avatar decorations",
+  "settings.media_no_autoplay_avatar_decorations_hint": "Animated decorations, including APNG, stay still and play only while you hover over the avatar. This applies separately from reduced motion and GIF autoplay",
   "settings.media_no_autoplay_gifv": "Do not autoplay attached GIFs",
   "settings.media_no_autoplay_gifv_hint": "Attached GIF media will play on hover or click instead of automatically, even when GIF autoplay is enabled",
   "settings.mention_reblogger": "Mention booster when replying to a boosted post",

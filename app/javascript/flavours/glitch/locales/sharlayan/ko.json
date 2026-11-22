@@ -678,6 +678,8 @@
   "settings.inline_compose_expand_on_click.hint": "트위터처럼 인라인 작성창을 간결하게 표시하고 클릭하면 전체 작성 도구를 펼칩니다",
   "settings.inline_compose_timelines": "타임라인 상단에 작성창 표시",
   "settings.inline_compose_timelines.hint": "트위터 방식: 홈, 로컬, 연합 타임라인 위에 작성창을 표시합니다 (단일 컬럼 모드에서만)",
+  "settings.media_no_autoplay_avatar_decorations": "아바타 장식 자동재생 안함",
+  "settings.media_no_autoplay_avatar_decorations_hint": "APNG를 포함한 움직이는 장식을 정지 상태로 표시하고, 아바타에 마우스를 올렸을 때만 재생합니다. 애니메이션 줄이기나 GIF 자동재생 설정과 별개로 적용됩니다",
   "settings.media_no_autoplay_gifv": "첨부된 GIF 자동재생 안함",
   "settings.media_no_autoplay_gifv_hint": "GIF 자동재생이 켜져 있어도, 첨부된 GIF 미디어는 자동으로 재생되지 않고 마우스를 올리거나 클릭할 때 재생됩니다",
   "settings.mention_reblogger": "부스트 된 게시물에 답글을 달 때 부스트한 사람을 언급(멘션)합니다.",

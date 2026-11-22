@@ -36,10 +36,12 @@ vi.mock('@/flavours/glitch-classic/store', () => ({
   useAppDispatch: () => dispatch,
   useAppSelector: (
     selector: (state: {
+      local_settings: { getIn: (path: string[]) => unknown };
       profileEdit: { profile: unknown; isPending: boolean };
     }) => unknown,
   ) =>
     selector({
+      local_settings: { getIn: () => false },
       profileEdit: {
         profile: {
           avatar: '/avatar.png',

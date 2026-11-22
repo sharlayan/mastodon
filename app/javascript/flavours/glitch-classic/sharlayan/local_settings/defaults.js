@@ -47,6 +47,7 @@ export const sharlayanLocalSettingsDefaults = ImmutableMap({
   }),
   media: ImmutableMap({
     no_autoplay_gifv: false,
+    no_autoplay_avatar_decorations: false,
   }),
   pages: ImmutableMap({
     show_activity: true,

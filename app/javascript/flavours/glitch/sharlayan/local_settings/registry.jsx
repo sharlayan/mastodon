@@ -137,6 +137,7 @@ const localSettingsSlots = {
   ],
   'media-after-fullwidth': [
     { setting: ['media', 'no_autoplay_gifv'], id: 'mastodon-settings--media-no_autoplay_gifv', message: { id: 'settings.media_no_autoplay_gifv', defaultMessage: 'Do not autoplay attached GIFs' }, hint: { id: 'settings.media_no_autoplay_gifv_hint', defaultMessage: 'Attached GIF media will play on hover or click instead of automatically, even when GIF autoplay is enabled' } },
+    { setting: ['media', 'no_autoplay_avatar_decorations'], id: 'mastodon-settings--media-no_autoplay_avatar_decorations', message: { id: 'settings.media_no_autoplay_avatar_decorations', defaultMessage: 'Do not autoplay avatar decorations' }, hint: { id: 'settings.media_no_autoplay_avatar_decorations_hint', defaultMessage: 'Animated decorations, including APNG, stay still and play only while you hover over the avatar. This applies separately from reduced motion and GIF autoplay' } },
   ],
 };
 
