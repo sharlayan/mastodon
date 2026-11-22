@@ -370,21 +370,30 @@
     .chat-message__bubble,
     &.chat-message--own .chat-message__bubble {
       background: transparent;
+      color: var(--color-text-primary);
       padding: 0;
       overflow: visible;
     }
 
-    .chat-message__bubble .status__content__text {
-      line-height: 0;
-    }
-
-    .chat-message__bubble img.emojione.custom-emoji {
+    .chat-message__bubble .status__content__text img.emojione.custom-emoji {
       display: block;
       width: 128px;
       height: 128px;
       max-width: 128px;
       object-fit: contain;
       margin: 0;
+    }
+
+    &.chat-message--sticker-multiple
+      .chat-message__bubble
+      .status__content__text
+      img.emojione.custom-emoji {
+      display: inline-block;
+      width: 64px;
+      height: 64px;
+      max-width: 64px;
+      margin: 0 4px 4px 0;
+      vertical-align: top;
     }
   }
 

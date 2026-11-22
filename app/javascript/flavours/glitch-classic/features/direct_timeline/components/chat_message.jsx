@@ -34,6 +34,8 @@ import { MediaGallery, Video, Audio } from 'flavours/glitch-classic/features/ui/
 import { me, deleteModal, reactionsEnabled } from 'flavours/glitch-classic/initial_state';
 import { makeGetStatus } from 'flavours/glitch-classic/selectors';
 
+import { customEmojiOnlyCount, withoutLeadingHandles } from '../message_content';
+
 const messages = defineMessages({
   more: { id: 'status.more', defaultMessage: 'More' },
   open: { id: 'status.open', defaultMessage: 'Expand this status' },
@@ -54,113 +56,6 @@ const messages = defineMessages({
 const getStatus = makeGetStatus();
 
 const GROUP_TIME_GAP_MS = 5 * 60 * 1000;
-
-const mentionStripParser = new DOMParser();
-
-const handleTokenRegex = /^\s*@[\w]+(?:@[\w.-]+)?(?=\s|$)/;
-
-const stripLeadingMentions = (html) => {
-  if (!html) {
-    return html;
-  }
-
-  const doc = mentionStripParser.parseFromString(html, 'text/html');
-  const first = doc.body.firstElementChild;
-  const container = first && first.tagName === 'P' ? first : doc.body;
-
-  const isMention = (node) =>
-    node.nodeType === Node.ELEMENT_NODE &&
-    (node.matches('a.mention') || node.classList.contains('h-card'));
-
-  let node = container.firstChild;
-  let removedMention = false;
-
-  while (node) {
-    const next = node.nextSibling;
-
-    if (isMention(node)) {
-      node.remove();
-      removedMention = true;
-      node = next;
-      continue;
-    }
-
-    if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() === '') {
-      node.remove();
-      node = next;
-      continue;
-    }
-
-    break;
-  }
-
-  if (node && node.nodeType === Node.TEXT_NODE) {
-    let text = node.textContent;
-
-    while (handleTokenRegex.test(text)) {
-      text = text.replace(handleTokenRegex, '');
-      removedMention = true;
-    }
-
-    if (removedMention) {
-      node.textContent = text.replace(/^\s+/, '');
-    }
-  }
-
-  if (!removedMention) {
-    return html;
-  }
-
-  return doc.body.innerHTML;
-};
-
-const htmlIsEmpty = (html) => {
-  if (!html) {
-    return true;
-  }
-
-  const doc = mentionStripParser.parseFromString(html, 'text/html');
-
-  return (doc.body.textContent || '').trim() === '';
-};
-
-const htmlIsSingleCustomEmoji = (html) => {
-  if (!html) {
-    return false;
-  }
-
-  const doc = mentionStripParser.parseFromString(html, 'text/html');
-  let container = doc.body;
-  const meaningfulNodes = (element) => Array.from(element.childNodes).filter(node =>
-    node.nodeType !== Node.TEXT_NODE || node.textContent.trim() !== '');
-
-  let nodes = meaningfulNodes(container);
-
-  if (nodes.length === 1 && nodes[0].nodeType === Node.ELEMENT_NODE && nodes[0].tagName === 'P') {
-    container = nodes[0];
-    nodes = meaningfulNodes(container);
-  }
-
-  return nodes.length === 1 &&
-    nodes[0].nodeType === Node.ELEMENT_NODE &&
-    nodes[0].matches('img.emojione.custom-emoji');
-};
-
-const stripLeadingHandlesFromText = (text) => {
-  if (!text) {
-    return text;
-  }
-
-  let result = text;
-  let removed = false;
-
-  while (handleTokenRegex.test(result)) {
-    result = result.replace(handleTokenRegex, '');
-    removed = true;
-  }
-
-  return removed ? result.replace(/^\s+/, '') : text;
-};
 
 export const ChatMessage = ({ conversationId, statusId, prevStatusId, nextStatusId }) => {
   const intl = useIntl();
@@ -185,42 +80,7 @@ export const ChatMessage = ({ conversationId, statusId, prevStatusId, nextStatus
     setRevealMedia(value => !value);
   }, []);
 
-  const displayStatus = useMemo(() => {
-    if (!status) {
-      return status;
-    }
-
-    let next = status;
-    const html = status.get('contentHtml');
-    const translatedHtml = status.getIn(['translation', 'contentHtml']);
-    const mfmText = status.get('mfm_text');
-
-    if (html) {
-      const stripped = stripLeadingMentions(html);
-
-      if (!htmlIsEmpty(stripped)) {
-        next = next.set('contentHtml', stripped);
-      }
-    }
-
-    if (translatedHtml) {
-      const stripped = stripLeadingMentions(translatedHtml);
-
-      if (!htmlIsEmpty(stripped)) {
-        next = next.setIn(['translation', 'contentHtml'], stripped);
-      }
-    }
-
-    if (mfmText) {
-      const stripped = stripLeadingHandlesFromText(mfmText);
-
-      if (stripped.trim() !== '') {
-        next = next.set('mfm_text', stripped);
-      }
-    }
-
-    return next;
-  }, [status]);
+  const displayStatus = useMemo(() => withoutLeadingHandles(status), [status]);
 
   if (!status || !account) {
     return null;
@@ -238,11 +98,11 @@ export const ChatMessage = ({ conversationId, statusId, prevStatusId, nextStatus
 
   const hasSpoiler = !!status.get('spoiler_text');
   const showContent = !hasSpoiler || expanded;
-  const displayedHtml = displayStatus.getIn(['translation', 'contentHtml']) || displayStatus.get('contentHtml');
-  const isSticker = !hasSpoiler &&
+  const stickerCount = !hasSpoiler &&
     status.get('media_attachments').isEmpty() &&
-    !status.get('poll') &&
-    htmlIsSingleCustomEmoji(displayedHtml);
+    !status.get('poll')
+    ? customEmojiOnlyCount(displayStatus)
+    : 0;
 
   const signedIn = !!me;
   const reactions = status.get('reactions');
@@ -455,7 +315,8 @@ export const ChatMessage = ({ conversationId, statusId, prevStatusId, nextStatus
         'chat-message--group-start': isGroupStart,
         'chat-message--group-end': isGroupEnd,
         'chat-message--has-media': showContent && status.get('media_attachments').size > 0,
-        'chat-message--sticker': isSticker,
+        'chat-message--sticker': stickerCount > 0,
+        'chat-message--sticker-multiple': stickerCount > 1,
       })}
       tabIndex={0}
     >

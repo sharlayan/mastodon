@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
@@ -40,6 +40,8 @@ import { Hotkeys } from 'flavours/glitch/components/hotkeys';
 import { IconButton } from 'flavours/glitch/components/icon_button';
 import { RelativeTimestamp } from 'flavours/glitch/components/relative_timestamp';
 import { makeGetStatus } from 'flavours/glitch/selectors';
+
+import { withoutLeadingHandles } from '../message_content';
 
 const messages = defineMessages({
   more: { id: 'status.more', defaultMessage: 'More' },
@@ -98,6 +100,10 @@ export const Conversation: React.FC<{
         | undefined,
   );
   const accounts = useAppSelector((state) => getAccounts(state, accountIds));
+  const displayStatus = useMemo(
+    () => withoutLeadingHandles(lastStatus) as typeof lastStatus,
+    [lastStatus],
+  );
 
   // glitch-soc additions
   const sharedCWState = useAppSelector(
@@ -241,7 +247,7 @@ export const Conversation: React.FC<{
 
           <StatusContent
             // @ts-expect-error StatusContent isn't typed yet
-            status={lastStatus}
+            status={displayStatus}
             onClick={handleClick}
             expanded={sharedCWState ? lastStatus.get('hidden') : expanded}
             onExpandedToggle={handleShowMore}

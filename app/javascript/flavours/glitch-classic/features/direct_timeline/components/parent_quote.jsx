@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { useHistory } from 'react-router-dom';
 
@@ -11,6 +11,8 @@ import { DisplayName } from 'flavours/glitch-classic/components/display_name';
 import { EmojiHTML } from 'flavours/glitch-classic/components/emoji/html';
 import { VisibilityIcon } from 'flavours/glitch-classic/components/visibility_icon';
 import { makeGetStatus } from 'flavours/glitch-classic/selectors';
+
+import { withoutLeadingHandles } from '../message_content';
 
 const getStatus = makeGetStatus();
 
@@ -35,6 +37,7 @@ export const ParentQuote = ({ statusId }) => {
   }, [dispatch, statusId, isInStore]);
 
   const account = status ? status.get('account') : null;
+  const displayStatus = useMemo(() => withoutLeadingHandles(status), [status]);
 
   const handleClick = useCallback(() => {
     if (account) {
@@ -56,7 +59,7 @@ export const ParentQuote = ({ statusId }) => {
 
       <EmojiHTML
         className='chat-message__parent__content'
-        htmlString={status.get('contentHtml')}
+        htmlString={displayStatus.get('contentHtml')}
         extraEmojis={status.get('emojis')}
       />
     </button>
