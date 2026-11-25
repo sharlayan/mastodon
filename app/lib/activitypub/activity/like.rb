@@ -31,6 +31,7 @@ class ActivityPub::Activity::Like < ActivityPub::Activity
     return false unless raw_name.is_a?(String) && raw_name.present?
 
     return true if ReactionMute.muted?(original_status.account_id, @account)
+    return true if Sharlayan::ReactionQuietHours.blocks?(original_status.account, @account)
 
     custom_emoji = nil
     name = raw_name

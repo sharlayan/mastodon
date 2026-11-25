@@ -737,6 +737,9 @@ ko:
       own_page: 자신의 페이지에는 좋아요를 누를 수 없습니다
   pagination:
     truncate_html: "&hellip;"
+  privacy:
+    reaction_quiet_hours_hint: 시간은 외관 설정의 시간대(%{time_zone})를 기준으로 합니다.
+    reactions: 리액션
   settings:
     avatar_decorations: 아바타 장식
     cat: 고양이 계정
@@ -769,6 +772,7 @@ ko:
         setting_prevent_ai_learning: 크롤러에게 내 게시물과 미디어를 AI 학습에 사용하지 말 것을 요청합니다. 요청일
           뿐이며 강제할 수는 없습니다.
         setting_reaction_custom_emoji_size: 리액션 버튼에서 가로로 긴 커스텀 에모지의 가로 길이를 늘려 서 표시합니다.
+        setting_reaction_quiet_hours: 이 시간 동안 다른 사용자가 내 게시물에 새로 다는 에모지 리액션을 받지 않습니다. 다른 서버에서 온 리액션도 포함합니다. 좋아요와 이미 받은 리액션은 그대로 둡니다. 시작과 종료 시각이 같으면 하루 종일 받지 않습니다.
         setting_show_avatar_decorations: 아바타 장식을 표시합니다.
         setting_show_cat: 고양이 계정의 아바타에 고양이 귀를, 게시물에 냥체(nyaify)를 표시합니다. 기본값은 켜짐입니다.
         setting_show_cat_speak: 고양이 계정의 게시물에 냥체(nyaify)를 적용합니다. 끄면 고양이 귀는 유지하면서 게시물을 작성된 그대로 표시합니다.
@@ -830,6 +834,9 @@ ko:
         setting_ignore_others_pages_view: 다른 사용자의 Pages 레이아웃 설정을 따르지 않음
         setting_prevent_ai_learning: AI 학습에 사용 방지
         setting_reaction_custom_emoji_size: 리액션 버튼의 커스텀 에모지 원본 비율 표시
+        setting_reaction_quiet_hours: 지정한 시간대에 에모지 리액션 받지 않기
+        setting_reaction_quiet_hours_end: 종료 시각
+        setting_reaction_quiet_hours_start: 시작 시각
         setting_show_avatar_decorations: 아바타 장식 표시
         setting_show_cat: 고양이 귀와 냥체 표시
         setting_show_cat_speak: 냥체(nyaify) 표시

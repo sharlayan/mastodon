@@ -49,4 +49,21 @@ RSpec.describe ActivityPub::Activity::Like do
       expect(sender.favourited?(status)).to be false
     end
   end
+
+  describe '#perform with an emoji reaction during reaction quiet hours' do
+    subject { described_class.new(json.merge(content: '😀'), sender) }
+
+    before do
+      recipient.user.update!(time_zone: 'Asia/Seoul')
+      recipient.user.settings.update(reaction_quiet_hours: true, reaction_quiet_hours_start: '23:00', reaction_quiet_hours_end: '07:00')
+      recipient.user.save!
+    end
+
+    it 'drops the reaction without turning it into a favourite' do
+      travel_to(Time.find_zone!('Asia/Seoul').parse('2026-11-25 01:00')) { subject.perform }
+
+      expect(StatusReaction.where(account: sender, status: status)).to_not exist
+      expect(sender.favourited?(status)).to be false
+    end
+  end
 end

@@ -16,6 +16,7 @@ class ActivityPub::Activity::EmojiReact < ActivityPub::Activity
     return if original_status.nil? || delete_arrived_first?(@json['id'])
     return if raw_name.blank?
     return if ReactionMute.muted?(original_status.account_id, @account)
+    return if Sharlayan::ReactionQuietHours.blocks?(original_status.account, @account)
 
     custom_emoji = nil
     name = raw_name

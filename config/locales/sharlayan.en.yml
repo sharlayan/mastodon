@@ -790,6 +790,9 @@ en:
       own_page: You cannot like your own page
   pagination:
     truncate_html: "&hellip;"
+  privacy:
+    reaction_quiet_hours_hint: Times follow the time zone in Appearance settings (%{time_zone}).
+    reactions: Reactions
   settings:
     avatar_decorations: Avatar Decorations
     cat: Cat accounts
@@ -831,6 +834,7 @@ en:
           for AI training. This is a request only and cannot be enforced.
         setting_reaction_custom_emoji_size: Display Original size of Long Horizontally
           Custom Emoji on Reaction Button
+        setting_reaction_quiet_hours: During this time, new emoji reactions to your posts from other users are dropped, including reactions from other servers. Favourites and existing reactions are not affected. If the start and end times are the same, reactions are refused all day.
         setting_show_avatar_decorations: Display avatar decoration frames on profiles.
           Off by default.
         setting_show_cat: Show cat ears on cat accounts' avatars and cat speak (nyaify)
@@ -906,6 +910,9 @@ en:
         setting_prevent_ai_learning: Prevent use in AI training
         setting_reaction_custom_emoji_size: Show Origin Size Custom Emoji on Reaction
           Button
+        setting_reaction_quiet_hours: Do not accept emoji reactions during set hours
+        setting_reaction_quiet_hours_end: End time
+        setting_reaction_quiet_hours_start: Start time
         setting_show_avatar_decorations: Show avatar decorations
         setting_show_cat: Show cat ears and cat speak
         setting_show_cat_speak: Show cat speak (nyaify)

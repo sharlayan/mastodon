@@ -25,6 +25,7 @@ class ReactService < BaseService
     return if domain.present? && Setting.reaction_local_emoji_only
 
     return if status.account.local? && ReactionMute.muted?(status.account_id, account)
+    return if Sharlayan::ReactionQuietHours.blocks?(status.account, account)
     return if status.account.local? && custom_emoji.present? && CustomEmojiMute.reaction_muted?(status.account_id, custom_emoji.shortcode, custom_emoji.domain)
 
     name, custom_emoji = status.accepted_reaction(name, custom_emoji, account)

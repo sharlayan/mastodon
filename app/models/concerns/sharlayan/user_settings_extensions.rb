@@ -22,6 +22,9 @@ module Sharlayan::UserSettingsExtensions
       settings.setting :prevent_ai_learning, default: false
       settings.setting :norss, default: -> { ::Setting.norss }
       settings.setting :visible_reactions, default: 6
+      settings.setting :reaction_quiet_hours, default: false
+      settings.setting :reaction_quiet_hours_start, default: '23:00', in: Sharlayan::ReactionQuietHours::TIMES
+      settings.setting :reaction_quiet_hours_end, default: '07:00', in: Sharlayan::ReactionQuietHours::TIMES
       settings.setting :bridge_unlisted_to_bsky, default: false
       settings.setting :auto_quote_from_url, default: false
       settings.setting :misskey_muted_words, default: '[]'

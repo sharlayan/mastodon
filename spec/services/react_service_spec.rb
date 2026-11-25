@@ -181,6 +181,29 @@ RSpec.describe ReactService, type: :service do
     end
   end
 
+  describe 'reaction quiet hours' do
+    let(:author) { Fabricate(:user, time_zone: 'Asia/Seoul').account }
+    let(:status) { Fabricate(:status, account: author) }
+
+    before do
+      author.user.settings.update(reaction_quiet_hours: true, reaction_quiet_hours_start: '23:00', reaction_quiet_hours_end: '07:00')
+      author.user.save!
+    end
+
+    it 'drops reactions from others inside the window and accepts them outside it' do
+      travel_to Time.find_zone!('Asia/Seoul').parse('2026-11-25 01:00') do
+        expect(subject.call(sender, status, '👍')).to be_nil
+        expect(subject.call(author, status, '👍')).to be_a(StatusReaction)
+      end
+
+      expect(status.status_reactions.pluck(:account_id)).to eq([author.id])
+
+      travel_to Time.find_zone!('Asia/Seoul').parse('2026-11-25 12:00') do
+        expect(subject.call(sender, status, '👍')).to be_a(StatusReaction)
+      end
+    end
+  end
+
   describe 'replacing a reaction with an invalid one' do
     let(:status) { Fabricate(:status) }
 

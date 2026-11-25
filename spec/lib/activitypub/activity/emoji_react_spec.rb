@@ -153,6 +153,24 @@ RSpec.describe ActivityPub::Activity::EmojiReact do
       end
     end
 
+    context 'when the recipient is in reaction quiet hours' do
+      subject { described_class.new(json, sender) }
+
+      before do
+        recipient.user.update!(time_zone: 'Asia/Seoul')
+        recipient.user.settings.update(reaction_quiet_hours: true, reaction_quiet_hours_start: '23:00', reaction_quiet_hours_end: '07:00')
+        recipient.user.save!
+      end
+
+      it 'drops the reaction only inside the window' do
+        travel_to(Time.find_zone!('Asia/Seoul').parse('2026-11-25 01:00')) { subject.perform }
+        expect(status.status_reactions).to be_empty
+
+        travel_to(Time.find_zone!('Asia/Seoul').parse('2026-11-25 12:00')) { subject.perform }
+        expect(sender.reacted?(status, '👍')).to be true
+      end
+    end
+
     context 'when the object is a boost' do
       subject { described_class.new(json.merge(object: ActivityPub::TagManager.instance.uri_for(boost)), sender) }
 

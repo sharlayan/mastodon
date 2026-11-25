@@ -714,6 +714,9 @@ ja:
       own_page: 自分のページにはいいねできません
   pagination:
     truncate_html: "&hellip;"
+  privacy:
+    reaction_quiet_hours_hint: 時刻は外観設定のタイムゾーン（%{time_zone}）を基準にします。
+    reactions: リアクション
   settings:
     avatar_decorations: アバターデコレーション
     cat: 猫アカウント
@@ -739,6 +742,7 @@ ja:
         setting_ignore_others_pages_view: 他のユーザーのPagesを開くときは常に標準レイアウトを使います。
         setting_prevent_ai_learning: 投稿やメディアをAIの学習に使用しないようにクローラーへ要求します。あくまで要求であり、強制はできません。
         setting_reaction_custom_emoji_size: リアクションボタンでも横長のカスタム絵文字を元の比率で表示します。
+        setting_reaction_quiet_hours: この時間帯は、他のユーザーが自分の投稿に新しく付ける絵文字リアクションを受け付けません。他のサーバーからのリアクションも含みます。お気に入りと受け取り済みのリアクションはそのままです。開始と終了の時刻が同じ場合は終日受け付けません。
         setting_show_avatar_decorations: アバターデコレーションを表示します。デフォルトではオフです。
         setting_show_cat: 猫アカウントのアバターに猫耳を、投稿に猫語（nyaify）を表示します。デフォルトではオンです。
         setting_show_cat_speak: 猫アカウントの投稿に猫語（nyaify）を適用します。オフにすると、猫耳を残したまま投稿を原文どおりに表示します。
@@ -796,6 +800,9 @@ ja:
         setting_ignore_others_pages_view: 他のユーザーのPagesレイアウト設定に従わない
         setting_prevent_ai_learning: AIの学習への使用を防ぐ
         setting_reaction_custom_emoji_size: リアクションボタンのカスタム絵文字を元の比率で表示
+        setting_reaction_quiet_hours: 指定した時間帯に絵文字リアクションを受け付けない
+        setting_reaction_quiet_hours_end: 終了時刻
+        setting_reaction_quiet_hours_start: 開始時刻
         setting_show_avatar_decorations: アバターデコレーションを表示
         setting_show_cat: 猫耳と猫語を表示
         setting_show_cat_speak: 猫語（nyaify）を表示

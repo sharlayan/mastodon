@@ -59,6 +59,21 @@
     .fields-group
       = ff.input :prevent_ai_learning, wrapper: :with_label, label: I18n.t('simple_form.labels.defaults.setting_prevent_ai_learning'), hint: I18n.t('simple_form.hints.defaults.setting_prevent_ai_learning'), glitch_only: true
 
+  - if Setting.reactions_enabled
+    %h2= t('privacy.reactions')
+
+    %p.lead= t('privacy.reaction_quiet_hours_hint', time_zone: Sharlayan::ReactionQuietHours.time_zone_for(current_user).tzinfo.name)
+
+    = f.simple_fields_for :settings, current_user.settings do |ff|
+      .fields-group
+        = ff.input :reaction_quiet_hours, wrapper: :with_label, label: I18n.t('simple_form.labels.defaults.setting_reaction_quiet_hours'), hint: I18n.t('simple_form.hints.defaults.setting_reaction_quiet_hours')
+
+      .fields-row
+        .fields-row__column.fields-row__column-6.fields-group
+          = ff.input :reaction_quiet_hours_start, collection: Sharlayan::ReactionQuietHours::TIMES, include_blank: false, required: false, wrapper: :with_label, label: I18n.t('simple_form.labels.defaults.setting_reaction_quiet_hours_start')
+        .fields-row__column.fields-row__column-6.fields-group
+          = ff.input :reaction_quiet_hours_end, collection: Sharlayan::ReactionQuietHours::TIMES, include_blank: false, required: false, wrapper: :with_label, label: I18n.t('simple_form.labels.defaults.setting_reaction_quiet_hours_end')
+
   %aside.callout
     = material_symbol 'info'
     .content
