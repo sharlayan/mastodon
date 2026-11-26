@@ -64,7 +64,7 @@
     "@dnd-kit/sortable": "10.0.0",
     "@dnd-kit/utilities": "3.2.2",
     "@floating-ui/react-dom": "2.1.9",
-    "@formatjs/intl-pluralrules": "6.4.0",
+    "@formatjs/intl-pluralrules": "7.1.1",
     "@formatjs/unplugin": "1.2.20",
     "@fortawesome/fontawesome-free": "7.3.1",
     "@gamestdio/websocket": "0.3.2",
