@@ -196,8 +196,14 @@ describe('redesign status header extensions', () => {
   });
 
   it('preserves the edited marker', () => {
-    renderHeader({ status: { ...status, edited_at: '2026-10-20T11:00:00Z' } });
-    expect(screen.getByTitle(/^Edited /).textContent).toContain('*');
+    const { unmount } = renderHeader({
+      status: { ...status, edited_at: '2026-10-20T11:00:00Z' },
+    });
+    expect(screen.getByText('*')).not.toBeNull();
+    unmount();
+
+    renderHeader();
+    expect(screen.queryByText('*')).toBeNull();
   });
 
   it('keeps the deleted badge visible in a collapsed header with indicators disabled', () => {

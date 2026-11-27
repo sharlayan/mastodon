@@ -66,13 +66,7 @@ export const NavigationLink: React.FC<NavigationLinkProps> = ({
           </span>
         )}
         <span className={classes.label}>{children}</span>
-        {badgeCount > 0 && (
-          <Badge
-            variant='accent'
-            label={badgeCount}
-            className={classes.badge}
-          />
-        )}
+        {badgeCount > 0 && <Badge variant='accent' label={badgeCount} />}
       </Comp>
     </li>
   );

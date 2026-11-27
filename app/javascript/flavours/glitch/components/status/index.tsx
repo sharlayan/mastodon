@@ -303,7 +303,7 @@ export const Status: React.FC<StatusProps> = ({
 
           {(variant === 'page' || (showActions && !isQuotedPost)) &&
             (!postCollapse.isCollapsed || postCollapse.showActionBar) && (
-              <footer className={classes.footer}>
+              <footer>
                 {showActions && !isQuotedPost && (
                   <StatusActionBar
                     statusId={status.id}

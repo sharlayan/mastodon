@@ -23,10 +23,12 @@ import { CircleVisibilityLabel } from '../circle_visibility_label';
 import { CollapseButton } from '../collapse_button';
 import { DisplayName } from '../display_name';
 import { useAccountHandle } from '../display_name/default';
+import { FormattedDateWrapper } from '../formatted_date';
 import { Icon } from '../icon';
 import InstanceBadge, { isLocalInstanceDomain } from '../instance_badge';
 import { RelativeTimestamp } from '../relative_timestamp';
 import { Skeleton } from '../skeleton';
+import { Tooltip } from '../tooltip';
 import { VisibilityIcon } from '../visibility_icon';
 
 import classes from './header.module.scss';
@@ -35,7 +37,6 @@ import { MediaIcon } from './media_icon';
 import { accountStatusLinkProps, statusLink } from './utils';
 
 const messages = defineMessages({
-  edited: { id: 'status.edited', defaultMessage: 'Edited {date}' },
   localOnly: {
     id: 'status.local_only',
     defaultMessage: 'Only visible from your instance',
@@ -241,7 +242,6 @@ const StatusHeaderIndicators: React.FC<
 export const StatusHeaderAuthors: React.FC<
   Pick<StatusHeaderProps, 'status'> & { className?: string; handleId?: string }
 > = ({ status, className, handleId }) => {
-  const intl = useIntl();
   const currentAccountId = useCurrentAccountId();
   const firstMentionAccount = useAccount(
     status.mentions.find(({ id }) => id !== currentAccountId)?.id,
@@ -326,23 +326,34 @@ export const StatusHeaderAuthors: React.FC<
         className={classes.date}
       >
         <RelativeTimestamp timestamp={status.created_at} />
-        {status.edited_at && (
-          <abbr
-            title={intl.formatMessage(messages.edited, {
-              date: intl.formatDate(status.edited_at, {
-                year: 'numeric',
-                month: 'short',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-              }),
-            })}
-          >
-            {' '}
-            *
-          </abbr>
-        )}
       </Link>
+      {!!status.edited_at && (
+        <Tooltip
+          text={
+            <FormattedMessage
+              id='status.edited'
+              defaultMessage='Edited {date}'
+              values={{
+                date: (
+                  <FormattedDateWrapper
+                    value={status.edited_at}
+                    month='short'
+                    day='2-digit'
+                    hour='2-digit'
+                    minute='2-digit'
+                  />
+                ),
+              }}
+            />
+          }
+        >
+          {({ getTooltipProps }) => (
+            <span {...getTooltipProps()} className={classes.editedIndicator}>
+              *
+            </span>
+          )}
+        </Tooltip>
+      )}
     </p>
   );
 };

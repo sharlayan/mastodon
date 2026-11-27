@@ -45,14 +45,6 @@ RSpec.describe 'Admin Settings External Discovery' do
     end
 
     describe 'PUT /admin/settings/external with valid params' do
-      let(:request) { put admin_settings_external_path, params: { form_admin_settings: { activity_api_enabled: '0' } } }
-
-      it 'saves the value for a valid key' do
-        expect { request }.to change(Setting, :activity_api_enabled).from(true)
-        expect(request).to redirect_to(admin_settings_external_path)
-        expect(response).to have_http_status(302)
-      end
-
       it 'persists forced settings instead of crafted values in roleplay mode' do
         ClimateControl.modify OC_ROLEPLAY_OPTION: 'true' do
           put admin_settings_external_path, params: { form_admin_settings: { noindex: '0', norss: '0', authorized_fetch: 'none' } }

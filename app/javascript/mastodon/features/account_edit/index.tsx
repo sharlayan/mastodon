@@ -298,11 +298,7 @@ export const AccountEdit: FC = () => {
           buttons={
             <div className={classes.fieldButtons}>
               {profile.fields.length > 1 && (
-                <Button
-                  className={classes.editButton}
-                  onClick={handleCustomFieldReorder}
-                  size='sm'
-                >
+                <Button onClick={handleCustomFieldReorder} size='sm'>
                   <FormattedMessage
                     id='account_edit.custom_fields.reorder_button'
                     defaultMessage='Reorder fields'
@@ -376,11 +372,7 @@ export const AccountEdit: FC = () => {
           description={messages.profileTabSubtitle}
           showDescription
           buttons={
-            <Button
-              className={classes.editButton}
-              onClick={handleProfileDisplayEdit}
-              size='sm'
-            >
+            <Button onClick={handleProfileDisplayEdit} size='sm'>
               <FormattedMessage
                 id='account_edit.profile_tab.button_label'
                 defaultMessage='Customize'

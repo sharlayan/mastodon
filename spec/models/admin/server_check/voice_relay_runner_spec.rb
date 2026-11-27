@@ -48,13 +48,17 @@ RSpec.describe Admin::ServerCheck::VoiceRelayRunner do
     helper = Class.new(ActionView::Base) do
       include Rails.application.routes.url_helpers
       include Admin::ServerChecksHelper
+
+      def default_url_options
+        { host: 'test.host' }
+      end
     end.empty
     check = Admin::ServerCheck.new(key: 'voice_relay')
 
     check.run
     expect(helper.admin_server_check_title(check)).to be_present
     expect(helper.admin_server_check_lead(check)).to be_present
-    expect(helper.admin_server_check_setup_path(check)).to eq '/admin/voice_relay_providers'
+    expect(helper.admin_server_check_setup_url(check)).to end_with '/admin/voice_relay_providers'
 
     Fabricate(:voice_relay_provider, origin: 'https://gone.example.org').update_columns(revoked_at: Time.now.utc)
     revoked = Admin::ServerCheck.new(key: 'voice_relay')
