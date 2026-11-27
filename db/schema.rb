@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_27_094600) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -210,6 +210,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
     t.text "text", default: "", null: false
     t.string "title", default: "", null: false
     t.datetime "updated_at", precision: nil, null: false
+    t.string "action_category", default: "all_actions", null: false
   end
 
   create_table "account_warnings", force: :cascade do |t|
@@ -222,6 +223,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
     t.bigint "target_account_id"
     t.text "text", default: "", null: false
     t.datetime "updated_at", precision: nil, null: false
+    t.boolean "include_rule_violations", default: true, null: false
     t.index ["account_id"], name: "index_account_warnings_on_account_id"
     t.index ["target_account_id"], name: "index_account_warnings_on_target_account_id"
   end
@@ -271,7 +273,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
     t.bigint "moved_to_account_id"
     t.text "note", default: "", null: false
     t.string "outbox_url", default: "", null: false
-    t.text "private_key"
     t.integer "protocol", default: 0, null: false
     t.text "public_key", default: "", null: false
     t.datetime "remote_actor_published_at"
@@ -313,6 +314,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
     t.string "action", default: "", null: false
     t.datetime "created_at", precision: nil, null: false
     t.string "human_identifier"
+    t.bigint "moderation_subscription_id"
     t.string "permalink"
     t.jsonb "recorded_changes"
     t.string "recorded_changes_format"
@@ -321,7 +323,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
     t.string "target_type"
     t.datetime "updated_at", precision: nil, null: false
     t.index ["account_id"], name: "index_admin_action_logs_on_account_id"
+    t.index ["moderation_subscription_id"], name: "index_admin_action_logs_on_moderation_subscription_id", where: "(moderation_subscription_id IS NOT NULL)"
     t.index ["target_type", "target_id"], name: "index_admin_action_logs_on_target_type_and_target_id"
+  end
+
+  create_table "admin_server_checks", force: :cascade do |t|
+    t.string "key", null: false
+    t.integer "status", limit: 2, default: 0, null: false
+    t.integer "severity", limit: 2, default: 0, null: false
+    t.boolean "ignored", default: false, null: false
+    t.jsonb "data"
+    t.datetime "checked_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_admin_server_checks_on_key", unique: true
   end
 
   create_table "announcement_mutes", force: :cascade do |t|
@@ -925,8 +940,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
   create_table "domain_allows", force: :cascade do |t|
     t.datetime "created_at", precision: nil, null: false
     t.string "domain", default: "", null: false
+    t.bigint "moderation_subscription_id"
     t.datetime "updated_at", precision: nil, null: false
     t.index ["domain"], name: "index_domain_allows_on_domain", unique: true
+    t.index ["moderation_subscription_id"], name: "index_domain_allows_on_moderation_subscription_id"
   end
 
   create_table "domain_blocks", force: :cascade do |t|
@@ -934,6 +951,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
     t.datetime "created_at", precision: nil, null: false
     t.string "domain", default: "", null: false
     t.boolean "hidden", default: false, null: false
+    t.bigint "moderation_subscription_id"
     t.boolean "obfuscate", default: false, null: false
     t.text "private_comment"
     t.text "public_comment"
@@ -944,6 +962,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
     t.integer "severity", default: 0
     t.datetime "updated_at", precision: nil, null: false
     t.index ["domain"], name: "index_domain_blocks_on_domain", unique: true
+    t.index ["moderation_subscription_id"], name: "index_domain_blocks_on_moderation_subscription_id"
   end
 
   create_table "drive_file_names", id: :bigint, default: -> { "timestamp_id('drive_file_names'::text)" }, force: :cascade do |t|
@@ -1033,7 +1052,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["fasp_provider_id", "name", "version"], name: "idx_on_fasp_provider_id_name_version_68e2668987", unique: true
-    t.index ["fasp_provider_id"], name: "index_fasp_capabilities_on_fasp_provider_id"
   end
 
   create_table "fasp_debug_callbacks", force: :cascade do |t|
@@ -1722,6 +1740,44 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
     t.index ["account_id"], name: "index_misskey_webhooks_on_account_id"
   end
 
+  create_table "moderation_subscription_advisories", force: :cascade do |t|
+    t.integer "action", null: false
+    t.datetime "created_at", null: false
+    t.bigint "moderation_subscription_id", null: false
+    t.string "target_key", null: false
+    t.integer "target_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["moderation_subscription_id"], name: "index_moderation_advisories_on_moderation_subscription_id"
+    t.index ["target_type", "target_key", "moderation_subscription_id"], name: "idx_on_target_type_target_key_moderation_subscripti_a3f09c29b9", unique: true
+  end
+
+  create_table "moderation_subscriptions", force: :cascade do |t|
+    t.boolean "apply_automatically", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "last_synced_at"
+    t.integer "list_action"
+    t.string "name"
+    t.boolean "override_unattributed", default: false, null: false
+    t.boolean "preserve_relationships", default: true, null: false
+    t.integer "priority"
+    t.boolean "retract_automatically", default: true, null: false
+    t.integer "type", null: false
+    t.datetime "updated_at", null: false
+    t.string "url", null: false
+  end
+
+  create_table "moderation_suggestions", force: :cascade do |t|
+    t.bigint "moderation_subscription_id"
+    t.integer "state", default: 0, null: false
+    t.integer "action", null: false
+    t.integer "target_type", null: false
+    t.string "target_key", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["moderation_subscription_id"], name: "index_moderation_suggestions_on_moderation_subscription_id"
+    t.index ["target_type", "target_key", "action"], name: "idx_on_target_type_target_key_action_4f6ab01ebc", unique: true
+  end
+
   create_table "mutes", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", precision: nil, null: false
@@ -2057,6 +2113,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
     t.index ["type", "target_name"], name: "index_relationship_severance_events_on_type_and_target_name"
   end
 
+  create_table "relay_preferences", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "relay_id", null: false
+    t.boolean "enabled", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "relay_id"], name: "index_relay_preferences_on_account_id_and_relay_id", unique: true
+    t.index ["relay_id"], name: "index_relay_preferences_on_relay_id"
+  end
+
   create_table "relays", force: :cascade do |t|
     t.datetime "created_at", precision: nil, null: false
     t.string "follow_activity_id"
@@ -2064,6 +2130,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
     t.integer "state", default: 0, null: false
     t.boolean "suppress_public_timeline_stream", default: false, null: false
     t.datetime "updated_at", precision: nil, null: false
+    t.string "uri", default: "", null: false
+    t.integer "direction", default: 0, null: false
+    t.boolean "requires_opt_in", default: false, null: false
+    t.bigint "account_id", null: false
+    t.index ["uri"], name: "index_relays_on_uri", unique: true
   end
 
   create_table "report_notes", force: :cascade do |t|
@@ -2713,6 +2784,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
   add_foreign_key "custom_filter_statuses", "custom_filters", on_delete: :cascade
   add_foreign_key "custom_filter_statuses", "statuses", on_delete: :cascade
   add_foreign_key "custom_filters", "accounts", on_delete: :cascade
+  add_foreign_key "domain_allows", "moderation_subscriptions", on_delete: :nullify
+  add_foreign_key "domain_blocks", "moderation_subscriptions", on_delete: :nullify
   add_foreign_key "drive_file_names", "drive_files", on_delete: :cascade
   add_foreign_key "drive_files", "accounts", on_delete: :cascade
   add_foreign_key "drive_files", "drive_folders", column: "folder_id", on_delete: :nullify
@@ -2797,6 +2870,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
   add_foreign_key "misskey_user_list_settings", "lists", on_delete: :cascade
   add_foreign_key "misskey_user_page_views", "accounts", on_delete: :cascade
   add_foreign_key "misskey_webhooks", "accounts", on_delete: :cascade
+  add_foreign_key "moderation_subscription_advisories", "moderation_subscriptions"
+  add_foreign_key "moderation_suggestions", "moderation_subscriptions", on_delete: :nullify
   add_foreign_key "mutes", "accounts", column: "target_account_id", name: "fk_eecff219ea", on_delete: :cascade
   add_foreign_key "mutes", "accounts", name: "fk_b8d8daf315", on_delete: :cascade
   add_foreign_key "notification_permissions", "accounts", column: "from_account_id", on_delete: :cascade
@@ -2836,6 +2911,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_001900) do
   add_foreign_key "quotes", "statuses", on_delete: :cascade
   add_foreign_key "reaction_mutes", "accounts", column: "target_account_id", on_delete: :cascade
   add_foreign_key "reaction_mutes", "accounts", on_delete: :cascade
+  add_foreign_key "relay_preferences", "accounts", on_delete: :cascade
+  add_foreign_key "relay_preferences", "relays", on_delete: :cascade
+  add_foreign_key "relays", "accounts", on_delete: :cascade
   add_foreign_key "report_notes", "accounts", on_delete: :cascade
   add_foreign_key "report_notes", "reports", on_delete: :cascade
   add_foreign_key "reports", "accounts", column: "action_taken_by_account_id", name: "fk_bca45b75fd", on_delete: :nullify

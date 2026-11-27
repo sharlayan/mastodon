@@ -5,6 +5,14 @@ import { roleplayMode, showInstanceInfo, useMyArchive } from 'flavours/glitch/in
 import { STATUS_ACTION_BAR_DEFAULT_HIDDEN } from 'flavours/glitch/features/status_action_bar/items';
 
 export const sharlayanLocalSettingsDefaults = ImmutableMap({
+  side_arm: 'none',
+  side_arm_reply_mode: 'restrict',
+  always_show_spoilers_field: false,
+  show_content_type_choice: false,
+  content_warnings: ImmutableMap({
+    filter: null,
+    shared_state: false,
+  }),
   zoom_emojis_on_hover: true,
   mention_reblogger: false,
   hide_mfm_compose_hint: false,

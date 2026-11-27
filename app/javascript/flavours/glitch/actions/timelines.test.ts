@@ -138,7 +138,7 @@ describe('fillHomeTimelineGaps', () => {
 
     expect(apiGet).toHaveBeenCalledTimes(1);
     expect(apiGet).toHaveBeenCalledWith('/api/v1/timelines/home', {
-      params: { max_id: '30' },
+      params: { max_id: '30', exclude_direct: true },
     });
   });
 
@@ -167,7 +167,7 @@ describe('fillHomeTimelineGaps', () => {
       reconnectedState,
     );
     expect(apiGet).toHaveBeenCalledWith('/api/v1/timelines/home', {
-      params: {},
+      params: { exclude_direct: true },
     });
     expect(state.getIn(['home', 'items', 0])).toBe('10');
 
@@ -177,7 +177,7 @@ describe('fillHomeTimelineGaps', () => {
       reconnectedState,
     );
     expect(apiGet).toHaveBeenCalledWith('/api/v1/timelines/home', {
-      params: { max_id: null },
+      params: { max_id: null, exclude_direct: true },
     });
   });
 });

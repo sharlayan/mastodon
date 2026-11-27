@@ -319,6 +319,22 @@ ja:
         share_screens_description: 音声通話中に画面を共有できます。サーバー設定で画面共有が有効になっている必要もあります
       privileges:
         invite_bypass_approval_description: これらの利用者が招待した人が、モデレーターの承認を経ずに登録できるようにします
+    server_checks:
+      checks:
+        voice_relay:
+          error:
+            title: "音声リレーの確認中にエラーが発生しました"
+          ok:
+            title: "承認された音声リレーを利用できます"
+          pending:
+            lead:
+              revoked_html: "音声リレー%{providers_str}はこのサーバーを受け付けなくなりました。リレーの運営者がアクセスを戻すかシークレットを更新するまで、そのリレーでは通話を開始できません。"
+              unavailable_html: "音声通話が有効ですが、承認された音声リレーがありません。"
+            title: "音声通話で音声リレーを利用できません"
+          running:
+            title: "サーバーが音声リレーを確認しています"
+          unprocessed:
+            title: "サーバーはまだ音声リレーを確認していません"
     settings:
       registration_rejection_patterns_invalid: "有効な正規表現を使用し、空行を除いて%{max_patterns}行、全体で%{max_length}文字以内にしてください。"
       user_themes:
@@ -530,13 +546,6 @@ ja:
       no_username_block_selected: 何も選択されていなかったため、ユーザー名ルールは変更されませんでした
       not_permitted: 権限がありません
       updated_msg: ユーザー名ルールを更新しました
-    system_checks:
-      voice_relay_revoked_check:
-        action: "音声リレーの管理"
-        message_html: "音声リレー%{value}はこのサーバーを受け付けなくなりました。リレーの運営者がアクセスを戻すかシークレットを更新するまで、そのリレーでは通話を開始できません。"
-      voice_relay_unavailable_check:
-        action: "音声リレーの管理"
-        message_html: "音声通話が有効ですが、承認された音声リレーがありません。"
     voice_relay_providers:
       add_new: "リレーを追加"
       approved: "承認済み"
@@ -757,7 +766,7 @@ ja:
       form_admin_settings:
         registration_reject_email_pattern: "大文字・小文字を区別する部分文字列を1行に1つ入力してください。?で始まる行は正規表現として扱います（大文字・小文字を区別しない場合は(?i)を使用）。空行は無視します。招待を含む新規登録に適用され、既存のアカウントには影響しません。"
         registration_reject_username_pattern: "大文字・小文字を区別する部分文字列を1行に1つ入力してください。?で始まる行は正規表現として扱います（大文字・小文字を区別しない場合は(?i)を使用）。空行は無視します。招待を含む新規登録に適用され、既存のアカウントには影響しません。"
-        theme_color: ブラウザのアドレスバーやアプリUIで使われるアクセントカラー。
+        branding_theme_color: ブラウザのアドレスバーやアプリUIで使われるアクセントカラー。
       user_role:
         drive_quota: このロールを持つユーザーごとのドライブライブラリ最大容量をMB単位で指定します。空欄の場合はサーバーの既定値、0の場合は無制限です。
         extra_permissions_as_keys: このロールに付与されるCustodon独自の追加権限
@@ -819,7 +828,7 @@ ja:
         registration_reject_username_pattern: "登録を拒否するユーザー名のパターン"
         local_account_statuses_access: ローカルアカウントの投稿一覧へのアクセス
         local_status_page_access: 個別投稿ページへのアクセス
-        theme_color: テーマカラー
+        branding_theme_color: テーマカラー
       user_role:
         drive_quota: ユーザーごとのドライブ容量 (MB)
         extra_permissions_as_keys: 追加権限

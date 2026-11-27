@@ -32,14 +32,6 @@
   %h2= t('admin.settings.external.privacy')
 
   .fields-group
-    = f.input :noindex,
-              as: :boolean,
-              disabled: roleplay_locked,
-              hint: t('admin.settings.default_noindex.desc_html'),
-              label: t('admin.settings.default_noindex.title'),
-              wrapper: :with_label
-
-  .fields-group
     = f.input :norss,
               as: :boolean,
               disabled: roleplay_locked,

@@ -25,6 +25,10 @@ module ThemeHelper
     vite_stylesheet_tag "skins/#{flavour}/#{theme}", type: :virtual, media: 'all', crossorigin: 'anonymous', **
   end
 
+  def available_theme_colors(theme)
+    Themes.instance.available_theme_colors(theme)
+  end
+
   def theme_color_tags(color_scheme)
     case color_scheme
     when 'auto'
@@ -109,6 +113,19 @@ module ThemeHelper
     current_user&.setting_contrast || 'auto'
   end
 
+  def theme_color(theme)
+    available_colors = available_theme_colors(theme)
+    return if available_colors.empty?
+
+    user_color = current_user&.setting_theme_color
+    return user_color if user_color && available_colors.include?(user_color)
+
+    color = Setting.theme_color
+    return color if color && available_colors.include?(color)
+
+    available_colors.first
+  end
+
   def page_color_scheme
     requested = content_for(:force_color_scheme).presence || color_scheme
     Themes.instance.resolve_color_scheme(current_flavour, active_page_skin, requested)
@@ -130,6 +147,10 @@ module ThemeHelper
 
   def supported_color_scheme_collection
     user_settings_collection('web.color_scheme') & active_supported_color_schemes
+  end
+
+  def page_theme_color(theme)
+    content_for(:force_theme_color).presence || theme_color(theme)
   end
 
   private

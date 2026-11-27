@@ -13,12 +13,14 @@ import { useAccount } from '../hooks/useAccount';
 
 import { RetryingImage } from './retrying_image';
 
+type AvatarAccount = Pick<
+  Account | AccountShapeFull,
+  'id' | 'acct' | 'avatar' | 'avatar_static'
+> &
+  SharlayanAvatarAccountFields;
+
 interface Props {
-  account?: Pick<
-    Account | AccountShapeFull,
-    'id' | 'acct' | 'avatar' | 'avatar_static'
-  > &
-    SharlayanAvatarAccountFields;
+  account?: AvatarAccount;
   alt?: string;
   size?: number | null;
   style?: React.CSSProperties;
@@ -119,4 +121,19 @@ export const AvatarById: React.FC<
 > = ({ accountId, ...otherProps }) => {
   const account = useAccount(accountId);
   return <Avatar account={account} {...otherProps} />;
+};
+
+export const Avatars: React.FC<
+  { accounts: AvatarAccount[]; wrapperClassName?: string } & Omit<
+    Props,
+    'account'
+  >
+> = ({ accounts, wrapperClassName, ...otherProps }) => {
+  return (
+    <div className={wrapperClassName}>
+      {accounts.map((account) => (
+        <Avatar key={account.id} account={account} {...otherProps} />
+      ))}
+    </div>
+  );
 };

@@ -18,7 +18,7 @@ function createStatus(
       ? [{ ...mediaAttachmentFactoryAPI(), remote_url: null }]
       : [],
     spoiler_text: spoilerText,
-  };
+  } as unknown as Parameters<typeof computeHashtagBarForStatus>[0];
 }
 
 describe('computeHashtagBarForStatus', () => {

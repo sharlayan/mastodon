@@ -56,6 +56,7 @@ interface InitialStateMeta {
   sso_redirect: string;
   status_page_url: string;
   terms_of_service_enabled: boolean;
+  show_stats_in_feed: boolean;
   emoji_style?: string;
   custom_emoji_size: boolean;
   server_stored_account_switching_enabled?: boolean;
@@ -169,6 +170,7 @@ export const customEmojiSize = getMeta('custom_emoji_size');
 export const wrapstodon = getMeta('wrapstodon');
 export const serverStoredAccountSwitchingEnabled =
   getMeta('server_stored_account_switching_enabled') !== false;
+export const showStatsInFeed = getMeta('show_stats_in_feed');
 
 const displayNames =
   // Intl.DisplayNames can be undefined in old browsers

@@ -130,13 +130,13 @@ const AccountItem: React.FC<{
 
         <div className='account__relationship'>
           <Button
-            text={intl.formatMessage(
-              partOfCircle ? messages.remove : messages.add,
-            )}
-            secondary={partOfCircle}
+            variant={partOfCircle ? 'tonal' : 'solid'}
+            color={partOfCircle ? 'neutral' : 'accent'}
             disabled={pending}
             onClick={handleClick}
-          />
+          >
+            {intl.formatMessage(partOfCircle ? messages.remove : messages.add)}
+          </Button>
         </div>
       </div>
     </div>

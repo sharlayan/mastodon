@@ -38,8 +38,8 @@ vi.mock('@/flavours/glitch/components/account_header', () => ({
   AccountHeader: () => null,
 }));
 
-vi.mock('@/flavours/glitch/components/column/back_button', () => ({
-  ColumnBackButton: () => null,
+vi.mock('@/flavours/glitch/components/column_header', () => ({
+  ColumnHeader: () => null,
 }));
 
 vi.mock('@/flavours/glitch/components/remote_hint', () => ({

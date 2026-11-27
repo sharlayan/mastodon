@@ -15,9 +15,6 @@ import {
   SHARLAYAN_FOLLOW_LIST_BIO_CHAR_LIMIT,
   useSharlayanFollowListBio,
 } from '@/flavours/glitch/sharlayan/account/list_item';
-import { isRedesignEnabled } from '@/flavours/glitch/utils/environment';
-
-import { ProfileColumnHeader } from '../../account/components/profile_column_header';
 
 import { RemoteHint } from './remote';
 
@@ -119,11 +116,7 @@ export const AccountList: FC<AccountListProps> = ({
 
   return (
     <Column>
-      {isRedesignEnabled() ? (
-        <ColumnHeader withBackButton title={title} />
-      ) : (
-        <ProfileColumnHeader multiColumn={multiColumn} />
-      )}
+      <ColumnHeader withBackButton title={title} />
 
       <ScrollableList
         scrollKey={scrollKey}

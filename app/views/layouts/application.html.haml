@@ -22,8 +22,8 @@
     = javascript_inline_tag 'theme-selection.js'
     = theme_color_tags current_theme
 
-    %meta{ name: 'theme-color', content: Setting.theme_color }/
-    %meta{ name: 'theme-color-orig', content: Setting.theme_color }/
+    %meta{ name: 'theme-color', content: Setting.branding_theme_color }/
+    %meta{ name: 'theme-color-orig', content: Setting.branding_theme_color }/
 
     %meta{ name: 'mobile-web-app-capable', content: 'yes' }/
 
@@ -56,7 +56,3 @@
 
   %body{ class: body_classes }
     = content_for?(:content) ? yield(:content) : yield
-
-    .logo-resources{ 'tabindex' => '-1', 'inert' => true, 'aria-hidden' => 'true' }
-      = inline_svg_tag 'logo-symbol-icon.svg'
-      = inline_svg_tag 'logo-symbol-wordmark.svg'

@@ -38,6 +38,7 @@ interface ConfirmationModalProps {
   className?: string;
   updating?: boolean;
   disabled?: boolean;
+  destructive?: boolean;
   noFocusButton?: boolean;
 }
 
@@ -59,6 +60,7 @@ export const ConfirmationModal: React.FC<
   className,
   updating,
   disabled,
+  destructive,
   noCloseOnConfirm = false,
   noFocusButton = false,
 }) => {
@@ -101,26 +103,21 @@ export const ConfirmationModal: React.FC<
       </ModalShellBody>
 
       <ModalShellActions>
-        <button onClick={handleCancel} className='link-button' type='button'>
+        <Button onClick={handleCancel}>
           {cancel ?? (
             <FormattedMessage
               id='confirmation_modal.cancel'
               defaultMessage='Cancel'
             />
           )}
-        </button>
+        </Button>
 
         {secondary && (
           <>
             <div className='spacer' />
-            <button
-              onClick={handleSecondary}
-              className='link-button'
-              type='button'
-              disabled={disabled}
-            >
+            <Button onClick={handleSecondary} disabled={disabled}>
               {secondary}
-            </button>
+            </Button>
           </>
         )}
 
@@ -129,6 +126,8 @@ export const ConfirmationModal: React.FC<
           loading={updating}
           disabled={disabled}
           autoFocus={!noFocusButton}
+          variant='solid'
+          color={destructive ? 'destructive' : 'accent'}
         >
           {confirm}
         </Button>

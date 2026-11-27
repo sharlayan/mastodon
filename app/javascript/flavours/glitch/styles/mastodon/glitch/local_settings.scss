@@ -41,14 +41,14 @@
 
   h1 {
     font-size: 22px;
-    font-weight: 500;
+    font-weight: bold;
     line-height: 24px;
     margin-bottom: 16px;
   }
 
   h2 {
     font-size: 18px;
-    font-weight: 500;
+    font-weight: bold;
     line-height: 20px;
     margin-top: 20px;
     margin-bottom: 10px;
@@ -191,7 +191,7 @@
 
   .hint a {
     color: var(--color-text-secondary);
-    font-weight: 500;
+    font-weight: bold;
     text-decoration: underline;
 
     &:active,
@@ -643,7 +643,7 @@
 
   a {
     color: var(--color-text-secondary);
-    font-weight: 500;
+    font-weight: bold;
     text-decoration: underline;
 
     &:active,

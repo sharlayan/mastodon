@@ -14,6 +14,17 @@ import { accountFactoryState } from '@/testing/factories';
 
 import { StatusPrepend } from './prepend';
 
+vi.hoisted(() => {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: vi.fn(() => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  });
+});
+
 vi.mock('@/flavours/glitch/store', async (importOriginal) => ({
   ...(await importOriginal()),
   useAppSelector: vi.fn(),

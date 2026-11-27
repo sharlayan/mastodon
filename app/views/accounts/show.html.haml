@@ -3,6 +3,8 @@
 - content_for :header_tags do
   - if @account.user_prefers_noindex?
     %meta{ name: 'robots', content: 'noindex, noarchive' }/
+  - else
+    = render_seo_schema @account
   - if @account.local? && @account.user&.setting_prevent_ai_learning
     %meta{ name: 'robots', content: 'noai, noimageai' }/
 

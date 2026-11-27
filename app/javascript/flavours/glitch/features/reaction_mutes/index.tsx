@@ -46,7 +46,7 @@ const ReactionMuteRow: React.FC<{
       <div className='custom-emoji-mute__info'>
         <span className='custom-emoji-mute__prefix'>{label}</span>
       </div>
-      <Button onClick={handleClick}>
+      <Button size='sm' onClick={handleClick}>
         <FormattedMessage id='reaction_mutes.unmute' defaultMessage='Unmute' />
       </Button>
     </div>
@@ -136,7 +136,12 @@ const ReactionMutes: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
             placeholder={intl.formatMessage(messages.targetPlaceholder)}
             aria-label={intl.formatMessage(messages.targetPlaceholder)}
           />
-          <Button type='submit' disabled={!target.trim()}>
+          <Button
+            variant='solid'
+            color='accent'
+            type='submit'
+            disabled={!target.trim()}
+          >
             <FormattedMessage id='reaction_mutes.add' defaultMessage='Add' />
           </Button>
         </div>

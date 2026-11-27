@@ -3,7 +3,6 @@ import { Map as ImmutableMap, List as ImmutableList, fromJS } from 'immutable';
 import api, { getLinks } from '../api';
 
 import { showAlertForError } from './alerts';
-import { ensureComposeIsVisible } from './compose';
 
 export const SCHEDULED_STATUSES_FETCH_REQUEST = 'SCHEDULED_STATUSES_FETCH_REQUEST';
 export const SCHEDULED_STATUSES_FETCH_SUCCESS = 'SCHEDULED_STATUSES_FETCH_SUCCESS';
@@ -92,7 +91,6 @@ export function setComposeToScheduledStatus(scheduledStatus) {
       scheduledStatus,
       maxOptions: getState().getIn(['server', 'server', 'item', 'configuration', 'polls', 'max_options']),
     });
-    ensureComposeIsVisible(getState);
   };
 }
 

@@ -10,6 +10,7 @@ import {
   BookmarkSimpleIcon,
   CalendarIcon,
   ChatCircleDotsIcon,
+  ChatsCircleIcon,
   CirclesFourIcon,
   CloudIcon,
   EyeSlashIcon,
@@ -31,14 +32,15 @@ import { fetchAntennas } from '@/flavours/glitch/actions/antennas';
 import { fetchBoardAnnouncementsUnreadCount } from '@/flavours/glitch/actions/board_announcements';
 import { openModal } from '@/flavours/glitch/actions/modal';
 import { LegacyDropdownMenuItems } from '@/flavours/glitch/components/menu';
-import { ListSection } from '@/flavours/glitch/features/navigation_panel/redesign/list_section';
-import { NavigationLink } from '@/flavours/glitch/features/navigation_panel/redesign/navigation_link';
+import { ListSection } from '@/flavours/glitch/features/navigation_panel/list_section';
+import { NavigationLink } from '@/flavours/glitch/features/navigation_panel/navigation_link';
 import { useBreakpoint } from '@/flavours/glitch/features/ui/hooks/useBreakpoint';
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useIdentity } from '@/flavours/glitch/identity_context';
 import {
   antennaEnabled,
   boardAnnouncementsEnabled,
+  chatEnabled,
   circlesEnabled,
   clipsEnabled,
   collectionsEnabled,
@@ -63,10 +65,32 @@ import { navigationPanelItemMessages } from './items';
 import { extendSharlayanMoreMenuItems } from './more_menu';
 import { getRedesignNavigationKeys } from './redesign_items';
 
-export const SharlayanRedesignPrimaryNavigation: React.FC<{
+export interface SharlayanNavigationLink {
+  key: string;
+  label: string;
+  icon: Icon;
+  to?: string;
+  exact?: boolean;
+  activePaths?: string[];
+  badgeCount?: number;
+  onClick?: () => void;
+}
+
+export const SHARLAYAN_MINI_NAVIGATION_KEYS: readonly NavigationPanelItem[] = [
+  'home',
+  'notifications',
+  'direct',
+];
+
+export const useSharlayanPrimaryNavigationLinks = ({
+  showHidden = false,
+  notificationsCount = 0,
+  omit,
+}: {
   showHidden?: boolean;
-  notificationsCount: number;
-}> = ({ showHidden = false, notificationsCount }) => {
+  notificationsCount?: number;
+  omit?: readonly NavigationPanelItem[];
+} = {}): SharlayanNavigationLink[] => {
   const intl = useIntl();
   const { signedIn, permissions, accountId } = useIdentity();
   const account = useAccount(accountId);
@@ -134,6 +158,9 @@ export const SharlayanRedesignPrimaryNavigation: React.FC<{
       badgeCount: showNotificationCount ? notificationsCount : 0,
     };
     links.direct = { to: '/conversations', icon: ChatCircleDotsIcon };
+    if (chatEnabled) {
+      links.chat = { to: '/chat', icon: ChatsCircleIcon };
+    }
     if (useMyArchive) {
       links.my_archive = {
         to: '/favourites',
@@ -164,26 +191,45 @@ export const SharlayanRedesignPrimaryNavigation: React.FC<{
     hidden: hidden?.toObject(),
     available: Object.keys(links),
     showHidden: showHidden || mobile,
-  }).map((key) => {
+  }).flatMap((key) => {
     const link = links[key];
-    if (!link) return null;
+    if (!link || omit?.includes(key)) return [];
 
-    return (
-      <NavigationLink
-        key={key}
-        to={link.to}
-        exact={key === 'federated'}
-        iconComponent={link.icon}
-        activePaths={link.activePaths}
-        badgeCount={link.badgeCount}
-      >
-        {intl.formatMessage(navigationPanelItemMessages[key])}
-      </NavigationLink>
-    );
+    return [
+      {
+        key,
+        label: intl.formatMessage(navigationPanelItemMessages[key]),
+        exact: key === 'federated',
+        ...link,
+      },
+    ];
   });
 };
 
-export const SharlayanRedesignExtensions: React.FC = () => {
+export const SharlayanRedesignPrimaryNavigation: React.FC<{
+  showHidden?: boolean;
+  notificationsCount?: number;
+  omit?: readonly NavigationPanelItem[];
+}> = ({ showHidden = false, notificationsCount = 0, omit }) =>
+  useSharlayanPrimaryNavigationLinks({
+    showHidden,
+    notificationsCount,
+    omit,
+  }).map((link) => (
+    <NavigationLink
+      key={link.key}
+      to={link.to ?? '/'}
+      exact={link.exact}
+      icon={link.icon}
+      activePaths={link.activePaths}
+      badgeCount={link.badgeCount}
+    >
+      {link.label}
+    </NavigationLink>
+  ));
+
+export const useSharlayanExtensionLinks = (): SharlayanNavigationLink[] => {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const useMyArchive = useAppSelector(
     (state) => state.local_settings.get('use_my_archive', false) as boolean,
@@ -191,6 +237,89 @@ export const SharlayanRedesignExtensions: React.FC = () => {
   const handleOpenDrive = useCallback(() => {
     dispatch(openModal({ modalType: 'DRIVE_MANAGER', modalProps: {} }));
   }, [dispatch]);
+
+  const links: (SharlayanNavigationLink | false)[] = [
+    {
+      key: 'drafts',
+      to: '/drafts',
+      icon: FloppyDiskIcon,
+      label: intl.formatMessage({
+        id: 'navigation_bar.drafts',
+        defaultMessage: 'Drafts',
+      }),
+    },
+    softHideDeletion &&
+      adminTimelineOwnerViewer && {
+        key: 'rp_hidden',
+        to: '/rp_hidden',
+        icon: EyeSlashIcon,
+        label: intl.formatMessage({
+          id: 'navigation_bar.rp_hidden',
+          defaultMessage: 'Deleted posts',
+        }),
+      },
+    !useMyArchive && {
+      key: 'reactions',
+      to: '/reactions',
+      icon: SmileyIcon,
+      label: intl.formatMessage({
+        id: 'navigation_bar.reactions',
+        defaultMessage: 'Reactions',
+      }),
+    },
+    {
+      key: 'scheduled',
+      to: '/scheduled',
+      icon: CalendarIcon,
+      label: intl.formatMessage({
+        id: 'navigation_bar.scheduled',
+        defaultMessage: 'Scheduled posts',
+      }),
+    },
+    clipsEnabled &&
+      !useMyArchive && {
+        key: 'clips',
+        to: '/clips',
+        icon: StackIcon,
+        label: intl.formatMessage({
+          id: 'navigation_bar.clips',
+          defaultMessage: 'Clips',
+        }),
+      },
+    pagesEnabled && {
+      key: 'pages',
+      to: '/pages',
+      icon: FileTextIcon,
+      label: intl.formatMessage({
+        id: 'navigation_bar.pages',
+        defaultMessage: 'Pages',
+      }),
+    },
+    driveEnabled && {
+      key: 'drive',
+      icon: CloudIcon,
+      onClick: handleOpenDrive,
+      label: intl.formatMessage({
+        id: 'navigation_bar.drive',
+        defaultMessage: 'Drive',
+      }),
+    },
+    circlesEnabled && {
+      key: 'circles',
+      to: '/circles',
+      icon: UsersIcon,
+      label: intl.formatMessage({
+        id: 'navigation_bar.circles',
+        defaultMessage: 'Circles',
+      }),
+    },
+  ];
+
+  return links.filter((link): link is SharlayanNavigationLink => !!link);
+};
+
+export const SharlayanRedesignExtensions: React.FC = () => {
+  const links = useSharlayanExtensionLinks();
 
   return (
     <ListSection
@@ -202,58 +331,22 @@ export const SharlayanRedesignExtensions: React.FC = () => {
         />
       }
     >
-      <NavigationLink to='/drafts' iconComponent={FloppyDiskIcon}>
-        <FormattedMessage id='navigation_bar.drafts' defaultMessage='Drafts' />
-      </NavigationLink>
-      {softHideDeletion && adminTimelineOwnerViewer && (
-        <NavigationLink to='/rp_hidden' iconComponent={EyeSlashIcon}>
-          <FormattedMessage
-            id='navigation_bar.rp_hidden'
-            defaultMessage='Deleted posts'
-          />
-        </NavigationLink>
-      )}
-      {!useMyArchive && (
-        <NavigationLink to='/reactions' iconComponent={SmileyIcon}>
-          <FormattedMessage
-            id='navigation_bar.reactions'
-            defaultMessage='Reactions'
-          />
-        </NavigationLink>
-      )}
-      <NavigationLink to='/scheduled' iconComponent={CalendarIcon}>
-        <FormattedMessage
-          id='navigation_bar.scheduled'
-          defaultMessage='Scheduled posts'
-        />
-      </NavigationLink>
-      {clipsEnabled && !useMyArchive && (
-        <NavigationLink to='/clips' iconComponent={StackIcon}>
-          <FormattedMessage id='navigation_bar.clips' defaultMessage='Clips' />
-        </NavigationLink>
-      )}
-      {pagesEnabled && (
-        <NavigationLink to='/pages' iconComponent={FileTextIcon}>
-          <FormattedMessage id='navigation_bar.pages' defaultMessage='Pages' />
-        </NavigationLink>
-      )}
-      {driveEnabled && (
-        <NavigationLink
-          as='button'
-          type='button'
-          iconComponent={CloudIcon}
-          onClick={handleOpenDrive}
-        >
-          <FormattedMessage id='navigation_bar.drive' defaultMessage='Drive' />
-        </NavigationLink>
-      )}
-      {circlesEnabled && (
-        <NavigationLink to='/circles' iconComponent={UsersIcon}>
-          <FormattedMessage
-            id='navigation_bar.circles'
-            defaultMessage='Circles'
-          />
-        </NavigationLink>
+      {links.map((link) =>
+        link.to ? (
+          <NavigationLink key={link.key} to={link.to} icon={link.icon}>
+            {link.label}
+          </NavigationLink>
+        ) : (
+          <NavigationLink
+            key={link.key}
+            as='button'
+            type='button'
+            icon={link.icon}
+            onClick={link.onClick}
+          >
+            {link.label}
+          </NavigationLink>
+        ),
       )}
     </ListSection>
   );
@@ -261,20 +354,22 @@ export const SharlayanRedesignExtensions: React.FC = () => {
 
 type Antenna = ImmutableMap<string, string>;
 
-export const SharlayanRedesignAntennas: React.FC = () =>
-  antennaEnabled ? <RedesignAntennas /> : null;
-
-const RedesignAntennas: React.FC = () => {
+export const useSharlayanAntennaLinks = (): SharlayanNavigationLink[] => {
   const dispatch = useAppDispatch();
+  const { signedIn } = useIdentity();
   const antennas = useAppSelector(
     (state) => state.antennas as ImmutableMap<string, Antenna | false>,
   );
 
   useEffect(() => {
-    void dispatch(fetchAntennas());
-  }, [dispatch]);
+    if (antennaEnabled && signedIn) {
+      void dispatch(fetchAntennas());
+    }
+  }, [dispatch, signedIn]);
 
-  const orderedAntennas = antennas
+  if (!antennaEnabled || !signedIn) return [];
+
+  return antennas
     .filter((antenna): antenna is Antenna => !!antenna)
     .toList()
     .sort((a, b) => {
@@ -285,7 +380,21 @@ const RedesignAntennas: React.FC = () => {
       if (bLast) return 1;
       return (a.get('title') ?? '').localeCompare(b.get('title') ?? '');
     })
-    .slice(0, 10);
+    .slice(0, 10)
+    .toArray()
+    .map((antenna) => ({
+      key: antenna.get('id') ?? '',
+      to: `/antennas/${antenna.get('id')}`,
+      icon: RssSimpleIcon,
+      label: antenna.get('title') ?? '',
+    }));
+};
+
+export const SharlayanRedesignAntennas: React.FC = () =>
+  antennaEnabled ? <RedesignAntennas /> : null;
+
+const RedesignAntennas: React.FC = () => {
+  const links = useSharlayanAntennaLinks();
 
   return (
     <ListSection
@@ -297,19 +406,15 @@ const RedesignAntennas: React.FC = () => {
         />
       }
     >
-      <NavigationLink to='/antennas' exact iconComponent={RssSimpleIcon}>
+      <NavigationLink to='/antennas' exact icon={RssSimpleIcon}>
         <FormattedMessage
           id='tabs_bar.followed_tags_view_all'
           defaultMessage='View all'
         />
       </NavigationLink>
-      {orderedAntennas.map((antenna) => (
-        <NavigationLink
-          key={antenna.get('id')}
-          to={`/antennas/${antenna.get('id')}`}
-          iconComponent={RssSimpleIcon}
-        >
-          {antenna.get('title')}
+      {links.map((link) => (
+        <NavigationLink key={link.key} to={link.to ?? '/'} icon={link.icon}>
+          {link.label}
         </NavigationLink>
       ))}
     </ListSection>

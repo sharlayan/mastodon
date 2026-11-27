@@ -13,9 +13,15 @@ RSpec.describe 'Admin Settings External Discovery' do
         end
 
         expect(response).to have_http_status(200)
-        expect(response.parsed_body.at_css('input[name="form_admin_settings[noindex]"][disabled]')).to be_present
         expect(response.parsed_body.at_css('input[name="form_admin_settings[norss]"][disabled]')).to be_present
         expect(response.parsed_body.at_css('input[name="form_admin_settings[authorized_fetch]"][disabled]')).to be_present
+
+        ClimateControl.modify OC_ROLEPLAY_OPTION: 'true' do
+          get admin_settings_crawlers_path
+        end
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body.at_css('input[name="form_admin_settings[noindex]"][disabled]')).to be_present
       end
 
       it 'disables authorized fetch when the environment overrides it' do

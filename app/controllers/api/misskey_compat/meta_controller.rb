@@ -132,7 +132,7 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
       enableTurnstile: false,
       turnstileSiteKey: nil,
       swPublickey: Rails.configuration.x.vapid.public_key.presence,
-      themeColor: Setting.theme_color.presence,
+      themeColor: Setting.branding_theme_color.presence,
       mascotImageUrl: upload_url(instance_presenter.mascot),
       bannerUrl: upload_url(instance_presenter.thumbnail, style: :'@1x'),
       infoImageUrl: nil,

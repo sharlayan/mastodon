@@ -136,6 +136,12 @@ class REST::InstanceSerializer < ActiveModel::Serializer
         enabled: Setting.mfm_enabled,
         allow_composition: Setting.mfm_allow_composition,
       },
+
+      collections: {
+        max_items: Collection::MAX_ITEMS,
+        max_name_length: Collection::NAME_LENGTH_LOCAL_LIMIT,
+        max_description_length: Collection::DESCRIPTION_LENGTH_LOCAL_LIMIT,
+      },
     }
   end
 
@@ -147,6 +153,7 @@ class REST::InstanceSerializer < ActiveModel::Serializer
       message: registrations_enabled? ? nil : registrations_message,
       min_age: Setting.min_age.presence,
       url: ENV.fetch('SSO_ACCOUNT_SIGN_UP', nil),
+      oauth: true,
     }
   end
 

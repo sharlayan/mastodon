@@ -413,6 +413,12 @@ export default tseslint.config([
     },
   },
   {
+    files: ['**/features/chat/voice/call.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-class-instance-assignment': 'off',
+    },
+  },
+  {
     files: ['vitest.shims.d.ts'],
     rules: {
       '@typescript-eslint/no-unnecessary-boolean-literal-compare': 'off',

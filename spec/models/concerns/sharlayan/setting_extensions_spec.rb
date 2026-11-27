@@ -10,7 +10,7 @@ RSpec.describe Sharlayan::SettingExtensions do
       expect(defaults).to include(
         'site_title' => 'Mastodon Custard Edition',
         'profile_directory' => true,
-        'theme_color' => '#FFFD78'
+        'branding_theme_color' => '#FFFD78'
       )
       expect(described_class.merge_defaults({})).to include(
         'drive_enabled' => false,

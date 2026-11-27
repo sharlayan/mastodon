@@ -1,11 +1,10 @@
-import type { ComponentType, ReactNode } from 'react';
-
-import StatusContainer from '@/flavours/glitch/components/status/legacy/container';
+import type {
+  ApiGifvAttachmentJSON,
+  ApiImageAttachmentJSON,
+  ApiVideoAttachmentJSON,
+} from '@/flavours/glitch/api_types/media_attachments';
 import type { Account as TAccount } from '@/flavours/glitch/models/account';
 import type { Status as TStatus } from '@/flavours/glitch/models/status';
-
-import type { StatusHeaderRenderFn } from './legacy/header';
-import Status from './legacy/status';
 
 export type StatusContextType =
   | 'account'
@@ -21,10 +20,12 @@ export type StatusContextType =
   | 'search'
   | 'thread';
 
+export type StatusVariant = 'feed' | 'thread' | 'page';
+
 export interface StatusContainerProps {
   id?: string | null;
   account?: TAccount;
-  children?: ReactNode;
+  children?: React.ReactNode;
   rootId?: string;
   previousId?: string;
   nextId?: string;
@@ -41,7 +42,6 @@ export interface StatusContainerProps {
   withCounters?: boolean;
   unfocusable?: boolean;
   collapsed?: boolean;
-  headerRenderFn?: StatusHeaderRenderFn;
   getScrollPosition?: () => null | { height: number; top: number };
   updateScrollBottom?: (snapshot: number) => void;
   cacheMediaWidth?: (width: number) => void;
@@ -51,9 +51,6 @@ export interface StatusContainerProps {
   avatarSize?: number;
   withDismiss?: boolean;
 }
-
-export const TypedStatusContainer =
-  StatusContainer as unknown as ComponentType<StatusContainerProps>;
 
 // Taken from the Status component.
 export interface StatusProps extends Omit<StatusContainerProps, 'nextId'> {
@@ -95,4 +92,7 @@ export interface StatusProps extends Omit<StatusContainerProps, 'nextId'> {
   pictureInPicture: Immutable.Map<'inUse' | 'available', boolean>;
 }
 
-export const TypedStatus = Status as unknown as ComponentType<StatusProps>;
+export type StatusImageAttachmentJSON =
+  | ApiImageAttachmentJSON
+  | ApiGifvAttachmentJSON
+  | ApiVideoAttachmentJSON;

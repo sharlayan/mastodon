@@ -149,7 +149,6 @@ const hotkeyMatcherMap = {
   moveToTop: just('0'),
   toggleHidden: just('x'),
   toggleSensitive: just('h'),
-  toggleComposeSpoilers: optionPlus('x'),
   openMedia: just('e'),
   onTranslate: just('t'),
   toggleCollapse: shiftPlus('x'),

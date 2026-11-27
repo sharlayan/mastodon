@@ -14,13 +14,13 @@ vi.hoisted(() => {
 });
 
 describe('UI compose hotkeys', () => {
-  it('does not consume the redesign-only new-message shortcut in legacy mode', () => {
+  it('opens the message composer with the new-message shortcut', () => {
     const dispatch = vi.fn();
     const preventDefault = vi.fn();
     const ui = new UI({ dispatch });
 
-    expect(ui.handleHotkeyNewMessage({ preventDefault })).toBe(false);
-    expect(preventDefault).not.toHaveBeenCalled();
-    expect(dispatch).not.toHaveBeenCalled();
+    expect(ui.handleHotkeyNewMessage({ preventDefault })).toBe(true);
+    expect(preventDefault).toHaveBeenCalled();
+    expect(dispatch).toHaveBeenCalledTimes(1);
   });
 });

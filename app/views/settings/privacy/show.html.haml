@@ -23,6 +23,11 @@
     .fields-group
       = ff.input :auto_accept_followed, wrapper: :with_label, label: I18n.t('simple_form.labels.defaults.setting_auto_accept_followed'), hint: I18n.t('simple_form.hints.defaults.setting_auto_accept_followed'), glitch_only: true
 
+  - if Relay.where(requires_opt_in: true).enabled.any?
+    %p.lead
+      = t('privacy.relays_hint_html')
+      = link_to t('privacy.view_relays'), settings_relay_preferences_path
+
   %h2= t('privacy.search')
 
   %p.lead= t('privacy.search_hint_html')

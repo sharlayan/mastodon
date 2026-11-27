@@ -9,11 +9,9 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 import { fetchAntennas } from '@/flavours/glitch/actions/antennas';
 import { fetchBoardAnnouncementsUnreadCount } from '@/flavours/glitch/actions/board_announcements';
-import { RedesignMobileNavigation } from '@/flavours/glitch/features/navigation_panel/redesign/mobile_nav';
-import { NavigationBar } from '@/flavours/glitch/features/ui/components/navigation_bar';
+import { MobileNavigation } from '@/flavours/glitch/features/navigation_panel/mobile_nav';
 import { PEMRISSION_VIEW_FEEDS } from '@/flavours/glitch/permissions';
 
-import { useSharlayanPrimaryNavigation } from './index';
 import {
   SharlayanRedesignAccountMenuItems,
   SharlayanRedesignAntennas,
@@ -43,6 +41,8 @@ const context = vi.hoisted(() => ({
     remoteLiveFeedAccess: 'authenticated',
     pagesEnabled: true,
     trendsEnabled: true,
+    sso_redirect: undefined,
+    registrationsOpen: false,
   },
   roleplay: {
     adminTimelineOwnerViewer: false,
@@ -54,12 +54,14 @@ let state: {
   local_settings: ImmutableMap<string, unknown>;
   boardAnnouncements: { unreadCount: number };
   antennas: ImmutableMap<string, unknown>;
-  navigation: { open: boolean };
+  navigation: { isMobileMenuOpen: boolean };
+  server: { server: { item: null } };
 } = {
   local_settings: fromJS({}),
   boardAnnouncements: { unreadCount: 3 },
   antennas: fromJS({}),
-  navigation: { open: false },
+  navigation: { isMobileMenuOpen: false },
+  server: { server: { item: null } },
 };
 
 vi.mock('@/flavours/glitch/initial_state', () => context.flags);
@@ -99,16 +101,13 @@ vi.mock('@/flavours/glitch/actions/modal', () => ({
 vi.mock('@/flavours/glitch/components/badge', () => ({
   Badge: ({ label }: { label: React.ReactNode }) => <span>{label}</span>,
 }));
-vi.mock(
-  '@/flavours/glitch/features/navigation_panel/redesign/list_section',
-  () => ({
-    ListSection: ({ children }: { children: React.ReactNode }) => (
-      <li>
-        <ul>{children}</ul>
-      </li>
-    ),
-  }),
-);
+vi.mock('@/flavours/glitch/features/navigation_panel/list_section', () => ({
+  ListSection: ({ children }: { children: React.ReactNode }) => (
+    <li>
+      <ul>{children}</ul>
+    </li>
+  ),
+}));
 vi.mock('@/flavours/glitch/components/menu', () => ({
   Menu: ({ children }: { children: React.ReactNode }) => children,
   MenuList: ({ children }: { children: React.ReactNode }) => children,
@@ -139,27 +138,29 @@ vi.mock('@/flavours/glitch/components/menu', () => ({
     }),
 }));
 
-vi.mock('@/flavours/glitch/features/navigation_panel/redesign', () => ({
-  RedesignNavigationPanel: () => null,
-  useNotificationsCount: () => 0,
+vi.mock('@/flavours/glitch/features/navigation_panel', () => ({
+  NavigationPanel: () => null,
   handleSearchLinkClick: context.searchClick,
 }));
 vi.mock(
-  '@/flavours/glitch/features/navigation_panel/redesign/account_card_and_menu',
+  '@/flavours/glitch/features/navigation_panel/account_menu_items',
   () => ({ AccountMenuItems: () => null }),
 );
-vi.mock('@/flavours/glitch/features/navigation_panel/redesign/header', () => ({
+vi.mock('@/flavours/glitch/features/navigation_panel/header', () => ({
   LogoLockup: () => null,
 }));
-vi.mock('@/flavours/glitch/features/compose/redesign/trigger', () => ({
-  ComposeRedesignButton: () => null,
+vi.mock('@/flavours/glitch/features/navigation_panel/mini_nav', () => ({
+  AccountButton: () => null,
+  MiniHomeLink: () => null,
+  MiniMessagesLink: () => null,
+  MiniNotificationsLink: () => null,
 }));
-vi.mock(
-  '@/flavours/glitch/features/ui/hooks/use_confirm_draft_before_publish',
-  () => ({
-    useConfirmDraftBeforePublish: () => vi.fn(),
-  }),
-);
+vi.mock('@/flavours/glitch/features/compose/trigger', () => ({
+  ComposeButton: () => null,
+}));
+vi.mock('@/flavours/glitch/hooks/useCloseOnHistoryBack', () => ({
+  useCloseOnHistoryBack: () => undefined,
+}));
 vi.mock('@/flavours/glitch/selectors/notifications', () => ({
   selectUnreadNotificationGroupsCount: () => 0,
 }));
@@ -203,14 +204,16 @@ describe('Sharlayan redesign navigation', () => {
       local_settings: fromJS({ notifications: { tab_badge: true } }),
       boardAnnouncements: { unreadCount: 3 },
       antennas: fromJS({}),
-      navigation: { open: false },
+      navigation: { isMobileMenuOpen: false },
+      server: { server: { item: null } },
     };
   });
 
   afterEach(cleanup);
 
-  it('replaces only the mobile search tab and preserves local labels and active links in both interfaces', () => {
-    for (const Component of [RedesignMobileNavigation, NavigationBar]) {
+  it('replaces only the mobile search tab and preserves local labels and active links', () => {
+    const Component = MobileNavigation;
+    {
       const view = render(
         <MemoryRouter initialEntries={['/public/local']}>
           <IntlProvider locale='en'>
@@ -250,48 +253,12 @@ describe('Sharlayan redesign navigation', () => {
     }
   });
 
-  it('keeps search in the legacy mobile menu when the local tab replaces it without trends', () => {
-    const LegacyPrimaryNavigation = () =>
-      useSharlayanPrimaryNavigation(false).primaryItems;
-    context.mobile = true;
-    context.flags.trendsEnabled = false;
-
-    const view = renderNavigation(<LegacyPrimaryNavigation />);
-    expect(paths()).not.toContain('/search');
-
-    state.local_settings = fromJS({
-      navigation_panel: { mobile_local_timeline: true },
-    });
-    view.rerender(
-      <MemoryRouter>
-        <IntlProvider locale='en'>
-          <ul>
-            <LegacyPrimaryNavigation />
-          </ul>
-        </IntlProvider>
-      </MemoryRouter>,
-    );
-    expect(paths()).toContain('/search');
-
-    context.flags.trendsEnabled = true;
-    view.rerender(
-      <MemoryRouter>
-        <IntlProvider locale='en'>
-          <ul>
-            <LegacyPrimaryNavigation />
-          </ul>
-        </IntlProvider>
-      </MemoryRouter>,
-    );
-    expect(paths()).toContain('/explore');
-    expect(paths()).not.toContain('/search');
-  });
-
   it('falls back to search when local access is disabled and retains the redesign search focus behavior', () => {
     state.local_settings = fromJS({
       navigation_panel: { mobile_local_timeline: true },
     });
-    for (const Component of [RedesignMobileNavigation, NavigationBar]) {
+    const Component = MobileNavigation;
+    {
       for (const gate of ['feature', 'permission']) {
         context.flags.localTimelineEnabled = gate !== 'feature';
         context.flags.localLiveFeedAccess =
@@ -315,7 +282,7 @@ describe('Sharlayan redesign navigation', () => {
     const authorized = render(
       <MemoryRouter>
         <IntlProvider locale='en'>
-          <RedesignMobileNavigation />
+          <MobileNavigation />
         </IntlProvider>
       </MemoryRouter>,
     );
@@ -329,7 +296,7 @@ describe('Sharlayan redesign navigation', () => {
     const fallback = render(
       <MemoryRouter>
         <IntlProvider locale='en'>
-          <RedesignMobileNavigation />
+          <MobileNavigation />
         </IntlProvider>
       </MemoryRouter>,
     );

@@ -21,6 +21,7 @@ import { changeScheduledAt, discardCompose } from '@/flavours/glitch/sharlayan/c
 import { getSharlayanComposeSubmission } from '@/flavours/glitch/sharlayan/compose/submission';
 import { recoverHashtags } from 'flavours/glitch/utils/hashtag';
 
+import { notifyComposeSubmitSuccess } from 'flavours/glitch/sharlayan/compose/submit_events';
 import { showAlert, showAlertForError } from './alerts';
 import { isStandaloneComposePath } from './compose_path';
 import { emojiUse } from './emojis';
@@ -29,8 +30,7 @@ import { openModal } from './modal';
 import { deleteStatusDraft, discardPendingStatusDraftSave, getPendingStatusDraftSave } from './status_drafts';
 import { updateTimeline } from './timelines';
 import { insertStatusIntoAccountTimelines } from './timelines_typed';
-import { isRedesignEnabled } from '../utils/environment';
-import { requestComposerFocus } from '../reducers/slices/composer';
+import { initializeComposer, requestComposerFocus } from '../reducers/slices/composer';
 
 /** @type {AbortController | undefined} */
 let fetchComposeSuggestionsAccountsController;
@@ -112,12 +112,6 @@ const messages = defineMessages({
   messageSaved: { id: 'compose.message.saved.body', defaultMessage: 'Message saved' },
 });
 
-export const ensureComposeIsVisible = (getState) => {
-  if (!getState().getIn(['compose', 'mounted']) && !isRedesignEnabled()) {
-    browserHistory.push('/publish', { focusTarget: false });
-  }
-};
-
 export function setComposeToStatus(status, text, spoiler_text, content_type) {
   return (dispatch, getState) => {
     const maxOptions = getState().server.server.item?.configuration.polls.max_options;
@@ -149,15 +143,9 @@ export function replyCompose(status) {
       prependCWRe: prependCWRe,
     });
 
-    if (!handleReplyForInlineCompose(dispatch, getState)) {
-      ensureComposeIsVisible(getState);
-    }
+    handleReplyForInlineCompose(dispatch, getState);
 
-    if (isRedesignEnabled()) {
-      const text = getState().getIn(['compose', 'text'], '');
-      // Preselect any mentions past the first, mirroring the reply text's leading `@user `.
-      dispatch(requestComposerFocus({ start: text.search(/\s/) + 1, end: text.length }));
-    }
+    dispatch(initializeComposer({selectAfterFirstSpace: true}));
   };
 }
 
@@ -175,34 +163,24 @@ export function resetCompose() {
 
 export { discardCompose };
 
-export const focusCompose = (defaultText = '', caretStart = false) => (dispatch, getState) => {
+export const focusCompose = (defaultText = '', caretStart = false) => (dispatch) => {
   dispatch({
     type: COMPOSE_FOCUS,
     defaultText,
     caretStart,
   });
 
-  ensureComposeIsVisible(getState);
-
-  if (isRedesignEnabled()) {
-    const position = caretStart ? 0 : getState().getIn(['compose', 'text'], '').length;
-    dispatch(requestComposerFocus({ start: position, end: position }));
-  }
+  dispatch(initializeComposer({ noSelect: caretStart }));
 };
 
 export function mentionCompose(account) {
-  return (dispatch, getState) => {
+  return (dispatch) => {
     dispatch({
       type: COMPOSE_MENTION,
       account: account,
     });
 
-    ensureComposeIsVisible(getState);
-
-    if (isRedesignEnabled()) {
-      const position = getState().getIn(['compose', 'text'], '').length;
-      dispatch(requestComposerFocus({ start: position, end: position }));
-    }
+    dispatch(initializeComposer());
   };
 }
 
@@ -219,14 +197,11 @@ export function directCompose(account, useInlineComposeModal = false, inlineComp
       account: account,
     });
 
-    if (!useInlineComposeModal || !handleDirectForInlineCompose(dispatch, getState, inlineComposeModalOptions)) {
-      ensureComposeIsVisible(getState);
+    if (useInlineComposeModal) {
+      handleDirectForInlineCompose(dispatch, getState, inlineComposeModalOptions);
     }
 
-    if (isRedesignEnabled()) {
-      const position = getState().getIn(['compose', 'text'], '').length;
-      dispatch(requestComposerFocus({ start: position, end: position }));
-    }
+    dispatch(initializeComposer());
   };
 }
 
@@ -282,6 +257,8 @@ export function submitCompose(successCallback, overridePrivacy) {
 
     const { circleId, limitedScope, limitedReplyAccountIds, clipIds, poll, quoteApprovalPolicy, reactionAcceptance, scheduledAt: newStatusScheduledAt, visibility } = getSharlayanComposeSubmission({ getState, effectiveStatusId, overridePrivacy });
 
+    const sensitive = !!getState().getIn(['compose', 'sensitive']) || !!getState().getIn(['compose', 'spoiler']);
+
     const doSubmit = () => api().request({
       url: effectiveStatusId === null ? '/api/v1/statuses' : `/api/v1/statuses/${effectiveStatusId}`,
       method: effectiveStatusId === null ? 'post' : 'put',
@@ -293,8 +270,8 @@ export function submitCompose(successCallback, overridePrivacy) {
         in_reply_to_id: getState().getIn(['compose', 'in_reply_to'], null),
         media_ids: media.map(item => item.get('id')),
         media_attributes,
-        sensitive: getState().getIn(['compose', 'sensitive']) || (spoiler_text.length > 0 && media.size !== 0),
-        visibility: visibility,
+        sensitive,
+        visibility,
         circle_id: circleId,
         limited_scope: limitedScope,
         limited_reply_account_ids: limitedReplyAccountIds,
@@ -320,6 +297,7 @@ export function submitCompose(successCallback, overridePrivacy) {
         dispatch(insertIntoTagHistory(response.data.tags, statusText));
       }
       dispatch(submitComposeSuccess({ ...response.data }));
+      notifyComposeSubmitSuccess(response.data);
       if (draftId) {
         dispatch(deleteStatusDraft(draftId));
       }
@@ -340,9 +318,7 @@ export function submitCompose(successCallback, overridePrivacy) {
         }
       };
 
-      if (effectiveStatusId) {
-        dispatch(importFetchedStatus({ ...response.data }));
-      }
+      dispatch(importFetchedStatus({ ...response.data }));
 
       if (effectiveStatusId === null) {
         insertIfOnline('home');
@@ -361,7 +337,7 @@ export function submitCompose(successCallback, overridePrivacy) {
 
       if (getState().getIn(['local_settings', 'show_published_toast'])) {
         let message = effectiveStatusId === null ? messages.published : messages.saved;
-        if (isRedesignEnabled() && response.data.visibility === 'direct') {
+        if (response.data.visibility === 'direct') {
           message = effectiveStatusId === null ? messages.messagePublished : messages.messageSaved;
         }
 
@@ -767,7 +743,7 @@ export function selectComposeSuggestion(position, token, suggestion, path) {
       });
     }
 
-    if (isRedesignEnabled() && path.length === 1 && path[0] === 'text') {
+    if (path.length === 1 && path[0] === 'text') {
       const caretPosition = startPosition + (inserted ? completion.length : token.length) + 1;
       dispatch(requestComposerFocus({ start: caretPosition, end: caretPosition }));
     }

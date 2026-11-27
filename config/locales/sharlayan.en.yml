@@ -338,6 +338,22 @@ en:
       privileges:
         invite_bypass_approval_description: Allows people invited to the server by
           these users to bypass moderation approval
+    server_checks:
+      checks:
+        voice_relay:
+          error:
+            title: "There was an error checking the voice relays"
+          ok:
+            title: "An approved voice relay is available"
+          pending:
+            lead:
+              revoked_html: "Voice relay %{providers_str} no longer accepts this server. Voice calls on it cannot start until the relay operator restores access or the secret is updated."
+              unavailable_html: "Voice calls are enabled, but no approved voice relay is available."
+            title: "Voice calls cannot use a voice relay"
+          running:
+            title: "The server is checking the voice relays"
+          unprocessed:
+            title: "The server hasn't checked the voice relays yet"
     settings:
       registration_rejection_patterns_invalid: "Use valid regular expressions, at most %{max_patterns} non-empty lines and %{max_length} characters in total."
       user_themes:
@@ -593,13 +609,6 @@ en:
       no_username_block_selected: No username rules were changed as none were selected
       not_permitted: Not permitted
       updated_msg: Successfully updated username rule
-    system_checks:
-      voice_relay_revoked_check:
-        action: "Manage voice relays"
-        message_html: "Voice relay %{value} no longer accepts this server. Voice calls on it cannot start until the relay operator restores access or the secret is updated."
-      voice_relay_unavailable_check:
-        action: "Manage voice relays"
-        message_html: "Voice calls are enabled, but no approved voice relay is available."
     voice_relay_providers:
       add_new: "Add relay"
       approved: "Approved"
@@ -859,7 +868,7 @@ en:
       form_admin_settings:
         registration_reject_email_pattern: "One case-sensitive substring per line. Start a line with ? to use a regular expression (use (?i) for case-insensitive matching). Blank lines are ignored. Applies to new sign-ups, including invitations; existing accounts are unaffected."
         registration_reject_username_pattern: "One case-sensitive substring per line. Start a line with ? to use a regular expression (use (?i) for case-insensitive matching). Blank lines are ignored. Applies to new sign-ups, including invitations; existing accounts are unaffected."
-        theme_color: The accent color used by browsers for the address bar and app
+        branding_theme_color: The accent color used by browsers for the address bar and app
           UI.
       user_role:
         drive_quota: Maximum total size of each user's Drive library in megabytes.
@@ -931,7 +940,7 @@ en:
         registration_reject_username_pattern: "Username patterns to reject at sign-up"
         local_account_statuses_access: Access to local account feeds
         local_status_page_access: Access to individual status pages
-        theme_color: Theme color
+        branding_theme_color: Theme color
       user_role:
         drive_quota: Drive quota per user (MB)
         extra_permissions_as_keys: Additional permissions

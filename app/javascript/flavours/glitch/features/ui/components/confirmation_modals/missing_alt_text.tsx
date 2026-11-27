@@ -4,7 +4,8 @@ import { defineMessages, useIntl } from 'react-intl';
 
 import type { Map as ImmutableMap, List as ImmutableList } from 'immutable';
 
-import { submitCompose } from 'flavours/glitch/actions/compose';
+import type { StatusVisibility } from '@/flavours/glitch/api_types/statuses';
+import { submitComposer } from '@/flavours/glitch/reducers/slices/composer';
 import { openModal } from 'flavours/glitch/actions/modal';
 import type { MediaAttachment } from 'flavours/glitch/models/media_attachment';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
@@ -34,10 +35,10 @@ const messages = defineMessages({
 
 export const ConfirmMissingAltTextModal: React.FC<
   {
-    overridePrivacy: null | string;
-    onSubmitSuccess?: (status: unknown) => void;
+    overridePrivacy?: StatusVisibility;
+    redirectOnSuccess?: boolean;
   } & BaseConfirmationModalProps
-> = ({ onClose, overridePrivacy, onSubmitSuccess }) => {
+> = ({ onClose, overridePrivacy, redirectOnSuccess }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const mediaId = useAppSelector(
@@ -67,8 +68,10 @@ export const ConfirmMissingAltTextModal: React.FC<
   }, [dispatch, mediaId]);
 
   const handleSecondary = useCallback(() => {
-    dispatch(submitCompose(onSubmitSuccess, overridePrivacy));
-  }, [dispatch, onSubmitSuccess, overridePrivacy]);
+    dispatch(
+      submitComposer({ force: true, overridePrivacy, redirectOnSuccess }),
+    );
+  }, [dispatch, overridePrivacy, redirectOnSuccess]);
 
   return (
     <ConfirmationModal

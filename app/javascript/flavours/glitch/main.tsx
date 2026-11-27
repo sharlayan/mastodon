@@ -28,11 +28,7 @@ import {
 } from 'flavours/glitch/sharlayan/user_theme';
 import { store } from 'flavours/glitch/store';
 
-import {
-  isDevelopment,
-  isProduction,
-  isRedesignEnabled,
-} from './utils/environment';
+import { isDevelopment, isProduction } from './utils/environment';
 
 function main() {
   perf.start('main()');
@@ -67,10 +63,6 @@ function main() {
 
     const { initializeEmoji } = await import('./features/emoji/index');
     await initializeEmoji();
-
-    if (isRedesignEnabled()) {
-      document.documentElement.dataset.redesign = 'true';
-    }
 
     const root = createRoot(mountNode);
     root.render(

@@ -70,7 +70,7 @@ class NodeInfo::SerializerTwoOne < ActiveModel::Serializer
       'enableEmail' => true,
       'enableServiceWorker' => true,
       'proxyAccountName' => '',
-      'themeColor' => Setting.theme_color.presence || '#6364ff',
+      'themeColor' => Setting.branding_theme_color.presence || '#6364ff',
       'features' => capabilities_for_nodeinfo,
       'upstream' => {
         'name' => 'mastodon',

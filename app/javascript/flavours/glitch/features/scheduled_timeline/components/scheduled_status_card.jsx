@@ -8,11 +8,11 @@ import CalendarTodayIcon from '@/material-icons/400-24px/calendar_today.svg?reac
 import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
 import EditIcon from '@/material-icons/400-24px/edit.svg?react';
 import { Icon } from 'flavours/glitch/components/icon';
-import { LanguageIcon } from 'flavours/glitch/components/status/legacy/icons';
+import { LanguageIcon } from 'flavours/glitch/sharlayan/language_icon';
 import { RelativeTimestamp } from 'flavours/glitch/components/relative_timestamp';
 import { VisibilityIcon } from 'flavours/glitch/components/visibility_icon';
 import MediaGallery from 'flavours/glitch/components/media_gallery';
-import { VisibilityQuoteLabel } from 'flavours/glitch/features/compose/components/visibility_button';
+import { VisibilityQuoteLabel } from 'flavours/glitch/sharlayan/compose/visibility_quote_label';
 import { openModal } from 'flavours/glitch/actions/modal';
 import { setComposeToScheduledStatus } from 'flavours/glitch/actions/scheduled_statuses';
 import { deleteScheduledStatus, updateScheduledStatus } from 'flavours/glitch/actions/scheduled_statuses';

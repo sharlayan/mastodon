@@ -30,7 +30,7 @@ RSpec.describe 'Misskey-compat admin meta and captcha' do
 
     api('update-meta', name: 'Renamed', description: 'Short', themeColor: '#123456', disableRegistration: false, notesPerOneAd: 5, smtpHost: 'mail.example', cacheRemoteFiles: false)
     expect(response).to have_http_status(204)
-    expect([Setting.site_title, Setting.site_short_description, Setting.theme_color, Setting.registrations_mode]).to eq(%w(Renamed Short #123456 approved))
+    expect([Setting.site_title, Setting.site_short_description, Setting.branding_theme_color, Setting.registrations_mode]).to eq(%w(Renamed Short #123456 approved))
     expect(Setting.misskey_compat_notes_per_one_ad).to eq(5)
 
     api('update-meta', disableRegistration: true)

@@ -18,7 +18,8 @@ import {
 } from 'flavours/glitch/actions/compose';
 import { apiRequest } from 'flavours/glitch/api';
 import { IconButton } from 'flavours/glitch/components/icon_button';
-import ComposeFormContainer from 'flavours/glitch/features/compose/containers/compose_form_container';
+import { ComposeForm } from 'flavours/glitch/features/compose/form';
+import { subscribeComposeSubmitSuccess } from 'flavours/glitch/sharlayan/compose/submit_events';
 import { useAppDispatch } from 'flavours/glitch/store';
 
 const messages = defineMessages({
@@ -92,6 +93,11 @@ export const InlineComposeModal = forwardRef<
       [history, navigateToConversation, onClose],
     );
 
+    useEffect(
+      () => subscribeComposeSubmitSuccess(handleSubmitSuccess),
+      [handleSubmitSuccess],
+    );
+
     return (
       <div className='modal-root__modal inline-compose-modal'>
         <div className='inline-compose-modal__header'>
@@ -119,11 +125,7 @@ export const InlineComposeModal = forwardRef<
         </div>
 
         <div className='inline-compose-modal__body'>
-          <ComposeFormContainer
-            isInline
-            withoutNavigation
-            onSubmitSuccess={handleSubmitSuccess}
-          />
+          <ComposeForm headless noMinimize autoFocus />
         </div>
       </div>
     );

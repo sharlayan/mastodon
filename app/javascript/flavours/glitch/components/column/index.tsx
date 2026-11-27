@@ -6,7 +6,7 @@ import { useDebouncedCallback } from 'use-debounce';
 
 import { getColumnSkipLinkId } from '@/flavours/glitch/features/ui/components/skip_links';
 import { useColumnWidthContext } from '@/flavours/glitch/features/ui/util/column_width_context';
-import { isRedesignEnabled } from '@/flavours/glitch/utils/environment';
+import { useScrollSensor } from '@/flavours/glitch/hooks/useScrollSensor';
 import { scrollTop } from 'flavours/glitch/scroll';
 
 import { ColumnContext, useColumnIndexContext } from './context';
@@ -29,9 +29,17 @@ export const Column: React.FC<ColumnProps> = ({
 }) => {
   const nodeRef = useRef<HTMLDivElement>(null);
 
+  const { sensor: scrollSensor, isInViewport: isSensorInViewport } =
+    useScrollSensor({
+      placement: 'top',
+      tolerance: 4,
+    });
+
   const idleCallbackId = useRef<number>(null);
   const contextValue = useMemo(
     () => ({
+      scrollSensor: bindToDocument ? null : scrollSensor,
+      isScrolledToTop: isSensorInViewport,
       scrollTop() {
         let scrollable = null;
 
@@ -53,7 +61,7 @@ export const Column: React.FC<ColumnProps> = ({
         });
       },
     }),
-    [bindToDocument],
+    [bindToDocument, isSensorInViewport, scrollSensor],
   );
 
   const handleScroll = useDebouncedCallback(() => {
@@ -70,21 +78,23 @@ export const Column: React.FC<ColumnProps> = ({
       role='region'
       ref={nodeRef}
       onScroll={handleScroll}
-      className={classNames(
-        isRedesignEnabled() ? classes.root : 'column',
-        className,
-      )}
+      className={classNames(classes.root, className)}
       data-column-root // Used by hotkey handling code
       aria-label={label}
       aria-labelledby={
         label === undefined ? getColumnSkipLinkId(columnIndex) : undefined
       }
+      data-custom-width={customized && width ? true : undefined}
       style={
         customized && width
           ? ({ '--column-width': `${width}px` } as React.CSSProperties)
           : undefined
       }
     >
+      {
+        // In multi-column mode, the scrollSensor is attached in <Scrollable>
+        bindToDocument ? scrollSensor : null
+      }
       <ColumnContext.Provider value={contextValue}>
         {children}
       </ColumnContext.Provider>

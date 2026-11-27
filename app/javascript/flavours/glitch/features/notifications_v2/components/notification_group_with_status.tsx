@@ -7,6 +7,8 @@ import type { Map as ImmutableMap } from 'immutable';
 
 import { replyComposeById } from '@/flavours/glitch/actions/compose_typed';
 import { LinkedDisplayName } from '@/flavours/glitch/components/display_name';
+import { StatusContext } from '@/flavours/glitch/components/status/hooks';
+import { QuotedStatus } from '@/flavours/glitch/components/status/quote';
 import {
   navigateToStatus,
   navigateToStatusOrConversation,
@@ -21,8 +23,6 @@ import { RelativeTimestamp } from 'flavours/glitch/components/relative_timestamp
 import { NOTIFICATIONS_GROUP_MAX_AVATARS } from 'flavours/glitch/models/notification_group';
 import { shouldAutoCollapseNotification } from 'flavours/glitch/sharlayan/post_collapsing';
 import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
-
-import { EmbeddedStatus } from './embedded_status';
 
 const AVATAR_SIZE = 28;
 
@@ -175,10 +175,12 @@ export const NotificationGroupWithStatus: React.FC<{
             </h2>
           </div>
 
-          {statusId && (
-            <div className='notification-group__main__status'>
-              <EmbeddedStatus statusId={statusId} collapsed={collapsed} />
-            </div>
+          {statusId && !collapsed && (
+            <StatusContext.Provider
+              value={{ id: statusId, contextType: 'notifications' }}
+            >
+              <QuotedStatus id={statusId} clamp />
+            </StatusContext.Provider>
           )}
 
           {additionalContent && (

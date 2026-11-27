@@ -718,7 +718,7 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
 
         <footer className='doodle-editor__footer'>
           <span>PNG · RGBA · {DOODLE_SIZES[this.size][0]} × {DOODLE_SIZES[this.size][1]}</span>
-          <div><Button text={intl.formatMessage(messages.cancel)} secondary onClick={this.onCancelButton} /><Button text={intl.formatMessage(messages.export)} onClick={this.onDoneButton} /></div>
+          <div><Button onClick={this.onCancelButton}>{intl.formatMessage(messages.cancel)}</Button><Button variant='solid' color='accent' onClick={this.onDoneButton}>{intl.formatMessage(messages.export)}</Button></div>
         </footer>
       </div>
     );

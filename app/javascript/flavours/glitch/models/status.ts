@@ -22,6 +22,7 @@ import type {
   ApiMentionJSON,
   ApiPreviewCardAuthorJSON,
   ApiPreviewCardJSON,
+  ApiStatusHistoryJSON,
   ApiStatusJSON,
   ApiStatusTranslationJSON,
   ApiTagJSON,
@@ -102,6 +103,9 @@ export interface StatusShape extends Pick<
   replies_count: number;
   repliable: boolean;
   visibility: StatusVisibility;
+
+  // glitch-soc
+  local_only?: boolean;
 }
 export type AccountStatusShape = Omit<StatusShape, 'account'> & {
   account: AccountShapeFull;
@@ -175,4 +179,9 @@ export type FilterResult = Omit<ApiFilterResultJSON, 'filter'> & {
 
 export type StatusTranslation = Omit<ApiStatusTranslationJSON, 'poll'> & {
   isLoading: boolean;
+};
+
+export type StatusHistory = Omit<ApiStatusHistoryJSON, 'account'> & {
+  account: string;
+  original: boolean;
 };

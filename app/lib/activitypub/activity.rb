@@ -188,7 +188,7 @@ class ActivityPub::Activity
   end
 
   def requested_through_relay?
-    @options[:relayed_through_actor] && Relay.find_by(inbox_url: @options[:relayed_through_actor].inbox_url)&.enabled?
+    @options[:relayed_through_actor] && Relay.may_forward_to_mastodon.find_by(account: @options[:relayed_through_actor])&.enabled?
   end
 
   def relay_actor
@@ -216,9 +216,9 @@ class ActivityPub::Activity
     emoji = CustomEmoji.find_by(shortcode: custom_emoji_parser.shortcode, domain: @account.domain)
     return emoji if DomainBlock.reject_media?(@account.domain)
     return emoji unless emoji.nil? ||
-                        custom_emoji_parser.image_remote_url != emoji.image_remote_url ||
-                        (!custom_emoji_parser.sensitive.nil? && custom_emoji_parser.sensitive != emoji.is_sensitive?) ||
-                        (custom_emoji_parser.updated_at && custom_emoji_parser.updated_at >= emoji.updated_at)
+      custom_emoji_parser.image_remote_url != emoji.image_remote_url ||
+      (!custom_emoji_parser.sensitive.nil? && custom_emoji_parser.sensitive != emoji.is_sensitive?) ||
+      (custom_emoji_parser.updated_at && custom_emoji_parser.updated_at >= emoji.updated_at)
 
     begin
       emoji ||= CustomEmoji.new(domain: @account.domain,

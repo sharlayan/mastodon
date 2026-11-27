@@ -731,10 +731,10 @@ const InvitationRow: React.FC<{
         />
       }
     >
-      <Button compact onClick={handleAccept}>
+      <Button size='sm' variant='solid' color='accent' onClick={handleAccept}>
         <FormattedMessage id='chat.accept' defaultMessage='Accept' />
       </Button>
-      <Button compact secondary onClick={handleReject}>
+      <Button size='sm' onClick={handleReject}>
         <FormattedMessage id='chat.reject' defaultMessage='Reject' />
       </Button>
     </ChatAccountRow>
@@ -765,7 +765,7 @@ const PendingInvitationRow: React.FC<{
           />
         }
       />
-      <Button compact secondary onClick={handleCancel}>
+      <Button size='sm' onClick={handleCancel}>
         <FormattedMessage
           id='chat.cancel_invitation'
           defaultMessage='Cancel invitation'
@@ -1231,7 +1231,12 @@ const ComposerSendButton: React.FC<{
   );
 
   return (
-    <Button type='submit' disabled={disabled || !sendable}>
+    <Button
+      variant='solid'
+      color='accent'
+      type='submit'
+      disabled={disabled || !sendable}
+    >
       {label}
     </Button>
   );
@@ -4189,6 +4194,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                       disabled={conversation.archived}
                     />
                     <Button
+                      variant='solid'
+                      color='accent'
                       type='submit'
                       disabled={conversation.archived || !inviteAccount}
                     >
@@ -4303,6 +4310,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   disabled={conversation.archived}
                 />
                 <Button
+                  variant='solid'
+                  color='accent'
                   type='submit'
                   disabled={
                     conversation.archived ||
@@ -4635,8 +4644,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                           />
                         )}
                         <Button
-                          compact
-                          secondary
+                          size='sm'
                           data-media-id={attachment.id}
                           onClick={handleRemoveMedia}
                         >
@@ -4735,6 +4743,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                         placeholder={intl.formatMessage(messages.accountSearch)}
                       />
                       <Button
+                        variant='solid'
+                        color='accent'
                         type='submit'
                         disabled={loading || !directAccount}
                       >
@@ -4793,6 +4803,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                         placeholder={intl.formatMessage(messages.accountSearch)}
                       />
                       <Button
+                        variant='solid'
+                        color='accent'
                         type='submit'
                         disabled={loading || !groupTitle.trim()}
                       >

@@ -24,7 +24,7 @@ const renderComposer = text => {
   const state = fromJS({
     accounts: {
       local: { acct: 'alice' },
-      remote: { acct: 'bob@remote.example' },
+      remote: { acct: 'bob@example.com' },
     },
     direct_compose: { conversation: { text } },
     server: { server: { item: { configuration: { statuses: { max_characters: 20 } } } } },

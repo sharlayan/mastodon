@@ -47,6 +47,9 @@ vi.mock('flavours/glitch/api/pages', () => ({
 vi.mock('flavours/glitch/components/column/header', () => ({
   ColumnHeader: () => null,
 }));
+vi.mock('flavours/glitch/components/column_header', () => ({
+  ColumnHeader: () => null,
+}));
 
 vi.mock('../components/image_upload_field', () => ({
   ImageUploadField: () => null,

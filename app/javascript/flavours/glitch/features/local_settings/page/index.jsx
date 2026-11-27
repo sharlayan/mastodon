@@ -105,14 +105,6 @@ class LocalSettingsPage extends PureComponent {
         <h1><FormattedMessage id='settings.general' defaultMessage='General' /></h1>
         <LocalSettingsPageItem
           settings={settings}
-          item={['show_reply_count']}
-          id='mastodon-settings--reply-count'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.show_reply_counter' defaultMessage='Display an estimate of the reply count' />
-        </LocalSettingsPageItem>
-        <LocalSettingsPageItem
-          settings={settings}
           item={['confirm_boost_missing_media_description']}
           id='mastodon-settings--confirm_boost_missing_media_description'
           onChange={onChange}
@@ -143,31 +135,9 @@ class LocalSettingsPage extends PureComponent {
         </LocalSettingsPageItem>
         <SharlayanLocalSettingsSlot slot='general-after-rewrite' settings={settings} onChange={onChange} />
 
-        <section>
-          <h2><FormattedMessage id='settings.layout_opts' defaultMessage='Layout options' /></h2>
-          <LocalSettingsPageItem
-            settings={settings}
-            item={['stretch']}
-            id='mastodon-settings--stretch'
-            onChange={onChange}
-          >
-            <FormattedMessage id='settings.wide_view' defaultMessage='Wide view (Desktop mode only)' />
-            <span className='hint'><FormattedMessage id='settings.wide_view_hint' defaultMessage='Stretches columns to better fill the available space.' /></span>
-          </LocalSettingsPageItem>
-          <LocalSettingsPageItem
-            settings={settings}
-            item={['fullwidth_columns']}
-            id='mastodon-settings--fullwidth_columns'
-            onChange={onChange}
-          >
-            <FormattedMessage id='settings.fullwidth_view' defaultMessage='Stretch columns to full width (Desktop mode only)' />
-            <span className='hint'><FormattedMessage id='settings.fullwidth_view_hint' defaultMessage='Stretches columns to fill all the available space.' /></span>
-          </LocalSettingsPageItem>
-        </section>
 
         <section>
           <h2><FormattedMessage id='settings.status_icons' defaultMessage='Toot icons' /></h2>
-          <SharlayanLocalSettingsSlot slot='general-status-icons' settings={settings} onChange={onChange} />
           <LocalSettingsPageItem
             settings={settings}
             item={['status_icons', 'language']}
@@ -328,23 +298,6 @@ class LocalSettingsPage extends PureComponent {
     ({ intl, onChange, settings }) => (
       <div className='glitch local-settings__page media'>
         <h1><FormattedMessage id='settings.media' defaultMessage='Media' /></h1>
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['media', 'letterbox']}
-          id='mastodon-settings--media-letterbox'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.media_letterbox' defaultMessage='Letterbox media' />
-          <span className='hint'><FormattedMessage id='settings.media_letterbox_hint' defaultMessage='Scale down and letterbox media to fill the image containers instead of stretching and cropping them' /></span>
-        </LocalSettingsPageItem>
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['media', 'fullwidth']}
-          id='mastodon-settings--media-fullwidth'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.media_fullwidth' defaultMessage='Full-width media previews' />
-        </LocalSettingsPageItem>
         <SharlayanLocalSettingsSlot slot='media-after-fullwidth' settings={settings} onChange={onChange} />
         <LocalSettingsPageItem
           settings={settings}

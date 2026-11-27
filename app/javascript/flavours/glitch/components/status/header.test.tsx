@@ -11,8 +11,10 @@ import type { AccountStatusShape } from '@/flavours/glitch/models/status';
 import { useAppSelector } from '@/flavours/glitch/store';
 import type { RootState } from '@/flavours/glitch/store';
 
-import { StatusRedesignHeader } from './header';
+import { StatusHeader } from './header';
 import { StatusMeta } from './meta';
+
+const storeMocks = vi.hoisted(() => ({ useAppSelector: vi.fn() }));
 
 vi.hoisted(() => {
   Object.defineProperty(window, 'matchMedia', {
@@ -27,7 +29,12 @@ vi.hoisted(() => {
 
 vi.mock('@/flavours/glitch/store', async (importOriginal) => ({
   ...(await importOriginal()),
-  useAppSelector: vi.fn(),
+  useAppSelector: storeMocks.useAppSelector,
+}));
+vi.mock('@/flavours/glitch/store/typed_functions', async (importOriginal) => ({
+  ...(await importOriginal()),
+  useAppSelector: storeMocks.useAppSelector,
+  useAppDispatch: () => vi.fn(),
 }));
 vi.mock('@/flavours/glitch/hooks/useAccount', () => ({
   useAccount: () => undefined,
@@ -75,6 +82,7 @@ const status = {
 function setSettings(settings = {}) {
   vi.mocked(useAppSelector).mockImplementation((selector) =>
     selector({
+      history: fromJS({}),
       local_settings: fromJS({
         status_icons: { local_only: true, visibility: true },
         show_instance_info: true,
@@ -85,12 +93,12 @@ function setSettings(settings = {}) {
 }
 
 function renderHeader(
-  props: Partial<React.ComponentProps<typeof StatusRedesignHeader>> = {},
+  props: Partial<React.ComponentProps<typeof StatusHeader>> = {},
 ) {
   return render(
     <MemoryRouter>
       <IntlProvider locale='en'>
-        <StatusRedesignHeader status={status} {...props} />
+        <StatusHeader status={status} {...props} />
       </IntlProvider>
     </MemoryRouter>,
   );

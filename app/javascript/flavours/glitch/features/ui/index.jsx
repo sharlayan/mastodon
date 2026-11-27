@@ -26,10 +26,9 @@ import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity
 import { layoutFromWindow, transientSingleColumn } from 'flavours/glitch/is_mobile';
 import { selectUnreadNotificationGroupsCount } from 'flavours/glitch/selectors/notifications';
 import { WithRouterPropTypes } from 'flavours/glitch/utils/react_router';
-import { isRedesignEnabled } from '@/flavours/glitch/utils/environment';
 import { checkAnnualReport } from '@/flavours/glitch/reducers/slices/annual_report';
 
-import { uploadCompose, resetCompose, changeComposeSpoilerness } from '../../actions/compose';
+import { uploadCompose } from '../../actions/compose';
 import { clearHeight } from '../../actions/height_cache';
 import { fetchServer, fetchServerTranslationLanguages } from '../../actions/server';
 import { expandHomeTimeline } from '../../actions/timelines';
@@ -40,7 +39,6 @@ import { SharlayanUiExtensions, shouldIgnoreSharlayanDropTarget } from 'flavours
 import { openNewComposer } from '@/flavours/glitch/reducers/slices/composer';
 
 import { BundleColumnError } from './components/bundle_column_error';
-import { NavigationBar } from './components/navigation_bar';
 import { UploadArea } from './components/upload_area';
 import { HashtagMenuController } from './components/hashtag_menu_controller';
 import { ColumnsArea } from './components/columns_area';
@@ -49,7 +47,6 @@ import ModalContainer from './containers/modal_container';
 import {
   Compose,
   Status,
-  GettingStarted,
   KeyboardShortcuts,
   AccountTimeline,
   AccountGallery,
@@ -76,7 +73,6 @@ import {
   CollectionDetail,
   CollectionsEditor,
   Blocks,
-  DomainBlocks,
   Mutes,
   Directory,
   OnboardingProfile,
@@ -98,8 +94,9 @@ import { CustomHomepage } from 'flavours/glitch/features/custom_homepage';
 
 // Dummy import, to make sure that <Status /> ends up in the application bundle.
 // Without this it ends up in ~8 very commonly used bundles.
-import '../../components/status/legacy/status';
+import '../../components/status';
 import { getNavigationSkipLinkId, SkipLinks } from './components/skip_links';
+import { FOCUS_TARGET } from '@/flavours/glitch/components/navigation_focus_target';
 
 const messages = defineMessages({
   beforeUnload: { id: 'ui.beforeunload', defaultMessage: 'Your draft will be lost if you leave Mastodon.' },
@@ -117,7 +114,6 @@ const mapStateToProps = state => ({
   fullWidthColumns: state.getIn(['local_settings', 'fullwidth_columns']),
   unreadNotifications: selectUnreadNotificationGroupsCount(state),
   showFaviconBadge: state.getIn(['local_settings', 'notifications', 'favicon_badge']),
-  hicolorPrivacyIcons: state.getIn(['local_settings', 'hicolor_privacy_icons']),
   moved: state.getIn(['accounts', me, 'moved']) && state.getIn(['accounts', state.getIn(['accounts', me, 'moved'])]),
   firstLaunch: state.getIn(['settings', 'introductionVersion'], 0) < INTRODUCTION_VERSION,
   newAccount: !state.getIn(['accounts', me, 'note']) && !state.getIn(['accounts', me, 'bot']) && state.getIn(['accounts', me, 'following_count'], 0) === 0 && state.getIn(['accounts', me, 'statuses_count'], 0) === 0,
@@ -160,7 +156,7 @@ class SwitchingColumnsArea extends PureComponent {
         ?.classList.contains('rtl');
   	  const modifier = isRtlLayout ? -1 : 1;
 
-  	  scrollRight(this.node, (this.node.scrollWidth - window.innerWidth) * modifier);
+  	  scrollRight(this.node, (this.node.scrollWidth - this.node.clientWidth) * modifier);
   	}
   }
 
@@ -175,9 +171,7 @@ class SwitchingColumnsArea extends PureComponent {
     const { signedIn } = this.props.identity;
     const pathName = this.props.location.pathname;
 
-    const defaultHomepage = (singleColumn || isRedesignEnabled())
-      ? '/home'
-      : '/deck/getting-started';
+    const defaultHomepage = '/home';
 
     let rootRedirect;
     if (signedIn) {
@@ -218,12 +212,8 @@ class SwitchingColumnsArea extends PureComponent {
             {(forceSingleColumn || transientSingleColumn) && pathName.startsWith('/deck/') ? <Redirect from={pathName} to={{...this.props.location, pathname: pathName.slice(5)}} /> : null}
             {/* Redirect old bookmarks (without /deck) with home-like routes to the advanced interface */}
             {!singleColumn && pathName === '/home' ? <Redirect from='/home' to={redirectWithoutFocusing(defaultHomepage)} exact /> : null}
-            {(pathName === '/getting-started' || isRedesignEnabled())
-              ? <Redirect from='/getting-started' to={redirectWithoutFocusing(defaultHomepage)} exact />
-              : null
-            }
+            <Redirect from='/getting-started' to={redirectWithoutFocusing(defaultHomepage)} exact />
 
-            <WrappedRoute path='/getting-started' component={GettingStarted} content={children} />
             <WrappedRoute path='/keyboard-shortcuts' component={KeyboardShortcuts} content={children} />
             <WrappedRoute path='/about' component={About} content={children} />
             <WrappedRoute path='/privacy-policy' component={PrivacyPolicy} content={children} />
@@ -281,7 +271,7 @@ class SwitchingColumnsArea extends PureComponent {
 
             <WrappedRoute path='/follow_requests' component={FollowRequests} content={children} />
             <WrappedRoute path='/blocks' component={Blocks} content={children} />
-            <WrappedRoute path='/domain_blocks' component={DomainBlocks} content={children} />
+            <Redirect from='/domain_blocks' to='/blocks/domains' />
             <WrappedRoute path='/followed_tags' component={FollowedTags} content={children} />
             <WrappedRoute path='/mutes' component={Mutes} content={children} />
             <WrappedRoute path='/lists' component={Lists} content={children} />
@@ -309,7 +299,6 @@ export class UI extends PureComponent {
     intl: PropTypes.object.isRequired,
     unreadNotifications: PropTypes.number,
     showFaviconBadge: PropTypes.bool,
-    hicolorPrivacyIcons: PropTypes.bool,
     moved: PropTypes.map,
     layout: PropTypes.string.isRequired,
     firstLaunch: PropTypes.bool,
@@ -530,23 +519,10 @@ export class UI extends PureComponent {
   handleHotkeyNew = e => {
     e.preventDefault();
 
-    if (isRedesignEnabled()) {
-      this.props.dispatch(openNewComposer());
-      return;
-    }
-
-    const element = this.node.querySelector('.autosuggest-textarea__textarea');
-
-    if (element) {
-      element.focus();
-    }
+    this.props.dispatch(openNewComposer());
   };
 
   handleHotkeyNewMessage = (e) => {
-    if (!isRedesignEnabled()) {
-      return false;
-    }
-
     e.preventDefault();
     this.props.dispatch(openNewComposer({ type: 'message' }));
     return true;
@@ -555,25 +531,17 @@ export class UI extends PureComponent {
   handleHotkeySearch = e => {
     e.preventDefault();
 
-    const element = this.node.querySelector('.search__input');
+    const searchField = this.node.querySelector('[data-main-search="true"]');
 
-    if (element) {
-      element.focus();
+    if (searchField?.checkVisibility()) {
+      searchField.focus();
+    } else {
+      this.props.history.push('/search', { focusTarget: FOCUS_TARGET.SEARCH });
     }
   };
 
   handleHotkeyForceNew = e => {
-    if (isRedesignEnabled()) {
-      this.props.dispatch(openNewComposer({ force: true }));
-      return;
-    }
-    this.handleHotkeyNew(e);
-    this.props.dispatch(resetCompose());
-  };
-
-  handleHotkeyToggleComposeSpoilers = e => {
-    e.preventDefault();
-    this.props.dispatch(changeComposeSpoilerness());
+    this.props.dispatch(openNewComposer({ force: true }));
   };
 
   handleHotkeyFocusColumn = e => {
@@ -591,9 +559,7 @@ export class UI extends PureComponent {
   handleMoveUp = () => {
     const currentItemIndex = getFocusedItemIndex();
     if (currentItemIndex === -1) {
-      return isRedesignEnabled()
-        ? focusFirstVisibleItemInColumn(getFocusedColumnIndex())
-        : focusColumn(getFocusedColumnIndex);
+      return focusFirstVisibleItemInColumn(getFocusedColumnIndex());
     } else {
       return focusItemSibling(currentItemIndex, -1);
     }
@@ -602,9 +568,7 @@ export class UI extends PureComponent {
   handleMoveDown = () => {
     const currentItemIndex = getFocusedItemIndex();
     if (currentItemIndex === -1) {
-      return isRedesignEnabled()
-        ? focusFirstVisibleItemInColumn(getFocusedColumnIndex())
-        : focusColumn(getFocusedColumnIndex);
+      return focusFirstVisibleItemInColumn(getFocusedColumnIndex());
     } else {
       return focusItemSibling(currentItemIndex, 1);
     }
@@ -694,7 +658,6 @@ export class UI extends PureComponent {
       'wide': isWide,
       'fullwidth-columns': this.props.fullWidthColumns,
       'system-font': this.props.systemFontUi,
-      'hicolor-privacy-icons': this.props.hicolorPrivacyIcons,
     });
 
     const handlers = {
@@ -703,7 +666,6 @@ export class UI extends PureComponent {
       search: this.handleHotkeySearch,
       forceNew: this.handleHotkeyForceNew,
       newMessage: this.handleHotkeyNewMessage,
-      toggleComposeSpoilers: this.handleHotkeyToggleComposeSpoilers,
       focusColumn: this.handleHotkeyFocusColumn,
       focusLoadMore: this.handleHotkeyLoadMore,
       moveDown: this.handleMoveDown,
@@ -732,13 +694,7 @@ export class UI extends PureComponent {
     return (
       <Hotkeys global handlers={handlers}>
         <div className={className} ref={this.setRef}>
-          {!suppressStandardShell && (
-            <SkipLinks
-              // TODO: Remove these props & related methods when isRedesignEnabled() flag is removed
-              multiColumn={layout === 'multi-column'}
-              onFocusGettingStartedColumn={this.handleHotkeyGoToStart}
-            />
-          )}
+          {!suppressStandardShell && <SkipLinks />}
 
           {!pageBlogView && moved && (<div className='flash-message alert'>
             <FormattedMessage
@@ -766,7 +722,6 @@ export class UI extends PureComponent {
             {children}
           </SwitchingColumnsArea>
 
-          {!suppressStandardShell && !isRedesignEnabled() && <NavigationBar />}
           {!pageBlogView && layout !== 'mobile' && <PictureInPicture />}
           <AlertsController />
           {!pageBlogView && !disableHoverCards && <HoverCardController />}

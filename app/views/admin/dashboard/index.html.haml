@@ -7,11 +7,14 @@
 - roleplay_warning = roleplay_non_local_only_statuses?
 - force_local_only_notice = force_local_only_leftover?
 
-- if roleplay_warning || force_local_only_notice || !@system_checks.empty?
+- if roleplay_warning || force_local_only_notice
   .flash-message-stack
     = render 'admin/dashboard/roleplay_non_local_only_warning' if roleplay_warning
     = render 'admin/dashboard/force_local_only_notice' if force_local_only_notice
-    = render collection: @system_checks, partial: 'admin/system_check/messages/message'
+
+- if @pending_server_checks.positive?
+  .flash-message.warning
+    = t('admin.dashboard.pending_server_checks_html', count: @pending_server_checks, url: admin_server_checks_path)
 
 .dashboard
   .dashboard__item

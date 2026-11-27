@@ -444,7 +444,7 @@ beforeAll(async () => {
   await import('../index');
 }, 60_000);
 beforeAll(() => {
-  server.listen({ onUnhandledRequest: 'error' });
+  server.listen({ onUnhandledFrame: 'error' });
   Object.defineProperty(globalThis, 'WebSocket', {
     value: Socket,
     configurable: true,
@@ -469,8 +469,10 @@ beforeEach(() => {
   backend.refusals = [];
   backend.down = [];
 });
-afterEach(() => {
+afterEach(async () => {
   cleanup();
+  vi.useRealTimers();
+  await new Promise((resolve) => setTimeout(resolve, 50));
   vi.restoreAllMocks();
 });
 

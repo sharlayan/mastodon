@@ -15,7 +15,8 @@ import type {
 } from '@/flavours/glitch/api_types/pages';
 import { AccountHeader } from '@/flavours/glitch/components/account_header';
 import { Column } from '@/flavours/glitch/components/column';
-import { ColumnBackButton } from '@/flavours/glitch/components/column/back_button';
+import { ColumnHeader } from '@/flavours/glitch/components/column_header';
+import { DisplayNameSimple } from '@/flavours/glitch/components/display_name/simple';
 import { LoadMore } from '@/flavours/glitch/components/load_more';
 import { LoadingIndicator } from '@/flavours/glitch/components/loading_indicator';
 import { RemoteHint } from '@/flavours/glitch/components/remote_hint';
@@ -156,7 +157,10 @@ const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
     : (account?.get('username') ?? '');
   return (
     <Column>
-      <ColumnBackButton />
+      <ColumnHeader
+        withBackButton
+        title={<DisplayNameSimple account={account} />}
+      />
 
       <Scrollable>
         {accountId && (

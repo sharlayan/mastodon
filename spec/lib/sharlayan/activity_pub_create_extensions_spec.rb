@@ -30,8 +30,8 @@ RSpec.describe Sharlayan::ActivityPubCreateExtensions do
     it 'suppresses the public timeline stream only for a relay configured to do so' do
       suppressing = Fabricate(:account, domain: 'relay.example', inbox_url: 'https://relay.example/inbox')
       streaming = Fabricate(:account, domain: 'other-relay.example', inbox_url: 'https://other-relay.example/inbox')
-      Fabricate(:relay, inbox_url: suppressing.inbox_url, state: :accepted, suppress_public_timeline_stream: true)
-      Fabricate(:relay, inbox_url: streaming.inbox_url, state: :accepted)
+      Fabricate(:relay, account: suppressing, state: :accepted, suppress_public_timeline_stream: true)
+      Fabricate(:relay, account: streaming, state: :accepted)
 
       activity.instance_variable_set(:@options, { relayed_through_actor: suppressing })
       expect(activity.send(:relay_public_timeline_stream_suppressed?)).to be(true)

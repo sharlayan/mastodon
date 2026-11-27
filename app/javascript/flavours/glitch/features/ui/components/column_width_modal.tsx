@@ -90,13 +90,18 @@ export const ColumnWidthModal: React.FC<Props> = ({
           <span>px</span>
         </div>
         <div className='column-width-modal__actions'>
-          <Button type='button' secondary onClick={onClose}>
+          <Button
+            variant='solid'
+            color='accent'
+            type='button'
+            onClick={onClose}
+          >
             <FormattedMessage
               id='confirmation_modal.cancel'
               defaultMessage='Cancel'
             />
           </Button>
-          <Button type='submit'>
+          <Button type='submit' variant='solid' color='accent'>
             <FormattedMessage id='column_width.save' defaultMessage='Save' />
           </Button>
         </div>

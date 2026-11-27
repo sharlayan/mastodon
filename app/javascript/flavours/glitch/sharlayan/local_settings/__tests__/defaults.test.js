@@ -56,8 +56,9 @@ describe('sharlayan local_settings defaults', () => {
         hidden: ImmutableMap({ clip: true, quote: true }),
       }),
     );
-    expect(state.get('stretch')).toBe(true);
-    expect(state.get('hicolor_privacy_icons')).toBe(false);
+    expect(state.get('side_arm')).toBe('none');
+    expect(state.get('side_arm_reply_mode')).toBe('restrict');
+    expect(state.getIn(['content_warnings', 'shared_state'])).toBe(false);
     expect(state.getIn(['status_icons', 'visibility'])).toBe(true);
   });
 

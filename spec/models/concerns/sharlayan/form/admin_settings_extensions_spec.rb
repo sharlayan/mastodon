@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Form::AdminSettings do
   it 'registers Sharlayan settings with the required storage types' do
     expect(described_class::KEYS).to include(
-      :theme_color, :background_color, :background_opacity, :local_status_page_access, :norss, :reactions_enabled,
+      :branding_theme_color, :background_color, :background_opacity, :local_status_page_access, :norss, :reactions_enabled,
       :drive_allowed_extensions, :roleplay_forced_skin, :profile_fields_limit, :local_media_attachments_limit, :remote_media_attachments_limit,
       :chat_enabled, :chat_soft_delete_enabled, :chat_delete_window_hours, :chat_max_group_members, :chat_max_attachments
     )
@@ -31,14 +31,14 @@ RSpec.describe Form::AdminSettings do
   end
 
   it 'validates server background presentation, feed access modes and theme colors' do
-    invalid_access = described_class.new(local_account_statuses_access: 'unknown', local_status_page_access: 'unknown', theme_color: 'red')
+    invalid_access = described_class.new(local_account_statuses_access: 'unknown', local_status_page_access: 'unknown', branding_theme_color: 'red')
 
     expect(described_class.new(background_color: '', background_opacity: '100')).to be_valid
     expect(described_class.new(background_color: '#12aBcD', background_opacity: '45')).to be_valid
     expect(described_class.new(background_color: 'red', background_opacity: '101')).to_not be_valid
-    expect(described_class.new(local_account_statuses_access: 'authenticated', local_status_page_access: 'disabled', theme_color: '#12aBcD')).to be_valid
+    expect(described_class.new(local_account_statuses_access: 'authenticated', local_status_page_access: 'disabled', branding_theme_color: '#12aBcD')).to be_valid
     expect(invalid_access).to_not be_valid
-    expect(invalid_access.errors).to include(:local_account_statuses_access, :local_status_page_access, :theme_color)
+    expect(invalid_access.errors).to include(:local_account_statuses_access, :local_status_page_access, :branding_theme_color)
   end
 
   it 'validates the avatar decoration count limit and requires a status character limit of at least 300' do

@@ -15,6 +15,16 @@ import { DecorationModal } from '../decoration_modal';
 
 const dispatch = vi.hoisted(() => vi.fn());
 
+vi.mock('react-router-dom', async (importOriginal) => ({
+  ...(await importOriginal()),
+  useHistory: () => ({ action: 'PUSH' }),
+  useLocation: () => ({
+    pathname: '/',
+    search: '',
+    hash: '',
+    state: undefined,
+  }),
+}));
 vi.mock('@/flavours/glitch/api/accounts', () => ({
   apiGetAvatarDecorations: vi.fn(),
 }));

@@ -20,7 +20,10 @@ class Api::MisskeyCompat::Admin::RelaysController < Api::MisskeyCompat::Admin::S
     authorize :relay, :update?
     return render_invalid_url unless https_url?(params[:inbox])
 
-    relay = Relay.create!(inbox_url: params[:inbox])
+    account = relay_account(params[:inbox].strip)
+    return render_invalid_url if account.nil?
+
+    relay = Relay.create!(account: account, uri: account.uri, inbox_url: account.inbox_url)
     log_action :create, relay
     relay.enable!
 
@@ -50,6 +53,13 @@ class Api::MisskeyCompat::Admin::RelaysController < Api::MisskeyCompat::Admin::S
     value.is_a?(String) && Addressable::URI.parse(value).then { |uri| uri.scheme == 'https' && uri.host.present? }
   rescue Addressable::URI::InvalidURIError
     false
+  end
+
+  def relay_account(inbox_url)
+    account = Account.remote.find_by(inbox_url: inbox_url)
+    account ||= ActivityPub::FetchRemoteAccountService.new.call(Addressable::URI.parse(inbox_url).join('/actor').to_s)
+
+    account if account&.inbox_url == inbox_url
   end
 
   def render_invalid_url

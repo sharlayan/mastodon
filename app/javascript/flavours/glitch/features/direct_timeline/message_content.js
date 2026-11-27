@@ -145,6 +145,40 @@ export const withoutLeadingHandles = (status) => {
   return next;
 };
 
+export const plainStatusWithoutLeadingHandles = (status) => {
+  if (!status) {
+    return status;
+  }
+
+  const next = { ...status };
+
+  if (status.contentHtml) {
+    const stripped = stripLeadingMentions(status.contentHtml);
+
+    if (!htmlIsEmpty(stripped)) {
+      next.contentHtml = stripped;
+    }
+  }
+
+  if (status.translation?.contentHtml) {
+    const stripped = stripLeadingMentions(status.translation.contentHtml);
+
+    if (!htmlIsEmpty(stripped)) {
+      next.translation = { ...status.translation, contentHtml: stripped };
+    }
+  }
+
+  if (status.mfm_text) {
+    const stripped = stripLeadingHandlesFromText(status.mfm_text);
+
+    if (stripped.trim() !== '') {
+      next.mfm_text = stripped;
+    }
+  }
+
+  return next;
+};
+
 const countKnownShortcodes = (text, shortcodes) => {
   const trimmed = text.trim();
 

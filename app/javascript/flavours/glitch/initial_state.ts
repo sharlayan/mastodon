@@ -71,6 +71,7 @@ interface InitialStateMeta extends SharlayanInitialStateMeta {
   sso_redirect: string;
   status_page_url: string;
   terms_of_service_enabled: boolean;
+  show_stats_in_feed: boolean;
   emoji_style?: string;
   wrapstodon?: InitialStateWrapstodon | null;
   default_content_type: string;
@@ -224,6 +225,7 @@ export const statusPageUrl = getMeta('status_page_url');
 export const sso_redirect = getMeta('sso_redirect');
 export const termsOfServiceEnabled = getMeta('terms_of_service_enabled');
 export const wrapstodon = getMeta('wrapstodon');
+export const showStatsInFeed = getMeta('show_stats_in_feed');
 export const {
   colorScheme,
   contrast,

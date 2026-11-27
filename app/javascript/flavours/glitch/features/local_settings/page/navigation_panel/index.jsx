@@ -232,7 +232,7 @@ const NavigationPanelSettings = ({ settings, onChange, intl }) => {
         </SortableContext>
       </DndContext>
       <div className='local-settings__page__sync-actions'>
-        <Button secondary onClick={handleReset} disabled={usingDefaults}>
+        <Button onClick={handleReset} disabled={usingDefaults}>
           <FormattedMessage id='settings.navigation_panel.reset' defaultMessage='Use defaults' />
         </Button>
       </div>

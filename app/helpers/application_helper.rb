@@ -127,6 +127,21 @@ module ApplicationHelper
     )
   end
 
+  def phosphor_icon(icon, attributes = {})
+    whitespace = attributes.delete(:whitespace) { true }
+    safe_join(
+      [
+        inline_svg_tag(
+          "regular/#{icon}.svg",
+          attributes.reverse_merge(aria_hidden: true).merge(
+            class: ['icon', "phosphor-#{icon}"].concat(attributes[:class].to_s.split)
+          )
+        ),
+        whitespace ? ' ' : '',
+      ]
+    )
+  end
+
   def emptyphaunt
     inline_svg_tag 'elephant_ui.svg'
   end
@@ -157,15 +172,18 @@ module ApplicationHelper
     tag.meta(content: content, property: property)
   end
 
-  def html_attributes
+  def html_attributes(theme: nil)
+    theme ||= current_theme
+
     base = {
       lang: I18n.locale,
       class: html_classes,
+      'data-user-flavour': current_flavour.parameterize,
       'data-contrast': contrast.parameterize,
       'data-color-scheme': page_color_scheme.parameterize,
-      'data-user-flavour': current_flavour.parameterize,
+      'data-theme-color': page_theme_color(theme)&.parameterize,
       'data-supported-color-schemes': active_supported_color_schemes.join(' '),
-    }
+    }.compact
 
     base[:'data-system-theme'] = 'true' if page_color_scheme == 'auto'
     base[:'data-page-blog-view'] = 'true' if page_blog_view_account
@@ -283,7 +301,7 @@ module ApplicationHelper
     if request.path.match?(%r{\A/pages(?:/[0-9]+(?:/edit)?|/new)\z})
       current_account
     elsif request.path.match?(%r{\A/@[^/]+/pages/[^/]+\z}) ||
-          (request.path.match?(%r{\A/@[^/]+/pages\z}) && requested_account&.pages&.published&.exists?(is_main: true))
+        (request.path.match?(%r{\A/@[^/]+/pages\z}) && requested_account&.pages&.published&.exists?(is_main: true))
       requested_account
     end
   end

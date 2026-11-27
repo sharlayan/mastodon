@@ -49,8 +49,8 @@ vi.mock('@/flavours/glitch/actions/interactions', async (importOriginal) => ({
   addReaction: vi.fn(),
   removeReaction: vi.fn(),
 }));
-vi.mock('@/flavours/glitch/features/compose/redesign/emoji', () => ({
-  ComposeEmojiButton: ({
+vi.mock('@/flavours/glitch/components/emoji/picker', () => ({
+  EmojiPickerButton: ({
     onPick,
     disabled,
   }: {

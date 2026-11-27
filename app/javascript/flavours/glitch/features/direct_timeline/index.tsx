@@ -6,17 +6,15 @@ import { PlusIcon } from '@phosphor-icons/react';
 import { Helmet } from '@unhead/react/helmet';
 
 import { Column } from '@/flavours/glitch/components/column';
-import { ColumnHeader as LegacyColumnHeader } from '@/flavours/glitch/components/column/header';
 import {
   ColumnHeader,
   ColumnHeaderButton,
   ColumnSettingsMenu,
 } from '@/flavours/glitch/components/column_header';
 import { MultiColumnMenuItems } from '@/flavours/glitch/components/column_header/multicolumn_settings';
+import { MenuItemCheckbox } from '@/flavours/glitch/components/menu';
 import { openNewComposer } from '@/flavours/glitch/reducers/slices/composer';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
-import { isRedesignEnabled } from '@/flavours/glitch/utils/environment';
-import MailIcon from '@/material-icons/400-24px/mail.svg?react';
 import {
   addColumn,
   removeColumn,
@@ -27,13 +25,13 @@ import {
   unmountConversations,
   expandConversations,
 } from 'flavours/glitch/actions/conversations';
+import { changeSetting } from 'flavours/glitch/actions/settings';
 import { connectDirectStream } from 'flavours/glitch/actions/streaming';
 import { expandDirectTimeline } from 'flavours/glitch/actions/timelines';
 import StatusListContainer from 'flavours/glitch/features/ui/containers/status_list_container';
 import { roleplayMode } from 'flavours/glitch/sharlayan/roleplay';
 
 import { ConversationsList } from './components/conversations_list';
-import ColumnSettingsContainer from './containers/column_settings_container';
 
 const messages = defineMessages({
   title: { id: 'column.direct', defaultMessage: 'Private mentions' },
@@ -54,11 +52,21 @@ const DirectTimeline: React.FC<ColumnBase> = ({ columnId, multiColumn }) => {
   const hasUnread = useAppSelector(
     (state) => (state.timelines.getIn(['direct', 'unread'], 0) as number) > 0,
   );
-  const conversationsMode = useAppSelector((state) =>
-    state.settings.getIn(['direct', 'conversations']),
+  const conversationsMode = useAppSelector(
+    (state) => !!state.settings.getIn(['direct', 'conversations'], false),
   );
-  const preserveGroup = useAppSelector((state) =>
-    state.settings.getIn(['direct', 'preserve_group_on_new_mentions'], false),
+  const onChangeSetting = useCallback(
+    ({ value, checked }: { value: string; checked: boolean }) => {
+      dispatch(changeSetting(['direct', value], checked));
+    },
+    [dispatch],
+  );
+  const preserveGroup = useAppSelector(
+    (state) =>
+      !!state.settings.getIn(
+        ['direct', 'preserve_group_on_new_mentions'],
+        false,
+      ),
   );
 
   const composeNewMessage = useCallback(() => {
@@ -109,66 +117,68 @@ const DirectTimeline: React.FC<ColumnBase> = ({ columnId, multiColumn }) => {
       bindToDocument={!multiColumn}
       label={intl.formatMessage(messages.title)}
     >
-      {isRedesignEnabled() ? (
-        <ColumnHeader
-          title={intl.formatMessage(messages.title_redesign)}
-          withBackButton={multiColumn && !pinned && 'auto'}
-          extraButtons={
-            <>
-              <ColumnHeaderButton
-                showTextOnDesktop
-                variant='solid'
-                color='accent'
-                icon={PlusIcon}
-                onClick={composeNewMessage}
+      <ColumnHeader
+        title={intl.formatMessage(messages.title_redesign)}
+        withBackButton={multiColumn && !pinned && 'auto'}
+        withUnreadMarker={hasUnread}
+        extraButtons={
+          <>
+            <ColumnHeaderButton
+              showTextOnDesktop
+              variant='solid'
+              color='accent'
+              icon={PlusIcon}
+              onClick={composeNewMessage}
+            >
+              <FormattedMessage id='messages.new' defaultMessage='New' />
+            </ColumnHeaderButton>
+            <ColumnSettingsMenu
+              labelPrefix={intl.formatMessage(messages.title_redesign)}
+            >
+              <MenuItemCheckbox
+                value='conversations'
+                checked={conversationsMode}
+                onChange={onChangeSetting}
+                keepMenuOpenOnClick
               >
-                <FormattedMessage id='messages.new' defaultMessage='New' />
-              </ColumnHeaderButton>
+                <FormattedMessage
+                  id='direct.group_by_accounts'
+                  defaultMessage='Group by account'
+                />
+              </MenuItemCheckbox>
+              <MenuItemCheckbox
+                value='preserve_group_on_new_mentions'
+                checked={preserveGroup}
+                disabled={!conversationsMode}
+                onChange={onChangeSetting}
+                keepMenuOpenOnClick
+              >
+                <FormattedMessage
+                  id='direct.preserve_group_on_new_mentions'
+                  defaultMessage='Keep the existing group when mentioning new users'
+                />
+              </MenuItemCheckbox>
+
               {multiColumn && (
-                <ColumnSettingsMenu
-                  labelPrefix={intl.formatMessage(messages.title_redesign)}
-                >
-                  <MultiColumnMenuItems
-                    onPin={handlePin}
-                    onMove={handleMove}
-                    pinned={pinned}
-                  />
-                </ColumnSettingsMenu>
+                <MultiColumnMenuItems
+                  onPin={handlePin}
+                  onMove={handleMove}
+                  pinned={pinned}
+                />
               )}
-            </>
-          }
-        />
-      ) : (
-        <LegacyColumnHeader
-          icon='envelope'
-          iconComponent={MailIcon}
-          active={hasUnread}
-          title={intl.formatMessage(messages.title)}
-          onPin={handlePin}
-          onMove={handleMove}
-          pinned={pinned}
-          multiColumn={multiColumn}
-          scrollTopOnClick
-        >
-          <ColumnSettingsContainer />
-        </LegacyColumnHeader>
-      )}
+            </ColumnSettingsMenu>
+          </>
+        }
+      />
       {conversationsMode ? (
         <ConversationsList
           trackScroll={!pinned}
           scrollKey={`direct_timeline-${columnId}`}
           emptyMessage={
-            isRedesignEnabled() ? (
-              <FormattedMessage
-                id='empty_column.messages'
-                defaultMessage="You don't have any messages yet. When you send or receive one, it will show up here."
-              />
-            ) : (
-              <FormattedMessage
-                id='empty_column.direct'
-                defaultMessage="You don't have any private mentions yet. When you send or receive one, it will show up here."
-              />
-            )
+            <FormattedMessage
+              id='empty_column.messages'
+              defaultMessage="You don't have any messages yet. When you send or receive one, it will show up here."
+            />
           }
           bindToDocument={!multiColumn}
           prepend={
@@ -182,17 +192,10 @@ const DirectTimeline: React.FC<ColumnBase> = ({ columnId, multiColumn }) => {
                     />{' '}
                   </>
                 )}
-                {isRedesignEnabled() ? (
-                  <FormattedMessage
-                    id='compose_form.encryption_warning_messages'
-                    defaultMessage='Messages are not end-to-end encrypted. Never share sensitive information, such as your phone number or banking details, on Mastodon.'
-                  />
-                ) : (
-                  <FormattedMessage
-                    id='compose_form.encryption_warning'
-                    defaultMessage='Posts on Mastodon are not end-to-end encrypted. Do not share any dangerous information over Mastodon.'
-                  />
-                )}{' '}
+                <FormattedMessage
+                  id='compose_form.encryption_warning_messages'
+                  defaultMessage='Messages are not end-to-end encrypted. Never share sensitive information, such as your phone number or banking details, on Mastodon.'
+                />{' '}
                 <a
                   href='https://docs.joinmastodon.org/user/posting/#private'
                   rel='noreferrer'
@@ -250,11 +253,7 @@ const DirectTimeline: React.FC<ColumnBase> = ({ columnId, multiColumn }) => {
       )}
 
       <Helmet>
-        <title>
-          {intl.formatMessage(
-            isRedesignEnabled() ? messages.title_redesign : messages.title,
-          )}
-        </title>
+        <title>{intl.formatMessage(messages.title_redesign)}</title>
         <meta name='robots' content='noindex' />
       </Helmet>
     </Column>

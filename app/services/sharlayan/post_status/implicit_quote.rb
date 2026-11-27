@@ -11,7 +11,7 @@ module Sharlayan::PostStatus
     end
 
     def detect
-      urls = @text.to_s.scan(FetchLinkCardService::URL_PATTERN).filter_map { |match| match[1] }.uniq.take(URL_SCAN_LIMIT)
+      urls = Extractor.extract_entities_with_indices(@text.to_s).filter_map { |entity| entity[:url] }.uniq.take(URL_SCAN_LIMIT)
       return if urls.empty?
 
       RateLimiter.new(@account, family: :implicit_quotes).record!

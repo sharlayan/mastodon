@@ -1506,7 +1506,7 @@ RSpec.describe ActivityPub::Activity::Create do
       subject { described_class.new(json, sender, relayed_through_actor: relay_account) }
 
       let!(:relay_account) { Fabricate(:account, domain: 'relay.example', inbox_url: 'https://relay.example/inbox') }
-      let!(:relay) { Fabricate(:relay, inbox_url: relay_account.inbox_url, state: :accepted, suppress_public_timeline_stream: true) }
+      let!(:relay) { Fabricate(:relay, account: relay_account, state: :accepted, suppress_public_timeline_stream: true) }
       let(:object_json) { build_object(to: 'https://www.w3.org/ns/activitystreams#Public') }
 
       before do

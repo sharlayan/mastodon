@@ -322,6 +322,22 @@ ko:
         share_screens_description: 음성 통화 중 화면을 공유할 수 있습니다. 서버 설정에서 화면 공유도 켜져 있어야 합니다
       privileges:
         invite_bypass_approval_description: 이 사용자들이 초대한 사람들이 관리자 승인을 거치지 않도록 허용합니다
+    server_checks:
+      checks:
+        voice_relay:
+          error:
+            title: "음성 릴레이를 확인하는 중 오류가 발생했습니다"
+          ok:
+            title: "승인된 음성 릴레이를 사용할 수 있습니다"
+          pending:
+            lead:
+              revoked_html: "음성 릴레이 %{providers_str}이(가) 더 이상 이 서버를 받아들이지 않습니다. 릴레이 운영자가 접근을 복구하거나 시크릿을 갱신할 때까지 그 릴레이에서는 통화를 시작할 수 없습니다."
+              unavailable_html: "음성 통화가 켜져 있지만 승인된 음성 릴레이가 없습니다."
+            title: "음성 통화가 음성 릴레이를 사용할 수 없습니다"
+          running:
+            title: "서버가 음성 릴레이를 확인하고 있습니다"
+          unprocessed:
+            title: "서버가 아직 음성 릴레이를 확인하지 않았습니다"
     settings:
       registration_rejection_patterns_invalid: "올바른 정규식을 사용하고, 빈 줄을 제외하여 %{max_patterns}줄 및 전체 %{max_length}자 이내로 입력하세요."
       user_themes:
@@ -549,13 +565,6 @@ ko:
       no_username_block_selected: 아무 것도 선택 되지 않아 어떤 사용자명 규칙도 변경 되지 않았습니다
       not_permitted: 허용하지 않음
       updated_msg: 사용자명 규칙을 변경했습니다
-    system_checks:
-      voice_relay_revoked_check:
-        action: "음성 릴레이 관리"
-        message_html: "음성 릴레이 %{value}이(가) 더 이상 이 서버를 받아들이지 않습니다. 릴레이 운영자가 접근을 복구하거나 시크릿을 갱신할 때까지 그 릴레이에서는 통화를 시작할 수 없습니다."
-      voice_relay_unavailable_check:
-        action: "음성 릴레이 관리"
-        message_html: "음성 통화가 켜져 있지만 승인된 음성 릴레이가 없습니다."
     voice_relay_providers:
       add_new: "릴레이 추가"
       approved: "승인됨"
@@ -789,7 +798,7 @@ ko:
       form_admin_settings:
         registration_reject_email_pattern: "한 줄에 하나씩 대소문자를 구분하는 부분 문자열을 입력하세요. 줄을 ?로 시작하면 정규식으로 처리합니다(대소문자를 무시하려면 (?i) 사용). 빈 줄은 무시합니다. 초대를 포함한 신규 가입에 적용하며 기존 계정에는 영향을 주지 않습니다."
         registration_reject_username_pattern: "한 줄에 하나씩 대소문자를 구분하는 부분 문자열을 입력하세요. 줄을 ?로 시작하면 정규식으로 처리합니다(대소문자를 무시하려면 (?i) 사용). 빈 줄은 무시합니다. 초대를 포함한 신규 가입에 적용하며 기존 계정에는 영향을 주지 않습니다."
-        theme_color: 브라우저의 주소 표시줄과 앱 UI에 사용되는 강조 색상.
+        branding_theme_color: 브라우저의 주소 표시줄과 앱 UI에 사용되는 강조 색상.
       user_role:
         drive_quota: 이 역할을 가진 사용자별 드라이브 라이브러리의 최대 용량을 MB 단위로 지정합니다. 비워 두면 서버 기본값을
           사용하고, 0이면 무제한입니다.
@@ -854,7 +863,7 @@ ko:
         registration_reject_username_pattern: "가입을 차단할 사용자명 패턴"
         local_account_statuses_access: 로컬 계정에 대한 게시물 접근
         local_status_page_access: 개별 게시물 페이지 접근
-        theme_color: 테마 색상
+        branding_theme_color: 테마 색상
       user_role:
         drive_quota: 사용자당 드라이브 용량 (MB)
         extra_permissions_as_keys: 추가 권한

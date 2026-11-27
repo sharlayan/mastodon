@@ -84,13 +84,18 @@ export const BookletCoverCropModal: FC<
           wrapperClassName={accountEditClasses.zoomControl}
           inputPlacement='inline-end'
         />
-        <Button onClick={onClose} secondary disabled={processing}>
+        <Button onClick={onClose} disabled={processing}>
           <FormattedMessage
             id='confirmation_modal.cancel'
             defaultMessage='Cancel'
           />
         </Button>
-        <Button onClick={handleDone} disabled={!croppedArea || processing}>
+        <Button
+          variant='solid'
+          color='accent'
+          onClick={handleDone}
+          disabled={!croppedArea || processing}
+        >
           <FormattedMessage
             id='account_edit.upload_modal.done'
             defaultMessage='Done'

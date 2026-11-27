@@ -9,6 +9,7 @@ import { setupServer } from 'msw/node';
 import { Provider } from 'react-redux';
 
 import { accountFactoryAPI } from '@/testing/factories';
+import { clearAlerts } from 'flavours/glitch/actions/alerts';
 import { store } from 'flavours/glitch/store';
 
 import AntennaEdit from '../edit';
@@ -61,7 +62,7 @@ const server = setupServer(
 );
 
 beforeAll(() => {
-  server.listen({ onUnhandledRequest: 'bypass' });
+  server.listen({ onUnhandledFrame: 'bypass' });
 });
 
 afterEach(() => {
@@ -123,12 +124,12 @@ describe('AntennaEdit', () => {
     renderEdit('2');
 
     const [input] = await screen.findAllByPlaceholderText('@user@example.com');
-    const alertCount = store.getState().alerts.length;
+    store.dispatch(clearAlerts());
     fireEvent.change(input, { target: { value: '@typo@example.com' } });
     fireEvent.submit(input.closest('form'));
 
     await waitFor(() => {
-      expect(store.getState().alerts.length).toBe(alertCount + 1);
+      expect(store.getState().alerts.length).toBe(1);
     });
     expect(input.value).toBe('@typo@example.com');
   });

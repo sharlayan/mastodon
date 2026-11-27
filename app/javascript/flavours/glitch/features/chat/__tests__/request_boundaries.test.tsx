@@ -474,7 +474,7 @@ beforeAll(async () => {
   await import('../index');
 }, 60_000);
 beforeAll(() => {
-  server.listen({ onUnhandledRequest: 'error' });
+  server.listen({ onUnhandledFrame: 'error' });
   Object.defineProperty(globalThis, 'WebSocket', {
     value: Socket,
     configurable: true,
@@ -496,15 +496,20 @@ beforeEach(() => {
   backend.refusals = [];
   backend.down = [];
 });
-afterEach(() => {
+afterEach(async () => {
   cleanup();
+  vi.useRealTimers();
+  await new Promise((resolve) => setTimeout(resolve, 50));
   vi.restoreAllMocks();
 });
 
 const MEDIA = /\/api\/v1\/media\/m1$/;
 const later = async (ms: number) => {
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(ms);
+    for (let elapsed = 0; elapsed < ms; elapsed += 100) {
+      await vi.advanceTimersByTimeAsync(Math.min(100, ms - elapsed));
+      await new Promise((resolve) => setImmediate(resolve));
+    }
   });
 };
 const setHidden = (hidden: boolean) => {

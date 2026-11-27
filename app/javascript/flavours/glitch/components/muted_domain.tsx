@@ -37,7 +37,7 @@ export const MutedDomain: React.FC<{
       </div>
 
       <div className='domain__buttons'>
-        <Button onClick={handleDomainUnmute}>
+        <Button size='sm' onClick={handleDomainUnmute}>
           <FormattedMessage
             id='account.unmute_domain_short'
             defaultMessage='Unmute'

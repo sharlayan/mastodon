@@ -8,7 +8,9 @@ import { CaretRightIcon } from '@phosphor-icons/react';
 
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useResizeObserver } from '@/flavours/glitch/hooks/useObserver';
+import { VERTICAL_LANG_CODES } from '@/flavours/glitch/locales';
 import type {
+  AnyStatusShape,
   ExpandedStatusShape,
   StatusShape,
 } from '@/flavours/glitch/models/status';
@@ -20,7 +22,7 @@ import {
 import { useRedesignMfmContent } from '@/flavours/glitch/sharlayan/status_redesign_content';
 import { useAppSelector } from '@/flavours/glitch/store';
 
-import { Button } from '../button/redesign';
+import { Button } from '../button';
 import { EmojiHTML } from '../emoji/html';
 
 import classes from './content.module.scss';
@@ -30,7 +32,7 @@ const MAX_LINES = 35;
 
 export const StatusContent: React.FC<
   {
-    status: StatusShape | ExpandedStatusShape;
+    status: Omit<StatusShape | ExpandedStatusShape, 'reblog'>;
     statusContent?: string;
     onTranslate?: () => void;
     onReadMore?: () => void;
@@ -59,16 +61,18 @@ export const StatusContent: React.FC<
     (state) =>
       state.local_settings.getIn(['collapsed', 'enabled'], false) as boolean,
   );
+  const language = status.translation?.language ?? status.language;
+  const checkHorizontal = VERTICAL_LANG_CODES.includes(language);
   // Determines if a long post should show the read more button.
   const [collapsed, setCollapsed] = useState(false);
   const onResize: ResizeObserverCallback = useCallback(
     (entries) => {
       for (const { target } of entries) {
-        setCollapsed(isElementOverflowing(target));
+        setCollapsed(isElementOverflowing(target, checkHorizontal));
         onMeasureContent?.(target.clientHeight);
       }
     },
-    [onMeasureContent],
+    [onMeasureContent, checkHorizontal],
   );
   const observer = useResizeObserver(onResize);
   const onRef = useCallback(
@@ -79,10 +83,10 @@ export const StatusContent: React.FC<
       }
 
       observer.observe(node);
-      setCollapsed(isElementOverflowing(node));
+      setCollapsed(isElementOverflowing(node, checkHorizontal));
       onMeasureContent?.(node.clientHeight);
     },
-    [observer, onMeasureContent],
+    [observer, onMeasureContent, checkHorizontal],
   );
   useEffect(() => {
     if (postCollapsed) {
@@ -113,8 +117,11 @@ export const StatusContent: React.FC<
   const text = catSpeakVisibleFor(account?.acct, account?.is_cat)
     ? nyaifyHtml(originalText)
     : originalText;
-  const language = status.translation?.language ?? status.language;
-  const mfmContent = useRedesignMfmContent(status, text, account?.acct);
+  const mfmContent = useRedesignMfmContent(
+    status as AnyStatusShape,
+    text,
+    account?.acct,
+  );
 
   const isCollapsed =
     !collapseEnabled && !!onReadMore && collapsible && collapsed;
@@ -154,7 +161,7 @@ export const StatusContent: React.FC<
         {...props}
         className={classNames(
           className,
-          classes.content,
+          classes.root,
           isCollapsed && classes.collapsed,
           postCollapsed && classes.postCollapsed,
         )}
@@ -171,7 +178,7 @@ export const StatusContent: React.FC<
         >
           {mfmContent ? (
             <div
-              className={classNames(classes.contentText, 'translate')}
+              className={classNames(classes.text, 'translate')}
               lang={language}
             >
               {mfmContent}
@@ -179,7 +186,7 @@ export const StatusContent: React.FC<
           ) : (
             text.trim().length > 0 && (
               <EmojiHTML
-                className={classNames(classes.contentText, 'translate')}
+                className={classNames(classes.text, 'translate')}
                 lang={language}
                 htmlString={text}
                 extraEmojis={status.emojis}
@@ -199,7 +206,7 @@ export const StatusContent: React.FC<
           size='sm'
           onClick={onReadMore}
           trailingIcon={CaretRightIcon}
-          className={classes.contentReadMore}
+          className={classes.readMore}
         >
           <FormattedMessage
             id='status.view_post'
@@ -211,10 +218,13 @@ export const StatusContent: React.FC<
   );
 };
 
-function isElementOverflowing(node: Element) {
+function isElementOverflowing(node: Element, checkHorizontal = true) {
   const { lineHeight } = getComputedStyle(node);
   const lineHeightPx = parseFloat(lineHeight);
   const maxHeight = lineHeightPx * MAX_LINES;
 
-  return node.clientHeight > maxHeight || node.scrollWidth > node.clientWidth;
+  return (
+    node.clientHeight > maxHeight ||
+    (checkHorizontal && Math.abs(node.scrollWidth - node.clientWidth) > 1)
+  );
 }

@@ -7,7 +7,8 @@ import { Link } from 'react-router-dom';
 import { fetchAccountClips } from '@/flavours/glitch/actions/clips';
 import { AccountHeader } from '@/flavours/glitch/components/account_header';
 import { Column } from '@/flavours/glitch/components/column';
-import { ColumnBackButton } from '@/flavours/glitch/components/column/back_button';
+import { ColumnHeader } from '@/flavours/glitch/components/column_header';
+import { DisplayNameSimple } from '@/flavours/glitch/components/display_name/simple';
 import { Icon } from '@/flavours/glitch/components/icon';
 import { LoadingIndicator } from '@/flavours/glitch/components/loading_indicator';
 import { RemoteHint } from '@/flavours/glitch/components/remote_hint';
@@ -16,6 +17,7 @@ import {
   Scrollable,
 } from '@/flavours/glitch/components/scrollable_list/components';
 import { BundleColumnError } from '@/flavours/glitch/features/ui/components/bundle_column_error';
+import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useAccountId } from '@/flavours/glitch/hooks/useAccountId';
 import { useAccountVisibility } from '@/flavours/glitch/hooks/useAccountVisibility';
 import { getOrderedAccountClips } from '@/flavours/glitch/selectors/clips';
@@ -27,6 +29,7 @@ import { ClipFavouriteButton } from '../clips/components/favourite_button';
 
 const AccountClips: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
   const accountId = useAccountId();
+  const account = useAccount(accountId);
   const { suspended, blockedBy, hidden } = useAccountVisibility(accountId);
   const forceEmptyState = suspended || blockedBy || hidden;
 
@@ -48,7 +51,10 @@ const AccountClips: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
 
   return (
     <Column>
-      <ColumnBackButton />
+      <ColumnHeader
+        withBackButton
+        title={<DisplayNameSimple account={account} />}
+      />
 
       <Scrollable>
         {accountId && (

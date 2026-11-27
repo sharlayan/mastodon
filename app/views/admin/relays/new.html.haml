@@ -4,11 +4,17 @@
 = simple_form_for [:admin, @relay] do |f|
   = render 'shared/error_messages', object: @relay
 
-  .field-group
-    = f.input :inbox_url, as: :string, wrapper: :with_block_label
+  .fields-group
+    = f.input :acct, as: :string, wrapper: :with_block_label
+
+  .fields-group
+    = f.input :direction, collection: Relay.directions.keys, as: :radio_buttons, wrapper: :with_block_label, label_method: ->(dir) { relays_direction_label(dir) }
+
+  .fields-group
+    = f.input :requires_opt_in, wrapper: :with_label
+
+  .fields-group
     = f.input :suppress_public_timeline_stream, as: :boolean, wrapper: :with_label, hint: t('admin.relays.suppress_public_timeline_stream_hint')
 
   .actions
     = f.button :button, t('admin.relays.save_and_enable'), type: :submit
-
-  %p.hint.subtle-hint= t('admin.relays.enable_hint')

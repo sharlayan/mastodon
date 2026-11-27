@@ -46,7 +46,7 @@ const server = setupServer(
 );
 
 beforeAll(() => {
-  server.listen({ onUnhandledRequest: 'bypass' });
+  server.listen({ onUnhandledFrame: 'bypass' });
 });
 
 afterEach(() => {

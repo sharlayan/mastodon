@@ -1,5 +1,6 @@
 import { createSlice, isAction } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
+import { isList } from 'immutable';
 
 import { length } from 'stringz';
 
@@ -11,6 +12,7 @@ import {
   COMPOSE_MENTION,
   COMPOSE_REPLY,
   COMPOSE_SET_STATUS,
+  COMPOSE_UPLOAD_REQUEST,
   directCompose,
   resetCompose,
   submitCompose,
@@ -59,12 +61,14 @@ interface ComposerState {
   displayState: DisplayState;
   pendingFocus: PendingFocus | null;
   publishErrors: ComposerPublishError[];
+  initialText: string;
 }
 
 const initialState: ComposerState = {
   displayState: 'hidden',
   pendingFocus: null,
   publishErrors: [],
+  initialText: '',
 };
 
 const composerSlice = createSlice({
@@ -77,6 +81,9 @@ const composerSlice = createSlice({
     minimizeComposerToggle(state) {
       state.displayState =
         state.displayState === 'showing' ? 'minimized' : 'showing';
+    },
+    minimizeComposer(state) {
+      state.displayState = 'minimized';
     },
     hideComposer(state) {
       state.displayState = 'hidden';
@@ -94,9 +101,35 @@ const composerSlice = createSlice({
       if (!state.publishErrors.includes(action.payload)) {
         state.publishErrors.push(action.payload);
       }
+      state.pendingFocus = { selection: null };
     },
-    clearErrors(state) {
+    clearErrors(
+      state,
+      action: PayloadAction<ComposerPublishError[] | undefined>,
+    ) {
+      const errorsToClear = action.payload;
+      if (errorsToClear) {
+        state.publishErrors = state.publishErrors.filter(
+          (existingError) => !errorsToClear.includes(existingError),
+        );
+      } else {
+        state.publishErrors = [];
+      }
+    },
+    setInitialText(
+      state,
+      action: PayloadAction<
+        { text: string } & Partial<ComposerTextareaSelection>
+      >,
+    ) {
+      const { text, start = text.length, end = text.length } = action.payload;
+      state.initialText = text;
+      state.pendingFocus = { selection: { start, end } };
+    },
+    reset(state) {
+      state.pendingFocus = null;
       state.publishErrors = [];
+      state.initialText = '';
     },
   },
   extraReducers(builder) {
@@ -111,6 +144,7 @@ const composerSlice = createSlice({
           COMPOSE_SET_STATUS,
           'COMPOSE_SET_DRAFT',
           'COMPOSE_SET_SCHEDULED',
+          COMPOSE_UPLOAD_REQUEST,
           REDRAFT,
         ].includes(action.type),
       (state, action) => {
@@ -129,10 +163,34 @@ const composerSlice = createSlice({
 export const composer = composerSlice.reducer;
 
 export const {
+  minimizeComposer,
   requestFocus: requestComposerFocus,
   clearPendingFocus: clearComposerFocusRequest,
   clearErrors: clearComposerErrors,
 } = composerSlice.actions;
+
+export const initializeComposer = createAppThunk(
+  (
+    arg:
+      | { noSelect?: boolean; selectAfterFirstSpace?: boolean }
+      | undefined = {},
+    { getState, dispatch },
+  ) => {
+    const text = getState().compose.get('text', '') as string;
+
+    let start = text.length;
+    let end = text.length;
+    if (arg.noSelect) {
+      start = 0;
+      end = 0;
+    }
+    if (arg.selectAfterFirstSpace) {
+      start = text.search(/\s/) + 1;
+    }
+
+    dispatch(composerSlice.actions.setInitialText({ text, start, end }));
+  },
+);
 
 export const minimizeComposerToggle = createAppThunk(
   (_arg, { dispatch, getState }) => {
@@ -156,6 +214,7 @@ export const selectComposerIsChanged = createAppSelector(
         'media_attachments',
       ) as unknown as Immutable.List<unknown>,
     (state) => Number(state.compose.get('pending_media_attachments')),
+    (state) => state.composer.initialText,
     (state) =>
       !!state.compose.get('id') ||
       !!state.compose.get('draft_id') ||
@@ -168,9 +227,10 @@ export const selectComposerIsChanged = createAppSelector(
     hasQuote,
     attachments,
     pendingAttachmentsNum,
+    initialText,
     hasSavedSource,
   ) =>
-    text.trim().length > 0 ||
+    text !== initialText ||
     spoilerText.trim().length > 0 ||
     hasPoll ||
     hasQuote ||
@@ -201,7 +261,8 @@ export const openNewComposer = createAppThunk(
     // Always show the composer if it is closed or minimized.
     dispatch(composerSlice.actions.showComposer());
 
-    if (!payload.force && selectComposerIsChanged(getState())) {
+    const isChanged = selectComposerIsChanged(getState());
+    if (!payload.force && isChanged) {
       dispatch(
         openModal({
           modalType: 'COMPOSER_DRAFT_DELETE',
@@ -213,8 +274,11 @@ export const openNewComposer = createAppThunk(
       return;
     }
 
+    // Reset but don't hide.
+    dispatch(composerSlice.actions.reset());
     dispatch(resetCompose());
-    dispatch(composerSlice.actions.clearErrors());
+    dispatch(clearComposeSuggestions());
+
     if (payload.type === 'message') {
       const account =
         !!payload.toAccountId && getState().accounts.get(payload.toAccountId);
@@ -233,8 +297,8 @@ export const openNewComposer = createAppThunk(
 );
 
 export const resetComposer = createAppThunk((_arg, { dispatch }) => {
+  dispatch(composerSlice.actions.reset());
   dispatch(composerSlice.actions.hideComposer());
-  dispatch(composerSlice.actions.clearErrors());
   dispatch(resetCompose());
   dispatch(clearComposeSuggestions());
 });
@@ -242,32 +306,32 @@ export const resetComposer = createAppThunk((_arg, { dispatch }) => {
 export const closeComposer = createAppThunk((_arg, { getState, dispatch }) => {
   const isChanged = selectComposerIsChanged(getState());
 
-  if (!isChanged) {
-    dispatch(resetComposer());
-  } else {
+  if (isChanged) {
     dispatch(
       openModal({
         modalType: 'COMPOSER_DRAFT_DELETE',
         modalProps: {},
       }),
     );
-  }
-});
-
-export const newComposer = createAppThunk((_arg, { getState, dispatch }) => {
-  const isChanged = selectComposerIsChanged(getState());
-
-  if (!isChanged) {
-    dispatch(resetComposer());
   } else {
-    dispatch(
-      openModal({
-        modalType: 'COMPOSER_DRAFT_DELETE',
-        modalProps: {},
-      }),
-    );
+    dispatch(resetComposer());
   }
 });
+
+/**
+ * Closes the composer if it's empty, otherwise minimises it
+ */
+export const closeOrMinimizeComposer = createAppThunk(
+  (_arg, { getState, dispatch }) => {
+    const isChanged = selectComposerIsChanged(getState());
+
+    if (isChanged) {
+      dispatch(minimizeComposer());
+    } else {
+      dispatch(closeComposer());
+    }
+  },
+);
 
 export const selectIsMinimized = createAppSelector(
   [(state) => state.composer.displayState],
@@ -276,10 +340,13 @@ export const selectIsMinimized = createAppSelector(
 
 export const submitComposer = createAppThunk(
   (
-    {
-      redirectOnSuccess,
-      overridePrivacy,
-    }: { redirectOnSuccess?: boolean; overridePrivacy?: StatusVisibility },
+    arg:
+      | undefined
+      | {
+          redirectOnSuccess?: boolean;
+          force?: boolean;
+          overridePrivacy?: StatusVisibility;
+        } = {},
     { getState, dispatch },
   ) => {
     const textareaValue = getComposerTextarea()?.value;
@@ -290,8 +357,7 @@ export const submitComposer = createAppThunk(
       dispatch(changeCompose(textareaValue));
     }
 
-    const { compose, meta, statuses, server, settings, local_settings } =
-      getState();
+    const { compose, meta, statuses, server, settings } = getState();
     if (
       compose.get('is_submitting') ||
       compose.get('is_uploading') ||
@@ -299,29 +365,30 @@ export const submitComposer = createAppThunk(
     )
       return;
 
-    if (!selectComposerIsChanged(getState())) {
+    const text =
+      (compose.get('text') as string) + (compose.get('spoiler_text') as string);
+
+    const attachments = compose.get('media_attachments');
+    if (!text.trim() && isList(attachments) && attachments.isEmpty()) {
       dispatch(composerSlice.actions.addError('empty'));
-      return;
     }
 
     const maxChars =
       server.server.item?.configuration.statuses.max_characters ?? 500;
-    let text = countableText(compose.get('text') as string);
-    const spoilerText = compose.get('spoiler_text');
-    const alwaysShowSpoiler = !!local_settings.get(
-      'always_show_spoilers_field',
-    );
-    if (
-      (compose.get('spoiler') || alwaysShowSpoiler) &&
-      typeof spoilerText === 'string'
-    ) {
-      text += spoilerText;
-    }
-    const textLength = length(text);
+    const textLength = length(countableText(text));
     if (textLength > maxChars) {
       dispatch(composerSlice.actions.addError('too-long'));
+    }
+
+    // We need to get a fresh state to detect the dispatched errors.
+    const {
+      composer: { publishErrors },
+    } = getState();
+    if (publishErrors.length > 0) {
       return;
     }
+
+    const { force, redirectOnSuccess, overridePrivacy } = arg;
 
     const privacy =
       overridePrivacy ?? (compose.get('privacy') as StatusVisibility);
@@ -352,7 +419,7 @@ export const submitComposer = createAppThunk(
         getState().compose.getIn(['advanced_options', 'threaded_mode'])
       ) {
         dispatch(composerSlice.actions.clearErrors());
-        dispatch(requestComposerFocus());
+        dispatch(initializeComposer());
       } else {
         dispatch(resetComposer());
       }
@@ -361,33 +428,20 @@ export const submitComposer = createAppThunk(
     if (
       !!meta.get('missing_alt_text_modal') &&
       missingAltText &&
-      privacy !== 'direct'
+      privacy !== 'direct' &&
+      !force
     ) {
       dispatch(
         openModal({
           modalType: 'CONFIRM_MISSING_ALT_TEXT',
-          modalProps: { onSubmitSuccess, overridePrivacy },
+          modalProps: { redirectOnSuccess, overridePrivacy },
         }),
       );
-    } else if (quoteToPrivate) {
+    } else if (quoteToPrivate && !force) {
       dispatch(
         openModal({
           modalType: 'CONFIRM_PRIVATE_QUOTE_NOTIFY',
-          modalProps: { onSubmitSuccess, overridePrivacy },
-        }),
-      );
-    } else if (
-      !!compose.get('spoiler') &&
-      !alwaysShowSpoiler &&
-      !compose.get('spoiler_text')
-    ) {
-      dispatch(
-        openModal({
-          modalType: 'COMPOSER_ADD_CONTENT_WARNING',
-          modalProps: {
-            redirectOnSuccess,
-            overridePrivacy,
-          },
+          modalProps: { redirectOnSuccess, overridePrivacy },
         }),
       );
     } else {

@@ -53,6 +53,7 @@ export const updateConversationReadReceipts = receipt => ({
 export const expandConversationStatuses = (conversationId, { maxId, preserveGroup = false } = {}) =>
   expandGroupedConversationStatuses(expandTimeline, conversationId, { maxId, preserveGroup });
 
+/** @param {{ maxId?: string, replace?: boolean }} [options] */
 export const expandConversations = ({ maxId, replace = false } = {}) => (dispatch, getState) => {
   dispatch(expandConversationsRequest());
 

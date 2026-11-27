@@ -88,7 +88,7 @@ export const DomainMuteModal = ({ domain }) => {
             <FormattedMessage id='confirmation_modal.cancel' defaultMessage='Cancel' />
           </button>
 
-          <Button onClick={handleClick}>
+          <Button variant='solid' color='accent' onClick={handleClick}>
             <FormattedMessage id='confirmations.domain_mute.confirm' defaultMessage='Mute domain' />
           </Button>
         </div>

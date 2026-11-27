@@ -133,9 +133,10 @@ export const VoiceCallBar: FC = () => {
       </Link>
       {call.audioBlocked && (
         <Button
-          compact
+          size='sm'
+          variant='solid'
+          color='accent'
           className='chat-voice-bar__audio'
-          title={intl.formatMessage(voiceMessages.enableAudio)}
           onClick={handleResumeAudio}
         >
           <Icon id='volume-up' icon={VolumeUpIcon} />

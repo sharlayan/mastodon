@@ -9,7 +9,7 @@ import {
   addReaction,
   removeReaction,
 } from '@/flavours/glitch/actions/interactions';
-import { ComposeEmojiButton } from '@/flavours/glitch/features/compose/redesign/emoji';
+import { EmojiPickerButton } from '@/flavours/glitch/components/emoji/picker';
 import { useIdentity } from '@/flavours/glitch/identity_context';
 import {
   reactionsEnabled,
@@ -108,7 +108,7 @@ export const StatusReactionPicker: React.FC<{ statusId: string }> = ({
   if (!reactionsEnabled) return null;
 
   return (
-    <ComposeEmojiButton
+    <EmojiPickerButton
       onPick={handlePick}
       disabled={!signedIn}
       variant='ghost'

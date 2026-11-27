@@ -249,8 +249,10 @@ describe('voice call panel', () => {
     expect(screen.queryAllByRole('button', { name: 'Join call' })).toHaveLength(
       0,
     );
-    const header = screen.getByRole('button', { name: 'Connecting…' });
-    expect(header.hasAttribute('disabled')).toBe(true);
+    const header = screen
+      .getAllByRole('button', { name: 'Connecting…' })
+      .find((button) => button !== bannerJoin);
+    expect(header?.hasAttribute('disabled')).toBe(true);
     expect(bannerJoin?.textContent).toContain('Connecting…');
     expect(bannerJoin?.getAttribute('aria-disabled')).toBe('true');
 

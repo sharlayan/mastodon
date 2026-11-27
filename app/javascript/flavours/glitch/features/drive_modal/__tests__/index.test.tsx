@@ -22,6 +22,16 @@ const mocks = vi.hoisted(() => ({
   apiGetDriveUsage: vi.fn(),
 }));
 
+vi.mock('react-router-dom', async (importOriginal) => ({
+  ...(await importOriginal()),
+  useHistory: () => ({ action: 'PUSH' }),
+  useLocation: () => ({
+    pathname: '/',
+    search: '',
+    hash: '',
+    state: undefined,
+  }),
+}));
 vi.mock('@/flavours/glitch/store', () => ({
   useAppDispatch: () => mocks.dispatch,
 }));

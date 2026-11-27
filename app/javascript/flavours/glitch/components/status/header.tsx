@@ -7,6 +7,8 @@ import { Link } from 'react-router-dom';
 
 import type { Map as ImmutableMap } from 'immutable';
 
+import { PushPinIcon } from '@phosphor-icons/react';
+
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useCurrentAccountId } from '@/flavours/glitch/hooks/useAccountId';
 import { languages } from '@/flavours/glitch/initial_state';
@@ -28,9 +30,9 @@ import { Skeleton } from '../skeleton';
 import { VisibilityIcon } from '../visibility_icon';
 
 import classes from './header.module.scss';
-import type { IconName } from './legacy/media_icon';
-import { MediaIcon } from './legacy/media_icon';
-import { statusLink } from './utils';
+import type { IconName } from './media_icon';
+import { MediaIcon } from './media_icon';
+import { accountStatusLinkProps, statusLink } from './utils';
 
 const messages = defineMessages({
   edited: { id: 'status.edited', defaultMessage: 'Edited {date}' },
@@ -41,7 +43,7 @@ const messages = defineMessages({
   reply: { id: 'status.in_reply_to', defaultMessage: 'This toot is a reply' },
 });
 
-interface StatusRedesignHeaderProps {
+interface StatusHeaderProps {
   status: Pick<
     AccountStatusShape,
     | 'id'
@@ -64,18 +66,17 @@ interface StatusRedesignHeaderProps {
   >;
   collapsed?: boolean;
   onCollapsedChange?: (value: boolean) => void;
-  children?: React.ReactNode;
   className?: string;
+  featured?: boolean;
 }
 
-export const StatusRedesignHeader: React.FC<StatusRedesignHeaderProps> = ({
+export const StatusHeader: React.FC<StatusHeaderProps> = ({
   status,
   collapsed = status.collapsed ?? false,
   onCollapsedChange,
-  children,
   className,
+  featured,
 }) => {
-  const intl = useIntl();
   const hideHandle = useAppSelector(
     (state) =>
       state.local_settings.get(
@@ -92,85 +93,9 @@ export const StatusRedesignHeader: React.FC<StatusRedesignHeaderProps> = ({
   );
   const account = status.account;
   const handle = useAccountHandle(account);
-  const currentAccountId = useCurrentAccountId();
-  const firstMentionAccount = useAccount(
-    status.mentions.find(({ id }) => id !== currentAccountId)?.id,
-  );
 
   const handleId = useId();
-  const accountLinkProps = {
-    to: {
-      pathname: `/@${account.acct}`,
-      state: { reference: 'status' },
-    },
-    title: `@${account.acct}`,
-    'data-id': account.id,
-    'data-hover-card-account': account.id,
-    'data-hover-card-reference': 'status',
-  };
-
-  let displayName = (
-    <Link
-      {...accountLinkProps}
-      className={classes.nameLink}
-      aria-describedby={hideHandle ? undefined : handleId}
-    >
-      <DisplayName account={account} variant='noDomain' />
-    </Link>
-  );
-  if (status.visibility === 'private' && !status.limited_scope) {
-    displayName = (
-      <FormattedMessage
-        id='status.header.to_followers'
-        defaultMessage='{author} to Followers {count, plural, =0 {} one {+ # other} other {+ # others}}'
-        description='Count is # of other people mentioned in the post'
-        tagName='span'
-        values={{ author: displayName, count: status.mentions.length }}
-      />
-    );
-  } else if (status.limited_scope && status.limited_scope !== 'circle') {
-    displayName = (
-      <FormattedMessage
-        id='status.header.to_limited'
-        defaultMessage='{author} to a limited audience'
-        tagName='span'
-        values={{ author: displayName }}
-      />
-    );
-  } else if (
-    status.visibility === 'direct' &&
-    status.limited_scope !== 'circle' &&
-    status.mentions.length > 0
-  ) {
-    if (status.account.id === currentAccountId && firstMentionAccount) {
-      displayName = (
-        <FormattedMessage
-          id='status.header.message_from_me'
-          defaultMessage='{author} to {name} {count, plural, =0 {} one {+ # other} other {+ # others}}'
-          description='DisplayName is the author, count is # of other people mentioned in the post'
-          tagName='span'
-          values={{
-            author: displayName,
-            name: (
-              <DisplayName account={firstMentionAccount} variant='simple' />
-            ),
-            // Minus two, as we're removing the current user as well.
-            count: Math.max(status.mentions.length - 2, 0),
-          }}
-        />
-      );
-    } else {
-      displayName = (
-        <FormattedMessage
-          id='status.header.message_to_me'
-          defaultMessage='{author} to You {count, plural, =0 {} one {+ # other} other {+ # others}}'
-          description='DisplayName is the author, count is # of other people mentioned in the post'
-          tagName='span'
-          values={{ author: displayName, count: status.mentions.length - 1 }}
-        />
-      );
-    }
-  }
+  const accountLinkProps = accountStatusLinkProps(account);
 
   return (
     <header className={classNames(className, classes.root)}>
@@ -183,36 +108,11 @@ export const StatusRedesignHeader: React.FC<StatusRedesignHeaderProps> = ({
         <Avatar account={account} size={null} />
       </Link>
 
-      <div>
-        <p className={classes.name}>
-          {displayName}
-          &bull;
-          <Link
-            to={{
-              pathname: statusLink(status),
-              state: { reference: 'status' },
-            }}
-            className={classes.date}
-          >
-            <RelativeTimestamp timestamp={status.created_at} />
-            {status.edited_at && (
-              <abbr
-                title={intl.formatMessage(messages.edited, {
-                  date: intl.formatDate(status.edited_at, {
-                    year: 'numeric',
-                    month: 'short',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  }),
-                })}
-              >
-                {' '}
-                *
-              </abbr>
-            )}
-          </Link>
-        </p>
+      <div className={classes.accountWrapper}>
+        <StatusHeaderAuthors
+          status={status}
+          handleId={hideHandle ? undefined : handleId}
+        />
 
         {!hideHandle && (
           <p className={classes.handle}>
@@ -221,6 +121,7 @@ export const StatusRedesignHeader: React.FC<StatusRedesignHeaderProps> = ({
               role='presentation'
               tabIndex={-1}
               id={handleId}
+              data-main-account-link='true'
             >
               {handle ?? <Skeleton width='7ch' />}
             </Link>
@@ -240,13 +141,24 @@ export const StatusRedesignHeader: React.FC<StatusRedesignHeaderProps> = ({
           )}
       </div>
 
-      {children}
+      {featured && (
+        <Badge
+          className={classes.pinnedBadge}
+          icon={<Icon id='pinned' icon={PushPinIcon} />}
+          label={
+            <FormattedMessage
+              id='account.timeline.pinned'
+              defaultMessage='Pinned'
+            />
+          }
+        />
+      )}
     </header>
   );
 };
 
 const StatusHeaderIndicators: React.FC<
-  Pick<StatusRedesignHeaderProps, 'status' | 'collapsed' | 'onCollapsedChange'>
+  Pick<StatusHeaderProps, 'status' | 'collapsed' | 'onCollapsedChange'>
 > = ({ status, collapsed = false, onCollapsedChange }) => {
   const intl = useIntl();
   const settings = useAppSelector(
@@ -323,5 +235,114 @@ const StatusHeaderIndicators: React.FC<
         />
       )}
     </div>
+  );
+};
+
+export const StatusHeaderAuthors: React.FC<
+  Pick<StatusHeaderProps, 'status'> & { className?: string; handleId?: string }
+> = ({ status, className, handleId }) => {
+  const intl = useIntl();
+  const currentAccountId = useCurrentAccountId();
+  const firstMentionAccount = useAccount(
+    status.mentions.find(({ id }) => id !== currentAccountId)?.id,
+  );
+
+  const { account } = status;
+
+  let displayName = (
+    <Link
+      {...accountStatusLinkProps(account)}
+      className={classes.nameLink}
+      aria-describedby={handleId}
+      data-main-account-link='true'
+    >
+      <DisplayName account={account} variant='noDomain' />
+    </Link>
+  );
+  if (status.visibility === 'private' && !status.limited_scope) {
+    displayName = (
+      <FormattedMessage
+        id='status.header.to_followers'
+        defaultMessage='{author} to Followers {count, plural, =0 {} one {+ # other} other {+ # others}}'
+        description='Count is # of other people mentioned in the post'
+        values={{ author: displayName, count: status.mentions.length }}
+      />
+    );
+  } else if (status.limited_scope && status.limited_scope !== 'circle') {
+    displayName = (
+      <FormattedMessage
+        id='status.header.to_limited'
+        defaultMessage='{author} to a limited audience'
+        values={{ author: displayName }}
+      />
+    );
+  } else if (
+    status.visibility === 'direct' &&
+    status.limited_scope !== 'circle' &&
+    status.mentions.length > 0
+  ) {
+    if (status.account.id === currentAccountId && firstMentionAccount) {
+      displayName = (
+        <FormattedMessage
+          id='status.header.message_from_me'
+          defaultMessage='You to {name} {count, plural, =0 {} one {+ # other} other {+ # others}}'
+          description='DisplayName is the author, count is # of other people mentioned in the post'
+          values={{
+            name: (
+              <Link
+                {...accountStatusLinkProps(firstMentionAccount)}
+                className={classes.nameLink}
+              >
+                <DisplayName account={firstMentionAccount} variant='simple' />
+              </Link>
+            ),
+            // Minus two, as we're removing the current user as well.
+            count: Math.max(status.mentions.length - 2, 0),
+          }}
+        />
+      );
+    } else {
+      displayName = (
+        <FormattedMessage
+          id='status.header.message_to_me'
+          defaultMessage='{author} to You {count, plural, =0 {} one {+ # other} other {+ # others}}'
+          description='DisplayName is the author, count is # of other people mentioned in the post'
+          values={{ author: displayName, count: status.mentions.length - 1 }}
+        />
+      );
+    }
+  }
+
+  return (
+    <p className={classNames(className, classes.name)}>
+      {displayName}
+      {/* Wrap the bullet with a span to not have the whitespace collapse */}
+      <span aria-hidden='true'>&bull;</span>
+      <Link
+        to={{
+          pathname: statusLink(status),
+          state: { reference: 'status' },
+        }}
+        className={classes.date}
+      >
+        <RelativeTimestamp timestamp={status.created_at} />
+        {status.edited_at && (
+          <abbr
+            title={intl.formatMessage(messages.edited, {
+              date: intl.formatDate(status.edited_at, {
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+              }),
+            })}
+          >
+            {' '}
+            *
+          </abbr>
+        )}
+      </Link>
+    </p>
   );
 };

@@ -11,7 +11,6 @@ import {
 } from '../scheduled_statuses';
 
 vi.mock('../../api', () => ({ default: vi.fn(), getLinks: vi.fn() }));
-vi.mock('../compose', () => ({ ensureComposeIsVisible: vi.fn() }));
 
 const apiGet = vi.fn();
 const apiPut = vi.fn();

@@ -12,6 +12,7 @@ vi.mock('@/flavours/glitch/actions/compose', () => ({
   COMPOSE_MENTION: 'COMPOSE_MENTION',
   COMPOSE_REPLY: 'COMPOSE_REPLY',
   COMPOSE_SET_STATUS: 'COMPOSE_SET_STATUS',
+  COMPOSE_UPLOAD_REQUEST: 'COMPOSE_UPLOAD_REQUEST',
   changeCompose: (text) => ({ type: 'COMPOSE_CHANGE', text }),
   clearComposeSuggestions: () => ({ type: 'COMPOSE_SUGGESTIONS_CLEAR' }),
   directCompose: () => ({ type: 'COMPOSE_DIRECT' }),
@@ -26,7 +27,7 @@ vi.mock('@/flavours/glitch/actions/compose_typed', () => ({
 vi.mock('@/flavours/glitch/actions/statuses', () => ({ REDRAFT: 'REDRAFT' }));
 
 const makeState = (composeOverrides = {}, settings = {}) => ({
-  composer: { displayState: 'showing', pendingFocus: null, publishErrors: [] },
+  composer: { displayState: 'showing', pendingFocus: null, publishErrors: [], initialText: '' },
   compose: fromJS({
     text: 'A post',
     spoiler_text: '',
@@ -89,7 +90,7 @@ describe('redesign composer custom state', () => {
 
     expect(dispatch.mock.calls.some(([action]) => action.type === 'COMPOSE_RESET')).toBe(false);
     expect(state.compose.get('in_reply_to')).toBe('published-status');
-    expect(state.composer).toMatchObject({ displayState: 'showing', pendingFocus: { selection: null } });
+    expect(state.composer).toMatchObject({ displayState: 'showing', initialText: '', pendingFocus: { selection: { start: 0, end: 0 } } });
   });
 
   it('closes the composer for a scheduled response without redirecting to a missing post URL', () => {
@@ -131,7 +132,7 @@ describe('redesign composer custom state', () => {
     state.statuses = fromJS({ quoted: { account: 'other' } });
     const dispatch = runSubmit(state, { overridePrivacy: 'private' });
     const modal = dispatch.mock.calls.find(([action]) => action.type === 'MODAL_OPEN')[0];
-    expect(modal.payload).toMatchObject({ modalType: 'CONFIRM_PRIVATE_QUOTE_NOTIFY', modalProps: { overridePrivacy: 'private', onSubmitSuccess: expect.any(Function) } });
+    expect(modal.payload).toMatchObject({ modalType: 'CONFIRM_PRIVATE_QUOTE_NOTIFY', modalProps: { overridePrivacy: 'private' } });
   });
 
   it('skips the missing alt prompt for a direct side-arm submission', () => {
@@ -142,13 +143,7 @@ describe('redesign composer custom state', () => {
     expect(mocks.submit).toHaveBeenCalledWith(expect.any(Function), 'direct');
   });
 
-  it('preserves side-arm privacy when asking to publish without a content warning', () => {
-    const dispatch = runSubmit(makeState({ spoiler: true }), { overridePrivacy: 'private' });
-    const modal = dispatch.mock.calls.find(([action]) => action.type === 'MODAL_OPEN')[0];
-    expect(modal.payload).toMatchObject({ modalType: 'COMPOSER_ADD_CONTENT_WARNING', modalProps: { overridePrivacy: 'private' } });
-  });
-
-  it('passes the same completion callback through the missing alt text confirmation', () => {
+  it('keeps the side-arm privacy and completion through the missing alt text confirmation', () => {
     const state = makeState({ media_attachments: [{ type: 'image', description: '' }] });
     state.meta = state.meta.set('missing_alt_text_modal', true);
     const dispatch = runSubmit(state, { overridePrivacy: 'private' });
@@ -156,7 +151,9 @@ describe('redesign composer custom state', () => {
     expect(modal.payload.modalType).toBe('CONFIRM_MISSING_ALT_TEXT');
     expect(modal.payload.modalProps.overridePrivacy).toBe('private');
 
-    modal.payload.modalProps.onSubmitSuccess({ id: 'published', url: '/post' });
+    runSubmit(state, { ...modal.payload.modalProps, force: true });
+    expect(mocks.submit).toHaveBeenCalledWith(expect.any(Function), 'private');
+    mocks.submit.mock.calls[0][0]({ id: 'published', url: '/post' });
 
     expect(state.composer.displayState).toBe('hidden');
   });

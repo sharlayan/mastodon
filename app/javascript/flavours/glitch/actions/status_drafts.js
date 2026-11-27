@@ -6,7 +6,6 @@ import { forceLocalOnly } from 'flavours/glitch/initial_state';
 import { uuid } from 'flavours/glitch/uuid';
 
 import { showAlert, showAlertForError } from './alerts';
-import { ensureComposeIsVisible } from './compose';
 
 export const STATUS_DRAFTS_FETCH_REQUEST = 'STATUS_DRAFTS_FETCH_REQUEST';
 export const STATUS_DRAFTS_FETCH_SUCCESS = 'STATUS_DRAFTS_FETCH_SUCCESS';
@@ -147,5 +146,4 @@ export const setComposeToStatusDraft = (draft) => (dispatch, getState) => {
     draft,
     maxOptions: getState().getIn(['server', 'server', 'item', 'configuration', 'polls', 'max_options']),
   });
-  ensureComposeIsVisible(getState);
 };

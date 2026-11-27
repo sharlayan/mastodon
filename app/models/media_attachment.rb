@@ -257,7 +257,11 @@ class MediaAttachment < ApplicationRecord
   end
 
   def larger_media_format?
-    video? || gifv? || audio?
+    video_or_gifv? || audio?
+  end
+
+  def video_or_gifv?
+    video? || gifv?
   end
 
   def audio_or_video?

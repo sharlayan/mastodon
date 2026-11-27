@@ -5,7 +5,7 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import classNames from 'classnames';
 
 import { changeComposeReplyScope } from '@/flavours/glitch/actions/compose_typed';
-import { Button } from '@/flavours/glitch/components/button/redesign';
+import { Button } from '@/flavours/glitch/components/button';
 import { Icon } from '@/flavours/glitch/components/icon';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 import ReplyIcon from '@/material-icons/400-24px/reply.svg?react';

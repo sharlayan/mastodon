@@ -434,7 +434,7 @@ beforeAll(async () => {
   await import('../index');
 }, 60_000);
 beforeAll(() => {
-  server.listen({ onUnhandledRequest: 'error' });
+  server.listen({ onUnhandledFrame: 'error' });
   Object.defineProperty(globalThis, 'WebSocket', {
     value: Socket,
     configurable: true,

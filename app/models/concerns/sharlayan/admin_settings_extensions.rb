@@ -6,7 +6,7 @@ module Sharlayan::AdminSettingsExtensions
   KEYS = %i(
     registration_reject_email_pattern
     registration_reject_username_pattern
-    theme_color
+    branding_theme_color
     background_color
     background_opacity
     background_on_settings_pages
@@ -162,7 +162,7 @@ module Sharlayan::AdminSettingsExtensions
     validates :remote_media_attachments_limit, numericality: { only_integer: true, in: Sharlayan::Status::MediaLimits::REMOTE_MEDIA_ATTACHMENTS_LIMIT_RANGE }, if: -> { defined?(@remote_media_attachments_limit) }
     validates :background_opacity, numericality: { only_integer: true, in: 0..100 }, if: -> { defined?(@background_opacity) }
     validates :avatar_decorations_max_count, numericality: { only_integer: true, in: 0..UpdateAccountService::MAX_DECORATIONS }, if: -> { defined?(@avatar_decorations_max_count) }
-    validates :theme_color, format: { with: /\A#(?:[0-9a-fA-F]{3}){1,2}\z/ }, if: -> { defined?(@theme_color) }
+    validates :branding_theme_color, format: { with: /\A#(?:[0-9a-fA-F]{3}){1,2}\z/ }, if: -> { defined?(@branding_theme_color) }
     validates :background_color, format: { with: /\A#(?:[0-9a-fA-F]{3}){1,2}\z/ }, allow_blank: true, if: -> { defined?(@background_color) }
     validates :user_theme_catalog, :user_theme_defaults, length: { maximum: 65_536 }, if: -> { defined?(@user_theme_catalog) || defined?(@user_theme_defaults) }
     validate :validate_drive_allowed_extensions, if: -> { defined?(@drive_allowed_extensions) }

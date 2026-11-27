@@ -781,13 +781,18 @@ export const DecorationModal: FC<DialogModalProps> = ({ onClose }) => {
       </div>
 
       <div className={classes.levelActions}>
-        <Button onClick={handleGoToAdd} secondary>
+        <Button onClick={handleGoToAdd}>
           {intl.formatMessage(messages.addNew)}
         </Button>
-        <Button onClick={onClose} secondary>
+        <Button onClick={onClose}>
           {intl.formatMessage(messages.cancelEdit)}
         </Button>
-        <Button onClick={handleSave} disabled={isPending}>
+        <Button
+          variant='solid'
+          color='accent'
+          onClick={handleSave}
+          disabled={isPending}
+        >
           {intl.formatMessage(messages.save)}
         </Button>
       </div>
@@ -902,11 +907,11 @@ export const DecorationModal: FC<DialogModalProps> = ({ onClose }) => {
         })}
 
         <div className={classes.levelActions}>
-          <Button onClick={handleBackFromAdd} secondary>
+          <Button onClick={handleBackFromAdd}>
             {intl.formatMessage(messages.back)}
           </Button>
           {pendingAddId != null && (
-            <Button onClick={handleConfirmAdd}>
+            <Button variant='solid' color='accent' onClick={handleConfirmAdd}>
               {intl.formatMessage(messages.addThis)}
             </Button>
           )}
@@ -930,7 +935,7 @@ export const DecorationModal: FC<DialogModalProps> = ({ onClose }) => {
         <EditControls config={config} onConfigChange={handleConfigChange} />
 
         <div className={classes.levelActions}>
-          <Button onClick={handleDoneEditing}>
+          <Button variant='solid' color='accent' onClick={handleDoneEditing}>
             {intl.formatMessage(messages.done)}
           </Button>
         </div>

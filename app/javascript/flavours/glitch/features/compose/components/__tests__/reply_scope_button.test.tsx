@@ -27,7 +27,7 @@ vi.mock('@/flavours/glitch/actions/compose_typed', () => ({
     enabled,
   }),
 }));
-vi.mock('@/flavours/glitch/components/button/redesign', () => ({
+vi.mock('@/flavours/glitch/components/button', () => ({
   Button: ({
     children,
     size: _size,

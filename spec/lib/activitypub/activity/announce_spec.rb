@@ -130,7 +130,7 @@ RSpec.describe ActivityPub::Activity::Announce do
       subject { described_class.new(json, sender, relayed_through_actor: relay_account) }
 
       let!(:relay_account) { Fabricate(:account, inbox_url: 'https://relay.example.com/inbox', domain: 'relay.example.com') }
-      let!(:relay) { Fabricate(:relay, inbox_url: 'https://relay.example.com/inbox') }
+      let!(:relay) { Fabricate(:relay, inbox_url: 'https://relay.example.com/inbox', account: relay_account) }
 
       let(:object_json) { 'https://example.com/actor/hello-world' }
 
@@ -201,7 +201,7 @@ RSpec.describe ActivityPub::Activity::Announce do
       subject { described_class.new(json, relay_account) }
 
       let!(:relay_account) { Fabricate(:account, inbox_url: 'https://relay.example.com/inbox', domain: 'relay.example.com') }
-      let(:relay) { Fabricate(:relay, inbox_url: 'https://relay.example.com/inbox', state: :accepted) }
+      let(:relay) { Fabricate(:relay, account: relay_account, state: :accepted) }
 
       let(:json) do
         super().merge(actor: relay_account.uri)
@@ -233,7 +233,7 @@ RSpec.describe ActivityPub::Activity::Announce do
       subject { described_class.new(json, relay_account) }
 
       let!(:relay_account) { Fabricate(:account, inbox_url: 'https://relay.example.com/inbox', domain: 'relay.example.com') }
-      let!(:relay) { Fabricate(:relay, inbox_url: relay_account.inbox_url, state: :accepted, suppress_public_timeline_stream: true) }
+      let!(:relay) { Fabricate(:relay, account: relay_account, state: :accepted, suppress_public_timeline_stream: true) }
       let!(:remote_account) { Fabricate(:account, uri: 'https://remote.example/users/alice', domain: 'remote.example') }
 
       let(:json) do

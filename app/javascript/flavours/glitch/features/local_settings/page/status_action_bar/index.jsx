@@ -99,8 +99,8 @@ const StatusActionBarSettings = ({ settings, onChange, intl }) => {
         </SortableContext>
       </DndContext>
       <div className='local-settings__page__sync-actions'>
-        <Button secondary onClick={handleReset} disabled={usingDefaults}><FormattedMessage id='settings.status_action_bar.reset' defaultMessage='Use defaults' /></Button>
-        <Button onClick={handleSave} disabled={!dirty}><FormattedMessage id='settings.status_action_bar.save' defaultMessage='Save changes' /></Button>
+        <Button onClick={handleReset} disabled={usingDefaults}><FormattedMessage id='settings.status_action_bar.reset' defaultMessage='Use defaults' /></Button>
+        <Button variant='solid' color='accent' onClick={handleSave} disabled={!dirty}><FormattedMessage id='settings.status_action_bar.save' defaultMessage='Save changes' /></Button>
       </div>
     </div>
   );

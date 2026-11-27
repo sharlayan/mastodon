@@ -2,18 +2,12 @@ import { useEffect, useState } from 'react';
 
 import { fetchStatus } from 'flavours/glitch/actions/statuses';
 import type { ApiPageNoteBlock } from 'flavours/glitch/api_types/pages';
-import StatusContainer from 'flavours/glitch/components/status/legacy/container';
+import { Status } from 'flavours/glitch/components/status';
 import { useStatus } from 'flavours/glitch/hooks/useStatus';
 import { useVisibility } from 'flavours/glitch/hooks/useVisibility';
 import { useAppDispatch } from 'flavours/glitch/store';
 
 import { usePageNoteFetch } from './note_fetch_context';
-
-const Status = StatusContainer as unknown as React.FC<{
-  id: string;
-  contextType?: string;
-  showActions?: boolean;
-}>;
 
 const observerOptions = { rootMargin: '400px 0px' };
 const MAX_FETCH_RETRIES = 2;
@@ -73,7 +67,7 @@ export const NoteBlock: React.FC<{ block: ApiPageNoteBlock }> = ({ block }) => {
 
   return (
     <div ref={observedRef} className='page__block page__block--note'>
-      <Status id={statusId} contextType='page' showActions={false} />
+      <Status id={statusId} showActions={false} />
     </div>
   );
 };

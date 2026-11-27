@@ -1,10 +1,12 @@
 import { Children, cloneElement, isValidElement, useCallback } from 'react';
 
+import { useRouteMatch } from 'react-router-dom';
+
 import type { List, Record } from 'immutable';
 
 import { ColumnIndexContext } from '@/flavours/glitch/components/column/context';
+import MultiColumnPlaceholderColumn from '@/flavours/glitch/features/multi_column_placeholder';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
-import { isRedesignEnabled } from '@/flavours/glitch/utils/environment';
 import { changeLocalSetting } from 'flavours/glitch/actions/local_settings';
 import {
   federatedTimelineEnabled,
@@ -68,7 +70,7 @@ const ErrorComponent = (props: { onRetry: () => void }) => (
 
 const renderLoading = (columnId: string) => {
   const LoadingComponent =
-    columnId === 'COMPOSE' ? <DrawerLoading /> : <ColumnLoading multiColumn />;
+    columnId === 'COMPOSE' ? <DrawerLoading /> : <ColumnLoading />;
   return () => LoadingComponent;
 };
 
@@ -97,6 +99,13 @@ export const MultiColumnContent: React.FC<{
     },
     [dispatch],
   );
+  const isHomeRoute = !!useRouteMatch({
+    path: ['/deck/home', '/deck'],
+    exact: true,
+  });
+  const isHomepagePinned = visibleColumns.some(
+    (column) => column.get('id') === 'HOME',
+  );
 
   return (
     <>
@@ -110,7 +119,7 @@ export const MultiColumnContent: React.FC<{
         const uuid = column.get('uuid');
         const id = column.get('id');
 
-        if (isRedesignEnabled() && id === 'COMPOSE') {
+        if (id === 'COMPOSE') {
           return null;
         }
 
@@ -147,11 +156,16 @@ export const MultiColumnContent: React.FC<{
         }}
       >
         <ColumnIndexContext.Provider value={visibleColumns.size}>
-          {Children.map(children, (child) =>
-            isValidElement<{ multiColumn?: boolean }>(child)
-              ? cloneElement(child, { multiColumn: true })
-              : child,
-          )}
+          {Children.map(children, (child) => {
+            if (isHomeRoute && isHomepagePinned) {
+              return <MultiColumnPlaceholderColumn />;
+            }
+            if (isValidElement<{ multiColumn?: boolean }>(child)) {
+              return cloneElement(child, { multiColumn: true });
+            } else {
+              return child;
+            }
+          })}
         </ColumnIndexContext.Provider>
       </ColumnWidthContext.Provider>
     </>

@@ -17,13 +17,15 @@ const mocks = vi.hoisted(() => ({
   unwrap: vi.fn(),
 }));
 
-vi.mock('@/flavours/glitch/initial_state', () => ({
+vi.mock('@/flavours/glitch/initial_state', async (importOriginal) => ({
+  ...(await importOriginal()),
   get driveEnabled() {
     return mocks.driveEnabled;
   },
 }));
 
-vi.mock('@/flavours/glitch/store', () => ({
+vi.mock('@/flavours/glitch/store', async () => ({
+  createAppSelector: (await import('@reduxjs/toolkit')).createSelector,
   useAppDispatch: () => mocks.dispatch,
   useAppSelector: (selector) => selector(mocks.state),
 }));
@@ -33,8 +35,8 @@ vi.mock('@/flavours/glitch/reducers/slices/profile_edit', () => ({
   selectImageInfo: (state) => state.profileEdit.imageInfo,
 }));
 
-vi.mock('@/flavours/glitch/components/dropdown_menu', () => {
-  const Dropdown = ({ items }) => (
+vi.mock('@/flavours/glitch/components/menu', () => {
+  const LegacyDropdownMenuItems = ({ items }) => (
     <div>
       {items.filter(Boolean).map((item) => (
         <button key={item.text} type='button' onClick={item.action}>
@@ -43,24 +45,26 @@ vi.mock('@/flavours/glitch/components/dropdown_menu', () => {
       ))}
     </div>
   );
-  Dropdown.propTypes = {
+  LegacyDropdownMenuItems.propTypes = {
     items: PropTypes.arrayOf(PropTypes.shape({
       text: PropTypes.string.isRequired,
       action: PropTypes.func,
     })).isRequired,
   };
-  return { Dropdown };
+  const Passthrough = ({ children }) => children;
+  const MenuTrigger = () => null;
+  return { LegacyDropdownMenuItems, Menu: Passthrough, MenuList: Passthrough, MenuTrigger };
 });
 
-vi.mock('@/flavours/glitch/components/icon_button', () => {
-  const IconButton = ({ title, onClick }) => (
+vi.mock('@/flavours/glitch/components/button', () => {
+  const IconButton = ({ children, onClick }) => (
     <button type='button' onClick={onClick}>
-      {title}
+      {children}
     </button>
   );
   IconButton.propTypes = {
-    title: PropTypes.string.isRequired,
-    onClick: PropTypes.func.isRequired,
+    children: PropTypes.node,
+    onClick: PropTypes.func,
   };
   return { IconButton };
 });

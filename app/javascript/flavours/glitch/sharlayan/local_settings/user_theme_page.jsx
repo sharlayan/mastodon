@@ -135,13 +135,13 @@ const UserThemePage = () => {
       <h1><FormattedMessage id='settings.user_theme' defaultMessage='User theme' /></h1>
       <p className='hint'><FormattedMessage id='settings.user_theme.hint' defaultMessage='Layer a server theme and your own allowed CSS variable values over the selected flavour and theme.' /></p>
       <div className='user-theme__share'>
-        <Button onClick={save} disabled={saveState === 'saved' || saveState === 'saving'}><FormattedMessage id='settings.user_theme.save' defaultMessage='Save changes' /></Button>
+        <Button variant='solid' color='accent' onClick={save} disabled={saveState === 'saved' || saveState === 'saving'}><FormattedMessage id='settings.user_theme.save' defaultMessage='Save changes' /></Button>
         {saveState === 'saved' && <span><FormattedMessage id='settings.user_theme.saved' defaultMessage='Saved' /></span>}
         {saveState === 'error' && <span className='user-theme__error'><FormattedMessage id='settings.user_theme.save_error' defaultMessage='Could not save the theme.' /></span>}
       </div>
       <div className='user-theme__share'>
-        <Button onClick={exportTheme}><FormattedMessage id='settings.user_theme.export' defaultMessage='Export' /></Button>
-        <Button secondary onClick={() => importInput.current?.click()}><FormattedMessage id='settings.user_theme.import' defaultMessage='Import' /></Button>
+        <Button variant='solid' color='accent' onClick={exportTheme}><FormattedMessage id='settings.user_theme.export' defaultMessage='Export' /></Button>
+        <Button onClick={() => importInput.current?.click()}><FormattedMessage id='settings.user_theme.import' defaultMessage='Import' /></Button>
         <input ref={importInput} type='file' accept='application/json,.json' onChange={importTheme} />
       </div>
       <p className='hint'><FormattedMessage id='settings.user_theme.share_hint' defaultMessage='Theme files contain only the selected light/dark themes and allowed variable overrides.' /></p>
@@ -151,7 +151,7 @@ const UserThemePage = () => {
         <section className='user-theme__scheme' key={scheme}>
           <div className='user-theme__scheme__heading'>
             <h2>{intl.formatMessage(messages[scheme])}</h2>
-            <Button secondary onClick={() => resetScheme(scheme)}><FormattedMessage id='settings.user_theme.reset' defaultMessage='Reset' /></Button>
+            <Button onClick={() => resetScheme(scheme)}><FormattedMessage id='settings.user_theme.reset' defaultMessage='Reset' /></Button>
           </div>
           <label className='user-theme__select' htmlFor={`user-theme-${scheme}`}>
             <span><FormattedMessage id='settings.user_theme.base' defaultMessage='Base variable theme' /></span>

@@ -100,7 +100,11 @@ const Menu: React.FC<{
   value: AccountStatusShape;
   contextType?: StatusContextType;
 }> = ({ value, contextType }) => {
-  const menu = useStatusMenuActions({ status: value, contextType });
+  const menu = useStatusMenuActions({
+    status: value,
+    reblogStatus: null,
+    contextType,
+  });
   return menu.map((item, index) =>
     item && 'action' in item ? (
       <button key={index} type='button' onClick={item.action}>

@@ -31,7 +31,7 @@ export const ImageBlock: React.FC<{
   const description = media.description ?? '';
   const dimensions =
     media.type === 'image' || media.type === 'gifv'
-      ? media.meta.original
+      ? media.meta?.original
       : null;
   const mediaStyle =
     dimensions?.width && dimensions.height

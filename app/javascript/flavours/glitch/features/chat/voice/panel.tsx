@@ -577,11 +577,16 @@ const MemberOptions: FC<{
       )}
       {room.owned && (
         <div className='chat-voice__options-actions'>
-          <Button compact secondary onClick={handleMute}>
+          <Button size='sm' onClick={handleMute}>
             <Icon id='mic-off' icon={MicOffIcon} />
             {intl.formatMessage(voiceMessages.forceMute)}
           </Button>
-          <Button compact dangerous onClick={handleKick}>
+          <Button
+            size='sm'
+            variant='solid'
+            color='destructive'
+            onClick={handleKick}
+          >
             <Icon id='person-remove' icon={PersonRemoveIcon} />
             {intl.formatMessage(voiceMessages.removeFromCall)}
           </Button>
@@ -997,7 +1002,13 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
         {!joined && state?.available && (
           <div className='chat-voice__join'>
             <JoinMicToggle className='chat-voice__join-mic' />
-            <Button compact loading={joining} onClick={handleJoin}>
+            <Button
+              size='sm'
+              variant='solid'
+              color='accent'
+              loading={joining}
+              onClick={handleJoin}
+            >
               <Icon id='call' icon={CallIcon} />
               {intl.formatMessage(
                 joining ? voiceMessages.connecting : voiceMessages.join,
@@ -1031,7 +1042,7 @@ export const VoiceCallPanel: FC<{ room: VoiceRoom; enabled: boolean }> = ({
       )}
 
       {joined && call.audioBlocked && (
-        <Button block secondary onClick={handleResumeAudio}>
+        <Button style={{ width: '100%' }} onClick={handleResumeAudio}>
           {intl.formatMessage(voiceMessages.enableAudio)}
         </Button>
       )}

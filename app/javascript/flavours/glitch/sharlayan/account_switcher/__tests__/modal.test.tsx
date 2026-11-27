@@ -32,11 +32,13 @@ const state = {
 
 let currentState = state;
 
-vi.mock('flavours/glitch/initial_state', () => ({
+vi.mock('flavours/glitch/initial_state', async (importOriginal) => ({
+  ...(await importOriginal()),
   me: undefined,
   serverStoredAccountSwitchingEnabled: true,
 }));
-vi.mock('flavours/glitch/store', () => ({
+vi.mock('flavours/glitch/store', async () => ({
+  createAppSelector: (await import('@reduxjs/toolkit')).createSelector,
   useAppSelector: (selector: (value: typeof state) => unknown) =>
     selector(currentState),
   useAppDispatch: () => () => ({

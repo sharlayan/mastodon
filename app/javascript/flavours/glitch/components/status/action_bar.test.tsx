@@ -15,13 +15,19 @@ const mocks = vi.hoisted(() => ({
   signedIn: true,
   clips: true,
   dispatch: vi.fn(),
+  useAppSelector: vi.fn(),
   reply: vi.fn(),
   quote: vi.fn(),
 }));
 
 vi.mock('@/flavours/glitch/store', async (importOriginal) => ({
   ...(await importOriginal()),
-  useAppSelector: vi.fn(),
+  useAppSelector: mocks.useAppSelector,
+  useAppDispatch: () => mocks.dispatch,
+}));
+vi.mock('@/flavours/glitch/store/typed_functions', async (importOriginal) => ({
+  ...(await importOriginal()),
+  useAppSelector: mocks.useAppSelector,
   useAppDispatch: () => mocks.dispatch,
 }));
 vi.mock('@/flavours/glitch/identity_context', () => ({
@@ -40,7 +46,7 @@ vi.mock('@/flavours/glitch/hooks/useStatus', () => ({
 vi.mock('@/flavours/glitch/hooks/useAccountId', () => ({
   useCurrentAccountId: () => 'self',
 }));
-vi.mock('../button/redesign', () => {
+vi.mock('../button', () => {
   const Button = ({
     children,
     tooltip,
@@ -82,12 +88,8 @@ vi.mock('./hooks', () => ({
 vi.mock('./reactions', () => ({
   StatusReactionPicker: () => <button type='button'>React</button>,
 }));
-vi.mock('./legacy/action_bar/remove_quote_hint', () => ({
-  RemoveQuoteHint: ({
-    children,
-  }: {
-    children: (dismiss: () => void) => React.ReactNode;
-  }) => children(vi.fn()),
+vi.mock('@/flavours/glitch/hooks/useDismissible', () => ({
+  useDismissible: () => ({ wasDismissed: true, dismiss: vi.fn() }),
 }));
 
 function configure(order: string[] = [], hidden = {}) {
@@ -102,10 +104,10 @@ function configure(order: string[] = [], hidden = {}) {
   );
 }
 
-function renderBar(onlyResponses = false) {
+function renderBar() {
   render(
     <IntlProvider locale='en'>
-      <StatusActionBar statusId='1' onlyResponses={onlyResponses} />
+      <StatusActionBar statusId='1' reblogId={undefined} />
     </IntlProvider>,
   );
 }
@@ -140,12 +142,12 @@ it('preserves custom order and hidden actions', () => {
   );
 });
 
-it('keeps reaction and clip controls on the detailed response bar', () => {
-  renderBar(true);
+it('shows reaction and clip controls with the default order', () => {
+  renderBar();
   expect(screen.getByText('React')).not.toBeNull();
   expect(screen.getByText('Add to clip')).not.toBeNull();
-  expect(screen.queryByText('Bookmark')).toBeNull();
-  expect(screen.queryByText('More')).toBeNull();
+  expect(screen.getByText('Bookmark')).not.toBeNull();
+  expect(screen.getByText('More')).not.toBeNull();
 });
 
 it('hides clips when the server disables them', () => {

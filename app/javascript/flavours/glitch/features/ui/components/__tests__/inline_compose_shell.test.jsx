@@ -6,7 +6,6 @@ import { MemoryRouter } from 'react-router';
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
-import { mountCompose, unmountCompose } from 'flavours/glitch/actions/compose';
 import { apiRequestPut } from 'flavours/glitch/api';
 
 
@@ -32,7 +31,6 @@ vi.mock('flavours/glitch/initial_state', () => ({
 }));
 vi.mock('flavours/glitch/actions/antennas', () => ({ fetchAntennas: vi.fn() }));
 vi.mock('flavours/glitch/actions/lists_typed', () => ({ fetchLists: vi.fn() }));
-vi.mock('flavours/glitch/actions/compose', () => ({ mountCompose: vi.fn(), unmountCompose: vi.fn() }));
 vi.mock('flavours/glitch/api', () => ({ apiRequestPut: vi.fn() }));
 vi.mock('flavours/glitch/actions/alerts', () => ({ showAlertForError: vi.fn(error => ({ type: 'TEST_ALERT', error })) }));
 vi.mock('flavours/glitch/selectors/lists', () => ({ getOrderedLists: () => [] }));
@@ -45,19 +43,16 @@ vi.mock('flavours/glitch/components/tab_list', () => {
   TabLink.propTypes = { children: PropTypes.node, to: PropTypes.string };
   return { TabList, TabLink };
 });
-vi.mock('flavours/glitch/features/compose/containers/compose_form_container', () => ({
-  default: () => <textarea aria-label='Legacy composer' />,
-}));
-vi.mock('flavours/glitch/features/compose/redesign', () => {
-  const RedesignComposeForm = ({ className }) => <form className={className}><textarea id='composer-text' aria-label='Redesign composer' /></form>;
-  RedesignComposeForm.propTypes = { className: PropTypes.string };
-  return { RedesignComposeForm };
+vi.mock('flavours/glitch/features/compose/form', () => {
+  const ComposeForm = ({ className }) => <form className={className}><textarea id='composer-text' aria-label='Redesign composer' /></form>;
+  ComposeForm.propTypes = { className: PropTypes.string };
+  return { ComposeForm };
 });
 
-const renderShell = (redesign = false) => render(
+const renderShell = () => render(
   <MemoryRouter initialEntries={['/home']}>
     <IntlProvider locale='en'>
-      <InlineComposeShell redesign={redesign} />
+      <InlineComposeShell />
       {context.displayState === 'showing' && <textarea id='composer-text' aria-label='Floating composer' />}
     </IntlProvider>
   </MemoryRouter>,
@@ -87,30 +82,17 @@ describe('inline composer shell', () => {
 
   afterEach(cleanup);
 
-  it('retains the legacy form and lifecycle when redesign is disabled', () => {
-    const { unmount } = renderShell();
-
-    expect(screen.getByRole('textbox', { name: 'Legacy composer' })).toBeTruthy();
-    expect(mountCompose).toHaveBeenCalledOnce();
-    expect(document.documentElement.classList.contains('inline-compose-mode')).toBe(true);
-    unmount();
-    expect(unmountCompose).toHaveBeenCalledOnce();
-    expect(document.documentElement.classList.contains('inline-compose-mode')).toBe(false);
-  });
-
   it('renders the typed composer in the feed without the legacy lifecycle', async () => {
-    renderShell(true);
+    renderShell();
 
     expect(await screen.findByRole('textbox', { name: 'Redesign composer' })).toBeTruthy();
     expect(document.querySelectorAll('#composer-text')).toHaveLength(1);
-    expect(screen.queryByRole('textbox', { name: 'Legacy composer' })).toBeNull();
-    expect(mountCompose).not.toHaveBeenCalled();
     expect(document.documentElement.classList.contains('inline-compose-mode')).toBe(false);
   });
 
   it('leaves a single textarea in the floating composer when it is open', () => {
     context.displayState = 'showing';
-    renderShell(true);
+    renderShell();
 
     expect(screen.getByRole('textbox', { name: 'Floating composer' })).toBeTruthy();
     expect(screen.queryByRole('textbox', { name: 'Redesign composer' })).toBeNull();
@@ -120,7 +102,7 @@ describe('inline composer shell', () => {
 
   it('keeps the composer minimized without losing feed tabs', () => {
     context.displayState = 'minimized';
-    renderShell(true);
+    renderShell();
 
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.getByRole('link', { name: 'Home' })).toBeTruthy();
@@ -128,7 +110,7 @@ describe('inline composer shell', () => {
 
   it('preserves expand-on-click for an empty typed composer', async () => {
     immutableState = immutableState.setIn(['local_settings', 'inline_compose_expand_on_click'], true);
-    renderShell(true);
+    renderShell();
 
     const textarea = await screen.findByRole('textbox', { name: 'Redesign composer' });
     expect(textarea.closest('.inline-compose-form--collapsed')).toBeTruthy();

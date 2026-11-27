@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 namespace :settings do
-  resource :profile, only: [:show, :update] do
+  resource :profile, only: [:show] do
     resources :pictures, only: :destroy
   end
 
@@ -43,7 +43,7 @@ namespace :settings do
   end
 
   scope module: :two_factor_authentication do
-    resource :otp_authentication, only: [:show, :create], controller: :otp_authentication
+    resource :otp_authentication, only: [:show, :create, :destroy], controller: :otp_authentication
 
     resources :webauthn_credentials, only: [:index, :new, :create, :destroy], path: 'security_keys' do
       collection do
@@ -69,6 +69,7 @@ namespace :settings do
   resource :migration, only: [:show, :create]
   resource :verification, only: [:show, :update]
   resource :privacy, only: [:show, :update], controller: 'privacy'
+  resource :relay_preferences, only: [:show, :update]
 
   namespace :migration do
     resource :redirect, only: [:new, :create, :destroy]
@@ -76,7 +77,7 @@ namespace :settings do
 
   resources :aliases, only: [:index, :create, :destroy]
   resources :sessions, only: [:destroy]
-  resources :featured_tags, only: [:index, :create, :destroy]
+  resources :featured_tags, only: [:index]
   resources :login_activities, only: [:index]
   resources :account_switch_device_approvals, path: 'preferences/linked_accounts', only: [:index] do
     member do

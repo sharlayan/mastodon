@@ -22,9 +22,9 @@ RSpec.describe Themes do
       context 'when compatibility metadata contains a false string' do
         before do
           path = Rails.root.join('app', 'javascript', 'flavours', 'glitch-classic', 'theme.yml')
-          data = YAML.load_file(path).merge('glitch_only_compatible' => 'false')
-          allow(YAML).to receive(:load_file).and_call_original
-          allow(YAML).to receive(:load_file).with(path).and_return(data)
+          data = YAML.safe_load_file(path).merge('glitch_only_compatible' => 'false')
+          allow(YAML).to receive(:safe_load_file).and_call_original
+          allow(YAML).to receive(:safe_load_file).with(path).and_return(data)
         end
 
         it 'excludes the incompatible flavour' do

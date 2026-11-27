@@ -101,14 +101,14 @@ const SelectedAccount: React.FC<{
         </LockupContent>
       </LockupWrapper>
       {conversationId ? (
-        <Button compact onClick={handleOpen}>
+        <Button size='sm' variant='solid' color='accent' onClick={handleOpen}>
           <FormattedMessage
             id='mention_search.open_conversation'
             defaultMessage='Open conversation'
           />
         </Button>
       ) : (
-        <Button compact secondary onClick={onMention} disabled={checking}>
+        <Button size='sm' onClick={onMention} disabled={checking}>
           <FormattedMessage
             id='mention_search.mention'
             defaultMessage='Message'

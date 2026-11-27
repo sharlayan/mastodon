@@ -2,7 +2,6 @@ import { FormattedMessage } from 'react-intl';
 
 import { Link } from 'react-router-dom';
 
-import { isRedesignEnabled } from '@/flavours/glitch/utils/environment';
 import {
   domain,
   version,
@@ -19,15 +18,11 @@ export const LinkFooter: React.FC<{
 }> = ({ context = 'default' }) => {
   const multiColumn = context === 'multi-column';
   return (
-    <footer
-      className={classes.wrapper}
-      data-context={context}
-      data-redesign={isRedesignEnabled()}
-    >
+    <footer className={classes.wrapper} data-context={context}>
       <section>
         <h2 className={classes.heading}>{`${domain}`}</h2>
         <ul className={classes.list}>
-          {(!isRedesignEnabled() || context !== 'about') && (
+          {context !== 'about' && (
             <li>
               <Link to='/about' target={multiColumn ? '_blank' : undefined}>
                 <FormattedMessage
@@ -116,7 +111,7 @@ export const LinkFooter: React.FC<{
             <a href={source_url} rel='noopener' target='_blank'>
               <FormattedMessage
                 id='footer.source_code'
-                defaultMessage='View source code'
+                defaultMessage='Source Code'
               />
             </a>
           </li>

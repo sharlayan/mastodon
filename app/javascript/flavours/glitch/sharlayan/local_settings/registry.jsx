@@ -47,8 +47,8 @@ const SyncSettingsPage = ({ settings, onChange, onSyncFromServer, onSyncToServer
       <FormattedMessage id='settings.sync.enable' defaultMessage='Enable server sync' />
     </LocalSettingsPageItem>
     <div className='local-settings__page__sync-actions'>
-      <Button onClick={onSyncToServer} disabled={!me || !settings.get('sync_to_server')}><FormattedMessage id='settings.sync.save' defaultMessage='Save to server' /></Button>
-      <Button onClick={onSyncFromServer} disabled={!me || !settings.get('sync_to_server')}><FormattedMessage id='settings.sync.load' defaultMessage='Load from server' /></Button>
+      <Button variant='solid' color='accent' onClick={onSyncToServer} disabled={!me || !settings.get('sync_to_server')}><FormattedMessage id='settings.sync.save' defaultMessage='Save to server' /></Button>
+      <Button variant='solid' color='accent' onClick={onSyncFromServer} disabled={!me || !settings.get('sync_to_server')}><FormattedMessage id='settings.sync.load' defaultMessage='Load from server' /></Button>
     </div>
     {settings.get('synced_at') && (
       <p className='hint local-settings__page__sync-status'>
@@ -111,9 +111,6 @@ const localSettingsSlots = {
     { setting: ['hide_timeline_account_handle'], id: 'mastodon-settings--hide_timeline_account_handle', message: { id: 'settings.hide_timeline_account_handle', defaultMessage: 'Hide account handles on timeline posts' }, hint: { id: 'settings.hide_timeline_account_handle.hint', defaultMessage: 'Show only display names in the account information area of timeline posts' } },
     { setting: ['show_instance_info'], id: 'mastodon-settings--show_instance_info', message: { id: 'settings.show_instance_info', defaultMessage: 'Show instance information on posts' }, hint: { id: 'settings.show_instance_info.hint', defaultMessage: 'Display the instance name, theme color, and favicon on posts' } },
     { setting: ['show_instance_info_local'], id: 'mastodon-settings--show_instance_info_local', message: { id: 'settings.show_instance_info_local', defaultMessage: 'Also show instance information on posts from this server' }, hint: { id: 'settings.show_instance_info_local.hint', defaultMessage: 'Posts from your own server hide the badge unless this is enabled' }, dependsOn: ['show_instance_info'] },
-  ],
-  'general-status-icons': [
-    { setting: ['hicolor_privacy_icons'], id: 'mastodon-settings--hicolor_privacy_icons', message: { id: 'settings.hicolor_privacy_icons', defaultMessage: 'High color privacy icons' }, hint: { id: 'settings.hicolor_privacy_icons.hint', defaultMessage: 'Display privacy icons in bright and easily distinguishable colors' } },
   ],
   'compose-quick-buttons': [
     { setting: ['hide_compose_language'], id: 'mastodon-settings--show_compose_language', message: { id: 'settings.show_compose_language', defaultMessage: 'Show language selection in the compose box' }, inverted: true },

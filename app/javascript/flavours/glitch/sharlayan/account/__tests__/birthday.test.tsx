@@ -10,6 +10,16 @@ import { SharlayanBirthdayNumberField } from '../birthday_number_field';
 
 const dispatch = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
+vi.mock('react-router-dom', async (importOriginal) => ({
+  ...(await importOriginal()),
+  useHistory: () => ({ action: 'PUSH' }),
+  useLocation: () => ({
+    pathname: '/',
+    search: '',
+    hash: '',
+    state: undefined,
+  }),
+}));
 vi.mock(
   '@/flavours/glitch/reducers/slices/profile_edit',
   async (importOriginal) => ({

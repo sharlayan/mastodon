@@ -8,7 +8,18 @@ const mocks = vi.hoisted(() => ({
   dispatch: vi.fn(),
 }));
 
-vi.mock('@/flavours/glitch/store', () => ({
+vi.mock('react-router-dom', async (importOriginal) => ({
+  ...(await importOriginal()),
+  useHistory: () => ({ action: 'PUSH' }),
+  useLocation: () => ({
+    pathname: '/',
+    search: '',
+    hash: '',
+    state: undefined,
+  }),
+}));
+vi.mock('@/flavours/glitch/store', async () => ({
+  createAppSelector: (await import('@reduxjs/toolkit')).createSelector,
   useAppDispatch: () => mocks.dispatch,
   useAppSelector: (
     selector: (state: {

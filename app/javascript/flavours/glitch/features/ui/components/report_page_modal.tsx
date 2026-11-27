@@ -32,7 +32,7 @@ const PageThanks: React.FC<{ onClose: () => void }> = ({ onClose }) => (
     <div className='flex-spacer' />
 
     <div className='report-dialog-modal__actions'>
-      <Button onClick={onClose}>
+      <Button variant='solid' color='accent' onClick={onClose}>
         <FormattedMessage id='report.close' defaultMessage='Done' />
       </Button>
     </div>

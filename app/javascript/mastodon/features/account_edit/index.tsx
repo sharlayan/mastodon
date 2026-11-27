@@ -301,6 +301,7 @@ export const AccountEdit: FC = () => {
                 <Button
                   className={classes.editButton}
                   onClick={handleCustomFieldReorder}
+                  size='sm'
                 >
                   <FormattedMessage
                     id='account_edit.custom_fields.reorder_button'
@@ -332,7 +333,10 @@ export const AccountEdit: FC = () => {
           <Button
             onClick={handleCustomFieldsVerifiedHelp}
             className={classes.verifiedLinkHelpButton}
-            plain
+            variant='ghost'
+            color='neutral'
+            size='sm'
+            clipPadding
           >
             <FormattedMessage
               id='account_edit.custom_fields.verified_hint'
@@ -375,6 +379,7 @@ export const AccountEdit: FC = () => {
             <Button
               className={classes.editButton}
               onClick={handleProfileDisplayEdit}
+              size='sm'
             >
               <FormattedMessage
                 id='account_edit.profile_tab.button_label'

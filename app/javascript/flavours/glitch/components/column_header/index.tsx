@@ -5,21 +5,25 @@ import { FormattedMessage } from 'react-intl';
 import classNames from 'classnames';
 import { useLocation } from 'react-router';
 
-import { ArrowLeftIcon, ArrowUpIcon, ListIcon } from '@phosphor-icons/react';
+import { ArrowLeftIcon, ListIcon } from '@phosphor-icons/react';
 import type { DistributedOmit } from 'type-fest';
 
-import { openNavigation } from '@/flavours/glitch/actions/navigation';
+import type { IconButtonProps } from '@/flavours/glitch/components/button';
+import { Button, IconButton } from '@/flavours/glitch/components/button';
+import {
+  useColumn,
+  useColumnIndexContext,
+} from '@/flavours/glitch/components/column/context';
+import { NavigationFocusTarget } from '@/flavours/glitch/components/navigation_focus_target';
+import type { LocationState } from '@/flavours/glitch/components/router';
+import { useAppHistory } from '@/flavours/glitch/components/router';
+import { Tooltip } from '@/flavours/glitch/components/tooltip';
 import { getColumnSkipLinkId } from '@/flavours/glitch/features/ui/components/skip_links';
 import { useBreakpoint } from '@/flavours/glitch/features/ui/hooks/useBreakpoint';
+import { useResizeObserver } from '@/flavours/glitch/hooks/useObserver';
+import { openMobileMenu } from '@/flavours/glitch/reducers/slices/navigation';
 import { useAppDispatch } from '@/flavours/glitch/store';
 import { hasReactChildren } from '@/flavours/glitch/utils/has_react_children';
-
-import type { IconButtonProps } from '../button/redesign';
-import { Button, IconButton } from '../button/redesign';
-import { useColumn, useColumnIndexContext } from '../column/context';
-import { NavigationFocusTarget } from '../navigation_focus_target';
-import type { LocationState } from '../router';
-import { useAppHistory } from '../router';
 
 import classes from './styles.module.scss';
 
@@ -30,6 +34,7 @@ export interface ColumnHeaderProps {
   // Set to auto to display the back button based on
   // the `fromMastodon` location state
   withBackButton?: boolean | 'auto';
+  onBack?: () => void;
   withUnreadMarker?: boolean;
   extraButtons?: React.ReactNode;
   extraStickyContent?: React.ReactNode;
@@ -39,19 +44,21 @@ export interface ColumnHeaderProps {
 export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
   title,
   withBackButton,
+  onBack,
   withUnreadMarker,
   extraButtons,
   extraStickyContent,
   className,
   ...props
 }: ColumnHeaderProps) => {
-  const { scrollTop } = useColumn();
   const columnIndex = useColumnIndexContext();
   const location = useLocation<LocationState>();
   const hasBackButton =
     withBackButton === true ||
     (withBackButton === 'auto' && location.state?.fromMastodon);
   const hasExtraStickyContent = hasReactChildren(extraStickyContent);
+
+  const { isScrolledToTop, scrollTop } = useColumn();
 
   const handleHeaderClick = useCallback<React.MouseEventHandler>(
     (e) => {
@@ -73,46 +80,60 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
     [scrollTop],
   );
 
+  const hasUnreadIndicator = !isScrolledToTop && withUnreadMarker;
+
+  const unreadText = hasUnreadIndicator ? (
+    <FormattedMessage
+      id='column_header.scroll_to_new_content'
+      defaultMessage='Scroll to new content'
+    />
+  ) : (
+    <FormattedMessage
+      id='column_header.scroll_to_top'
+      defaultMessage='Scroll to top'
+    />
+  );
+
+  const headerRef = useTrackColumnHeaderHeight();
+
   return (
     <header
       {...props}
+      ref={headerRef}
       className={classNames(
         className,
         classes.root,
         hasExtraStickyContent && classes.withStickyContent,
+        !isScrolledToTop && classes.rootScrolledDown,
+        hasUnreadIndicator && classes.withGlow,
       )}
     >
       {/* eslint-disable-next-line
           jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
         */}
       <div className={classes.layout} onClick={handleHeaderClick}>
-        {hasBackButton ? <BackButton /> : <MobileMenuButton />}
-        <NavigationFocusTarget className={classes.title}>
-          <button
-            type='button'
-            onClick={scrollTop}
-            id={getColumnSkipLinkId(columnIndex)}
-          >
-            {title}
-          </button>
+        {hasBackButton ? <BackButton onClick={onBack} /> : <MobileMenuButton />}
+        <NavigationFocusTarget
+          className={classes.title}
+          id={getColumnSkipLinkId(columnIndex)}
+        >
+          {title}
         </NavigationFocusTarget>
+        {!isScrolledToTop && (
+          <Tooltip text={unreadText} placement='bottom'>
+            {({ getTooltipProps }) => (
+              <button
+                type='button'
+                {...getTooltipProps({ onClick: scrollTop })}
+                className={classes.scrollTopButton}
+              >
+                {unreadText}
+              </button>
+            )}
+          </Tooltip>
+        )}
         {hasReactChildren(extraButtons) && (
           <div className={classes.rightButtons}>{extraButtons}</div>
-        )}
-        {withUnreadMarker && (
-          <Button
-            size='sm'
-            color='accent'
-            variant='solid'
-            onClick={scrollTop}
-            leadingIcon={ArrowUpIcon}
-            className={classes.unreadButton}
-          >
-            <FormattedMessage
-              id='column_header.newer_posts'
-              defaultMessage='Newer posts'
-            />
-          </Button>
         )}
       </div>
       {hasExtraStickyContent && (
@@ -121,6 +142,16 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
     </header>
   );
 };
+
+/**
+ * This is used for pages that don't need a column title,
+ * but should have the same styles as the column header
+ */
+export const EmptyColumnHeader: React.FC = () => (
+  <div className={classes.root}>
+    <div className={classes.layout} />
+  </div>
+);
 
 type ColumnHeaderButtonProps = DistributedOmit<IconButtonProps, 'size'> & {
   showTextOnDesktop?: boolean;
@@ -137,29 +168,40 @@ export const ColumnHeaderButton: React.FC<ColumnHeaderButtonProps> = ({
 
   if (showTextOnDesktop && !isMobile) {
     return (
-      <Button {...props} variant={variant} size='sm'>
+      <Button expandHitArea={2} {...props} variant={variant} size='sm'>
         {children}
       </Button>
     );
   }
 
   return (
-    <IconButton icon={icon} {...props} variant={variant} size='sm'>
+    <IconButton
+      icon={icon}
+      expandHitArea={2}
+      {...props}
+      variant={variant}
+      size='sm'
+    >
       {children}
     </IconButton>
   );
 };
 
-const BackButton: React.FC = () => {
+const BackButton: React.FC<{ onClick?: () => void }> = ({ onClick }) => {
   const history = useAppHistory();
 
   const goBack = useCallback(() => {
+    if (onClick) {
+      onClick();
+      return;
+    }
+
     if (history.location.state?.fromMastodon) {
       history.goBack();
     } else {
       history.push('/');
     }
-  }, [history]);
+  }, [history, onClick]);
 
   return (
     <div className={classes.leftButton}>
@@ -174,7 +216,7 @@ const MobileMenuButton: React.FC = () => {
   const dispatch = useAppDispatch();
 
   const openMobileNavigation = useCallback(() => {
-    dispatch(openNavigation());
+    dispatch(openMobileMenu());
   }, [dispatch]);
 
   const isMobile = useBreakpoint('openable');
@@ -191,3 +233,54 @@ const MobileMenuButton: React.FC = () => {
     </div>
   );
 };
+
+function updateHeaderHeightCssVariable(element: HTMLElement) {
+  const newHeight = `${element.offsetHeight}px`;
+  const currentHeight = getComputedStyle(
+    document.documentElement,
+  ).getPropertyValue('--current-column-header-height');
+
+  if (newHeight !== currentHeight) {
+    document.documentElement.style.setProperty(
+      '--current-column-header-height',
+      `${element.offsetHeight}px`,
+    );
+  }
+}
+
+/**
+ * Writes changes in the column header's height to a CSS variable
+ * that is used to keep feed items in view when navigating them via hotkeys
+ */
+function useTrackColumnHeaderHeight() {
+  const onResize: ResizeObserverCallback = useCallback((entries) => {
+    for (const { target } of entries) {
+      if (target instanceof HTMLElement) {
+        updateHeaderHeightCssVariable(target);
+      }
+    }
+  }, []);
+
+  const observer = useResizeObserver(onResize);
+
+  const headerRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      const isMultiColumnLayout = !!document.querySelector(
+        'body.layout-multiple-columns',
+      );
+      if (!node || isMultiColumnLayout) {
+        return;
+      }
+
+      observer.observe(node);
+      updateHeaderHeightCssVariable(node);
+
+      return () => {
+        observer.unobserve(node);
+      };
+    },
+    [observer],
+  );
+
+  return headerRef;
+}

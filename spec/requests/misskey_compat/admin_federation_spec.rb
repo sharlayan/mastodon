@@ -53,7 +53,13 @@ RSpec.describe 'Misskey-compat admin federation and relays' do
   end
 
   it 'adds, lists and removes relays through Mastodon relays' do
+    stub_request(:get, 'https://unknown.example/actor').to_return(status: 404)
+    api('relays/add', inbox: 'https://unknown.example/inbox')
+    expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_URL')
+
+    relay_actor = Fabricate(:account, domain: 'relay.example', username: 'relay', uri: 'https://relay.example/actor', inbox_url: 'https://relay.example/inbox', actor_type: 'Application', protocol: :activitypub)
     created = api('relays/add', inbox: 'https://relay.example/inbox')
+    expect(Relay.find_by(account: relay_actor)).to have_attributes(uri: 'https://relay.example/actor')
     expect(created).to include(inbox: 'https://relay.example/inbox', status: 'requesting')
     expect(Relay.find_by(inbox_url: 'https://relay.example/inbox')).to be_pending
 

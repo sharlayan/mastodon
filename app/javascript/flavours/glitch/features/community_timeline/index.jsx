@@ -7,9 +7,7 @@ import { Helmet } from '@unhead/react/helmet';
 
 import { connect } from 'react-redux';
 
-import PeopleIcon from '@/material-icons/400-24px/group.svg?react';
 import { Column } from '@/flavours/glitch/components/column';
-import { ColumnHeader as LegacyColumnHeader } from '@/flavours/glitch/components/column/header';
 import { injectIntl } from '@/flavours/glitch/components/intl';
 import { DismissableBanner } from 'flavours/glitch/components/dismissable_banner';
 import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity_context';
@@ -22,11 +20,9 @@ import { connectCommunityStream } from '../../actions/streaming';
 import { expandCommunityTimeline } from '../../actions/timelines';
 import StatusListContainer from '../ui/containers/status_list_container';
 
-import ColumnSettingsContainer from './containers/column_settings_container';
 import { ColumnHeader, ColumnSettingsMenu } from '@/flavours/glitch/components/column_header';
 import { FeedColumnSettings } from '../public_timeline/components/feed_column_settings';
 import { MultiColumnMenuItems } from '@/flavours/glitch/components/column_header/multicolumn_settings';
-import { isRedesignEnabled } from '@/flavours/glitch/utils/environment';
 
 const messages = defineMessages({
   title: { id: 'column.community', defaultMessage: 'Local timeline' },
@@ -129,9 +125,7 @@ class CommunityTimeline extends PureComponent {
     const title = intl.formatMessage(
       roleplayMode
         ? messages.titleRoleplay
-        : isRedesignEnabled()
-          ? messages.title_redesign
-          : messages.title,
+        : messages.title_redesign,
     );
 
     const emptyMessage = canViewFeed(signedIn, permissions, localLiveFeedAccess) ? (
@@ -148,7 +142,6 @@ class CommunityTimeline extends PureComponent {
 
     return (
       <Column bindToDocument={!multiColumn} label={title}>
-        {isRedesignEnabled() ? (
           <ColumnHeader
             title={title}
             withUnreadMarker={hasUnread}
@@ -168,21 +161,6 @@ class CommunityTimeline extends PureComponent {
               </ColumnSettingsMenu>
             }
           />
-        ) : (
-          <LegacyColumnHeader
-            icon='users'
-            iconComponent={PeopleIcon}
-            active={hasUnread}
-            title={title}
-            onPin={this.handlePin}
-            onMove={this.handleMove}
-            pinned={pinned}
-            multiColumn={multiColumn}
-            scrollTopOnClick
-          >
-            <ColumnSettingsContainer columnId={columnId} />
-          </LegacyColumnHeader>
-        )}
 
         <StatusListContainer
           prepend={<DismissableBanner id='community_timeline'><FormattedMessage id='dismissable_banner.community_timeline' defaultMessage='These are the most recent public posts from people whose accounts are hosted by {domain}.' values={{ domain }} /></DismissableBanner>}

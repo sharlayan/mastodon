@@ -9,7 +9,7 @@ class Api::MisskeyCompat::Admin::MetaController < Api::MisskeyCompat::MetaContro
     description: :site_short_description,
     maintainerName: :site_contact_username,
     maintainerEmail: :site_contact_email,
-    themeColor: :theme_color,
+    themeColor: :branding_theme_color,
   }.freeze
 
   misskey_admin_endpoint :admin_show, kind: 'read:admin:meta', role: :admin, permission: :manage_settings

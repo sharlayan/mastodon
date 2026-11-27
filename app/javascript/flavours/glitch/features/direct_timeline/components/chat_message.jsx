@@ -20,21 +20,22 @@ import { initReport } from 'flavours/glitch/actions/reports';
 import { muteStatus, unmuteStatus, deleteStatus, editStatus } from 'flavours/glitch/actions/statuses';
 import AttachmentList from 'flavours/glitch/components/attachment_list';
 import { Avatar } from 'flavours/glitch/components/avatar';
-import { ContentWarning } from 'flavours/glitch/components/status/legacy/content_warning';
 import { DisplayName } from 'flavours/glitch/components/display_name';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import { AnimateEmojiProvider } from 'flavours/glitch/components/emoji/context';
 import { RelativeTimestamp } from 'flavours/glitch/components/relative_timestamp';
-import StatusContent from 'flavours/glitch/components/status/legacy/content';
+import { StatusContent } from 'flavours/glitch/components/status/content';
 import { StatusReactions } from 'flavours/glitch/components/status_reactions';
 import { ParentQuote } from 'flavours/glitch/features/direct_timeline/components/parent_quote';
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
 import Bundle from 'flavours/glitch/features/ui/components/bundle';
 import { MediaGallery, Video, Audio } from 'flavours/glitch/features/ui/util/async-components';
+import { useAccountStatus } from 'flavours/glitch/hooks/useStatus';
 import { me, deleteModal, reactionsEnabled } from 'flavours/glitch/initial_state';
 import { makeGetStatus } from 'flavours/glitch/selectors';
+import { ContentWarning } from 'flavours/glitch/sharlayan/content_warning';
 
-import { customEmojiOnlyCount, withoutLeadingHandles } from '../message_content';
+import { customEmojiOnlyCount, plainStatusWithoutLeadingHandles, withoutLeadingHandles } from '../message_content';
 
 const messages = defineMessages({
   more: { id: 'status.more', defaultMessage: 'More' },
@@ -81,8 +82,10 @@ export const ChatMessage = ({ conversationId, statusId, prevStatusId, nextStatus
   }, []);
 
   const displayStatus = useMemo(() => withoutLeadingHandles(status), [status]);
+  const plainStatus = useAccountStatus(statusId);
+  const plainDisplayStatus = useMemo(() => plainStatusWithoutLeadingHandles(plainStatus), [plainStatus]);
 
-  if (!status || !account) {
+  if (!status || !account || !plainDisplayStatus) {
     return null;
   }
 
@@ -331,14 +334,14 @@ export const ChatMessage = ({ conversationId, statusId, prevStatusId, nextStatus
           <div className='chat-message__row'>
             <div className='chat-message__bubble' title={fullTime}>
               <ContentWarning
-                status={status}
+                statusId={status.get('id')}
                 expanded={showContent}
                 onClick={hasSpoiler ? handleExpandedToggle : undefined}
               />
 
               {showContent && (
                 <>
-                  <StatusContent status={displayStatus} />
+                  <StatusContent status={plainDisplayStatus} />
 
                   {renderMedia()}
                 </>
