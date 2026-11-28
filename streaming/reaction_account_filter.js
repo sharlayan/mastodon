@@ -10,14 +10,19 @@ const reactionAccountIds = (payload) => {
 
 const EXCLUSION_CACHE_TTL = 5000;
 const EXCLUSION_CACHE_MAX_ENTRIES = 5000;
+const EXCLUSION_CACHE_PRUNE_INTERVAL = 1000;
 
 const exclusionCache = new Map();
+let lastExclusionCachePrunedAt;
 
 const exclusionCacheKey = (viewerAccountId, candidateAccountIds) => `${viewerAccountId}:${candidateAccountIds.join(',')}`;
 
 const pruneExclusionCache = (checkedAt) => {
-  for (const [key, entry] of exclusionCache) {
-    if (checkedAt - entry.checkedAt >= EXCLUSION_CACHE_TTL) exclusionCache.delete(key);
+  if (lastExclusionCachePrunedAt === undefined || checkedAt < lastExclusionCachePrunedAt || checkedAt - lastExclusionCachePrunedAt >= EXCLUSION_CACHE_PRUNE_INTERVAL) {
+    for (const [key, entry] of exclusionCache) {
+      if (checkedAt - entry.checkedAt >= EXCLUSION_CACHE_TTL) exclusionCache.delete(key);
+    }
+    lastExclusionCachePrunedAt = checkedAt;
   }
 
   while (exclusionCache.size > EXCLUSION_CACHE_MAX_ENTRIES) {
@@ -25,7 +30,10 @@ const pruneExclusionCache = (checkedAt) => {
   }
 };
 
-const clearExcludedReactionAccountIdsCache = () => exclusionCache.clear();
+const clearExcludedReactionAccountIdsCache = () => {
+  exclusionCache.clear();
+  lastExclusionCachePrunedAt = undefined;
+};
 
 const excludedReactionAccountIds = (pgPool, viewerAccountId, candidateAccountIds, now = Date.now) => {
   if (candidateAccountIds.length === 0) return Promise.resolve([]);

@@ -97,6 +97,49 @@ test('does not cache a failed exclusion lookup', async () => {
   assert.equal(calls, 2);
 });
 
+test('expires lookups at five seconds even when the last sweep was recent', async () => {
+  let calls = 0;
+  let checkedAt = 0;
+  const now = () => checkedAt;
+  const pgPool = {
+    query: async () => {
+      calls += 1;
+      return { rows: calls === 1 ? [] : [{ id: '2' }] };
+    },
+  };
+
+  assert.deepEqual(await excludedReactionAccountIds(pgPool, '9', ['1', '2'], now), []);
+  checkedAt = 4999;
+  await excludedReactionAccountIds(pgPool, '8', ['1', '2'], now);
+  assert.deepEqual(await excludedReactionAccountIds(pgPool, '9', ['1', '2'], now), []);
+
+  checkedAt = 5000;
+  assert.deepEqual(await excludedReactionAccountIds(pgPool, '9', ['1', '2'], now), ['2']);
+  await excludedReactionAccountIds(pgPool, '9', ['1', '2'], now);
+  await excludedReactionAccountIds(pgPool, '8', ['1', '2'], now);
+  assert.equal(calls, 3);
+});
+
+test('keeps the cache bounded between expiration sweeps', async () => {
+  let calls = 0;
+  const now = () => 0;
+  const pgPool = {
+    query: async () => {
+      calls += 1;
+      return { rows: [] };
+    },
+  };
+
+  for (let viewer = 0; viewer <= 5000; viewer++) {
+    await excludedReactionAccountIds(pgPool, String(viewer), ['1'], now);
+  }
+
+  await excludedReactionAccountIds(pgPool, '5000', ['1'], now);
+  assert.equal(calls, 5001);
+  await excludedReactionAccountIds(pgPool, '0', ['1'], now);
+  assert.equal(calls, 5002);
+});
+
 test('keeps reactions from accounts without mute or block relationships', async () => {
   const pgPool = { query: async () => ({ rows: [] }) };
 
