@@ -303,7 +303,7 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
     raise MisskeyCompat::DriveFileResolver::AmbiguousFileError if drive_file && media
 
     status_ids = if drive_file
-                   drive_file.media_attachments.attached.where.not(status_id: nil).distinct.pluck(:status_id)
+                   drive_file.media_attachments.where.not(status_id: nil).select(:status_id)
                  elsif media&.status_id
                    [media.status_id]
                  else

@@ -449,11 +449,13 @@ RSpec.describe 'Drive files API' do
     it 'returns pagination links for the attached statuses' do
       drive_file = insert_drive_file
       pointers = Array.new(3) { attach_to_status(drive_file) }
+      drive_file.build_pointer(user.account).update!(status_id: pointers.last.status_id)
+      drive_file.build_pointer(user.account).save!
 
       get "/api/v1/drive/files/#{drive_file.id}/attached_notes", headers: headers, params: { limit: 2 }
 
       expect(response).to have_http_status(200)
-      expect(response.parsed_body.size).to eq 2
+      expect(response.parsed_body.pluck(:id)).to eq(pointers.last(2).reverse.map { |pointer| pointer.status_id.to_s })
       links = LinkHeader.parse(response.headers['Link'])
       expect(links.find_link(%w(rel next)).href).to include("/api/v1/drive/files/#{drive_file.id}/attached_notes", 'limit=2', "max_id=#{pointers[1].status_id}")
       expect(links.find_link(%w(rel prev)).href).to include("since_id=#{pointers[2].status_id}")

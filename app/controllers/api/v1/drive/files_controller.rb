@@ -174,8 +174,7 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
 
   def load_attached_statuses
     @attached_page = []
-    status_ids = @file.media_attachments.attached.where.not(status_id: nil).distinct.pluck(:status_id)
-    return [] if status_ids.empty?
+    status_ids = @file.media_attachments.where.not(status_id: nil).select(:status_id)
 
     scope = apply_date_range(Status.where(id: status_ids))
     @attached_page = scope.paginate_by_max_id(limit_param(LIMIT), params[:max_id], params[:since_id]).to_a

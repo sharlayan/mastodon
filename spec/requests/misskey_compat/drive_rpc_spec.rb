@@ -198,6 +198,8 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
         file.build_pointer(account).tap { |pointer| pointer.update!(status_id: status.id) }
         status
       end
+      file.build_pointer(account).update!(status_id: statuses.last.id)
+      file.build_pointer(account).save!
 
       rpc_post 'drive/files/attached-notes', fileId: mi_id(file.id)
 
